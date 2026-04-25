@@ -11,7 +11,7 @@ The system manages mining formalization processes, tracking each project as an "
 
 ---
 
-## Language Convention
+## Language Convention (CRITICAL — see also ai-context.md)
 
 | Layer | Language | Examples |
 |---|---|---|
@@ -19,11 +19,14 @@ The system manages mining formalization processes, tracking each project as an "
 | Code logic (functions, utilities) | English | `advancePhase()`, `getNextActions()` |
 | Domain entity names | Spanish | `expediente`, `fase`, `pago` |
 | Database tables and columns | Spanish | `fases`, `fase_actual_id`, `registro_auditoria` |
+| JSONB condition keys | Spanish | `requiere_pago`, `requiere_documentos` |
 | UI labels | Spanish | "Sin fase", "Expedientes" |
 | API route nouns | Spanish | `/api/expedientes/:id/transition` |
 
-**Hard rule:** never translate domain concepts inconsistently.
-`expediente` = always `expediente`. Never "case", "file", or "record".
+**Hard rules:**
+- Never translate domain concepts. `expediente` = always `expediente`. Never "case", "file", or "record".
+- JSONB keys stored in the DB follow the same rule as columns: Spanish always.
+- `condition.requiere_pago` ✅ — `condition.requires_payment` ❌
 
 ---
 
