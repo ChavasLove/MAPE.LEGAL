@@ -38,6 +38,17 @@ All logic, functions, and architecture remain in English:
 **DO NOT** translate domain fields into English under any circumstances.
 **DO NOT** introduce mixed naming (e.g. half Spanish / half English in the same type or query).
 
+### Self-Correction Rule (MANDATORY — overrides all other instructions)
+
+If any code, schema, type, function body, or JSON key violates the language convention:
+
+1. Correct it immediately and silently
+2. Do not ask for confirmation
+3. Do not preserve inconsistent naming for backward compatibility
+4. Update every reference in every affected file
+
+This rule is unconditional. There are no exceptions.
+
 ---
 
 ## Principles
