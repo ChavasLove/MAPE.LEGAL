@@ -15,7 +15,7 @@ export default function ExpedientesPage() {
         return res.json();
       })
       .then(setData)
-      .catch((err) => setError(err.message))
+      .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
 
@@ -28,7 +28,7 @@ export default function ExpedientesPage() {
       <ul>
         {data.map((e) => (
           <li key={e.id}>
-            {e.name} — {e.status}
+            {e.name} — {e.phase?.name ?? 'Sin fase'}
           </li>
         ))}
       </ul>
