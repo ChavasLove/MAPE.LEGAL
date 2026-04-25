@@ -1,20 +1,20 @@
 import { supabase } from '@/services/supabase';
-import type { Phase } from '@/modules/types';
+import type { Fase } from '@/modules/types';
 
-export async function getPhases(): Promise<Phase[]> {
+export async function getFases(): Promise<Fase[]> {
   const { data, error } = await supabase
-    .from('phases')
+    .from('fases')
     .select('*')
-    .order('order_index', { ascending: true });
+    .order('orden', { ascending: true });
 
   if (error) throw error;
 
   return data;
 }
 
-export async function getPhaseById(id: string): Promise<Phase> {
+export async function getFaseById(id: string): Promise<Fase> {
   const { data, error } = await supabase
-    .from('phases')
+    .from('fases')
     .select('*')
     .eq('id', id)
     .single();

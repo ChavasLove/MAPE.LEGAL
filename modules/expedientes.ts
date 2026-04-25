@@ -3,39 +3,39 @@ import type { Expediente } from '@/modules/types';
 
 export async function validatePaymentForPhase(
   expedienteId: string,
-  phaseId: string
+  faseId: string
 ): Promise<boolean> {
   const { data } = await supabase
-    .from('payments')
+    .from('pagos')
     .select('id')
     .eq('expediente_id', expedienteId)
-    .eq('phase_id', phaseId)
-    .eq('status', 'completed');
+    .eq('fase_id', faseId)
+    .eq('estado', 'completado');
 
   return data !== null && data.length > 0;
 }
 
 export async function logAction(
   expedienteId: string,
-  action: string,
+  accion: string,
   metadata: Record<string, unknown> = {},
   userId?: string
 ): Promise<void> {
-  await supabase.from('audit_logs').insert({
+  await supabase.from('registro_auditoria').insert({
     expediente_id: expedienteId,
-    action,
+    accion,
     metadata,
     user_id: userId ?? null,
   });
 }
 
-// Imported lazily to avoid circular dep (workflow.ts → expedientes.ts → workflow.ts)
+// Dynamic import breaks the circular dep: workflow.ts → expedientes.ts → workflow.ts
 async function resolveNextActions(expedienteId: string) {
   const { getNextActions } = await import('@/modules/workflow');
   return getNextActions(expedienteId);
 }
 
-export async function transitionToNextPhase(
+export async function advancePhase(
   expedienteId: string,
   userId?: string,
   transitionId?: string
@@ -55,46 +55,46 @@ export async function transitionToNextPhase(
 
   const { data: expediente } = await supabase
     .from('expedientes')
-    .select('current_phase_id')
+    .select('fase_actual_id')
     .eq('id', expedienteId)
     .single();
 
-  const previousPhaseId = expediente?.current_phase_id ?? null;
+  const faseAnteriorId = expediente?.fase_actual_id ?? null;
 
-  // Close the current phase record in history
-  if (previousPhaseId) {
+  // Close the current fase record in history
+  if (faseAnteriorId) {
     await supabase
-      .from('expediente_phases')
-      .update({ exited_at: new Date().toISOString() })
+      .from('expediente_fases')
+      .update({ salida_en: new Date().toISOString() })
       .eq('expediente_id', expedienteId)
-      .eq('phase_id', previousPhaseId)
-      .is('exited_at', null);
+      .eq('fase_id', faseAnteriorId)
+      .is('salida_en', null);
   }
 
   // Advance expediente
   const { data: updated, error } = await supabase
     .from('expedientes')
-    .update({ current_phase_id: chosen.to_phase.id })
+    .update({ fase_actual_id: chosen.fase.id })
     .eq('id', expedienteId)
     .select()
     .single();
 
   if (error || !updated) throw error ?? new Error('Update failed');
 
-  // Open a new phase history record
-  await supabase.from('expediente_phases').insert({
+  // Open new fase history record
+  await supabase.from('expediente_fases').insert({
     expediente_id: expedienteId,
-    phase_id: chosen.to_phase.id,
-    entered_by: userId ?? null,
+    fase_id: chosen.fase.id,
+    ingresado_por: userId ?? null,
   });
 
   await logAction(
     expedienteId,
-    'PHASE_TRANSITION',
+    'TRANSICION_FASE',
     {
-      from_phase_id: previousPhaseId,
-      to_phase_id: chosen.to_phase.id,
-      to_phase_name: chosen.to_phase.name,
+      fase_anterior_id: faseAnteriorId,
+      fase_nueva_id: chosen.fase.id,
+      fase_nueva_nombre: chosen.fase.nombre,
     },
     userId
   );

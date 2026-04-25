@@ -28,7 +28,7 @@ export default function ExpedientesPage() {
       <ul>
         {data.map((e) => (
           <li key={e.id}>
-            {e.name} — {e.phase?.name ?? 'Sin fase'}
+            {e.nombre} — {e.fase?.nombre ?? 'Sin fase'}
           </li>
         ))}
       </ul>

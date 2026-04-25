@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { transitionToNextPhase } from '@/modules/expedientes';
+import { advancePhase } from '@/modules/expedientes';
 
 export async function POST(
   req: Request,
@@ -14,7 +14,7 @@ export async function POST(
     const transitionId: string | undefined =
       typeof body.transition_id === 'string' ? body.transition_id : undefined;
 
-    const updated = await transitionToNextPhase(id, userId, transitionId);
+    const updated = await advancePhase(id, userId, transitionId);
     return NextResponse.json(updated);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Transition failed';
