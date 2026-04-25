@@ -2,12 +2,14 @@
 
 ## Description
 Legal mining management system (MAPE / CHT).
-The system manages mining formalization processes, tracking each project as an "expediente" (case file) through multiple legal and operational phases.
+The system manages mining formalization processes, tracking each project as an "expediente" (case file) through multiple legal and operational fases.
 
 ## Stack
 - Frontend: Next.js (Vercel)
 - Backend: Supabase (PostgreSQL, Auth, Storage)
 - AI: Claude Code
+
+---
 
 ## Language Convention
 
@@ -22,6 +24,51 @@ The system manages mining formalization processes, tracking each project as an "
 
 **Hard rule:** never translate domain concepts inconsistently.
 `expediente` = always `expediente`. Never "case", "file", or "record".
+
+---
+
+## Database Tables
+
+| Table | Purpose |
+|---|---|
+| `expedientes` | Core case file; holds `fase_actual_id` FK |
+| `fases` | Ordered workflow phases (`nombre`, `orden`) |
+| `transiciones_fase` | Explicit transition graph with `condicion` JSONB |
+| `pagos` | Payments scoped per expediente + fase |
+| `expediente_fases` | Full fase history per expediente (timeline) |
+| `registro_auditoria` | Append-only audit trail with `user_id` and `accion` |
+
+---
+
+## Workflow Engine
+
+The core engine lives in `modules/workflow.ts` and `modules/expedientes.ts`.
+
+**Decision flow:**
+```
+GET /api/expedientes/:id/next-actions
+  → getNextActions(expedienteId)
+      → getAvailableTransitions(fase_actual_id)   ← reads transiciones_fase graph
+      → getBlockingReasons(expedienteId, faseId, condicion)  ← evaluates conditions
+  → returns { can_advance, blocking[], available_transitions[] }
+```
+
+**Execution flow:**
+```
+POST /api/expedientes/:id/transition
+  → advancePhase(expedienteId, userId?, transitionId?)
+      → getNextActions()          ← validates conditions
+      → close expediente_fases row (salida_en)
+      → update expedientes.fase_actual_id
+      → open new expediente_fases row (entrada_en, ingresado_por)
+      → insert registro_auditoria (TRANSICION_FASE)
+```
+
+**Condition keys in `transiciones_fase.condicion`:**
+- `requiere_pago: true` — checks `pagos` for a `completado` record for this fase
+- `requiere_documentos: ["EIA"]` — checks `documentos` table (stubbed, not yet implemented)
+
+---
 
 ## Core Modules
 - Expedientes (gestión de casos)
@@ -38,10 +85,10 @@ The system manages mining formalization processes, tracking each project as an "
 
 ## Folder Structure
 - `/app` → UI and routing
-- `/modules` → business logic
-- `/services` → external integrations (Supabase, APIs)
+- `/modules` → business logic (`expedientes.ts`, `workflow.ts`)
+- `/services` → external integrations (`supabase.ts`, `expedientesService.ts`, `fasesService.ts`)
 - `/docs` → system memory and AI context
-- `/supabase` → database schema and migrations
+- `/supabase` → database schema and migrations (`001`, `002`, `003`)
 
 ## Design Principles
 - Modular architecture
