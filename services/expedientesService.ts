@@ -16,7 +16,7 @@ export async function createExpediente(name: string): Promise<Expediente> {
 export async function getExpedientes(): Promise<Expediente[]> {
   const { data, error } = await supabase
     .from('expedientes')
-    .select('*')
+    .select('*, phase:phases(id, name, order_index)')
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -27,7 +27,7 @@ export async function getExpedientes(): Promise<Expediente[]> {
 export async function getExpedienteById(id: string): Promise<Expediente> {
   const { data, error } = await supabase
     .from('expedientes')
-    .select('*')
+    .select('*, phase:phases(id, name, order_index)')
     .eq('id', id)
     .single();
 
