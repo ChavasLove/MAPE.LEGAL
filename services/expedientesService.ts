@@ -1,10 +1,10 @@
 import { supabase } from '@/services/supabase';
 import type { Expediente } from '@/modules/types';
 
-export async function createExpediente(name: string): Promise<Expediente> {
+export async function createExpediente(nombre: string): Promise<Expediente> {
   const { data, error } = await supabase
     .from('expedientes')
-    .insert({ name })
+    .insert({ nombre })
     .select()
     .single();
 
@@ -16,7 +16,7 @@ export async function createExpediente(name: string): Promise<Expediente> {
 export async function getExpedientes(): Promise<Expediente[]> {
   const { data, error } = await supabase
     .from('expedientes')
-    .select('*, phase:phases(id, name, order_index)')
+    .select('*, fase:fases!fase_actual_id(id, nombre, orden)')
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -27,7 +27,7 @@ export async function getExpedientes(): Promise<Expediente[]> {
 export async function getExpedienteById(id: string): Promise<Expediente> {
   const { data, error } = await supabase
     .from('expedientes')
-    .select('*, phase:phases(id, name, order_index)')
+    .select('*, fase:fases!fase_actual_id(id, nombre, orden)')
     .eq('id', id)
     .single();
 

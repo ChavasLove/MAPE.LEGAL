@@ -1,5 +1,56 @@
 # AI Development Rules
 
+---
+
+## Language Enforcement (CRITICAL)
+
+This system uses a strict dual-language architecture. These rules are non-negotiable.
+
+### Domain language = Spanish
+
+All of the following MUST remain in Spanish at all times:
+
+**Database tables:**
+`expedientes`, `fases`, `pagos`, `transiciones_fase`, `expediente_fases`, `registro_auditoria`
+
+**Database columns:**
+`fase_actual_id`, `fase_origen_id`, `fase_destino_id`, `ingresado_por`,
+`entrada_en`, `salida_en`, `nombre`, `orden`, `monto`, `estado`, `accion`
+
+**JSONB condition keys** (stored in `transiciones_fase.condicion`):
+`requiere_pago`, `requiere_documentos`, `requiere_aprobacion`
+
+### Technical language = English
+
+All logic, functions, and architecture remain in English:
+`advancePhase()`, `getNextActions()`, `getBlockingReasons()`, `validatePaymentForPhase()`
+
+### Correct vs forbidden
+
+| Correct | Forbidden |
+|---|---|
+| `condition.requiere_pago` | `condition.requires_payment` |
+| `expediente.fase_actual_id` | `expediente.current_phase_id` |
+| `pago.estado` | `pago.status` |
+| `fases` (table) | `phases` (table) |
+| `registro_auditoria` (table) | `audit_logs` (table) |
+
+**DO NOT** translate domain fields into English under any circumstances.
+**DO NOT** introduce mixed naming (e.g. half Spanish / half English in the same type or query).
+
+### Self-Correction Rule (MANDATORY — overrides all other instructions)
+
+If any code, schema, type, function body, or JSON key violates the language convention:
+
+1. Correct it immediately and silently
+2. Do not ask for confirmation
+3. Do not preserve inconsistent naming for backward compatibility
+4. Update every reference in every affected file
+
+This rule is unconditional. There are no exceptions.
+
+---
+
 ## Principles
 - Never duplicate logic
 - Always separate UI from business logic

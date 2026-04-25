@@ -3,90 +3,98 @@ import type { Expediente } from '@/modules/types';
 
 export async function validatePaymentForPhase(
   expedienteId: string,
-  phaseId: string
+  faseId: string
 ): Promise<boolean> {
   const { data } = await supabase
-    .from('payments')
+    .from('pagos')
     .select('id')
     .eq('expediente_id', expedienteId)
-    .eq('phase_id', phaseId)
-    .eq('status', 'completed');
+    .eq('fase_id', faseId)
+    .eq('estado', 'completado');
 
   return data !== null && data.length > 0;
 }
 
 export async function logAction(
   expedienteId: string,
-  action: string,
+  accion: string,
   metadata: Record<string, unknown> = {},
   userId?: string
 ): Promise<void> {
-  await supabase.from('audit_logs').insert({
+  await supabase.from('registro_auditoria').insert({
     expediente_id: expedienteId,
-    action,
+    accion,
     metadata,
     user_id: userId ?? null,
   });
 }
 
-export async function transitionToNextPhase(
+// Dynamic import breaks the circular dep: workflow.ts → expedientes.ts → workflow.ts
+async function resolveNextActions(expedienteId: string) {
+  const { getNextActions } = await import('@/modules/workflow');
+  return getNextActions(expedienteId);
+}
+
+export async function advancePhase(
   expedienteId: string,
-  userId?: string
+  userId?: string,
+  transitionId?: string
 ): Promise<Expediente> {
-  const { data: expediente, error: expError } = await supabase
+  const nextActions = await resolveNextActions(expedienteId);
+
+  if (!nextActions.can_advance) {
+    const reasons = nextActions.blocking.map((b) => b.name ?? b.type).join(', ');
+    throw new Error(`Cannot advance: ${reasons}`);
+  }
+
+  const chosen = transitionId
+    ? nextActions.available_transitions.find((t) => t.transition_id === transitionId)
+    : nextActions.available_transitions[0];
+
+  if (!chosen) throw new Error('Transition not found or not available');
+
+  const { data: expediente } = await supabase
     .from('expedientes')
-    .select('*')
+    .select('fase_actual_id')
     .eq('id', expedienteId)
     .single();
 
-  if (expError || !expediente) throw new Error('Expediente not found');
+  const faseAnteriorId = expediente?.fase_actual_id ?? null;
 
-  let currentOrderIndex = 0;
-
-  if (expediente.current_phase_id) {
-    const { data: currentPhase, error: phaseError } = await supabase
-      .from('phases')
-      .select('id, order_index')
-      .eq('id', expediente.current_phase_id)
-      .single();
-
-    if (phaseError || !currentPhase) throw new Error('Current phase not found');
-
-    currentOrderIndex = currentPhase.order_index;
-
-    // Payment required to leave the current phase
-    const isPaid = await validatePaymentForPhase(expedienteId, expediente.current_phase_id);
-    if (!isPaid) {
-      throw new Error(`Payment not completed for phase "${currentPhase.order_index}"`);
-    }
+  // Close the current fase record in history
+  if (faseAnteriorId) {
+    await supabase
+      .from('expediente_fases')
+      .update({ salida_en: new Date().toISOString() })
+      .eq('expediente_id', expedienteId)
+      .eq('fase_id', faseAnteriorId)
+      .is('salida_en', null);
   }
 
-  const { data: nextPhase, error: nextError } = await supabase
-    .from('phases')
-    .select('*')
-    .eq('order_index', currentOrderIndex + 1)
-    .single();
-
-  if (nextError || !nextPhase) {
-    throw new Error('No next phase — expediente has completed all phases');
-  }
-
-  const { data: updated, error: updateError } = await supabase
+  // Advance expediente
+  const { data: updated, error } = await supabase
     .from('expedientes')
-    .update({ current_phase_id: nextPhase.id })
+    .update({ fase_actual_id: chosen.fase.id })
     .eq('id', expedienteId)
     .select()
     .single();
 
-  if (updateError || !updated) throw updateError ?? new Error('Update failed');
+  if (error || !updated) throw error ?? new Error('Update failed');
+
+  // Open new fase history record
+  await supabase.from('expediente_fases').insert({
+    expediente_id: expedienteId,
+    fase_id: chosen.fase.id,
+    ingresado_por: userId ?? null,
+  });
 
   await logAction(
     expedienteId,
-    'PHASE_TRANSITION',
+    'TRANSICION_FASE',
     {
-      from_phase_id: expediente.current_phase_id,
-      to_phase_id: nextPhase.id,
-      to_phase_name: nextPhase.name,
+      fase_anterior_id: faseAnteriorId,
+      fase_nueva_id: chosen.fase.id,
+      fase_nueva_nombre: chosen.fase.nombre,
     },
     userId
   );
