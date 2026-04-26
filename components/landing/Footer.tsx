@@ -2,31 +2,31 @@
 
 export function Footer() {
   return (
-    <footer className="bg-slate-950 border-t border-slate-800">
+    <footer className="bg-slate-950 border-t border-slate-800" id="contacto">
 
       {/* CTA final */}
       <div className="py-20 text-center border-b border-slate-800">
         <div className="max-w-3xl mx-auto px-6">
-          <p className="text-accent-400 text-sm font-bold tracking-widest uppercase mb-4">¿Listo para formalizar?</p>
+          <p className="text-green-400 text-sm font-bold tracking-widest uppercase mb-4">¿Listo para formalizar?</p>
           <h2 className="text-4xl font-bold text-white mb-6">
             Inicia tu expediente hoy
           </h2>
           <p className="text-slate-400 text-lg mb-8">
-            El primer hito es L 320.000 e incluye la apertura de tu expediente, asignación de abogado y PSA,
+            El primer hito es L 320.000 e incluye apertura de expediente, asignación de abogado y PSA,
             y el inicio de la Fase 0 del Manual Operativo.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button
-              onClick={() => window.open('https://wa.me/50498765432', '_blank')}
-              className="bg-green-600 hover:bg-green-500 text-white font-bold py-4 px-10 rounded-2xl text-lg transition-colors cursor-pointer"
+            <a
+              href="mailto:contacto@mape.legal"
+              className="bg-green-600 hover:bg-green-500 text-white font-bold py-4 px-10 rounded-2xl text-lg transition-colors inline-flex items-center justify-center gap-2"
             >
-              WhatsApp directo con Willis Yang
-            </button>
+              Empezar trámite ahora
+            </a>
             <a
               href="/dashboard.html"
               target="_blank"
               rel="noopener noreferrer"
-              className="border border-slate-600 hover:border-accent-400 text-white font-semibold py-4 px-10 rounded-2xl text-lg transition-colors inline-flex items-center justify-center"
+              className="border border-slate-600 hover:border-green-500 text-white font-semibold py-4 px-10 rounded-2xl text-lg transition-colors inline-flex items-center justify-center"
             >
               Ver el Dashboard →
             </a>
@@ -56,11 +56,16 @@ export function Footer() {
           <div>
             <div className="text-white font-semibold mb-3">Corporación Hondureña Tenka</div>
             <ul className="space-y-2">
-              <li>Administrador Único: Willis Yang</li>
-              <li>Socio: Ricardo Alfredo Montes Nájera</li>
+              <li>Operador MAPE.LEGAL</li>
+              <li>Piloto Iriona, Colón · 2026</li>
               <li className="pt-2">
-                <a href="/dashboard.html" className="text-accent-400 hover:underline">
+                <a href="/dashboard.html" className="text-green-400 hover:underline">
                   Panel administrativo →
+                </a>
+              </li>
+              <li>
+                <a href="mailto:contacto@mape.legal" className="text-green-400 hover:underline">
+                  contacto@mape.legal
                 </a>
               </li>
             </ul>

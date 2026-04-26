@@ -2,7 +2,7 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #0f172a;
 }
 
 @theme inline {
@@ -11,31 +11,32 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  /* CHT brand — primary blue */
-  --color-primary-50:  #eff6ff;
-  --color-primary-500: #1e40af;
-  --color-primary-600: #1e3a8a;
-  --color-primary-700: #1e2e6b;
+  /* CHT — Forest green (primary) */
+  --color-forest-50:  #f0fdf4;
+  --color-forest-100: #dcfce7;
+  --color-forest-200: #bbf7d0;
+  --color-forest-600: #166534;
+  --color-forest-700: #14532d;
+  --color-forest-800: #15803d;
+  --color-forest-900: #0f4521;
 
-  /* CHT brand — gold accent */
-  --color-accent-400: #d97706;
-  --color-accent-500: #b45309;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* CHT — Gold (accent) */
+  --color-gold-400: #fbbf24;
+  --color-gold-500: #ca8a04;
+  --color-gold-600: #b45309;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans, 'Inter', system-ui, sans-serif);
 }
 
-/* Landing page smooth scroll */
 html {
   scroll-behavior: smooth;
+}
+
+h1, h2, h3, h4 {
+  font-weight: 700;
+  line-height: 1.15;
 }
