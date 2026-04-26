@@ -1,5 +1,7 @@
 'use client';
 
+import { PriceWidgets } from './PriceWidgets';
+
 export function Hero() {
   const scrollTo = (id: string) =>
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -94,6 +96,11 @@ export function Hero() {
               <div className="text-white/60 text-xs mt-0.5">{sub}</div>
             </div>
           ))}
+        </div>
+
+        {/* Live price widgets */}
+        <div className="mt-12 w-full max-w-2xl mx-auto">
+          <PriceWidgets />
         </div>
       </div>
 
