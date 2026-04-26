@@ -75,14 +75,14 @@ export function PriceWidgets() {
         {widgets.map(({ label, value, sub, icon }) => (
           <Card
             key={label}
-            className="flex-1 max-w-xs bg-white/15 border-white/25 backdrop-blur-sm shadow-none rounded-2xl"
+            className="flex-1 max-w-xs bg-white/15 border-white/25 backdrop-blur-sm shadow-none rounded-xl"
           >
             <CardContent className="p-5">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <div className="text-green-300 text-xs font-bold tracking-widest uppercase mb-1">{label}</div>
-                  <div className="text-2xl font-black text-white">{value}</div>
-                  <div className="text-white/50 text-xs mt-0.5">{sub}</div>
+                  <div className="text-earth-200 text-xs font-bold tracking-widest uppercase mb-1 font-sans">{label}</div>
+                  <div className="text-2xl font-bold text-white font-sans">{value}</div>
+                  <div className="text-white/50 text-xs mt-0.5 font-sans">{sub}</div>
                 </div>
                 <div className="text-3xl shrink-0">{icon}</div>
               </div>
@@ -91,9 +91,9 @@ export function PriceWidgets() {
         ))}
       </div>
 
-      <div className="text-center mt-3 text-xs text-white/40">
+      <div className="text-center mt-3 text-xs text-white/40 font-sans">
         {error ? (
-          <span className="text-red-300">{error}</span>
+          <span className="text-action-red/70">{error}</span>
         ) : (
           <>Precios en tiempo real · Actualizado {prices.lastUpdated || '—'}</>
         )}

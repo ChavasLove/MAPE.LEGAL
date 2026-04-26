@@ -24,17 +24,17 @@ const articles = [
 
 export function News() {
   return (
-    <section className="py-24 bg-white" id="noticias">
+    <section className="py-24 bg-primary-50" id="noticias">
       <div className="max-w-6xl mx-auto px-6">
 
         <div className="flex items-end justify-between mb-12">
           <div>
-            <p className="text-green-700 text-sm font-bold tracking-widest uppercase mb-2">Actualidad</p>
-            <h2 className="text-4xl text-slate-900">Últimas novedades</h2>
+            <p className="text-forest-800 text-sm font-bold tracking-widest uppercase mb-2 font-sans">Actualidad</p>
+            <h2 className="text-4xl text-primary-900">Últimas novedades</h2>
           </div>
           <a
             href="#contacto"
-            className="hidden md:inline-flex items-center gap-2 text-green-700 font-semibold text-sm hover:text-green-900 transition-colors"
+            className="hidden md:inline-flex items-center gap-2 text-forest-800 font-semibold text-sm font-sans hover:text-primary-900 transition-colors"
           >
             Ver todo →
           </a>
@@ -44,21 +44,21 @@ export function News() {
           {articles.map(({ tag, date, title, excerpt }) => (
             <article
               key={title}
-              className="group flex flex-col border border-slate-200 rounded-2xl overflow-hidden hover:shadow-md transition-shadow"
+              className="group flex flex-col border border-[#E5E7EB] rounded-xl overflow-hidden hover:shadow-sm transition-shadow"
             >
               {/* Color bar */}
-              <div className="h-1.5 bg-green-700" />
+              <div className="h-1.5 bg-forest-800" />
               <div className="p-7 flex flex-col flex-1">
                 <div className="flex items-center gap-3 mb-4">
-                  <span className="text-xs font-bold uppercase tracking-widest text-green-700 bg-green-50 px-3 py-1 rounded-full">
+                  <span className="text-xs font-bold uppercase tracking-widest font-sans text-forest-800 bg-earth-50 px-3 py-1 rounded-full">
                     {tag}
                   </span>
-                  <span className="text-xs text-slate-400">{date}</span>
+                  <span className="text-xs text-primary-300 font-sans">{date}</span>
                 </div>
-                <h3 className="font-bold text-slate-900 text-lg leading-snug mb-3 group-hover:text-green-800 transition-colors">
+                <h3 className="font-bold text-primary-900 text-lg leading-snug mb-3 font-sans group-hover:text-forest-800 transition-colors">
                   {title}
                 </h3>
-                <p className="text-slate-500 text-sm leading-relaxed flex-1">{excerpt}</p>
+                <p className="text-primary-500 text-sm leading-relaxed flex-1 font-sans">{excerpt}</p>
               </div>
             </article>
           ))}
