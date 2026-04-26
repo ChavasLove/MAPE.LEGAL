@@ -19,7 +19,14 @@ export async function getAvailableTransitions(
 
   if (error) throw error;
 
-  return (data ?? []) as TransicionFase[];
+  // Supabase infers forward-reference joins as arrays; at runtime they are
+  // single objects. Normalize defensively then cast.
+  return (data ?? []).map((row) => ({
+    ...row,
+    fase_destino: Array.isArray(row.fase_destino)
+      ? row.fase_destino[0]
+      : row.fase_destino,
+  })) as unknown as TransicionFase[];
 }
 
 export async function getBlockingReasons(
