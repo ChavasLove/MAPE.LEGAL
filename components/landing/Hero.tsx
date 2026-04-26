@@ -12,7 +12,7 @@ export function Hero() {
       <div
         className="absolute inset-0 bg-cover bg-center"
         style={{
-          backgroundImage: "url('/images/forest-regenerated.jpg')",
+          backgroundImage: "url('/images/hero-rio-honduras.jpg')",
           filter: 'brightness(0.80) contrast(1.05) saturate(0.82)',
         }}
       />
