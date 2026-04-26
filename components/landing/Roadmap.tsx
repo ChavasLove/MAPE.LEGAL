@@ -1,7 +1,7 @@
 const milestones = [
   {
     phase: 'Completado',
-    color: 'bg-green-500',
+    color: 'bg-action-green',
     items: [
       'Dominio mape.legal confirmado',
       'Arquitectura Vercel + Supabase definida',
@@ -15,7 +15,7 @@ const milestones = [
   },
   {
     phase: 'En progreso — Q2 2026',
-    color: 'bg-accent-400',
+    color: 'bg-action-gold',
     items: [
       'Schema Supabase en producción',
       'Primera pantalla real: registro de productor',
@@ -26,7 +26,7 @@ const milestones = [
   },
   {
     phase: 'Próximo — Q3-Q4 2026',
-    color: 'bg-slate-500',
+    color: 'bg-primary-500',
     items: [
       'Certificate of Origin automático',
       'Módulo de transacciones de oro',
@@ -40,23 +40,23 @@ const milestones = [
 
 export function Roadmap() {
   return (
-    <section className="py-24 bg-slate-950" id="roadmap">
+    <section className="py-24 bg-primary-900" id="roadmap">
       <div className="max-w-6xl mx-auto px-6">
 
         <div className="text-center mb-16">
-          <p className="text-accent-400 text-sm font-bold tracking-widest uppercase mb-4">Hoja de ruta</p>
+          <p className="text-action-gold text-sm font-bold tracking-widest uppercase mb-4 font-sans">Hoja de ruta</p>
           <h2 className="text-4xl font-bold text-white">Estado del proyecto — Abril 2026</h2>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8">
           {milestones.map(({ phase, color, items }) => (
-            <div key={phase} className="bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden">
+            <div key={phase} className="bg-primary-950 border border-primary-500/30 rounded-xl overflow-hidden">
               <div className={`${color} px-6 py-4`}>
-                <h3 className="font-bold text-white text-sm uppercase tracking-wide">{phase}</h3>
+                <h3 className="font-bold text-white text-sm uppercase tracking-wide font-sans">{phase}</h3>
               </div>
               <ul className="p-6 space-y-3">
                 {items.map(item => (
-                  <li key={item} className="flex items-start gap-3 text-sm text-slate-300">
+                  <li key={item} className="flex items-start gap-3 text-sm text-primary-300 font-sans">
                     <span className={`mt-1 w-2 h-2 rounded-full shrink-0 ${color}`} />
                     {item}
                   </li>
@@ -68,14 +68,14 @@ export function Roadmap() {
 
         {/* Dashboard live link */}
         <div className="mt-12 text-center">
-          <div className="inline-flex items-center gap-3 bg-slate-900 border border-accent-400/30 rounded-full px-6 py-3">
-            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-            <span className="text-slate-300 text-sm">Dashboard operativo ahora mismo —</span>
+          <div className="inline-flex items-center gap-3 bg-primary-950 border border-action-gold/30 rounded-full px-6 py-3">
+            <span className="w-2 h-2 rounded-full bg-action-green animate-pulse" />
+            <span className="text-primary-300 text-sm font-sans">Dashboard operativo ahora mismo —</span>
             <a
               href="/dashboard.html"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-accent-400 font-semibold text-sm hover:underline"
+              className="text-action-gold font-semibold text-sm font-sans hover:underline"
             >
               Ver en vivo →
             </a>
