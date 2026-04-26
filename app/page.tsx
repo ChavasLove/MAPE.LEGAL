@@ -1,11 +1,27 @@
+import { Hero }     from '@/components/landing/Hero';
+import { Problem }  from '@/components/landing/Problem';
+import { Solution } from '@/components/landing/Solution';
+import { Services } from '@/components/landing/Services';
+import { WhyNow }   from '@/components/landing/WhyNow';
+import { Roadmap }  from '@/components/landing/Roadmap';
+import { Footer }   from '@/components/landing/Footer';
+
+export const metadata = {
+  title: 'MAPE.LEGAL — Oro Traceable y Premium · Piloto Iriona 2026',
+  description:
+    'La plataforma que convierte minería artesanal en evidencia legal defendible para Chiopa Industrias y mercados éticos internacionales. Corporación Hondureña Tenka.',
+};
+
 export default function Home() {
   return (
-    <main style={{ background: "#1a1a1a", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui, sans-serif" }}>
-      <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: "11px", letterSpacing: "0.1em", color: "#6b6a67", marginBottom: "8px" }}>MAPE LEGAL</div>
-        <div style={{ fontSize: "24px", color: "#e8e6e0", fontWeight: 500, marginBottom: "4px" }}>Dashboard CHT</div>
-        <div style={{ fontSize: "13px", color: "#9b9a96" }}>Piloto Iriona 2026</div>
-      </div>
-    </main>
-  )
+    <div className="min-h-screen bg-slate-900 text-white overflow-x-hidden">
+      <Hero />
+      <Problem />
+      <Solution />
+      <Services />
+      <WhyNow />
+      <Roadmap />
+      <Footer />
+    </div>
+  );
 }
