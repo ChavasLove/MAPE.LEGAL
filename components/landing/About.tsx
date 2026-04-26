@@ -1,0 +1,88 @@
+const pillars = [
+  {
+    title: 'Rigor legal',
+    desc: 'Cada expediente sigue el Manual Operativo MAPE.LEGAL — 54 pasos verificados ante INHGEOMIN, SERNA e ILO 169.',
+  },
+  {
+    title: 'Independencia técnica',
+    desc: 'Abogados y PSAs asignados a cada productor. Sin conflictos de interés con intermediarios o compradores.',
+  },
+  {
+    title: 'Estándares internacionales',
+    desc: 'CRAFT Code, Fairmined, RJC y EUDR 2027. Los productores que formalizan hoy acceden al mercado premium de mañana.',
+  },
+  {
+    title: 'Impacto territorial',
+    desc: 'El programa está diseñado para comunidades —no corporaciones— en zonas de alta biodiversidad como la cuenca de Iriona.',
+  },
+];
+
+export function About() {
+  return (
+    <section className="py-24 bg-white" id="nosotros">
+      <div className="max-w-6xl mx-auto px-6">
+
+        <div className="grid lg:grid-cols-2 gap-16 items-center">
+
+          {/* Left */}
+          <div>
+            <p className="text-green-700 text-sm font-bold tracking-widest uppercase mb-3">Quiénes somos</p>
+            <h2 className="text-4xl text-slate-900 mb-6">
+              Corporación Hondureña Tenka
+            </h2>
+            <p className="text-slate-600 text-lg leading-relaxed mb-6">
+              Somos la empresa operadora de MAPE.LEGAL — la plataforma de evidencia legal de origen mineral
+              para la minería artesanal y pequeña minería (MAPE) en Honduras.
+            </p>
+            <p className="text-slate-600 leading-relaxed mb-8">
+              Nuestro modelo combina tecnología de trazabilidad, asesoría legal especializada y acceso
+              directo a mercados de oro ético. Operamos bajo los más altos estándares de transparencia,
+              con auditorías independientes y cadena de custodia verificable desde el campo.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {['ILO 169', 'SLAS-2', 'CRAFT', 'Fairmined', 'RJC'].map(cert => (
+                <span key={cert} className="text-xs font-bold uppercase tracking-wider text-green-700 bg-green-50 border border-green-200 px-3 py-1.5 rounded-full">
+                  {cert}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Right — pillars */}
+          <div className="grid sm:grid-cols-2 gap-5">
+            {pillars.map(({ title, desc }) => (
+              <div key={title} className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
+                <div className="w-2 h-2 rounded-full bg-green-600 mb-3" />
+                <h3 className="font-bold text-slate-900 mb-2">{title}</h3>
+                <p className="text-slate-500 text-sm leading-relaxed">{desc}</p>
+              </div>
+            ))}
+          </div>
+
+        </div>
+
+        {/* Partners strip */}
+        <div className="mt-20 pt-12 border-t border-slate-200">
+          <p className="text-center text-slate-400 text-xs uppercase tracking-widest font-semibold mb-8">
+            Marco normativo y estándares aplicados
+          </p>
+          <div className="flex flex-wrap justify-center gap-x-12 gap-y-4 text-slate-500 text-sm font-medium">
+            {[
+              'Ley de Minería Honduras',
+              'Reglamento MAPE',
+              'ILO 169',
+              'SLAS-2',
+              'CRAFT Code',
+              'Fairmined',
+              'RJC',
+              'EUDR 2027',
+            ].map(item => (
+              <span key={item}>{item}</span>
+            ))}
+          </div>
+        </div>
+
+      </div>
+    </section>
+  );
+}
