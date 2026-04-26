@@ -20,7 +20,7 @@ export function Hero() {
       <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary-950 via-primary-900 to-primary-950" />
 
       {/* Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/60" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/70" />
 
       {/* Top nav bar */}
       <nav className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-8 py-5">
@@ -91,7 +91,7 @@ export function Hero() {
           ].map(({ label, sub }) => (
             <div key={label} className="text-center">
               <div className="text-earth-200 font-bold text-lg font-sans">{label}</div>
-              <div className="text-white/60 text-xs mt-0.5 font-sans">{sub}</div>
+              <div className="text-white/70 text-xs mt-0.5 font-sans">{sub}</div>
             </div>
           ))}
         </div>
