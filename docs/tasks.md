@@ -1,7 +1,6 @@
 # Tasks
 
 ## Pending
-- [ ] Drop hero image into `public/images/hero-rio-honduras.jpg`
 - [ ] Populate `scripts/visual-guide.ts` — interactive token reference for designers
 - [ ] Implement `documentos` table and fill real document check in `getBlockingReasons`
 - [ ] Add Row Level Security (RLS) policies to all Supabase tables
@@ -11,6 +10,10 @@
 - [ ] Add `GET /api/fases` endpoint for frontend fase listing
 - [ ] Add `GET /api/expedientes/:id/fases` to retrieve fase history
 - [ ] Define roles and permissions per fase (e.g. who can advance SERNA)
+- [ ] Place remaining images in appropriate sections:
+  - `Services Tophography .png`
+  - `Tophographic map.png`
+  - `Estudio de Impacto Ambiental.png`
 
 ## In Progress
 - (none)
@@ -30,6 +33,17 @@
   - Fonts: Playfair Display + Inter (replaces Geist)
   - Color tokens: complete `--cht-*` + Tailwind `@theme` system in `globals.css`
   - All generic Tailwind colors purged from 11 landing components + 2 UI primitives
-  - Button, Card, Hero, Problem, Programs, Impact, About, News, Footer, Solution, Services, Roadmap, WhyNow, PriceWidgets — all compliant
   - `DESIGN.md` consolidated as single source of truth
   - `scripts/visual-guide.ts` placeholder created
+- [x] Landing page — imagery applied (2026-04-26)
+  - `public/images/` folder created; 8 client images committed to repo
+  - RIVER AND MOUNTAINS → Hero background
+  - LOGO CHT → Hero nav logo
+  - Map → Problem section callout
+  - Technitians Field Work → Impact callout
+  - Servicios Legales → About left column
+- [x] Landing page — all service prices removed (2026-04-26)
+  - Programs: timeframes replace prices; time guarantee strip added
+  - Services: all L amounts removed
+  - Footer + Hero: price references replaced with time-commitment language
+  - Quotation flow: private request only via contacto@mape.legal

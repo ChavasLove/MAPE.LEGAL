@@ -134,7 +134,9 @@ Fase 0 (Onboarding) ya está 100% mapeada en la plataforma.
 - [x] Mapa Iriona con 60 mineros
 - [x] Sistema de diseño CHT implementado (Playfair Display + Inter, tokens de color completos)
 - [x] Landing page — todos los componentes alineados al brand (11 componentes)
-- [ ] Imagen hero (`public/images/hero-rio-honduras.jpg`) — colocar manualmente
+- [x] Imágenes territoriales aplicadas en landing (río, mapa, campo, legal, logo CHT)
+- [x] Precios eliminados de la landing — cotizaciones por solicitud privada únicamente
+- [x] Garantía de tiempo de gestión como mensaje principal
 - [ ] Schema Supabase creado
 - [ ] Primera pantalla real (productor registry)
 - [ ] Conexión WhatsApp Business API
