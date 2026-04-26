@@ -8,15 +8,15 @@ export function Hero() {
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Territory image — falls back to gradient if absent */}
+      {/* Territory image */}
       <div
         className="absolute inset-0 bg-cover bg-center"
         style={{
-          backgroundImage: "url('/images/hero-rio-honduras.jpg')",
+          backgroundImage: "url('/images/RIVER%20AND%20MOUNTAINS.png')",
           filter: 'brightness(0.80) contrast(1.05) saturate(0.82)',
         }}
       />
-      {/* Fallback gradient (shown when image is absent) */}
+      {/* Fallback gradient */}
       <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary-950 via-primary-900 to-primary-950" />
 
       {/* Overlay */}
@@ -25,11 +25,11 @@ export function Hero() {
       {/* Top nav bar */}
       <nav className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-8 py-5">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-forest-800 rounded-md flex items-center justify-center">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M8 2C5 2 2 5 2 8c0 4 6 8 6 8s6-4 6-8c0-3-2.7-6-6-6z" fill="white"/>
-            </svg>
-          </div>
+          <img
+            src="/images/LOGO%20CHT.png"
+            alt="Corporación Hondureña Tenka"
+            className="h-10 w-auto"
+          />
           <span className="text-white font-bold text-lg tracking-tight font-sans">MAPE.LEGAL</span>
         </div>
         <div className="hidden md:flex items-center gap-8 text-white/80 text-sm font-medium font-sans">
@@ -42,7 +42,7 @@ export function Hero() {
           onClick={() => scrollTo('contacto')}
           className="bg-primary-950 hover:bg-primary-900 text-white text-sm font-semibold font-sans px-5 py-2.5 rounded-lg transition-colors cursor-pointer"
         >
-          Empezar trámite ahora
+          Iniciar trámite
         </button>
       </nav>
 
@@ -57,13 +57,13 @@ export function Hero() {
 
         <h1 className="text-5xl md:text-[4.5rem] font-bold leading-tight text-white mb-6 tracking-tight">
           Formalización minera con<br />
-          <span className="text-earth-200">evidencia legal certificada</span>
+          <span className="text-earth-200">el menor tiempo posible</span>
         </h1>
 
         <p className="text-xl text-white/85 max-w-2xl mx-auto mb-10 leading-relaxed font-sans">
           MAPE.LEGAL es la plataforma que convierte operaciones artesanales en oro
-          traceable, certificado y premium —&nbsp;conforme a ILO&nbsp;169, SLAS-2
-          y estándares internacionales CRAFT&nbsp;/&nbsp;Fairmined.
+          traceable, certificado y premium —&nbsp;acompañamiento legal continuo
+          conforme a ILO&nbsp;169, SLAS-2 y estándares CRAFT&nbsp;/&nbsp;Fairmined.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -71,15 +71,13 @@ export function Hero() {
             onClick={() => scrollTo('contacto')}
             className="bg-primary-950 hover:bg-primary-900 text-white text-lg font-bold font-sans px-10 py-4 rounded-lg shadow-sm transition-colors cursor-pointer"
           >
-            Empezar trámite ahora
+            Iniciar trámite ahora
           </button>
           <a
-            href="/dashboard.html"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="#contacto"
             className="border border-white/40 hover:bg-white/10 text-white text-lg font-medium font-sans px-8 py-4 rounded-lg transition-colors"
           >
-            Ver el Dashboard →
+            Solicitar cotización →
           </a>
         </div>
 
@@ -87,7 +85,7 @@ export function Hero() {
         <div className="mt-14 flex flex-wrap justify-center gap-8">
           {[
             { label: 'ILO 169', sub: 'Consulta completada' },
-            { label: '80–85 % LBMA', sub: 'Precio garantizado' },
+            { label: 'Precio justo LBMA', sub: 'Garantizado al productor' },
             { label: 'CRAFT / Fairmined', sub: 'Estándares aplicados' },
             { label: 'SLAS-2', sub: 'Categorización ambiental' },
           ].map(({ label, sub }) => (

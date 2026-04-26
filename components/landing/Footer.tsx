@@ -12,15 +12,16 @@ export function Footer() {
             Inicia tu expediente hoy
           </h2>
           <p className="text-primary-500 text-lg mb-8 font-sans">
-            El primer hito es L 320.000 e incluye apertura de expediente, asignación de abogado y PSA,
-            y el inicio de la Fase 0 del Manual Operativo.
+            Nos comprometemos a gestionar tu proceso en el menor tiempo posible,
+            con acompañamiento legal continuo en cada fase — desde la apertura del expediente
+            hasta la obtención del permiso.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
               href="mailto:contacto@mape.legal"
               className="bg-forest-800 hover:bg-primary-950 text-white font-bold font-sans py-4 px-10 rounded-lg text-lg transition-colors inline-flex items-center justify-center gap-2"
             >
-              Empezar trámite ahora
+              Solicitar cotización privada
             </a>
             <a
               href="/dashboard.html"

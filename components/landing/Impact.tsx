@@ -31,30 +31,34 @@ export function Impact() {
           ))}
         </div>
 
-        {/* Testimonial / callout */}
-        <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-8 md:p-12 flex flex-col md:flex-row items-center gap-8">
-          <div className="shrink-0">
-            <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
-              <path d="M32 6C18.7 6 8 16.7 8 30c0 17 24 34 24 34s24-17 24-34C56 16.7 45.3 6 32 6z" fill="#2F5D50" opacity=".3" stroke="#D8C3A5" strokeWidth="2"/>
-              <circle cx="32" cy="28" r="6" fill="#3E7C59"/>
-            </svg>
+        {/* Field work callout */}
+        <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl overflow-hidden flex flex-col md:flex-row items-stretch">
+          <div className="md:w-64 shrink-0 overflow-hidden">
+            <img
+              src="/images/Technitians%20Field%20Work.png"
+              alt="Trabajo de campo — técnicos MAPE"
+              className="w-full h-full object-cover"
+              style={{ minHeight: '200px' }}
+            />
           </div>
-          <div className="flex-1 text-center md:text-left">
-            <p className="text-white text-xl font-semibold leading-relaxed mb-3 font-sans">
-              "La minería artesanal responsable es viable cuando hay estructura legal y trazabilidad.
-              MAPE.LEGAL convierte esa visión en expedientes concretos."
-            </p>
-            <p className="text-earth-200/70 text-sm font-sans">
-              Corporación Hondureña Tenka — Piloto Iriona 2026
-            </p>
-          </div>
-          <div className="shrink-0">
-            <a
-              href="#contacto"
-              className="inline-flex items-center gap-2 bg-action-gold hover:bg-earth-600 text-white font-bold font-sans px-7 py-3.5 rounded-lg transition-colors whitespace-nowrap"
-            >
-              Empezar trámite ahora
-            </a>
+          <div className="flex flex-col md:flex-row items-center gap-6 p-8 flex-1">
+            <div className="flex-1 text-center md:text-left">
+              <p className="text-white text-xl font-semibold leading-relaxed mb-3 font-sans">
+                "La minería artesanal responsable es viable cuando hay estructura legal y trazabilidad.
+                MAPE.LEGAL convierte esa visión en expedientes concretos."
+              </p>
+              <p className="text-earth-200/70 text-sm font-sans">
+                Corporación Hondureña Tenka — Piloto Iriona 2026
+              </p>
+            </div>
+            <div className="shrink-0">
+              <a
+                href="#contacto"
+                className="inline-flex items-center gap-2 bg-action-gold hover:bg-earth-600 text-white font-bold font-sans px-7 py-3.5 rounded-lg transition-colors whitespace-nowrap"
+              >
+                Iniciar trámite ahora
+              </a>
+            </div>
           </div>
         </div>
 

@@ -34,11 +34,22 @@ export function About() {
               Somos la empresa operadora de MAPE.LEGAL — la plataforma de evidencia legal de origen mineral
               para la minería artesanal y pequeña minería (MAPE) en Honduras.
             </p>
-            <p className="text-primary-500 leading-relaxed mb-8 font-sans">
+            <p className="text-primary-500 leading-relaxed mb-6 font-sans">
               Nuestro modelo combina tecnología de trazabilidad, asesoría legal especializada y acceso
               directo a mercados de oro ético. Operamos bajo los más altos estándares de transparencia,
               con auditorías independientes y cadena de custodia verificable desde el campo.
             </p>
+
+            {/* Legal services image */}
+            <div className="rounded-xl overflow-hidden mb-6 border border-earth-200">
+              <img
+                src="/images/Servicios%20Legales.png"
+                alt="Servicios legales especializados"
+                className="w-full object-cover"
+                style={{ maxHeight: '200px', objectPosition: 'center top' }}
+              />
+            </div>
+
             <div className="flex flex-wrap gap-3">
               {['ILO 169', 'SLAS-2', 'CRAFT', 'Fairmined', 'RJC'].map(cert => (
                 <span key={cert} className="text-xs font-bold uppercase tracking-wider font-sans text-forest-800 bg-earth-50 border border-earth-200 px-3 py-1.5 rounded-full">
