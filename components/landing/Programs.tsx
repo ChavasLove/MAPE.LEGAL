@@ -2,14 +2,14 @@ const programs = [
   {
     number: '01',
     title: 'Apertura de expediente',
-    price: 'L 320.000',
+    timeframe: '4–6 semanas',
     desc: 'Asignación de abogado y PSA, geolocalización UTM, apertura ante INHGEOMIN y consulta ILO 169 documentada.',
     features: ['Expediente digital auditado', 'Coordenadas UTM registradas', 'Consulta ILO 169', 'Abogado asignado'],
   },
   {
     number: '02',
     title: 'Certificación de origen',
-    price: 'Fase 2',
+    timeframe: '8–12 semanas',
     desc: 'Cadena de custodia CRAFT, análisis SLAS-2 ambiental, informe geológico y habilitación para mercados éticos internacionales.',
     features: ['Análisis SLAS-2', 'Cadena de custodia', 'Informe geológico', 'Acceso CRAFT / Fairmined'],
     highlight: true,
@@ -17,9 +17,9 @@ const programs = [
   {
     number: '03',
     title: 'Acceso a mercado premium',
-    price: '80–85 % LBMA',
+    timeframe: 'Precio justo LBMA',
     desc: 'Conexión directa con refinadores certificados y compradores europeos. Precio garantizado sobre LBMA vs 60–75 % de intermediarios.',
-    features: ['Precio 80–85% LBMA', 'Refinadores certificados', 'Trazabilidad blockchain', 'Auditoría anual RJC'],
+    features: ['Precio LBMA garantizado', 'Refinadores certificados', 'Trazabilidad blockchain', 'Auditoría anual RJC'],
   },
 ];
 
@@ -40,7 +40,7 @@ export function Programs() {
         </div>
 
         <div className="grid md:grid-cols-3 gap-6">
-          {programs.map(({ number, title, price, desc, features, highlight }) => (
+          {programs.map(({ number, title, timeframe, desc, features, highlight }) => (
             <div
               key={number}
               className={`relative rounded-xl p-8 flex flex-col ${
@@ -58,8 +58,11 @@ export function Programs() {
                 {number}
               </div>
               <h3 className={`font-bold text-xl mb-2 font-sans ${highlight ? 'text-white' : 'text-primary-900'}`}>{title}</h3>
-              <div className={`text-2xl font-bold mb-4 font-sans ${highlight ? 'text-action-gold' : 'text-forest-800'}`}>
-                {price}
+              <div className={`text-sm font-semibold mb-4 font-sans flex items-center gap-1.5 ${highlight ? 'text-action-gold' : 'text-forest-800'}`}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+                {timeframe}
               </div>
               <p className={`text-sm leading-relaxed mb-6 flex-1 font-sans ${highlight ? 'text-earth-200/80' : 'text-primary-500'}`}>
                 {desc}
@@ -78,16 +81,20 @@ export function Programs() {
           ))}
         </div>
 
-        <div className="mt-12 text-center">
+        {/* Time guarantee strip */}
+        <div className="mt-10 bg-primary-950 rounded-xl p-8 flex flex-col md:flex-row items-center gap-6">
+          <div className="flex-1 text-center md:text-left">
+            <p className="text-white font-bold text-lg font-sans">Garantizamos el menor tiempo posible de gestión</p>
+            <p className="text-primary-300 text-sm mt-1 font-sans">
+              Acompañamiento legal continuo en cada fase — desde la apertura del expediente hasta la obtención del permiso.
+            </p>
+          </div>
           <a
             href="#contacto"
-            className="inline-flex items-center gap-2 bg-primary-950 hover:bg-primary-900 text-white font-bold font-sans px-10 py-4 rounded-lg shadow-sm transition-colors text-lg"
+            className="shrink-0 inline-flex items-center gap-2 bg-forest-800 hover:bg-primary-900 text-white font-semibold font-sans px-7 py-3 rounded-lg shadow-sm transition-colors text-sm"
           >
-            Empezar trámite ahora
+            Solicitar cotización privada →
           </a>
-          <p className="text-primary-300 text-sm mt-4 font-sans">
-            Sin costo inicial de consulta · Respuesta en 48 horas
-          </p>
         </div>
 
       </div>

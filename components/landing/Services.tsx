@@ -8,6 +8,7 @@ export function Services() {
         <div className="text-center mb-16">
           <p className="text-action-gold text-sm font-bold tracking-widest uppercase mb-4 font-sans">Menú de Servicios 2026</p>
           <h2 className="text-4xl font-bold text-white">Nuestros Servicios — Piloto Iriona 2026</h2>
+          <p className="text-primary-300 text-sm mt-3 font-sans">Las cotizaciones se entregan de forma privada según el perfil de cada expediente.</p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 mb-16">
@@ -17,8 +18,7 @@ export function Services() {
             <CardHeader className="pb-0">
               <div className="text-action-gold text-xs font-bold tracking-widest uppercase mb-3 font-sans">Paquete Principal</div>
               <CardTitle className="text-2xl mb-3 text-white">Paquete Ancla Formalización Minera</CardTitle>
-              <div className="text-5xl font-bold text-action-gold font-sans">L 1.600.000</div>
-              <p className="text-primary-300 text-sm mt-2 font-sans">3 hitos: 30 % / 40 % / 30 %</p>
+              <p className="text-primary-300 text-sm mt-2 font-sans">3 hitos de pago vinculados a entregables verificados</p>
             </CardHeader>
             <CardContent className="pt-6">
               <p className="text-primary-300 text-sm mb-6 font-sans">
@@ -26,13 +26,15 @@ export function Services() {
               </p>
               <ul className="space-y-3 text-sm border-t border-primary-500/30 pt-4">
                 {[
-                  { label: 'Hito 1 — Firma del contrato', monto: 'L 320.000' },
-                  { label: 'Hito 2 — Constancia INHGEOMIN', monto: 'L 480.000' },
-                  { label: 'Hito 3 — Lic. ambiental + permiso', monto: 'L 800.000' },
-                ].map(({ label, monto }) => (
-                  <li key={label} className="flex justify-between items-center">
-                    <span className="text-primary-300 font-sans">{label}</span>
-                    <span className="font-semibold text-white font-sans">{monto}</span>
+                  'Hito 1 — Firma del contrato',
+                  'Hito 2 — Constancia INHGEOMIN',
+                  'Hito 3 — Lic. ambiental + permiso municipal',
+                ].map(label => (
+                  <li key={label} className="flex items-center gap-2 text-primary-300 font-sans">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                      <path d="M3 8l3.5 3.5L13 4" stroke="#C49A4A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    {label}
                   </li>
                 ))}
               </ul>
@@ -48,18 +50,21 @@ export function Services() {
             <CardHeader>
               <div className="text-action-gold text-xs font-bold tracking-widest uppercase mb-3 font-sans">Servicio Complementario</div>
               <CardTitle className="text-xl mb-3 text-white">Titulación de Propiedad</CardTitle>
-              <div className="text-4xl font-bold text-white font-sans">L 38.000</div>
-              <p className="text-primary-300 text-sm mt-1 font-sans">Base (hasta 2 manzanas)</p>
+              <p className="text-primary-300 text-sm mt-1 font-sans">Cotización según extensión del terreno</p>
             </CardHeader>
             <CardContent>
               <ul className="space-y-3 text-sm text-primary-300 font-sans">
-                <li className="flex justify-between">
-                  <span>Base (2 manzanas)</span>
-                  <span className="font-medium text-white">L 38.000</span>
+                <li className="flex items-start gap-2">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
+                    <path d="M3 8l3.5 3.5L13 4" stroke="#C49A4A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Base hasta 2 manzanas
                 </li>
-                <li className="flex justify-between">
-                  <span>Por manzana adicional</span>
-                  <span className="font-medium text-white">L 8.000</span>
+                <li className="flex items-start gap-2">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
+                    <path d="M3 8l3.5 3.5L13 4" stroke="#C49A4A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Precio adicional por manzana extra
                 </li>
               </ul>
               <p className="text-xs text-primary-300 mt-6 border-t border-primary-500/30 pt-4 font-sans">
@@ -73,8 +78,7 @@ export function Services() {
             <CardHeader>
               <div className="text-action-gold text-xs font-bold tracking-widest uppercase mb-3 font-sans">Servicio Complementario</div>
               <CardTitle className="text-xl mb-3 text-white">Contrato de Sociedad Minera</CardTitle>
-              <div className="text-4xl font-bold text-white font-sans">L 55.000</div>
-              <p className="text-primary-300 text-sm mt-1 font-sans">Co-pagado 50/50</p>
+              <p className="text-primary-300 text-sm mt-1 font-sans">Co-pagado entre minero y propietario</p>
             </CardHeader>
             <CardContent>
               <p className="text-primary-300 text-sm mb-4 font-sans">
@@ -82,7 +86,7 @@ export function Services() {
                 Incluye cláusulas de distribución de beneficios y permanencia.
               </p>
               <p className="text-xs text-primary-300 border-t border-primary-500/30 pt-4 font-sans">
-                Compartido entre minero y dueño de tierra (L 27.500 c/u).
+                Compartido en partes iguales entre minero y dueño de tierra.
               </p>
             </CardContent>
           </Card>
@@ -93,13 +97,13 @@ export function Services() {
         <div className="bg-gradient-to-r from-forest-800/30 to-primary-900 border border-primary-500/30 rounded-xl p-8">
           <div className="grid md:grid-cols-3 gap-8 items-center text-center">
             <div>
-              <div className="text-action-gold text-3xl font-bold font-sans">80% LBMA</div>
-              <div className="text-primary-300 text-sm mt-1 font-sans">Precio de compra al minero</div>
+              <div className="text-action-gold text-2xl font-bold font-sans">Precio justo</div>
+              <div className="text-primary-300 text-sm mt-1 font-sans">Garantizado al productor sobre LBMA</div>
             </div>
             <div className="text-primary-500 text-2xl hidden md:block">→</div>
             <div>
-              <div className="text-action-gold text-3xl font-bold font-sans">85% LBMA</div>
-              <div className="text-primary-300 text-sm mt-1 font-sans">Venta a Chiopa Industrias</div>
+              <div className="text-action-gold text-2xl font-bold font-sans">Mercado premium</div>
+              <div className="text-primary-300 text-sm mt-1 font-sans">Venta a Chiopa Industrias y mercado ético</div>
             </div>
           </div>
           <p className="text-center text-primary-300 text-sm mt-6 font-sans">

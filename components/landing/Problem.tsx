@@ -75,29 +75,33 @@ export function Problem() {
         </div>
 
         {/* Map callout */}
-        <div className="mt-10 bg-earth-50 border border-earth-200 rounded-xl p-8 flex flex-col md:flex-row items-center gap-8">
-          <div className="w-16 h-16 bg-earth-200/50 rounded-full flex items-center justify-center shrink-0">
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-              <path d="M16 3C10.5 3 6 7.5 6 13c0 8.5 10 18 10 18s10-9.5 10-18c0-5.5-4.5-10-10-10z" fill="#2F5D50" opacity=".2" stroke="#2F5D50" strokeWidth="1.5"/>
-              <circle cx="16" cy="13" r="3" fill="#2F5D50"/>
-            </svg>
+        <div className="mt-10 bg-earth-50 border border-earth-200 rounded-xl overflow-hidden flex flex-col md:flex-row items-stretch">
+          <div className="md:w-48 shrink-0 overflow-hidden">
+            <img
+              src="/images/Map.png"
+              alt="Mapa zona piloto Iriona"
+              className="w-full h-full object-cover"
+              style={{ minHeight: '160px' }}
+            />
           </div>
-          <div>
-            <p className="font-semibold text-primary-900 text-lg font-sans">Iriona, Colón — Zona de piloto activo</p>
-            <p className="text-forest-800 text-sm mt-1 font-sans">
-              60 productores identificados · Consulta ILO 169 completada ·
-              Coordenadas UTM registradas · Primer expediente en Fase 1 INHGEOMIN
-            </p>
-          </div>
-          <div className="md:ml-auto shrink-0">
-            <a
-              href="/dashboard.html"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-forest-800 hover:bg-primary-950 text-white text-sm font-semibold font-sans px-5 py-3 rounded-lg transition-colors"
-            >
-              Ver expedientes activos →
-            </a>
+          <div className="flex flex-col md:flex-row items-center gap-6 p-8 flex-1">
+            <div className="flex-1">
+              <p className="font-semibold text-primary-900 text-lg font-sans">Iriona, Colón — Zona de piloto activo</p>
+              <p className="text-forest-800 text-sm mt-1 font-sans">
+                60 productores identificados · Consulta ILO 169 completada ·
+                Coordenadas UTM registradas · Primer expediente en Fase 1 INHGEOMIN
+              </p>
+            </div>
+            <div className="shrink-0">
+              <a
+                href="/dashboard.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-forest-800 hover:bg-primary-950 text-white text-sm font-semibold font-sans px-5 py-3 rounded-lg transition-colors"
+              >
+                Ver expedientes activos →
+              </a>
+            </div>
           </div>
         </div>
 
