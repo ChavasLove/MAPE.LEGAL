@@ -78,8 +78,8 @@ export function Problem() {
         <div className="mt-10 bg-earth-50 border border-earth-200 rounded-xl overflow-hidden flex flex-col md:flex-row items-stretch">
           <div className="md:w-48 shrink-0 overflow-hidden">
             <img
-              src="/images/Map.png"
-              alt="Mapa zona piloto Iriona"
+              src="/images/Tophographic map.png"
+              alt="Mapa topográfico zona piloto Iriona"
               className="w-full h-full object-cover"
               style={{ minHeight: '160px' }}
             />
