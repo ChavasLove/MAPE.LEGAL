@@ -132,6 +132,9 @@ Fase 0 (Onboarding) ya está 100% mapeada en la plataforma.
 - [x] Manual Operativo 54 pasos completo
 - [x] Menu de Servicios 2026 aprobado
 - [x] Mapa Iriona con 60 mineros
+- [x] Sistema de diseño CHT implementado (Playfair Display + Inter, tokens de color completos)
+- [x] Landing page — todos los componentes alineados al brand (11 componentes)
+- [ ] Imagen hero (`public/images/hero-rio-honduras.jpg`) — colocar manualmente
 - [ ] Schema Supabase creado
 - [ ] Primera pantalla real (productor registry)
 - [ ] Conexión WhatsApp Business API
