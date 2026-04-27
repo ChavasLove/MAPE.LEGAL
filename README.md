@@ -47,12 +47,14 @@ Convertirse en el Verra / Fairmined de Honduras: la primera plataforma nacional 
 |---|---|
 | Hosting | Vercel (app privada) |
 | Base de datos | Supabase (PostgreSQL + Auth + Storage + Realtime) |
-| Frontend | React + Tailwind |
-| Backend | Supabase Edge Functions + Row Level Security |
-| Autenticación | Supabase Auth (roles: Admin CHT, Abogado, Técnico Ambiental, Cliente) |
+| Framework | Next.js 16.2.4 (App Router, Turbopack) |
+| Frontend | React + Tailwind v4 (`@theme inline`) |
+| Autenticación | httpOnly cookies (`auth-token`, `auth-role`) — 4 roles: admin, abogado, tecnico_ambiental, cliente |
+| Guard de rutas | `proxy.ts` (Next.js 16 — reemplaza `middleware.ts`) |
 | Almacenamiento | Supabase Storage (fotos georeferenciadas, documentos, constancias) |
-| Notificaciones | Supabase Realtime + WhatsApp Business API |
+| Notificaciones | Meta WhatsApp Business Cloud API v21.0 + SendGrid REST API |
 | Documentos | Plantillas HTML → PDF (Certificate of Origin automático) |
+| CMS | Tabla `contenido_cms` en Supabase — editable desde panel admin |
 
 > Dominio público (www.mape.legal) se activa solo en lanzamiento comercial.
 
@@ -123,21 +125,35 @@ Fase 0 (Onboarding) ya está 100% mapeada en la plataforma.
 
 ---
 
-## 9. ESTADO ACTUAL (26-abr-2026)
+## 9. ESTADO ACTUAL (27-abr-2026)
 
+### Completado
 - [x] Dominio confirmado
 - [x] Arquitectura decidida (Vercel + Supabase)
 - [x] Prototipo Dashboard 100% funcional
-- [x] Schema ER diseñado (3 iteraciones)
+- [x] Schema ER diseñado (6 migraciones aplicadas en desarrollo)
 - [x] Manual Operativo 54 pasos completo
 - [x] Menu de Servicios 2026 aprobado
 - [x] Mapa Iriona con 60 mineros
-- [x] Sistema de diseño CHT implementado (Playfair Display + Inter, tokens de color completos)
-- [x] Landing page — todos los componentes alineados al brand (11 componentes)
+- [x] Sistema de diseño CHT (Playfair Display + Inter, tokens de color, DESIGN.md)
+- [x] Landing page — todos los componentes alineados al brand
+- [x] Sistema RBAC completo: 4 roles, cookies httpOnly, guard `proxy.ts`
+- [x] Login unificado `/login` con redirección por rol
+- [x] Dashboard (abogado/admin): resumen operativo, lista de expedientes, detalle con 4 tabs, mensajes WhatsApp
+- [x] Portal de cliente (read-only): estado del expediente, hitos, documentos
+- [x] Panel Admin: gestión de roles, CMS editor, configuración del sistema
+- [x] Servicio de email (SendGrid REST) con plantillas para avance de expediente, rechazo y pago
+- [x] Servicio WhatsApp (Meta Cloud API v21.0) con webhook de entrada
+- [x] Build limpio: 35 rutas, 0 errores TypeScript, 0 advertencias
+- [x] Branch `claude/audit-script-errors-Q3GnB` actualizado en GitHub
+
+### Pendiente para producción
+- [ ] Ejecutar `supabase/migrations/006_roles_cms_config.sql` en Supabase producción
 - [ ] Imagen hero (`public/images/hero-rio-honduras.jpg`) — colocar manualmente
-- [ ] Schema Supabase creado
-- [ ] Primera pantalla real (productor registry)
-- [ ] Conexión WhatsApp Business API
+- [ ] Variables de entorno en Vercel: `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL`, `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID`, `WHATSAPP_VERIFY_TOKEN`
+- [ ] Crear usuario admin inicial en Supabase Auth (Willis Yang)
+- [ ] Configurar webhook de WhatsApp en Meta Business Portal → `/api/webhook/whatsapp`
+- [ ] Tablas `clientes` y `minas` — registro de productores (siguiente sprint)
 
 ---
 
