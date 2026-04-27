@@ -35,14 +35,21 @@ export async function POST(req: Request) {
 
     const res = NextResponse.json({ ok: true, email: data.user.email });
 
-    // httpOnly cookie — not accessible from JS, expires with the session
-    res.cookies.set('admin-token', data.session.access_token, {
+    const maxAge    = data.session.expires_in ?? 3600;
+    const cookieOpts = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: data.session.expires_in ?? 3600,
+      secure:   process.env.NODE_ENV === 'production',
+      sameSite: 'lax' as const,
+      maxAge,
       path: '/',
-    });
+    };
+
+    // Legacy cookie (kept for existing admin layout guard)
+    res.cookies.set('admin-token', data.session.access_token, cookieOpts);
+    // Unified auth cookies
+    res.cookies.set('auth-token', data.session.access_token, cookieOpts);
+    res.cookies.set('auth-role',  'admin', cookieOpts);
+    res.cookies.set('user-email', data.user.email ?? '', { ...cookieOpts, httpOnly: false });
 
     return res;
   } catch {

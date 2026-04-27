@@ -2,18 +2,21 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Users, UserCheck, LayoutDashboard, LogOut, Shield, FileText, Settings, LayoutGrid } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, MessageSquare, Settings, LogOut } from 'lucide-react';
+
+const ROL_LABEL: Record<string, string> = {
+  admin:             'Administrador',
+  abogado:           'Abogado CHT',
+  tecnico_ambiental: 'Técnico Ambiental',
+};
 
 const navItems = [
-  { href: '/admin',                label: 'Resumen',        Icon: LayoutDashboard },
-  { href: '/admin/usuarios',       label: 'Usuarios',       Icon: Users            },
-  { href: '/admin/profesionales',  label: 'Profesionales',  Icon: UserCheck        },
-  { href: '/admin/roles',          label: 'Roles',          Icon: Shield           },
-  { href: '/admin/contenido',      label: 'Contenido',      Icon: FileText         },
-  { href: '/admin/config',         label: 'Configuración',  Icon: Settings         },
+  { href: '/dashboard',              label: 'Resumen',      Icon: LayoutDashboard },
+  { href: '/dashboard/expedientes',  label: 'Expedientes',  Icon: FolderOpen      },
+  { href: '/dashboard/mensajes',     label: 'Mensajes WA',  Icon: MessageSquare   },
 ];
 
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
 
   const token = cookieStore.get('auth-token')?.value
@@ -22,7 +25,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const role = cookieStore.get('auth-role')?.value
     ?? (cookieStore.get('admin-token')?.value ? 'admin' : null);
 
-  if (!token || role !== 'admin') {
+  if (!token || !role || !['admin', 'abogado', 'tecnico_ambiental'].includes(role)) {
     redirect('/login');
   }
 
@@ -30,6 +33,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="min-h-screen flex" style={{ background: '#162033' }}>
+
       {/* Sidebar */}
       <aside
         className="w-64 shrink-0 flex flex-col border-r"
@@ -39,18 +43,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div className="flex items-center gap-3 px-6 py-5 border-b" style={{ borderColor: 'rgba(94,107,122,0.3)' }}>
           <Image
             src="/images/MAPE LEGAL LOGO 1.JPG"
-            alt="CHT"
+            alt="MAPE.LEGAL"
             width={80}
             height={32}
             className="h-8 w-auto"
           />
           <div>
             <div className="text-white font-bold text-sm font-sans">MAPE.LEGAL</div>
-            <div className="text-xs font-sans" style={{ color: '#A3AAB3' }}>Panel de administración</div>
+            <div className="text-xs font-sans" style={{ color: '#A3AAB3' }}>Dashboard</div>
           </div>
         </div>
 
-        {/* Navigation */}
+        {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-1">
           {navItems.map(({ href, label, Icon }) => (
             <Link
@@ -64,26 +68,29 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </Link>
           ))}
 
-          <div className="my-3 border-t" style={{ borderColor: 'rgba(94,107,122,0.2)' }} />
-
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium font-sans transition-colors hover:bg-white/10"
-            style={{ color: '#A3AAB3' }}
-          >
-            <LayoutGrid size={18} strokeWidth={1.5} />
-            Ir al Dashboard
-          </Link>
+          {role === 'admin' && (
+            <>
+              <div className="my-3 border-t" style={{ borderColor: 'rgba(94,107,122,0.2)' }} />
+              <Link
+                href="/admin"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium font-sans transition-colors hover:bg-white/10"
+                style={{ color: '#A3AAB3' }}
+              >
+                <Settings size={18} strokeWidth={1.5} />
+                Panel admin
+              </Link>
+            </>
+          )}
         </nav>
 
-        {/* User + Logout */}
+        {/* User + logout */}
         <div className="p-4 border-t" style={{ borderColor: 'rgba(94,107,122,0.3)' }}>
-          {email && (
-            <div className="px-3 py-2 mb-1">
-              <div className="text-xs font-semibold text-white font-sans truncate">{email}</div>
-              <div className="text-xs font-sans mt-0.5" style={{ color: '#A3AAB3' }}>Administrador</div>
+          <div className="px-3 py-2 mb-1">
+            <div className="text-xs font-semibold text-white font-sans truncate">{email || 'Usuario'}</div>
+            <div className="text-xs font-sans mt-0.5" style={{ color: '#A3AAB3' }}>
+              {ROL_LABEL[role] ?? role}
             </div>
-          )}
+          </div>
           <form action="/api/auth/logout" method="POST">
             <button
               type="submit"
@@ -97,8 +104,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
       </aside>
 
-      {/* Main content */}
-      <main className="flex-1 p-8 overflow-auto">
+      {/* Main */}
+      <main className="flex-1 overflow-auto p-8">
         {children}
       </main>
     </div>
