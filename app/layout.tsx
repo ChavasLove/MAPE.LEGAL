@@ -15,8 +15,8 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "MAPE Legal — Dashboard CHT",
-  description: "Sistema de gestión de expedientes mineros · Piloto Iriona 2026",
+  title: "MAPE.LEGAL — Corporación Hondureña Tenka",
+  description: "Plataforma de evidencia legal de origen mineral para la minería artesanal en Honduras.",
 };
 
 export default function RootLayout({

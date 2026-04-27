@@ -2,40 +2,40 @@ import { Card, CardContent } from '@/components/ui/card';
 
 const modules = [
   {
-    num: '01',
+    num:   '01',
     title: 'Registro de Productores',
-    desc: 'Verificación en tiempo real INHGEOMIN/SERNA. Ficha completa: RTN, coordenadas GPS, situación de tierra, foto georeferenciada.',
+    desc:  'Verificación en tiempo real ante INHGEOMIN y SERNA. Ficha completa con RTN, coordenadas GPS, situación del terreno y fotografía georreferenciada.',
   },
   {
-    num: '02',
+    num:   '02',
     title: 'Certificate of Origin Automático',
-    desc: 'Evidencia legal defendible con fotos GPS + constancia ILO 169 + índice de legalidad de 5 componentes.',
+    desc:  'Evidencia legal defendible generada automáticamente: fotos GPS, constancia ILO 169 e Índice de Legalidad de cinco componentes.',
   },
   {
-    num: '03',
+    num:   '03',
     title: 'Registro de Transacciones',
-    desc: 'Compra de oro con peso, ley, fecha y coordenadas de origen. Trazabilidad completa hacia Chiopa Industrias.',
+    desc:  'Registro de compra de oro con peso, ley, fecha y coordenadas de origen — trazabilidad completa desde el campo hasta el mercado ético.',
   },
   {
-    num: '04',
-    title: 'Dashboard en Vivo',
-    desc: 'Seguimiento de expedientes, feed WhatsApp en tiempo real y progreso de los 54 pasos del Manual Operativo.',
+    num:   '04',
+    title: 'Gestión de Expedientes',
+    desc:  'Seguimiento en tiempo real de cada expediente, integración de documentos vía WhatsApp y avance sobre los 54 pasos del Manual Operativo CHT.',
   },
 ];
 
 export function Solution() {
   return (
-    <section className="py-24 bg-primary-950">
+    <section className="py-24 bg-primary-950" id="solucion">
       <div className="max-w-6xl mx-auto px-6">
 
         <div className="text-center mb-16">
-          <p className="text-action-gold text-sm font-bold tracking-widest uppercase mb-4 font-sans">La solución</p>
+          <p className="text-action-gold text-sm font-bold tracking-widest uppercase mb-4 font-sans">El motor de evidencia</p>
           <h2 className="text-4xl font-bold text-white mb-4">
             Se llama <span className="text-action-gold">MAPE.LEGAL</span>
           </h2>
           <p className="text-xl text-primary-300 max-w-2xl mx-auto font-sans">
-            La primera plataforma digital de Honduras que genera evidencia legal de origen mineral automáticamente —
-            con cuatro módulos integrados.
+            La primera plataforma digital de Honduras que genera evidencia legal de origen mineral
+            automáticamente — con cuatro módulos integrados.
           </p>
         </div>
 
@@ -51,20 +51,31 @@ export function Solution() {
           ))}
         </div>
 
-        {/* Dashboard preview CTA */}
-        <div className="text-center">
-          <div className="inline-block bg-primary-900 border border-primary-500/30 rounded-xl p-6">
-            <p className="text-primary-300 text-sm mb-3 font-sans">Panel administrativo disponible ahora</p>
-            <a
-              href="/dashboard.html"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-action-gold hover:text-earth-200 font-semibold text-lg transition-colors font-sans"
-            >
-              Ver demo del Dashboard
-              <span aria-hidden>→</span>
-            </a>
+        {/* Standards compliance strip */}
+        <div className="bg-primary-900 border border-primary-500/30 rounded-xl p-8">
+          <div className="grid md:grid-cols-3 gap-8 items-center text-center">
+            <div>
+              <div className="text-white font-bold text-lg font-sans mb-1">Trazabilidad completa</div>
+              <div className="text-primary-300 text-sm font-sans">Desde el campo hasta el mercado ético internacional</div>
+            </div>
+            <div className="hidden md:flex items-center justify-center">
+              <div className="flex items-center gap-3 text-primary-500">
+                <div className="w-16 h-px bg-primary-500/50" />
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+                <div className="w-16 h-px bg-primary-500/50" />
+              </div>
+            </div>
+            <div>
+              <div className="text-action-gold font-bold text-lg font-sans mb-1">Mercados premium</div>
+              <div className="text-primary-300 text-sm font-sans">CRAFT · Fairmined · RJC · EUDR 2027 cumplidos</div>
+            </div>
           </div>
+          <p className="text-center text-primary-300 text-sm mt-6 font-sans border-t border-primary-500/20 pt-6">
+            El sistema está diseñado para generar la evidencia que exigen los estándares internacionales —
+            sin trabajo manual adicional por parte del productor.
+          </p>
         </div>
 
       </div>
