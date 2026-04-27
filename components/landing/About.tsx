@@ -1,3 +1,5 @@
+import Image from 'next/image';
+
 const pillars = [
   {
     title: 'Rigor legal',
@@ -40,13 +42,15 @@ export function About() {
               con auditorías independientes y cadena de custodia verificable desde el campo.
             </p>
 
-            {/* Legal services image */}
+            {/* Legal services image — full size, no artificial cropping */}
             <div className="rounded-xl overflow-hidden mb-6 border border-earth-200">
-              <img
-                src="/images/Servicios%20Legales.png"
+              <Image
+                src="/images/Servicios Legales.png"
                 alt="Servicios legales especializados"
-                className="w-full object-cover"
-                style={{ maxHeight: '200px', objectPosition: 'center top' }}
+                width={1920}
+                height={1080}
+                className="w-full h-auto"
+                sizes="(max-width: 1024px) 100vw, 50vw"
               />
             </div>
 

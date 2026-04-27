@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { PriceWidgets } from './PriceWidgets';
 
 export function Hero() {
@@ -8,14 +9,18 @@ export function Hero() {
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Territory image */}
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{
-          backgroundImage: "url('/images/RIVER%20AND%20MOUNTAINS.png')",
-          filter: 'brightness(0.80) contrast(1.05) saturate(0.82)',
-        }}
-      />
+      {/* Territory image — optimized via next/image */}
+      <div className="absolute inset-0 overflow-hidden">
+        <Image
+          src="/images/RIVER AND MOUNTAINS.png"
+          alt=""
+          fill
+          priority
+          className="object-cover"
+          style={{ filter: 'brightness(0.80) contrast(1.05) saturate(0.82)' }}
+          sizes="100vw"
+        />
+      </div>
       {/* Fallback gradient */}
       <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary-950 via-primary-900 to-primary-950" />
 
@@ -25,10 +30,13 @@ export function Hero() {
       {/* Top nav bar */}
       <nav className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-8 py-5">
         <div className="flex items-center gap-3">
-          <img
-            src="/images/LOGO%20CHT.png"
+          <Image
+            src="/images/LOGO CHT.png"
             alt="Corporación Hondureña Tenka"
+            width={160}
+            height={64}
             className="h-10 w-auto"
+            priority
           />
           <span className="text-white font-bold text-lg tracking-tight font-sans">MAPE.LEGAL</span>
         </div>

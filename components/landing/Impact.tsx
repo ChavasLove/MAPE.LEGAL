@@ -1,3 +1,5 @@
+import Image from 'next/image';
+
 const stats = [
   { value: '60+', label: 'Productores identificados', sub: 'Cuenca de Iriona, Colón' },
   { value: '80–85%', label: 'Precio LBMA garantizado', sub: 'vs 60–75% con intermediarios' },
@@ -33,12 +35,15 @@ export function Impact() {
 
         {/* Field work callout */}
         <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl overflow-hidden flex flex-col md:flex-row items-stretch">
-          <div className="md:w-64 shrink-0 overflow-hidden">
-            <img
-              src="/images/Technitians%20Field%20Work.png"
+          {/* Full image — no artificial height cap */}
+          <div className="md:w-72 shrink-0 overflow-hidden">
+            <Image
+              src="/images/Technitians Field Work.png"
               alt="Trabajo de campo — técnicos MAPE"
-              className="w-full h-full object-cover"
-              style={{ minHeight: '200px' }}
+              width={1080}
+              height={1440}
+              className="w-full h-auto md:h-full md:object-cover"
+              sizes="(max-width: 768px) 100vw, 288px"
             />
           </div>
           <div className="flex flex-col md:flex-row items-center gap-6 p-8 flex-1">
