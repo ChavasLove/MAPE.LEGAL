@@ -49,7 +49,7 @@ function LoginForm() {
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <Image
-            src="/images/LOGO CHT.png"
+            src="/images/MAPE LEGAL LOGO 1.JPG"
             alt="Corporación Hondureña Tenka"
             width={120}
             height={48}
