@@ -39,7 +39,7 @@ insert into contenido_cms (seccion, campo, valor, tipo) values
   ('nosotros',  'titulo',        'Corporación Hondureña Tenka',                                  'texto'),
   ('nosotros',  'descripcion',   'Somos el primer operador privado autorizado en Honduras para gestionar permisos mineros MAPE de principio a fin.', 'texto'),
   ('contacto',  'direccion',     'Tegucigalpa, Honduras',                                        'texto'),
-  ('contacto',  'email',         'contacto@mape.legal',                                         'texto')
+  ('contacto',  'email',         'gerencia@mape.legal',                                         'texto')
 on conflict (seccion, campo) do nothing;
 
 -- ─── System configuration ────────────────────────────────────────────────────
