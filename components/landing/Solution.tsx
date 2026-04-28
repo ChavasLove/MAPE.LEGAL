@@ -66,7 +66,7 @@ export function Solution() {
         </div>
 
         {/* Standards compliance strip */}
-        <div className="bg-primary-900 border border-primary-500/30 rounded-xl p-8">
+        <div className="bg-primary-900 border border-primary-500/30 rounded-xl p-5 sm:p-8">
           <div className="grid md:grid-cols-3 gap-8 items-center text-center">
             <div>
               <div className="text-white font-bold text-lg font-sans mb-1">Trazabilidad completa</div>

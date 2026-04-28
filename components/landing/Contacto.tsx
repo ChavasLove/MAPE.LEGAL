@@ -44,7 +44,7 @@ export function Contacto() {
     <section className="py-24 bg-primary-900" id="contacto">
       <div className="max-w-6xl mx-auto px-6">
 
-        <div className="grid lg:grid-cols-2 gap-16 items-start">
+        <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-start">
 
           {/* Left — CTA copy */}
           <div>
@@ -88,7 +88,7 @@ export function Contacto() {
           </div>
 
           {/* Right — Form */}
-          <div className="bg-primary-50 rounded-xl border border-[#E5E7EB] p-8">
+          <div className="bg-primary-50 rounded-xl border border-[#E5E7EB] p-5 sm:p-8">
             {estado === 'success' ? (
               <div className="text-center py-8">
                 <div className="w-16 h-16 rounded-full bg-badge-success-bg flex items-center justify-center mx-auto mb-5">

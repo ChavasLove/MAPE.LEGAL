@@ -26,17 +26,17 @@ export function Hero() {
       <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/70" />
 
       {/* Nav */}
-      <nav className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-6 md:px-8 py-5">
-        <div className="flex items-center gap-3">
+      <nav className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 sm:px-6 md:px-8 py-4 sm:py-5">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Image
             src="/images/MAPE LEGAL LOGO 1.JPG"
             alt="Corporación Hondureña Tenka"
             width={160}
             height={64}
-            className="h-10 w-auto"
+            className="h-8 sm:h-10 w-auto"
             priority
           />
-          <span className="text-white font-bold text-lg tracking-tight font-sans">MAPE.LEGAL</span>
+          <span className="hidden sm:inline text-white font-bold text-lg tracking-tight font-sans">MAPE.LEGAL</span>
         </div>
         <div className="hidden md:flex items-center gap-8 text-white/80 text-sm font-medium font-sans">
           <a href="#nosotros"  className="hover:text-white transition-colors">Quiénes somos</a>
@@ -45,7 +45,7 @@ export function Hero() {
         </div>
         <button
           onClick={() => scrollTo('contacto')}
-          className="bg-primary-950 hover:bg-primary-900 text-white text-sm font-semibold font-sans px-5 py-2.5 rounded-lg transition-colors cursor-pointer"
+          className="bg-primary-950 hover:bg-primary-900 text-white text-xs sm:text-sm font-semibold font-sans px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg transition-colors cursor-pointer"
         >
           Iniciar trámite
         </button>
@@ -55,17 +55,17 @@ export function Hero() {
       <div className="relative z-10 max-w-5xl mx-auto px-6 text-center">
 
         {/* Trust badge */}
-        <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm text-white px-5 py-2.5 rounded-full text-sm font-medium font-sans mb-8 border border-white/25">
-          <span className="w-2 h-2 rounded-full bg-action-green" />
+        <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm text-white px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium font-sans mb-6 sm:mb-8 border border-white/25">
+          <span className="w-2 h-2 shrink-0 rounded-full bg-action-green" />
           Formalización minera · Honduras · Corredor aurífero nacional
         </div>
 
-        <h1 className="text-5xl md:text-[4.5rem] font-bold leading-tight text-white mb-6 tracking-tight">
-          Transformamos la minería<br />artesanal en oro
-          <span className="text-earth-200"> trazable,<br />certificado y premium</span>
+        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[4.5rem] font-bold leading-tight text-white mb-5 sm:mb-6 tracking-tight">
+          Transformamos la minería<br className="hidden sm:block" /> artesanal en oro
+          <span className="text-earth-200"> trazable,<br className="hidden sm:block" /> certificado y premium</span>
         </h1>
 
-        <p className="text-xl text-white/85 max-w-2xl mx-auto mb-10 leading-relaxed font-sans">
+        <p className="text-base sm:text-lg md:text-xl text-white/85 max-w-2xl mx-auto mb-8 sm:mb-10 leading-relaxed font-sans">
           MAPE.LEGAL acompaña a productores artesanales de Honduras desde el primer trámite
           ante INHGEOMIN hasta los mercados éticos internacionales —
           con respaldo legal continuo en cada fase.
@@ -87,7 +87,7 @@ export function Hero() {
         </div>
 
         {/* Certifications strip */}
-        <div className="mt-14 flex flex-wrap justify-center gap-x-8 gap-y-4">
+        <div className="mt-10 sm:mt-14 flex flex-wrap justify-center gap-x-6 sm:gap-x-8 gap-y-3 sm:gap-y-4">
           {[
             { label: 'ILO 169',          sub: 'Consulta previa' },
             { label: 'CRAFT / Fairmined', sub: 'Estándares aplicados' },

@@ -107,7 +107,7 @@ export function Services() {
               sizes="(max-width: 768px) 100vw, 288px"
             />
           </div>
-          <div className="flex flex-col justify-center gap-5 p-8 flex-1 bg-primary-950">
+          <div className="flex flex-col justify-center gap-5 p-5 sm:p-8 flex-1 bg-primary-950">
             <div>
               <p className="text-white font-bold text-xl font-sans mb-2">
                 Garantizamos el menor tiempo posible de gestión
