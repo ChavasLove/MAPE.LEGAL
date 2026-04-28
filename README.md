@@ -125,7 +125,7 @@ Fase 0 (Onboarding) ya está 100% mapeada en la plataforma.
 
 ---
 
-## 9. ESTADO ACTUAL (27-abr-2026)
+## 9. ESTADO ACTUAL (28-abr-2026)
 
 ### Completado
 - [x] Dominio confirmado
@@ -137,21 +137,27 @@ Fase 0 (Onboarding) ya está 100% mapeada en la plataforma.
 - [x] Mapa Iriona con 60 mineros
 - [x] Sistema de diseño CHT (Playfair Display + Inter, tokens de color, DESIGN.md)
 - [x] Landing page — todos los componentes alineados al brand
+- [x] Landing page — 8 imágenes distribuidas sin duplicados (ver tabla en CLAUDE.md)
+- [x] Landing page — logo correcto en navbar (`MAPE LEGAL LOGO 1.JPG`)
 - [x] Sistema RBAC completo: 4 roles, cookies httpOnly, guard `proxy.ts`
 - [x] Login unificado `/login` con redirección por rol
 - [x] Dashboard (abogado/admin): resumen operativo, lista de expedientes, detalle con 4 tabs, mensajes WhatsApp
 - [x] Portal de cliente (read-only): estado del expediente, hitos, documentos
-- [x] Panel Admin: gestión de roles, CMS editor, configuración del sistema
-- [x] Servicio de email (SendGrid REST) con plantillas para avance de expediente, rechazo y pago
+- [x] Panel Admin: gestión de roles, CMS editor, configuración del sistema, gestión de usuarios
+- [x] Motor de workflow completo: chequeo real de documentos, `is_final`, atomicidad, branching explícito
+- [x] Script de seed super admin: `scripts/seed-super-admin.mjs` (cachivo@gmail.com / admin)
+- [x] Open Graph + Twitter Card en `app/layout.tsx` — previews en WhatsApp, Telegram, etc.
+- [x] Formulario de contacto wired a `gerencia@mape.legal` (notificación interna + acuse al visitante)
+- [x] Email de bienvenida automático al crear un nuevo usuario desde panel admin
+- [x] Servicio de email (SendGrid REST) con 6 plantillas: avance, rechazo, pago, contacto interno, acuse, bienvenida
 - [x] Servicio WhatsApp (Meta Cloud API v21.0) con webhook de entrada
-- [x] Build limpio: 35 rutas, 0 errores TypeScript, 0 advertencias
-- [x] Branch `claude/audit-script-errors-Q3GnB` actualizado en GitHub
+- [x] Email oficial unificado: `gerencia@mape.legal` en contacto, footer, acuses y notificaciones
 
 ### Pendiente para producción
 - [ ] Ejecutar `supabase/migrations/006_roles_cms_config.sql` en Supabase producción
-- [ ] Imagen hero (`public/images/hero-rio-honduras.jpg`) — colocar manualmente
-- [ ] Variables de entorno en Vercel: `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL`, `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID`, `WHATSAPP_VERIFY_TOKEN`
-- [ ] Crear usuario admin inicial en Supabase Auth (Willis Yang)
+- [ ] Variables de entorno en Vercel: ver sección completa en CLAUDE.md
+- [ ] Ejecutar `node scripts/seed-super-admin.mjs` post-deploy para crear cuenta admin inicial
+- [ ] Configurar dominio verificado en SendGrid para `gerencia@mape.legal` (SPF + DKIM)
 - [ ] Configurar webhook de WhatsApp en Meta Business Portal → `/api/webhook/whatsapp`
 - [ ] Tablas `clientes` y `minas` — registro de productores (siguiente sprint)
 
