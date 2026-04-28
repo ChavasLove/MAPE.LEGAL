@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { emailContactoInterno, emailContactoAcuse } from '@/services/emailService';
 
 export async function POST(req: Request) {
   try {
@@ -11,20 +12,17 @@ export async function POST(req: Request) {
       );
     }
 
-    // Log the contact request server-side for now.
-    // Wire up an email provider (Resend, SendGrid, etc.) here when ready.
-    console.log('[contacto]', {
-      nombre,
-      empresa: empresa ?? '—',
-      correo,
-      mensaje,
-      received_at: new Date().toISOString(),
-    });
+    // Send both emails concurrently — internal notification + user acknowledgment
+    await Promise.all([
+      emailContactoInterno(nombre, correo, mensaje, empresa),
+      emailContactoAcuse(nombre, correo),
+    ]);
 
     return NextResponse.json({ ok: true });
-  } catch {
+  } catch (err) {
+    console.error('[contacto]', err);
     return NextResponse.json(
-      { error: 'Error interno. Intenta de nuevo o escribe a contacto@mape.legal.' },
+      { error: 'Error al enviar el mensaje. Escríbenos a gerencia@mape.legal.' },
       { status: 500 }
     );
   }
