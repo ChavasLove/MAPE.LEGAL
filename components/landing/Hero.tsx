@@ -29,7 +29,7 @@ export function Hero() {
       <nav className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-6 md:px-8 py-5">
         <div className="flex items-center gap-3">
           <Image
-            src="/images/LOGO CHT.png"
+            src="/images/MAPE LEGAL LOGO 1.JPG"
             alt="Corporación Hondureña Tenka"
             width={160}
             height={64}
