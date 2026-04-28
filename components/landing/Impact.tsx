@@ -38,8 +38,8 @@ export function Impact() {
           {/* Full image — no artificial height cap */}
           <div className="md:w-72 shrink-0 overflow-hidden">
             <Image
-              src="/images/Technitians Field Work.png"
-              alt="Trabajo de campo — técnicos MAPE"
+              src="/images/Artisanal Miner Image 01 .JPG"
+              alt="Minero artesanal — corredor aurífero Honduras"
               width={1080}
               height={1440}
               className="w-full h-auto md:h-full md:object-cover"

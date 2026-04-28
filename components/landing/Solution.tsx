@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { Card, CardContent } from '@/components/ui/card';
 
 const modules = [
@@ -49,6 +50,19 @@ export function Solution() {
               </CardContent>
             </Card>
           ))}
+        </div>
+
+        {/* Topographic context image */}
+        <div className="rounded-xl overflow-hidden mb-8 border border-primary-500/30" style={{ maxHeight: '320px' }}>
+          <Image
+            src="/images/Services Tophography .png"
+            alt="Topografía territorial — trazabilidad de origen mineral Honduras"
+            width={1920}
+            height={640}
+            className="w-full object-cover"
+            style={{ filter: 'brightness(0.75) contrast(1.05) saturate(0.82)', maxHeight: '320px', objectFit: 'cover' }}
+            sizes="(max-width: 768px) 100vw, 1152px"
+          />
         </div>
 
         {/* Standards compliance strip */}
