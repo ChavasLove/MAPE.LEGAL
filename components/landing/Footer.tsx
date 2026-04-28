@@ -55,8 +55,8 @@ export function Footer() {
           className="pt-6 border-t flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-primary-500 font-sans"
           style={{ borderColor: 'rgba(94,107,122,0.2)' }}
         >
-          <p>© 2026 Corporación Hondureña Tenka, S.A. Todos los derechos reservados.</p>
-          <div className="flex items-center gap-6">
+          <p className="text-center md:text-left">© 2026 Corporación Hondureña Tenka, S.A. Todos los derechos reservados.</p>
+          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
             {['ILO 169', 'CRAFT', 'Fairmined', 'RJC'].map(cert => (
               <span key={cert} className="text-primary-300">{cert}</span>
             ))}

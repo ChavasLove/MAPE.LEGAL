@@ -53,7 +53,7 @@ export function ValorSection() {
         </div>
 
         {/* Legality index — 5 components */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-20">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4 mb-14 sm:mb-20">
           {legalityComponents.map(({ num, label, icon }) => (
             <div
               key={num}
@@ -75,13 +75,13 @@ export function ValorSection() {
         <div className="rounded-xl overflow-hidden border" style={{ borderColor: 'rgba(94,107,122,0.3)' }}>
           {/* Table header */}
           <div className="grid grid-cols-2">
-            <div className="px-6 py-4 text-center" style={{ background: '#F8E5E4' }}>
-              <span className="text-sm font-bold uppercase tracking-wider font-sans" style={{ color: '#A94442' }}>
+            <div className="px-4 sm:px-6 py-3 sm:py-4 text-center" style={{ background: '#F8E5E4' }}>
+              <span className="text-xs sm:text-sm font-bold uppercase tracking-wider font-sans" style={{ color: '#A94442' }}>
                 Sin MAPE.LEGAL
               </span>
             </div>
-            <div className="px-6 py-4 text-center" style={{ background: '#E6F2EC' }}>
-              <span className="text-sm font-bold uppercase tracking-wider font-sans" style={{ color: '#2F5D50' }}>
+            <div className="px-4 sm:px-6 py-3 sm:py-4 text-center" style={{ background: '#E6F2EC' }}>
+              <span className="text-xs sm:text-sm font-bold uppercase tracking-wider font-sans" style={{ color: '#2F5D50' }}>
                 Con MAPE.LEGAL
               </span>
             </div>
@@ -90,38 +90,38 @@ export function ValorSection() {
           {comparisons.map(({ sin, con }, i) => (
             <div
               key={i}
-              className="grid grid-cols-2"
+              className="flex flex-col sm:grid sm:grid-cols-2"
               style={{ borderTop: '1px solid rgba(94,107,122,0.2)' }}
             >
               {/* Sin CHT */}
               <div
-                className="px-6 py-5 flex items-start gap-3"
-                style={{ background: i % 2 === 0 ? '#1A1018' : '#1F1520' }}
+                className="px-4 sm:px-6 py-4 sm:py-5 flex items-start gap-3"
+                style={{ background: '#1A1018' }}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A94442" strokeWidth="2" strokeLinecap="round" className="mt-0.5 shrink-0">
                   <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                 </svg>
-                <p className="text-sm font-sans leading-relaxed" style={{ color: '#A3AAB3' }}>{sin}</p>
+                <p className="text-xs sm:text-sm font-sans leading-relaxed" style={{ color: '#A3AAB3' }}>{sin}</p>
               </div>
               {/* Con CHT */}
               <div
-                className="px-6 py-5 flex items-start gap-3"
-                style={{ background: i % 2 === 0 ? '#162033' : '#1A2840' }}
+                className="px-4 sm:px-6 py-4 sm:py-5 flex items-start gap-3"
+                style={{ background: '#162033', borderTop: '1px solid rgba(94,107,122,0.15)' }}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3E7C59" strokeWidth="2" strokeLinecap="round" className="mt-0.5 shrink-0">
                   <polyline points="20 6 9 17 4 12"/>
                 </svg>
-                <p className="text-sm font-sans leading-relaxed" style={{ color: '#D8C3A5' }}>{con}</p>
+                <p className="text-xs sm:text-sm font-sans leading-relaxed" style={{ color: '#D8C3A5' }}>{con}</p>
               </div>
             </div>
           ))}
         </div>
 
         {/* CTA */}
-        <div className="mt-12 text-center">
+        <div className="mt-10 sm:mt-12 text-center">
           <a
             href="#contacto"
-            className="inline-flex items-center gap-2 text-white font-bold font-sans px-10 py-4 rounded-lg shadow-sm transition-colors text-lg"
+            className="inline-flex items-center gap-2 text-white font-bold font-sans px-6 sm:px-10 py-4 rounded-lg shadow-sm transition-colors text-base sm:text-lg"
             style={{ background: '#2F5D50' }}
           >
             Solicitar evaluación de mi operación →

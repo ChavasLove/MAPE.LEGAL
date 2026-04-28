@@ -24,7 +24,7 @@ export function About() {
     <section className="py-24 bg-earth-50" id="nosotros">
       <div className="max-w-6xl mx-auto px-6">
 
-        <div className="grid lg:grid-cols-2 gap-16 items-center">
+        <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
 
           {/* Left */}
           <div>
@@ -85,7 +85,7 @@ export function About() {
           <p className="text-center text-primary-300 text-xs uppercase tracking-widest font-semibold mb-8 font-sans">
             Marco normativo y estándares aplicados
           </p>
-          <div className="flex flex-wrap justify-center gap-x-12 gap-y-4 text-primary-500 text-sm font-medium font-sans">
+          <div className="flex flex-wrap justify-center gap-x-6 sm:gap-x-12 gap-y-3 sm:gap-y-4 text-primary-500 text-sm font-medium font-sans">
             {[
               'Ley de Minería Honduras',
               'Reglamento MAPE',
