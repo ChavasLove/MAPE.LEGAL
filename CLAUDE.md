@@ -104,6 +104,17 @@ Requiere env vars. Es idempotente — re-ejecutable sin efectos secundarios.
 - No usar clases genéricas de Tailwind (`green-*`, `gray-*`, `slate-*`) — solo los hex del sistema de diseño
 - Fuentes: `font-sans` para Inter (UI), headings usan Playfair Display automáticamente vía `globals.css`
 
+## Landing page — responsividad móvil
+Todos los componentes en `components/landing/` están optimizados para móvil. Convenciones establecidas:
+
+- **Tipografía escalada**: H1 del Hero usa `text-3xl sm:text-4xl md:text-5xl lg:text-[4.5rem]` — nunca tamaño fijo grande
+- **`<br />` condicionales**: saltos de línea decorativos usan `<br className="hidden sm:block" />` para no romper el flujo en pantallas pequeñas
+- **Nav en móvil**: el texto de marca junto al logo se oculta en xs (`hidden sm:inline`); padding del botón se reduce con `px-3 sm:px-5`
+- **Tablas de 2 columnas**: cuando el contenido es texto largo, usar `flex flex-col sm:grid sm:grid-cols-2` en lugar de `grid grid-cols-2` fijo — evita que el texto se corte
+- **Grids de sección**: `gap-10 lg:gap-16` para grids principales (no `gap-16` flat)
+- **Padding interior de cards/strips**: `p-5 sm:p-8` — no `p-8` plano
+- **Listas horizontales**: siempre `flex-wrap` cuando los ítems pueden desbordar en móvil (badges, certificaciones, footer)
+
 ## Variables de Entorno Requeridas (Producción)
 ```
 NEXT_PUBLIC_SUPABASE_URL
