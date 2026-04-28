@@ -40,8 +40,8 @@ export function Footer() {
             <div className="text-white font-semibold mb-3 font-sans">Contacto</div>
             <ul className="space-y-2">
               <li>
-                <a href="mailto:contacto@mape.legal" className="text-earth-200 hover:text-white transition-colors">
-                  contacto@mape.legal
+                <a href="mailto:gerencia@mape.legal" className="text-earth-200 hover:text-white transition-colors">
+                  gerencia@mape.legal
                 </a>
               </li>
               <li className="pt-2 text-primary-300">Honduras · Cobertura nacional</li>

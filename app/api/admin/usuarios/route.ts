@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getAdminClient } from '@/services/adminSupabase';
+import { emailBienvenidaUsuario } from '@/services/emailService';
 
 // GET /api/admin/usuarios — list all auth users with their roles
 export async function GET() {
@@ -70,6 +71,12 @@ export async function POST(req: NextRequest) {
       .insert({ user_id: user.id, rol, perfil_id: perfil_id ?? null, activo: true });
 
     if (roleError) throw roleError;
+
+    // Send welcome email — non-blocking, failure must not prevent account creation
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://mape.legal';
+    emailBienvenidaUsuario(email, password, rol, `${siteUrl}/login`).catch(
+      (err: unknown) => console.error('[usuarios] welcome email failed:', err)
+    );
 
     return NextResponse.json({ id: user.id, email: user.email, rol }, { status: 201 });
   } catch (error) {

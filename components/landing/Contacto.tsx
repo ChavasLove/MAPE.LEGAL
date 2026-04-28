@@ -79,10 +79,10 @@ export function Contacto() {
             <div className="mt-10 pt-8 border-t border-primary-950">
               <p className="text-primary-300 text-sm font-sans mb-2">¿Prefiere el correo electrónico?</p>
               <a
-                href="mailto:contacto@mape.legal"
+                href="mailto:gerencia@mape.legal"
                 className="text-earth-200 font-semibold font-sans hover:text-white transition-colors"
               >
-                contacto@mape.legal
+                gerencia@mape.legal
               </a>
             </div>
           </div>
