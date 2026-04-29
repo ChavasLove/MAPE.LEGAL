@@ -103,19 +103,45 @@ export async function POST(request) {
     const conversationHistory = history || [];
     console.log('History found:', conversationHistory.length, 'messages');
 
+    // --- Look up miner in clientes table ---
+    const cleanNumber = fromNumber.replace('whatsapp:', '');
+    const { data: cliente } = await supabase
+      .from('clientes')
+      .select('id, nombre, situacion_tierra, municipio, tipo_mineral')
+      .eq('telefono_whatsapp', cleanNumber)
+      .single();
+
+    console.log('Cliente found:', cliente ? cliente.nombre : 'Unknown');
+
+    // --- Build client context for María ---
+    const clienteContext = cliente
+      ? `
+CONTEXTO DEL MINERO ACTIVO:
+- Nombre: ${cliente.nombre}
+- Municipio: ${cliente.municipio || 'Iriona, Colón'}
+- Situación de tierra: ${cliente.situacion_tierra || 'no registrada'}
+- Mineral: ${cliente.tipo_mineral || 'oro'}
+Usa su nombre naturalmente en la conversación. Ya lo conoces — no le pidas datos que ya tienes.`
+      : `
+MINERO NO REGISTRADO:
+Este número no está en nuestra base de datos todavía.
+En algún momento natural de la conversación, pide su nombre completo.
+Cuando lo tengas, dile: "Perfecto [nombre], te voy a registrar en nuestro sistema."
+NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
+
     // Detect if conversation already started
     const isNewConversation = conversationHistory.length === 0;
 
-    const dynamicPrompt = isNewConversation
-      ? CHT_SYSTEM_PROMPT
-      : CHT_SYSTEM_PROMPT + `
+    const dynamicPrompt = CHT_SYSTEM_PROMPT + clienteContext + (isNewConversation
+      ? ''
+      : `
 
-CONTEXTO CRÍTICO: Esta conversación YA ESTÁ EN CURSO. 
-PROHIBIDO saludar de nuevo. 
+CONTEXTO CRÍTICO: Esta conversación YA ESTÁ EN CURSO.
+PROHIBIDO saludar de nuevo.
 PROHIBIDO decir "Hola", "Bienvenido", o "Soy María" en este mensaje.
-Responde DIRECTAMENTE a lo que acaba de decir el usuario.`;
+Responde DIRECTAMENTE a lo que acaba de decir el usuario.`);
 
-    // Remove duplicate consecutive greetings from history
+    // Remove duplicate consecutive assistant messages from history
     const cleanHistory = conversationHistory.filter((msg, i) => {
       if (i === 0) return true;
       return !(msg.role === 'assistant' && conversationHistory[i-1].role === 'assistant');
@@ -141,6 +167,21 @@ Responde DIRECTAMENTE a lo que acaba de decir el usuario.`;
       { numero_whatsapp: fromNumber, role: "assistant", content: assistantReply },
     ]);
     console.log('Insert result:', insertError ? insertError.message : 'success');
+
+    // --- Auto-register new client if not found ---
+    if (!cliente && assistantReply.includes('te voy a registrar')) {
+      const nombreDetectado = incomingMessage.trim();
+      if (nombreDetectado.length > 3 && nombreDetectado.length < 60) {
+        await supabase.from('clientes').insert([{
+          nombre: nombreDetectado,
+          telefono_whatsapp: cleanNumber,
+          municipio: 'Iriona, Colón',
+          tipo_mineral: 'oro',
+          situacion_tierra: 'arrendatario_sin_titulo'
+        }]);
+        console.log('✅ New client registered:', nombreDetectado);
+      }
+    }
 
     if (assistantReply.includes("✅ Listo")) {
       await supabase.from("transacciones_pendientes").insert([{
