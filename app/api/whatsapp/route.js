@@ -201,8 +201,6 @@ export async function POST(request) {
     const incomingMessage = formData.get("Body");
     const fromNumber = formData.get("From");
 
-    console.log(`📩 Message from ${fromNumber}: ${incomingMessage}`);
-
     // --- EXECUTIVE MODE: Willis Yang admin trigger ---
     // Whatsapp:+504 3210 0683
     const ADMIN_PASSPHRASE = 'TENKA-2026'; // Willis: change this directly in code
@@ -392,6 +390,8 @@ Comandos disponibles:
       });
     }
 
+    console.log(`📩 Message from ${fromNumber}: ${incomingMessage}`);
+
     const { data: history } = await supabase
       .from("conversaciones_whatsapp")
       .select("role, content")
@@ -466,6 +466,52 @@ Responde DIRECTAMENTE a lo que acaba de decir el usuario.`);
       { numero_whatsapp: fromNumber, role: "assistant", content: assistantReply },
     ]);
     console.log('Insert result:', insertError ? insertError.message : 'success');
+
+    // --- Forward contact requests to Willis ---
+    const contactTriggers = [
+      'te va a llamar',
+      'te contactamos',
+      'el equipo cht',
+      'nos comunicamos',
+      'te vamos a contactar'
+    ];
+
+    const needsContact = contactTriggers.some(trigger =>
+      assistantReply.toLowerCase().includes(trigger)
+    );
+
+    if (needsContact) {
+      const WILLIS_NUMBER = 'whatsapp:+50432100683';
+      const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
+      const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+      const TWILIO_FROM = process.env.TWILIO_WHATSAPP_FROM;
+
+      const clientName = cliente?.nombre || 'Cliente no registrado';
+      const alertMessage =
+`ALERTA CHT — Solicitud de contacto
+Cliente: ${clientName}
+Numero: ${fromNumber.replace('whatsapp:', '')}
+Mensaje: "${incomingMessage}"
+Respuesta Maria: "${assistantReply.slice(0, 100)}..."
+Accion requerida: Llamar o escribir al cliente hoy.`;
+
+      const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
+
+      await fetch(twilioUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Basic ' + Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString('base64'),
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          From: TWILIO_FROM,
+          To: WILLIS_NUMBER,
+          Body: alertMessage
+        })
+      });
+
+      console.log('Contact alert sent to Willis for:', clientName);
+    }
 
     // --- Auto-register new client if not found ---
     if (!cliente && assistantReply.includes('te voy a registrar')) {
