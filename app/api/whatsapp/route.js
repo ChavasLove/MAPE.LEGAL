@@ -293,6 +293,56 @@ Responde DIRECTAMENTE a lo que acaba de decir el usuario.`);
       }
     }
 
+    // --- Extract and save structured client data ---
+    if (!cliente) {
+      const extractionResponse = await anthropic.messages.create({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 200,
+        messages: [{
+          role: "user",
+          content: `Analiza esta conversación de WhatsApp y extrae SOLO si están claramente presentes:
+- nombre completo del cliente
+- número de teléfono mencionado por el cliente
+- municipio o zona mencionada
+- número de manzanas mencionado
+
+Conversación:
+${conversationHistory.map(m => `${m.role}: ${m.content}`).join('\n')}
+
+Responde ÚNICAMENTE en JSON válido, sin texto adicional:
+{"nombre": null, "telefono": null, "municipio": null, "manzanas": null}
+
+Si algún dato no está claramente mencionado, deja null.`
+        }]
+      });
+
+      try {
+        const extracted = JSON.parse(extractionResponse.content[0].text);
+        console.log('Extracted data:', extracted);
+
+        if (extracted.nombre && extracted.nombre.length > 3) {
+          const { data: existing } = await supabase
+            .from('clientes')
+            .select('id')
+            .eq('telefono_whatsapp', cleanNumber)
+            .single();
+
+          if (!existing) {
+            await supabase.from('clientes').insert([{
+              nombre: extracted.nombre,
+              telefono_whatsapp: cleanNumber,
+              municipio: extracted.municipio || 'Iriona, Colón',
+              tipo_mineral: 'oro',
+              situacion_tierra: 'arrendatario_sin_titulo'
+            }]);
+            console.log('✅ Client auto-registered:', extracted.nombre);
+          }
+        }
+      } catch (e) {
+        console.log('Extraction parse error:', e.message);
+      }
+    }
+
     if (assistantReply.includes("Listo") && assistantReply.includes("Confirmas")) {
       await supabase.from("transacciones_pendientes").insert([{
         numero_whatsapp: fromNumber,
