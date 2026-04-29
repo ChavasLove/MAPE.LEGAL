@@ -101,6 +101,7 @@ export async function POST(request) {
       .limit(20);
 
     const conversationHistory = history || [];
+    console.log('History found:', conversationHistory.length, 'messages');
 
     // Detect if conversation already started
     const isNewConversation = conversationHistory.length === 0;
@@ -135,10 +136,11 @@ Responde DIRECTAMENTE a lo que acaba de decir el usuario.`;
     const assistantReply = claudeResponse.content[0].text;
     console.log(`🤖 Claude responds: ${assistantReply}`);
 
-    await supabase.from("conversaciones_whatsapp").insert([
+    const { error: insertError } = await supabase.from("conversaciones_whatsapp").insert([
       { numero_whatsapp: fromNumber, role: "user", content: incomingMessage },
       { numero_whatsapp: fromNumber, role: "assistant", content: assistantReply },
     ]);
+    console.log('Insert result:', insertError ? insertError.message : 'success');
 
     if (assistantReply.includes("✅ Listo")) {
       await supabase.from("transacciones_pendientes").insert([{
