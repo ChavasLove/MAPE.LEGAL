@@ -1,35 +1,39 @@
 # Tasks
 
 ## Pending
-- [ ] Drop hero image into `public/images/hero-rio-honduras.jpg`
-- [ ] Populate `scripts/visual-guide.ts` — interactive token reference for designers
-- [ ] Implement `documentos` table and fill real document check in `getBlockingReasons`
 - [ ] Add Row Level Security (RLS) policies to all Supabase tables
+- [ ] Move `ADMIN_PASSPHRASE` to env var (`ADMIN_PASSPHRASE=TENKA-2026`) instead of hardcoded
+- [ ] Confirm `hitos_pago` table name matches Supabase migration (currently referenced in admin report)
+- [ ] Add `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM` to Vercel env vars
 - [ ] Implement Supabase Auth and wire `user_id` to session
-- [ ] Add UI for advancing fases (transition button + blocking reason display)
-- [ ] Add UI for pagos management (register and validate payments)
 - [ ] Add `GET /api/fases` endpoint for frontend fase listing
 - [ ] Add `GET /api/expedientes/:id/fases` to retrieve fase history
-- [ ] Define roles and permissions per fase (e.g. who can advance SERNA)
+- [ ] Define roles and permissions per fase (who can advance SERNA phase)
+- [ ] Populate `scripts/visual-guide.ts` — interactive token reference for designers
 
 ## In Progress
 - (none)
 
 ## Completed
-- [x] Project initial setup
-- [x] Supabase integration
-- [x] Create fases table in database
-- [x] Implement payment validation logic (per-fase, via `pagos` table)
-- [x] Add audit log system (`registro_auditoria` with `user_id` and `accion`)
-- [x] Define expediente state transitions (explicit graph in `transiciones_fase`)
+- [x] Project initial setup and Supabase integration
+- [x] Database schema (migrations 001–006): workflow tables, CMS, roles, notifications
+- [x] `clientes`, `conversaciones_whatsapp`, `transacciones_pendientes` tables for WhatsApp
+- [x] Payment validation logic (per-fase, via `pagos` table)
+- [x] Audit log system (`registro_auditoria`)
 - [x] Expediente workflow engine (`getNextActions`, `getBlockingReasons`, `advancePhase`)
-- [x] Phase history tracking (`expediente_fases` with `entrada_en` / `salida_en`)
-- [x] Bilingual naming convention (Spanish DB/domain, English code logic)
+- [x] Phase history tracking (`expediente_fases`)
 - [x] Decision endpoint `GET /api/expedientes/:id/next-actions`
 - [x] CHT design system enforcement — all UI components (2026-04-26)
-  - Fonts: Playfair Display + Inter (replaces Geist)
-  - Color tokens: complete `--cht-*` + Tailwind `@theme` system in `globals.css`
-  - All generic Tailwind colors purged from 11 landing components + 2 UI primitives
-  - Button, Card, Hero, Problem, Programs, Impact, About, News, Footer, Solution, Services, Roadmap, WhyNow, PriceWidgets — all compliant
-  - `DESIGN.md` consolidated as single source of truth
-  - `scripts/visual-guide.ts` placeholder created
+- [x] Role-based auth system (admin / abogado / tecnico_ambiental / cliente)
+- [x] Email service — SendGrid, 6 templates including welcome email
+- [x] WhatsApp Meta Cloud API webhook (`/api/webhook/whatsapp`)
+- [x] María assistant — Twilio webhook, Claude Haiku, conversation history, dynamic prompt
+- [x] Client auto-registration via secondary Claude extraction call
+- [x] JSON parse robustness — strip markdown fences before parse, detailed logging
+- [x] Willis Yang executive report — 3-part WhatsApp admin report, 8 parallel DB queries
+- [x] `expediente [id]` drill-down sub-command
+- [x] Contact forwarding — alert to Willis when María promises callback
+- [x] XML injection fix — `esc()` on all TwiML dynamic content
+- [x] Null safety — `incomingMessage`/`fromNumber` default to `''` for media messages
+- [x] Contact alert wrapped in try/catch (non-fatal)
+- [x] Removed overly broad `'el equipo cht'` contact trigger

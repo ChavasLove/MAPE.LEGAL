@@ -10,6 +10,10 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+function esc(s) {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 const CHT_SYSTEM_PROMPT = `Eres María, asistente virtual de CHT (Corporación Hondureña Tenka, S.A.).
 Atiendes a mineros artesanales y propietarios de tierra en Honduras, especialmente en Iriona, Colón.
 Tu función es orientar, informar y recopilar datos — no ejecutar trámites.
@@ -17,14 +21,22 @@ Tu función es orientar, informar y recopilar datos — no ejecutar trámites.
 ═══════════════════════════════════
 PERSONALIDAD Y ESTILO
 ═══════════════════════════════════
-- Cálida, cercana, paciente — como una persona real del equipo CHT
-- Español simple, sin tecnicismos innecesarios
-- Respuestas CORTAS para WhatsApp — máximo 5 líneas por mensaje
-- Haz UNA sola pregunta a la vez — nunca listes múltiples preguntas juntas
+- Eres hondureña. Hablas como alguien del equipo CHT en Honduras.
+- Usas expresiones hondureñas naturales pero profesionales:
+  "con mucho gusto", "dale pues", "fijese que", "ahorita le digo",
+  "vaya pues", "claro que si", "mire", "que bueno", "eso si",
+  "no se preocupe", "con todo gusto", "ya mero", "ahorita"
+- NUNCA uses expresiones de otros paises: nada de "che", "tio",
+  "tronco", "guay", "chevere", "bacano", "buena onda"
+- Tuteas al cliente siempre — nunca uses "usted" salvo con personas
+  mayores que se presenten como tal
+- Respuestas cortas para WhatsApp — maximo 5 lineas por mensaje
+- Haz UNA sola pregunta a la vez
 - Usa el nombre del cliente cuando lo conoces
 - Nunca prometas fechas exactas — da rangos estimados
-- Si algo está fuera de tu conocimiento: "Voy a consultar con el equipo CHT y te escribimos hoy."
 - NUNCA uses emojis en ninguna respuesta. Ninguno. Sin excepciones.
+- Si algo esta fuera de tu conocimiento: "Fijese que eso mejor
+  se lo consulto al equipo y le avisamos hoy."
 
 ═══════════════════════════════════
 SERVICIOS Y PRECIOS CHT
@@ -186,6 +198,14 @@ CUANDO EL CLIENTE NO TIENE DOCUMENTOS:
 Explica con calma qué necesita conseguir y por qué.
 Ofrece conectarlos con el equipo para asesoría personalizada.
 
+CIERRES NATURALES HONDUREÑOS:
+- "Dale pues, ahorita le aviso al equipo."
+- "Vaya pues, con mucho gusto le ayudamos."
+- "Fijese que si, eso si lo podemos hacer."
+- "No se preocupe, el equipo le llama hoy."
+- "Dale, cualquier cosa me escribe."
+- "Con todo gusto, para eso estamos."
+
 ═══════════════════════════════════
 LO QUE MARÍA NUNCA HACE
 ═══════════════════════════════════
@@ -198,8 +218,8 @@ LO QUE MARÍA NUNCA HACE
 export async function POST(request) {
   try {
     const formData = await request.formData();
-    const incomingMessage = formData.get("Body");
-    const fromNumber = formData.get("From");
+    const incomingMessage = formData.get("Body") || '';
+    const fromNumber = formData.get("From") || '';
 
     // --- EXECUTIVE MODE: Willis Yang admin trigger ---
     // Whatsapp:+504 3210 0683
@@ -227,7 +247,7 @@ Paso actual: ${exp.paso_actual || 'Sin datos'}
 Notas: ${exp.notas || 'Sin notas'}`
         : `Expediente ${expNum} no encontrado.`;
 
-      return new Response(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${expDetail}</Message></Response>`, {
+      return new Response(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(expDetail)}</Message></Response>`, {
         status: 200,
         headers: { 'Content-Type': 'text/xml' },
       });
@@ -239,37 +259,34 @@ Notas: ${exp.notas || 'Sin notas'}`
       const last24h = new Date(now - 24 * 60 * 60 * 1000).toISOString();
       const last7d = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
 
+      // === ALL QUERIES IN PARALLEL ===
+      const [
+        { data: activeHour },
+        { data: active24h },
+        { data: active7d },
+        { count: totalMessages },
+        { data: allClientes },
+        { data: expedientes },
+        { data: transacciones },
+        { data: hitos },
+      ] = await Promise.all([
+        supabase.from('conversaciones_whatsapp').select('numero_whatsapp, created_at').gte('created_at', last1h),
+        supabase.from('conversaciones_whatsapp').select('numero_whatsapp, role, created_at').gte('created_at', last24h),
+        supabase.from('conversaciones_whatsapp').select('numero_whatsapp').gte('created_at', last7d),
+        supabase.from('conversaciones_whatsapp').select('*', { count: 'exact', head: true }),
+        supabase.from('clientes').select('nombre, municipio, situacion_tierra, tipo_mineral, fecha_registro, telefono_whatsapp').order('fecha_registro', { ascending: false }),
+        supabase.from('expedientes').select('estado, tipo_servicio, fecha_inicio, cliente_id').order('fecha_inicio', { ascending: false }),
+        supabase.from('transacciones_pendientes').select('estado, created_at, mensaje_original').order('created_at', { ascending: false }),
+        supabase.from('hitos_pago').select('estado, monto, tipo_hito').order('fecha_emision', { ascending: false }),
+      ]);
+
       // === WHATSAPP ACTIVITY ===
-      const { data: activeHour } = await supabase
-        .from('conversaciones_whatsapp')
-        .select('numero_whatsapp, created_at')
-        .gte('created_at', last1h);
-
-      const { data: active24h } = await supabase
-        .from('conversaciones_whatsapp')
-        .select('numero_whatsapp, role, created_at')
-        .gte('created_at', last24h);
-
-      const { data: active7d } = await supabase
-        .from('conversaciones_whatsapp')
-        .select('numero_whatsapp')
-        .gte('created_at', last7d);
-
-      const { count: totalMessages } = await supabase
-        .from('conversaciones_whatsapp')
-        .select('*', { count: 'exact', head: true });
-
       const activeHourNumbers = new Set(activeHour?.map(r => r.numero_whatsapp) || []);
       const active24hNumbers = new Set(active24h?.map(r => r.numero_whatsapp) || []);
       const active7dNumbers = new Set(active7d?.map(r => r.numero_whatsapp) || []);
       const userMessages24h = active24h?.filter(r => r.role === 'user').length || 0;
 
       // === CLIENTS ===
-      const { data: allClientes } = await supabase
-        .from('clientes')
-        .select('nombre, municipio, situacion_tierra, tipo_mineral, fecha_registro, telefono_whatsapp')
-        .order('fecha_registro', { ascending: false });
-
       const totalClientes = allClientes?.length || 0;
       const recentClientes = allClientes?.slice(0, 3) || [];
 
@@ -286,11 +303,6 @@ Notas: ${exp.notas || 'Sin notas'}`
       });
 
       // === EXPEDIENTES ===
-      const { data: expedientes } = await supabase
-        .from('expedientes')
-        .select('estado, tipo_servicio, fecha_inicio, cliente_id')
-        .order('fecha_inicio', { ascending: false });
-
       const totalExpedientes = expedientes?.length || 0;
       const expByEstado = {};
       const expByServicio = {};
@@ -300,20 +312,10 @@ Notas: ${exp.notas || 'Sin notas'}`
       });
 
       // === TRANSACTIONS ===
-      const { data: transacciones } = await supabase
-        .from('transacciones_pendientes')
-        .select('estado, created_at, mensaje_original')
-        .order('created_at', { ascending: false });
-
       const pendingTx = transacciones?.filter(t => t.estado === 'pendiente_confirmacion') || [];
       const recentTx = transacciones?.slice(0, 3) || [];
 
       // === HITOS / PAYMENTS ===
-      const { data: hitos } = await supabase
-        .from('hitos_pago')
-        .select('estado, monto, tipo_hito')
-        .order('fecha_emision', { ascending: false });
-
       const hitosPendientes = hitos?.filter(h => h.estado === 'pendiente') || [];
       const hitosConfirmados = hitos?.filter(h => h.estado === 'confirmado') || [];
       const totalCobrado = hitosConfirmados.reduce((sum, h) => sum + (parseFloat(h.monto) || 0), 0);
@@ -379,9 +381,9 @@ Comandos disponibles:
 
       const twimlAdmin = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Message>${report1}</Message>
-  <Message>${report2}</Message>
-  <Message>${report3}</Message>
+  <Message>${esc(report1)}</Message>
+  <Message>${esc(report2)}</Message>
+  <Message>${esc(report3)}</Message>
 </Response>`;
 
       return new Response(twimlAdmin, {
@@ -471,7 +473,6 @@ Responde DIRECTAMENTE a lo que acaba de decir el usuario.`);
     const contactTriggers = [
       'te va a llamar',
       'te contactamos',
-      'el equipo cht',
       'nos comunicamos',
       'te vamos a contactar'
     ];
@@ -481,13 +482,14 @@ Responde DIRECTAMENTE a lo que acaba de decir el usuario.`);
     );
 
     if (needsContact) {
-      const WILLIS_NUMBER = 'whatsapp:+50432100683';
-      const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
-      const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
-      const TWILIO_FROM = process.env.TWILIO_WHATSAPP_FROM;
+      try {
+        const WILLIS_NUMBER = 'whatsapp:+50432100683';
+        const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
+        const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+        const TWILIO_FROM = process.env.TWILIO_WHATSAPP_FROM;
 
-      const clientName = cliente?.nombre || 'Cliente no registrado';
-      const alertMessage =
+        const clientName = cliente?.nombre || 'Cliente no registrado';
+        const alertMessage =
 `ALERTA CHT — Solicitud de contacto
 Cliente: ${clientName}
 Numero: ${fromNumber.replace('whatsapp:', '')}
@@ -495,22 +497,25 @@ Mensaje: "${incomingMessage}"
 Respuesta Maria: "${assistantReply.slice(0, 100)}..."
 Accion requerida: Llamar o escribir al cliente hoy.`;
 
-      const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
+        const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
 
-      await fetch(twilioUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Basic ' + Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString('base64'),
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: new URLSearchParams({
-          From: TWILIO_FROM,
-          To: WILLIS_NUMBER,
-          Body: alertMessage
-        })
-      });
+        await fetch(twilioUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Basic ' + Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString('base64'),
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: new URLSearchParams({
+            From: TWILIO_FROM,
+            To: WILLIS_NUMBER,
+            Body: alertMessage
+          })
+        });
 
-      console.log('Contact alert sent to Willis for:', clientName);
+        console.log('Contact alert sent to Willis for:', clientName);
+      } catch (alertErr) {
+        console.log('Contact alert failed (non-fatal):', alertErr.message);
+      }
     }
 
     // --- Auto-register new client if not found ---
@@ -607,7 +612,7 @@ Si algún dato no está claramente mencionado, deja null.`
 
     const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Message>${assistantReply}</Message>
+  <Message>${esc(assistantReply)}</Message>
 </Response>`;
 
     return new Response(twimlResponse, {
