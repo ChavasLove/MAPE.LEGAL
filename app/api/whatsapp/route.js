@@ -293,7 +293,7 @@ Responde DIRECTAMENTE a lo que acaba de decir el usuario.`);
       }
     }
 
-    if (assistantReply.includes("✅ Listo")) {
+    if (assistantReply.includes("Listo") && assistantReply.includes("Confirmas")) {
       await supabase.from("transacciones_pendientes").insert([{
         numero_whatsapp: fromNumber,
         mensaje_original: incomingMessage,
