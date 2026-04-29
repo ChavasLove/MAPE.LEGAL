@@ -102,6 +102,18 @@ export async function POST(request) {
 
     const conversationHistory = history || [];
 
+    // Detect if conversation already started
+    const isNewConversation = conversationHistory.length === 0;
+
+    const dynamicPrompt = isNewConversation
+      ? CHT_SYSTEM_PROMPT
+      : CHT_SYSTEM_PROMPT + `
+
+CONTEXTO CRÍTICO: Esta conversación YA ESTÁ EN CURSO. 
+PROHIBIDO saludar de nuevo. 
+PROHIBIDO decir "Hola", "Bienvenido", o "Soy María" en este mensaje.
+Responde DIRECTAMENTE a lo que acaba de decir el usuario.`;
+
     // Remove duplicate consecutive greetings from history
     const cleanHistory = conversationHistory.filter((msg, i) => {
       if (i === 0) return true;
@@ -116,7 +128,7 @@ export async function POST(request) {
     const claudeResponse = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 500,
-      system: CHT_SYSTEM_PROMPT,
+      system: dynamicPrompt,
       messages: cleanHistory,
     });
 
