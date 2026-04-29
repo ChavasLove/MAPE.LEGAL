@@ -201,6 +201,195 @@ export async function POST(request) {
     const incomingMessage = formData.get("Body");
     const fromNumber = formData.get("From");
 
+    // --- EXECUTIVE MODE: Willis Yang admin trigger ---
+    // Whatsapp:+504 3210 0683
+    const ADMIN_PASSPHRASE = 'TENKA-2026'; // Willis: change this directly in code
+    const isAdminCommand =
+      incomingMessage.toLowerCase().includes('willis yang') &&
+      incomingMessage.includes(ADMIN_PASSPHRASE);
+
+    // --- ADMIN SUB-COMMANDS (fires before main admin report) ---
+    if (incomingMessage.toLowerCase().startsWith('expediente ')) {
+      const expNum = incomingMessage.split(' ')[1];
+      const { data: exp } = await supabase
+        .from('expedientes')
+        .select('*, clientes(nombre, telefono_whatsapp)')
+        .eq('id', expNum)
+        .single();
+
+      const expDetail = exp
+        ? `EXPEDIENTE ${expNum}
+Cliente: ${exp.clientes?.nombre}
+Estado: ${exp.estado}
+Servicio: ${exp.tipo_servicio}
+Inicio: ${exp.fecha_inicio?.slice(0, 10)}
+Paso actual: ${exp.paso_actual || 'Sin datos'}
+Notas: ${exp.notas || 'Sin notas'}`
+        : `Expediente ${expNum} no encontrado.`;
+
+      return new Response(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${expDetail}</Message></Response>`, {
+        status: 200,
+        headers: { 'Content-Type': 'text/xml' },
+      });
+    }
+
+    if (isAdminCommand) {
+      const now = new Date();
+      const last1h = new Date(now - 60 * 60 * 1000).toISOString();
+      const last24h = new Date(now - 24 * 60 * 60 * 1000).toISOString();
+      const last7d = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+      // === WHATSAPP ACTIVITY ===
+      const { data: activeHour } = await supabase
+        .from('conversaciones_whatsapp')
+        .select('numero_whatsapp, created_at')
+        .gte('created_at', last1h);
+
+      const { data: active24h } = await supabase
+        .from('conversaciones_whatsapp')
+        .select('numero_whatsapp, role, created_at')
+        .gte('created_at', last24h);
+
+      const { data: active7d } = await supabase
+        .from('conversaciones_whatsapp')
+        .select('numero_whatsapp')
+        .gte('created_at', last7d);
+
+      const { count: totalMessages } = await supabase
+        .from('conversaciones_whatsapp')
+        .select('*', { count: 'exact', head: true });
+
+      const activeHourNumbers = new Set(activeHour?.map(r => r.numero_whatsapp) || []);
+      const active24hNumbers = new Set(active24h?.map(r => r.numero_whatsapp) || []);
+      const active7dNumbers = new Set(active7d?.map(r => r.numero_whatsapp) || []);
+      const userMessages24h = active24h?.filter(r => r.role === 'user').length || 0;
+
+      // === CLIENTS ===
+      const { data: allClientes } = await supabase
+        .from('clientes')
+        .select('nombre, municipio, situacion_tierra, tipo_mineral, fecha_registro, telefono_whatsapp')
+        .order('fecha_registro', { ascending: false });
+
+      const totalClientes = allClientes?.length || 0;
+      const recentClientes = allClientes?.slice(0, 3) || [];
+
+      const byMunicipio = {};
+      allClientes?.forEach(c => {
+        const m = c.municipio || 'Sin municipio';
+        byMunicipio[m] = (byMunicipio[m] || 0) + 1;
+      });
+
+      const bySituacion = {};
+      allClientes?.forEach(c => {
+        const s = c.situacion_tierra || 'sin_datos';
+        bySituacion[s] = (bySituacion[s] || 0) + 1;
+      });
+
+      // === EXPEDIENTES ===
+      const { data: expedientes } = await supabase
+        .from('expedientes')
+        .select('estado, tipo_servicio, fecha_inicio, cliente_id')
+        .order('fecha_inicio', { ascending: false });
+
+      const totalExpedientes = expedientes?.length || 0;
+      const expByEstado = {};
+      const expByServicio = {};
+      expedientes?.forEach(e => {
+        expByEstado[e.estado] = (expByEstado[e.estado] || 0) + 1;
+        expByServicio[e.tipo_servicio] = (expByServicio[e.tipo_servicio] || 0) + 1;
+      });
+
+      // === TRANSACTIONS ===
+      const { data: transacciones } = await supabase
+        .from('transacciones_pendientes')
+        .select('estado, created_at, mensaje_original')
+        .order('created_at', { ascending: false });
+
+      const pendingTx = transacciones?.filter(t => t.estado === 'pendiente_confirmacion') || [];
+      const recentTx = transacciones?.slice(0, 3) || [];
+
+      // === HITOS / PAYMENTS ===
+      const { data: hitos } = await supabase
+        .from('hitos_pago')
+        .select('estado, monto, tipo_hito')
+        .order('fecha_emision', { ascending: false });
+
+      const hitosPendientes = hitos?.filter(h => h.estado === 'pendiente') || [];
+      const hitosConfirmados = hitos?.filter(h => h.estado === 'confirmado') || [];
+      const totalCobrado = hitosConfirmados.reduce((sum, h) => sum + (parseFloat(h.monto) || 0), 0);
+      const totalPendiente = hitosPendientes.reduce((sum, h) => sum + (parseFloat(h.monto) || 0), 0);
+
+      // === FORMAT REPORT — split into 3 messages for WhatsApp length limits ===
+      const report1 =
+`CHT EXECUTIVE REPORT
+${now.toLocaleDateString('es-HN')} ${now.toLocaleTimeString('es-HN')}
+━━━━━━━━━━━━━━━━━━━━
+MARIA / WHATSAPP
+Conversaciones activas ahora: ${activeHourNumbers.size}
+Conversaciones hoy: ${active24hNumbers.size}
+Conversaciones esta semana: ${active7dNumbers.size}
+Mensajes recibidos hoy: ${userMessages24h}
+Total mensajes historico: ${totalMessages || 0}
+━━━━━━━━━━━━━━━━━━━━
+CLIENTES REGISTRADOS
+Total: ${totalClientes}
+Recientes:
+${recentClientes.map(c => `- ${c.nombre} (${c.municipio || 'sin municipio'})`).join('\n') || '- Sin clientes aun'}
+
+Por municipio:
+${Object.entries(byMunicipio).map(([k, v]) => `- ${k}: ${v}`).join('\n') || '- Sin datos'}
+
+Por situacion de tierra:
+${Object.entries(bySituacion).map(([k, v]) => `- ${k}: ${v}`).join('\n') || '- Sin datos'}`;
+
+      const report2 =
+`━━━━━━━━━━━━━━━━━━━━
+EXPEDIENTES ACTIVOS
+Total expedientes: ${totalExpedientes}
+
+Por estado:
+${Object.entries(expByEstado).map(([k, v]) => `- ${k}: ${v}`).join('\n') || '- Sin expedientes'}
+
+Por servicio:
+${Object.entries(expByServicio).map(([k, v]) => `- ${k}: ${v}`).join('\n') || '- Sin datos'}
+━━━━━━━━━━━━━━━━━━━━
+TRANSACCIONES DE ORO
+Pendientes de revision: ${pendingTx.length}
+Ultimas transacciones:
+${recentTx.map(t => `- ${t.created_at?.slice(0, 10)}: ${t.estado}`).join('\n') || '- Sin transacciones'}`;
+
+      const report3 =
+`━━━━━━━━━━━━━━━━━━━━
+FACTURACION Y PAGOS
+Total cobrado confirmado: L ${totalCobrado.toLocaleString('es-HN')}
+Hitos pendientes de cobro: ${hitosPendientes.length}
+Monto pendiente total: L ${totalPendiente.toLocaleString('es-HN')}
+━━━━━━━━━━━━━━━━━━━━
+REGULACIONES
+INHGEOMIN: Operativo. Ventanilla presencial Tegucigalpa.
+SERNA/SLAS-2: Sistema en linea activo.
+INA Titulacion: Operativo. Plazo 60-120 dias.
+Alcaldia Iriona: Verificar requisitos locales vigentes.
+Registro Comercializador: Unidad Fiscalizacion Minera activa.
+━━━━━━━━━━━━━━━━━━━━
+Comandos disponibles:
+- expediente [numero]
+- cliente [nombre]
+- transacciones pendientes`;
+
+      const twimlAdmin = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Message>${report1}</Message>
+  <Message>${report2}</Message>
+  <Message>${report3}</Message>
+</Response>`;
+
+      return new Response(twimlAdmin, {
+        status: 200,
+        headers: { 'Content-Type': 'text/xml' },
+      });
+    }
+
     console.log(`📩 Message from ${fromNumber}: ${incomingMessage}`);
 
     const { data: history } = await supabase
@@ -277,6 +466,52 @@ Responde DIRECTAMENTE a lo que acaba de decir el usuario.`);
       { numero_whatsapp: fromNumber, role: "assistant", content: assistantReply },
     ]);
     console.log('Insert result:', insertError ? insertError.message : 'success');
+
+    // --- Forward contact requests to Willis ---
+    const contactTriggers = [
+      'te va a llamar',
+      'te contactamos',
+      'el equipo cht',
+      'nos comunicamos',
+      'te vamos a contactar'
+    ];
+
+    const needsContact = contactTriggers.some(trigger =>
+      assistantReply.toLowerCase().includes(trigger)
+    );
+
+    if (needsContact) {
+      const WILLIS_NUMBER = 'whatsapp:+50432100683';
+      const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
+      const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+      const TWILIO_FROM = process.env.TWILIO_WHATSAPP_FROM;
+
+      const clientName = cliente?.nombre || 'Cliente no registrado';
+      const alertMessage =
+`ALERTA CHT — Solicitud de contacto
+Cliente: ${clientName}
+Numero: ${fromNumber.replace('whatsapp:', '')}
+Mensaje: "${incomingMessage}"
+Respuesta Maria: "${assistantReply.slice(0, 100)}..."
+Accion requerida: Llamar o escribir al cliente hoy.`;
+
+      const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
+
+      await fetch(twilioUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Basic ' + Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString('base64'),
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          From: TWILIO_FROM,
+          To: WILLIS_NUMBER,
+          Body: alertMessage
+        })
+      });
+
+      console.log('Contact alert sent to Willis for:', clientName);
+    }
 
     // --- Auto-register new client if not found ---
     if (!cliente && assistantReply.includes('te voy a registrar')) {
