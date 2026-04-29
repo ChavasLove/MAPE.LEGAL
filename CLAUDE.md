@@ -64,12 +64,26 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 - `PATCH /api/documentos/[id]` — verificar/rechazar documento
 - `POST /api/contacto` — formulario de contacto → email a `gerencia@mape.legal` + acuse al visitante
 - `POST /api/email/send` — enviar email vía SendGrid
-- `POST /api/whatsapp/send` — enviar mensaje WhatsApp
+- `POST /api/whatsapp/send` — enviar mensaje WhatsApp (Meta Cloud API)
 - `GET+POST /api/webhook/whatsapp` — webhook Meta (verificación + mensajes entrantes)
+- `GET+POST /api/whatsapp` — webhook Twilio; asistente virtual **María** (Claude `claude-haiku-4-5-20251001`)
 - `GET+POST+DELETE /api/admin/cms` — editor CMS
 - `GET+PATCH /api/admin/config` — configuración del sistema
 - `GET+POST /api/admin/roles` + `PATCH+DELETE /api/admin/roles/[id]` — gestión de roles
 - `GET+POST /api/admin/usuarios` — lista y creación de usuarios (POST envía welcome email automáticamente)
+
+## Asistente Virtual María (`app/api/whatsapp/route.js`)
+Webhook Twilio que conecta WhatsApp con Claude AI.
+
+- **Modelo**: `claude-haiku-4-5-20251001`
+- **Persona**: María, asistente de MAPE.LEGAL — español sencillo, respuestas cortas (≤5 líneas), cero jerga
+- **Historial**: últimos 20 mensajes de `conversaciones_whatsapp` por número de WhatsApp
+- **Prompt dinámico**: conversación nueva → saludo normal; conversación en curso → se añade bloque `CONTEXTO CRÍTICO` que prohíbe re-saludos
+- **Dedup**: filtra mensajes assistant consecutivos antes de enviar a Claude
+- **Tablas Supabase**:
+  - `conversaciones_whatsapp` — historial por `numero_whatsapp`, columnas `role`, `content`
+  - `transacciones_pendientes` — registros pendientes de confirmación (`estado: "pendiente_confirmacion"`)
+- **Trigger de transacción**: cuando la respuesta incluye `"✅ Listo"` se inserta en `transacciones_pendientes`
 
 ## Landing page — imágenes
 Todas las imágenes están en `public/images/`. Distribución actual:
@@ -116,4 +130,5 @@ SENDGRID_FROM_NAME             # MAPE.LEGAL
 WHATSAPP_TOKEN
 WHATSAPP_PHONE_ID
 WHATSAPP_VERIFY_TOKEN
+ANTHROPIC_API_KEY              # Requerida por app/api/whatsapp/route.js (asistente María)
 ```
