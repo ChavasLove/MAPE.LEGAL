@@ -131,4 +131,17 @@ WHATSAPP_TOKEN
 WHATSAPP_PHONE_ID
 WHATSAPP_VERIFY_TOKEN
 ANTHROPIC_API_KEY              # Requerida por app/api/whatsapp/route.js (asistente María)
+TWILIO_ACCOUNT_SID             # Consola Twilio — contact forwarding a Willis
+TWILIO_AUTH_TOKEN              # Consola Twilio — contact forwarding a Willis
+TWILIO_WHATSAPP_FROM           # whatsapp:+14155238886 (sandbox) o sender aprobado
 ```
+
+## Modo Admin — María WhatsApp
+Trigger: mensaje contiene `willis yang` + `TENKA-2026` (passphrase en código, línea 206 de `route.js`).
+- Primer check en el POST handler, antes de cualquier query o llamada a Claude
+- Devuelve 3 mensajes WhatsApp: actividad+clientes / expedientes+transacciones / facturación+regulaciones
+- 8 queries Supabase en paralelo via `Promise.all`
+- Sub-comando `expediente [id]`: retorna detalle sin passphrase (abierto por diseño)
+- Contact forwarding: reply con `te va a llamar`, `te contactamos`, `nos comunicamos`, o `te vamos a contactar` → alerta Twilio a Willis (+504 3210 0683), no-fatal
+- Todo contenido dinámico en TwiML pasa por `esc()` (escapa `&`, `<`, `>`)
+- `incomingMessage` y `fromNumber` con fallback a `''` (previene crash en mensajes de medios)
