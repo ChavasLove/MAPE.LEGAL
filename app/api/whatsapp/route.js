@@ -317,8 +317,14 @@ Si algún dato no está claramente mencionado, deja null.`
       });
 
       try {
-        const extracted = JSON.parse(extractionResponse.content[0].text);
-        console.log('Extracted data:', extracted);
+        // Strip markdown code blocks if Claude wraps the JSON
+        let rawText = extractionResponse.content[0].text;
+        rawText = rawText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+        console.log('Raw extraction text:', rawText);
+
+        const extracted = JSON.parse(rawText);
+        console.log('Extracted data:', JSON.stringify(extracted));
 
         if (extracted.nombre && extracted.nombre.length > 3) {
           const { data: existing } = await supabase
@@ -328,18 +334,30 @@ Si algún dato no está claramente mencionado, deja null.`
             .single();
 
           if (!existing) {
-            await supabase.from('clientes').insert([{
-              nombre: extracted.nombre,
-              telefono_whatsapp: cleanNumber,
-              municipio: extracted.municipio || 'Iriona, Colón',
-              tipo_mineral: 'oro',
-              situacion_tierra: 'arrendatario_sin_titulo'
-            }]);
-            console.log('✅ Client auto-registered:', extracted.nombre);
+            const { error: insertError } = await supabase
+              .from('clientes')
+              .insert([{
+                nombre: extracted.nombre,
+                telefono_whatsapp: cleanNumber,
+                municipio: extracted.municipio || 'Iriona, Colón',
+                tipo_mineral: 'oro',
+                situacion_tierra: 'arrendatario_sin_titulo'
+              }]);
+
+            if (insertError) {
+              console.log('Insert error:', insertError.message);
+            } else {
+              console.log('Client auto-registered:', extracted.nombre);
+            }
+          } else {
+            console.log('Client already exists, skipping insert');
           }
+        } else {
+          console.log('No valid name found in extraction');
         }
       } catch (e) {
         console.log('Extraction parse error:', e.message);
+        console.log('Raw text was:', extractionResponse.content[0].text);
       }
     }
 
