@@ -40,9 +40,9 @@ Todos los pagos son vía Finacoop, en lempiras, al tipo de cambio BCH del día.
 Plazo total estimado: 6 a 14 meses según complejidad ambiental.
 
 SERVICIO 2 — TITULACIÓN DE PROPIEDAD
-Precio base: L 38,000 (cubre hasta 2 manzanas)
-Manzanas adicionales: L 8,000 por cada manzana extra
-Ejemplo: 10 manzanas = L 38,000 + (8 × L 8,000) = L 102,000
+Precio base: L 60,000 (cubre hasta 2 manzanas)
+Manzanas adicionales: L 25,000 por cada manzana extra
+Ejemplo: 10 manzanas = L 60,000 + (8 × L 25,000) = L 260,000
 Cliente: el dueño de la tierra (no el minero)
 Plazo estimado: 4 a 8 meses
 
