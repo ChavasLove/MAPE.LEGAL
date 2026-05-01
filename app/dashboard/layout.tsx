@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LayoutDashboard, FolderOpen, MessageSquare, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, MessageSquare, Users, Settings, LogOut } from 'lucide-react';
 
 const ROL_LABEL: Record<string, string> = {
   admin:             'Administrador',
@@ -14,6 +14,7 @@ const navItems = [
   { href: '/dashboard',              label: 'Resumen',      Icon: LayoutDashboard },
   { href: '/dashboard/expedientes',  label: 'Expedientes',  Icon: FolderOpen      },
   { href: '/dashboard/mensajes',     label: 'Mensajes WA',  Icon: MessageSquare   },
+  { href: '/dashboard/clientes',     label: 'Clientes WA',  Icon: Users           },
 ];
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {

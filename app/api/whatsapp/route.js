@@ -283,6 +283,32 @@ LO QUE MARÍA NUNCA HACE
 - Compartir información de otros clientes
 - Comprometerse con trámites en áreas protegidas, territorios indígenas o con derechos mineros previos`;
 
+function buildExpedienteContext(exps) {
+  const FASE_NOMBRES = [
+    'Onboarding',
+    'Solicitud INHGEOMIN',
+    'Licencia Ambiental SERNA',
+    'Resolución y Título INHGEOMIN',
+    'Permiso Municipal y Comercializador',
+  ];
+  return exps.map(exp => {
+    const faseNombre = FASE_NOMBRES[exp.fase_numero] ?? `Fase ${exp.fase_numero}`;
+    const faseActual = exp.progress_fases?.find(f => f.estado === 'activo')?.nombre ?? faseNombre;
+    const hitosPend = exp.hitos
+      ?.filter(h => h.estado === 'pendiente')
+      .map(h => `Hito ${h.numero} (L ${Number(h.monto ?? 0).toLocaleString('es-HN')})`)
+      .join(', ');
+    return `
+EXPEDIENTE ACTIVO: ${exp.numero_expediente}
+- Tipo: ${exp.tipo || 'Formalización minera'}
+- Fase actual: ${faseActual} (Fase ${exp.fase_numero}, paso ${exp.paso} de ${exp.total_pasos})
+- Estado: ${exp.estado}
+- Cierre estimado: ${exp.cierre_estimado ?? 'por definir'}
+- Hitos pendientes de pago: ${hitosPend || 'ninguno'}
+Cuando el cliente pregunte por el avance de su trámite, usa esta información. Sé específico con el número de expediente y la fase.`;
+  }).join('\n');
+}
+
 export async function POST(request) {
   try {
     const formData = await request.formData();
@@ -482,6 +508,28 @@ Comandos disponibles:
 
     console.log('Cliente found:', cliente ? cliente.nombre : 'Unknown');
 
+    // --- Query expedientes linked to this client ---
+    let expedienteContext = '';
+    if (cliente) {
+      const { data: exps } = await supabase
+        .from('expedientes')
+        .select(`
+          numero_expediente, tipo, estado, fase_numero, paso, total_pasos,
+          cierre_estimado,
+          hitos(numero, monto, porcentaje, estado),
+          progress_fases(nombre, estado, orden)
+        `)
+        .or(`cliente_id.eq.${cliente.id},cliente.ilike.${cliente.nombre}`)
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (exps?.length) {
+        expedienteContext = buildExpedienteContext(exps);
+      } else {
+        expedienteContext = `\nEXPEDIENTE: Este cliente no tiene expediente activo todavía. Si pregunta por su trámite, explícale el proceso de Fase 0 y el Hito 1 de L 320,000 para iniciarlo.`;
+      }
+    }
+
     // --- Build client context for María ---
     const clienteContext = cliente
       ? `
@@ -556,7 +604,7 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
       }
     }
 
-    const dynamicPrompt = CHT_SYSTEM_PROMPT + clienteContext + (isNewConversation
+    const dynamicPrompt = CHT_SYSTEM_PROMPT + clienteContext + expedienteContext + (isNewConversation
       ? ''
       : `
 
