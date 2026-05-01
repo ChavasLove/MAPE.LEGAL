@@ -8,7 +8,7 @@ export async function GET() {
     const admin = getAdminClient();
 
     const { data: { users }, error } = await admin.auth.admin.listUsers();
-    if (error) throw error;
+    if (error || !users) throw error ?? new Error('listUsers returned no data');
 
     // Fetch roles for all users
     const { data: roles } = await admin

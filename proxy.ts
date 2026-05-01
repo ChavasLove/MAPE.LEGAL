@@ -10,6 +10,7 @@ function isPublic(pathname: string): boolean {
     pathname.startsWith('/api/auth/') || // unified auth endpoints
     pathname.startsWith('/api/admin/auth/') || // legacy admin auth
     pathname.startsWith('/api/webhook/') ||    // external webhooks (Meta, etc.)
+    pathname === '/api/whatsapp' ||            // Twilio webhook — no cookies from external
     pathname.startsWith('/_next/') ||
     pathname.startsWith('/images/') ||
     pathname === '/favicon.ico'

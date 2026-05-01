@@ -525,7 +525,7 @@ Responde DIRECTAMENTE a lo que acaba de decir el usuario.`);
       messages: cleanHistory,
     });
 
-    const assistantReply = claudeResponse.content[0].text;
+    const assistantReply = claudeResponse.content?.[0]?.text ?? 'Lo siento, no pude procesar tu mensaje en este momento.';
     console.log(`🤖 Claude responds: ${assistantReply}`);
 
     const { error: insertError } = await supabase.from("conversaciones_whatsapp").insert([
@@ -623,7 +623,7 @@ Si algún dato no está claramente mencionado, deja null.`
 
       try {
         // Strip markdown code blocks if Claude wraps the JSON
-        let rawText = extractionResponse.content[0].text;
+        let rawText = extractionResponse.content?.[0]?.text ?? '';
         rawText = rawText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
         console.log('Raw extraction text:', rawText);
@@ -662,7 +662,7 @@ Si algún dato no está claramente mencionado, deja null.`
         }
       } catch (e) {
         console.log('Extraction parse error:', e.message);
-        console.log('Raw text was:', extractionResponse.content[0].text);
+        console.log('Raw text was:', extractionResponse.content?.[0]?.text);
       }
     }
 
