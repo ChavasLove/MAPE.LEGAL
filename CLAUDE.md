@@ -21,8 +21,9 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 - Supabase (PostgreSQL). Dos clientes:
   - `services/supabase.ts` — cliente anónimo para lecturas públicas y portales de cliente
   - `services/adminSupabase.ts` — cliente service-role para escrituras admin y operaciones privilegiadas
-- Migraciones en `supabase/migrations/` (001–006). La 006 incluye tablas: `roles`, `contenido_cms`, `configuracion_sistema`, `notificaciones`
+- Migraciones en `supabase/migrations/` (001–011). La 006 incluye tablas: `roles`, `contenido_cms`, `configuracion_sistema`, `notificaciones`
 - Tablas del motor de workflow: `fases`, `transiciones_fase`, `expediente_fases`, `pagos`, `documentos`, `registro_auditoria`
+- **Migration 011**: `expedientes.cliente_id uuid FK → clientes(id)` (nullable, `on delete set null`). Índice: `idx_expedientes_cliente_id`. Permite vincular expedientes a clientes de WhatsApp de forma relacional.
 
 ## Motor de Workflow (`modules/`)
 - `modules/types.ts` — tipos de dominio: `Fase`, `TransicionFase`, `NextActionsResult` (incluye `is_final: boolean`)
@@ -71,6 +72,7 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 - `GET+PATCH /api/admin/config` — configuración del sistema
 - `GET+POST /api/admin/roles` + `PATCH+DELETE /api/admin/roles/[id]` — gestión de roles
 - `GET+POST /api/admin/usuarios` — lista y creación de usuarios (POST envía welcome email automáticamente)
+- `GET /api/admin/clientes` — lista todos los clientes registrados por WhatsApp con sus expedientes vinculados vía `cliente_id` FK (admin client, protegido por proxy)
 - `GET /api/broadcast` — estado: último broadcast, suscriptores activos, precios más recientes
 - `POST /api/broadcast/run` — disparar broadcast diario (protegido por `CRON_SECRET` header, sin auth cookie)
 - `GET /api/broadcast/config` — configuración de métricas del reporte diario
@@ -89,7 +91,8 @@ Webhook Twilio que conecta WhatsApp con Claude AI.
   - Contrato de sociedad minera: L 55,000 (co-pagado 50/50)
 - **Historial**: últimos 20 mensajes de `conversaciones_whatsapp` por número de WhatsApp
 - **Lookup de cliente**: busca en tabla `clientes` por `telefono_whatsapp` (strip de `whatsapp:` prefix) — si existe, inyecta nombre/municipio/tierra en el prompt; si no, instruye registro natural
-- **Prompt dinámico**: base + contexto de cliente + (si conversación en curso) bloque `CONTEXTO CRÍTICO` que prohíbe re-saludos
+- **Contexto de expediente**: tras el lookup de cliente, consulta `expedientes` por `cliente_id = cliente.id` (fallback: `cliente ILIKE nombre`). Inyecta en el prompt: `numero_expediente`, fase actual, paso actual, estado, cierre estimado, hitos pendientes. Si no hay expediente: instruye a María a explicar Fase 0 e Hito 1. Helper: `buildExpedienteContext(exps)` en `route.js`.
+- **Prompt dinámico**: base + contexto de cliente + contexto de expediente + (si conversación en curso) bloque `CONTEXTO CRÍTICO` que prohíbe re-saludos
 - **Dedup**: filtra mensajes assistant consecutivos antes de enviar a Claude
 - **Tablas Supabase**:
   - `conversaciones_whatsapp` — historial por `numero_whatsapp`, columnas `role`, `content`
@@ -222,6 +225,17 @@ Sistema determinístico que intercepta mensajes de admins de broadcast ANTES de 
 
 - **Logging**: cada ejecución (exitosa o no) → fila en `admin_actions` con `command_type`, `payload`, `success`, `error_msg`
 - **Tabla**: `admin_actions` — `user_phone`, `command_type`, `payload jsonb`, `success`, `error_msg`, `created_at`
+
+## Dashboard — Clientes WhatsApp (`app/dashboard/clientes/page.tsx`)
+
+Página de prospectos y clientes registrados por María.
+
+- **Datos**: consume `GET /api/admin/clientes` (admin client Supabase)
+- **Columnas**: Nombre, Municipio, Mineral, Situación tierra, Teléfono WA, Registrado, Expediente, Estado
+- **Badge "Prospecto"**: cliente sin expediente vinculado (lead puro)
+- **Badges de estado**: colores del sistema de diseño (activo=azul, alerta=ámbar, bloqueado=rojo, completado=verde)
+- **Vinculación futura**: para asociar un expediente a un cliente, actualizar `expedientes.cliente_id` con el `uuid` del cliente (SQL o admin panel)
+- **Nav**: enlace "Clientes WA" en sidebar del dashboard (`app/dashboard/layout.tsx`)
 
 ## Onboarding (`services/onboardingService.ts`)
 
