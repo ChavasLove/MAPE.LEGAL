@@ -1,9 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { getUserByPhone, getOrCreateUserByPhone } from "@/services/userService";
-import {
-  enableMetric, disableMetric, updateMetricCurrency, getDailyReportConfig
-} from "@/services/configService";
+import { interpretAndExecute } from "@/services/adminCommandService";
+import { getOnboardingState, startOnboarding, handleOnboarding } from "@/services/onboardingService";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -510,29 +509,54 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
 
     const isAdmin = broadcastUser?.rol === 'admin';
 
-    // Admin command block injected only for admins
-    const adminCommandBlock = isAdmin ? `
+    // --- Admin command interception (runs BEFORE Claude) ---
+    // If commands are detected, execute them and return immediately.
+    // null means no commands → fall through to normal María flow.
+    if (isAdmin && broadcastUser) {
+      const cmdReply = await interpretAndExecute(broadcastUser, incomingMessage);
+      if (cmdReply !== null) {
+        await supabase.from("conversaciones_whatsapp").insert([
+          { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
+          { numero_whatsapp: fromNumber, role: "assistant", content: cmdReply },
+        ]);
+        return new Response(
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(cmdReply)}</Message></Response>`,
+          { status: 200, headers: { "Content-Type": "text/xml" } }
+        );
+      }
+    }
 
-═══════════════════════════════════
-MODO ADMINISTRADOR — COMANDOS DEL SISTEMA
-═══════════════════════════════════
-Este usuario es ADMINISTRADOR del sistema de reportes diarios.
-Puede pedirte modificar la configuración del reporte diario de precios.
+    // --- Onboarding check (new users, runs BEFORE building the prompt) ---
+    // Admins bypass onboarding entirely.
+    if (!isAdmin) {
+      const onboardingState = await getOnboardingState(cleanNumber);
+      if (!cliente && onboardingState === null) {
+        // Brand-new number: start onboarding flow
+        const firstQ = await startOnboarding(cleanNumber);
+        await supabase.from("conversaciones_whatsapp").insert([
+          { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
+          { numero_whatsapp: fromNumber, role: "assistant", content: firstQ },
+        ]);
+        return new Response(
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(firstQ)}</Message></Response>`,
+          { status: 200, headers: { "Content-Type": "text/xml" } }
+        );
+      }
+      if (onboardingState && onboardingState.estado !== 'COMPLETE') {
+        // In-progress onboarding — process the message
+        const reply = await handleOnboarding(cleanNumber, incomingMessage);
+        await supabase.from("conversaciones_whatsapp").insert([
+          { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
+          { numero_whatsapp: fromNumber, role: "assistant", content: reply },
+        ]);
+        return new Response(
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(reply)}</Message></Response>`,
+          { status: 200, headers: { "Content-Type": "text/xml" } }
+        );
+      }
+    }
 
-Comandos que puedes ejecutar (usa EXACTAMENTE este formato en tu respuesta):
-- Habilitar métrica:   [CMD:enable_metric:gold]  (opciones: gold, silver, usd_hnl, copper)
-- Deshabilitar:        [CMD:disable_metric:silver]
-- Cambiar moneda:      [CMD:set_currency:gold:HNL]  (USD o HNL)
-- Enviar reporte hoy:  [CMD:send_broadcast_now]
-
-Reglas para comandos:
-1. Incluye el comando [CMD:...] SOLO cuando el admin lo pide explícitamente.
-2. Nunca incluyas más de un comando por respuesta.
-3. Confirma verbalmente lo que hiciste después del comando.
-4. Si el admin pide algo fuera de estos comandos, explica qué puedes hacer.
-5. NO ejecutes comandos sin confirmación explícita del admin.` : '';
-
-    const dynamicPrompt = CHT_SYSTEM_PROMPT + clienteContext + adminCommandBlock + (isNewConversation
+    const dynamicPrompt = CHT_SYSTEM_PROMPT + clienteContext + (isNewConversation
       ? ''
       : `
 
@@ -561,51 +585,6 @@ Responde DIRECTAMENTE a lo que acaba de decir el usuario.`);
 
     let assistantReply = claudeResponse.content?.[0]?.text ?? 'Lo siento, no pude procesar tu mensaje en este momento.';
     console.log(`🤖 Claude responds: ${assistantReply}`);
-
-    // --- Execute admin commands embedded by María ---
-    if (isAdmin) {
-      const cmdMatch = assistantReply.match(/\[CMD:([^\]]+)\]/);
-      if (cmdMatch) {
-        const cmdRaw = cmdMatch[1];
-        const parts = cmdRaw.split(':');
-        const action = parts[0];
-        let cmdResult = '';
-
-        try {
-          if (action === 'enable_metric' && parts[1]) {
-            await enableMetric(parts[1], cleanNumber);
-            cmdResult = `Metrica ${parts[1]} habilitada.`;
-          } else if (action === 'disable_metric' && parts[1]) {
-            await disableMetric(parts[1], cleanNumber);
-            cmdResult = `Metrica ${parts[1]} deshabilitada.`;
-          } else if (action === 'set_currency' && parts[1] && parts[2]) {
-            await updateMetricCurrency(parts[1], parts[2], cleanNumber);
-            cmdResult = `Moneda de ${parts[1]} cambiada a ${parts[2]}.`;
-          } else if (action === 'send_broadcast_now') {
-            // Trigger broadcast asynchronously — do not await
-            fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/broadcast/run`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.CRON_SECRET ?? ''}`,
-              },
-              body: JSON.stringify({ triggered_by: `admin:${cleanNumber}` }),
-            }).catch(e => console.error('Broadcast trigger failed:', e));
-            cmdResult = 'Reporte diario enviando en segundo plano.';
-          }
-          console.log(`[admin_cmd] ${cmdRaw} — ${cmdResult}`);
-        } catch (cmdErr) {
-          console.error('[admin_cmd] Error:', cmdErr);
-          cmdResult = 'Hubo un error al ejecutar el comando.';
-        }
-
-        // Strip the raw [CMD:...] tag from the reply shown to the admin
-        assistantReply = assistantReply.replace(/\[CMD:[^\]]+\]/g, '').trim();
-        if (cmdResult) {
-          assistantReply += `\n\nSistema: ${cmdResult}`;
-        }
-      }
-    }
 
     // --- Auto-create broadcast user if not yet registered ---
     if (!broadcastUser) {

@@ -97,8 +97,9 @@ Webhook Twilio que conecta WhatsApp con Claude AI.
   - `clientes` — lookup y auto-registro por `telefono_whatsapp`
 - **Trigger de transacción**: respuesta contiene `"Listo"` **y** `"Confirmas"` → insert en `transacciones_pendientes`
 - **Auto-registro**: respuesta contiene `"te voy a registrar"` y cliente no existe → insert en `clientes` con defaults de Iriona
-- **Admin broadcast commands**: si `usuarios_broadcast.rol = 'admin'`, María recibe bloque de comandos en su prompt. Emite `[CMD:action:args]` → servidor ejecuta y lo despoja de la respuesta visible. Comandos: `enable_metric`, `disable_metric`, `set_currency`, `send_broadcast_now`
-- **Auto-alta broadcast**: todo número que pase por el webhook se registra automáticamente en `usuarios_broadcast` (rol `minero`) si no existe
+- **Admin command interpreter**: si `usuarios_broadcast.rol = 'admin'`, el mensaje pasa por `interpretAndExecute()` (`services/adminCommandService.ts`) **antes** de llamar a Claude. Si detecta comandos, los ejecuta vía `configService` y retorna TwiML directamente (Claude no se llama). Comandos: `ENABLE_METRIC`, `DISABLE_METRIC`, `SET_CURRENCY`, `SET_AUDIENCE`, `SET_BROADCAST_TIME`, `SEND_BROADCAST`. Todos los comandos se loguean en `admin_actions`.
+- **Onboarding**: números nuevos (sin registro en `clientes` y sin estado en `onboarding_states`) entran al flujo de onboarding (`services/onboardingService.ts`) — 4 preguntas (nombre → DPI → ubicación → rol). Estado persistido en `onboarding_states`. Al completar: escribe en `clientes` + `usuarios_broadcast`.
+- **Auto-alta broadcast**: todo número que complete el onboarding (o que ya tenga registro) se registra en `usuarios_broadcast` (rol `minero` por defecto, puede cambiar en la pregunta de rol)
 
 ## Landing page — imágenes
 Todas las imágenes están en `public/images/`. Distribución actual:
