@@ -1,4 +1,5 @@
 import { getAdminClient } from '@/services/adminSupabase';
+import { type BroadcastRol } from '@/services/userService';
 
 export interface ConfigEntry {
   clave:       string;
@@ -121,4 +122,27 @@ export async function updateMetricConfig(
     .update({ ...patch, updated_by: updatedBy, updated_at: new Date().toISOString() })
     .eq('metric', metric);
   if (error) throw error;
+}
+
+// ─── Broadcast audience + schedule ───────────────────────────────────────────
+
+// Stores comma-separated list of roles in configuracion_sistema.
+// Audit trail is in admin_actions table — updatedBy is for logging only.
+export async function updateAudience(
+  roles: BroadcastRol[],
+  _updatedBy: string
+): Promise<void> {
+  await setConfigs({ broadcast_audience: roles.join(',') });
+}
+
+// Stores broadcast time in HH:MM (24h) in configuracion_sistema.
+export async function updateSchedule(
+  time: string,
+  _updatedBy: string
+): Promise<void> {
+  // Validate HH:MM format before storing
+  if (!/^\d{2}:\d{2}$/.test(time)) {
+    throw new Error(`updateSchedule: invalid time format "${time}" — expected HH:MM`);
+  }
+  await setConfigs({ broadcast_time: time });
 }

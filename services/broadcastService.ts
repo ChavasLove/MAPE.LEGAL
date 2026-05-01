@@ -91,7 +91,7 @@ export async function generateDailyMessage(precios: PreciosDiarios): Promise<str
 ${priceContext}`,
       }],
     });
-    commentary = res.content?.[0]?.text?.trim() ?? '';
+    commentary = ((res.content?.[0] as { text?: string })?.text ?? '').trim();
   } catch {
     commentary = 'Los precios de hoy estan disponibles para su consulta.';
   }

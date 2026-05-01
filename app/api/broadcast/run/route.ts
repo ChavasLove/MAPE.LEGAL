@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { runDailyBroadcast } from '@/jobs/dailyBroadcast';
+import { runDailyBroadcast, type DailyBroadcastOptions } from '@/jobs/dailyBroadcast';
 
 // POST /api/broadcast/run
 // Trigger the daily broadcast. Protected by CRON_SECRET header.
@@ -14,10 +14,10 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = await req.json().catch(() => ({})) as { roles?: string[]; triggered_by?: string };
+    const body = await req.json().catch(() => ({})) as { roles?: DailyBroadcastOptions['roles']; triggered_by?: string };
     const result = await runDailyBroadcast({
       triggeredBy: body.triggered_by ?? 'api',
-      roles: body.roles as Parameters<typeof runDailyBroadcast>[0]['roles'],
+      roles:       body.roles,
     });
     return NextResponse.json(result);
   } catch (e) {
