@@ -1,6 +1,7 @@
 # Tasks
 
 ## Pending
+- [ ] Configure `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in Vercel Environment Variables
 - [ ] Implement `documentos` table and fill real document check in `getBlockingReasons`
 - [ ] Add Row Level Security (RLS) policies to all Supabase tables
 - [ ] Implement Supabase Auth and wire `user_id` to session
@@ -24,3 +25,5 @@
 - [x] Phase history tracking (`expediente_fases` with `entrada_en` / `salida_en`)
 - [x] Bilingual naming convention (Spanish DB/domain, English code logic)
 - [x] Decision endpoint `GET /api/expedientes/:id/next-actions`
+- [x] Fix Vercel build failure — lazy Proxy on Supabase client + `force-dynamic` on all API routes
+- [x] Add `.env.example` documenting required environment variables

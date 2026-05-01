@@ -1,7 +1,7 @@
 # Current State
 
 ## Last Updated
-2026-04-25
+2026-05-01
 
 ## Current Module
 Expedientes — workflow engine complete
@@ -45,6 +45,12 @@ Expedientes — workflow engine complete
 - `POST /api/expedientes` — create expediente (body: `{ nombre }`)
 - `GET  /api/expedientes/:id/next-actions` — returns decision result
 - `POST /api/expedientes/:id/transition` — executes advance (body: `{ user_id?, transition_id? }`)
+- All routes use `export const dynamic = 'force-dynamic'` (prevents build-time pre-render)
+
+### Vercel deployment
+- Supabase client uses a lazy Proxy — `createClient` deferred to first request
+- `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` must be set in
+  Vercel → Project → Settings → Environment Variables (Production + Preview)
 
 ### Architecture
 - Bilingual naming convention enforced: Spanish for DB + domain, English for code logic
@@ -61,6 +67,7 @@ Expedientes — workflow engine complete
 - Document check in `getBlockingReasons` is a stub — always returns `pending` for any `requiere_documentos` condition until the `documentos` table is built
 - No Row Level Security (RLS) policies defined yet
 - No user authentication implemented
+- Vercel env vars must be configured manually in the dashboard — not in code
 
 ---
 
