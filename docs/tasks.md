@@ -1,6 +1,7 @@
 # Tasks
 
 ## Pending
+- [ ] Wire CTA form (`/` landing page) to Supabase leads table or WhatsApp API
 - [ ] Implement `documentos` table and fill real document check in `getBlockingReasons`
 - [ ] Add Row Level Security (RLS) policies to all Supabase tables
 - [ ] Implement Supabase Auth and wire `user_id` to session
@@ -24,3 +25,4 @@
 - [x] Phase history tracking (`expediente_fases` with `entrada_en` / `salida_en`)
 - [x] Bilingual naming convention (Spanish DB/domain, English code logic)
 - [x] Decision endpoint `GET /api/expedientes/:id/next-actions`
+- [x] Public landing page (`/`) — bilingual ES/EN, all sections, animated mockup, CTA form

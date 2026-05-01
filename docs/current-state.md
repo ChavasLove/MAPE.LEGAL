@@ -1,10 +1,10 @@
 # Current State
 
 ## Last Updated
-2026-04-25
+2026-05-01
 
 ## Current Module
-Expedientes — workflow engine complete
+Landing page — public-facing marketing page complete
 
 ---
 
@@ -50,6 +50,15 @@ Expedientes — workflow engine complete
 - Bilingual naming convention enforced: Spanish for DB + domain, English for code logic
 - Documented in `/docs/architecture.md`
 
+### Landing page (`app/page.tsx`)
+- Full bilingual (ES/EN) landing page implemented as Next.js Client Component
+- Language persisted in `localStorage`; defaults to Spanish
+- Sections: Nav, Hero (with animated dashboard mockup), Stats bar, How it works, Traceability (with progress card), 5 Fases, Quote, CTA form, Footer
+- CTA form uses React state — no external service wired yet (shows success message on submit)
+- Font switched from Geist to Inter via `next/font/google` in `layout.tsx`
+- All design tokens (colors, spacing) in `globals.css` as CSS custom properties
+- Build passes: Turbopack ✓ · TypeScript ✓ · 6 routes generated ✓
+
 ---
 
 ## In Progress
@@ -65,7 +74,8 @@ Expedientes — workflow engine complete
 ---
 
 ## Next Step
+- Wire CTA form to a real backend (Supabase table or WhatsApp API)
 - Implement `documentos` table and real document check in `getBlockingReasons`
 - Add RLS policies to all Supabase tables
 - Implement Supabase Auth integration
-- Add UI for advancing fases and managing pagos
+- Add UI for advancing fases and managing pagos (dashboard view at `/expedientes`)

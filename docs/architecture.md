@@ -88,10 +88,21 @@ POST /api/expedientes/:id/transition
 
 ## Folder Structure
 - `/app` → UI and routing
+  - `page.tsx` — public landing page (Client Component, bilingual ES/EN)
+  - `layout.tsx` — root layout; loads Inter via `next/font/google`
+  - `globals.css` — CSS custom properties (design tokens) + all landing page styles
+  - `expedientes/` — internal dashboard route (in progress)
+  - `api/` — REST API routes
 - `/modules` → business logic (`expedientes.ts`, `workflow.ts`)
 - `/services` → external integrations (`supabase.ts`, `expedientesService.ts`, `fasesService.ts`)
 - `/docs` → system memory and AI context
 - `/supabase` → database schema and migrations (`001`, `002`, `003`)
+
+## Frontend Design System
+- Font: **Inter** (Google Fonts, loaded via `next/font/google`)
+- Color tokens in `globals.css` `:root`: `--blue`, `--blue-dk`, `--blue-lt`, `--green`, `--amber`, `--t1/t2/t3`, `--bg`, `--bg2`, `--bg3`, `--border`
+- Language toggle: React `useState<'es'|'en'>` + `localStorage` persistence; no CSS body-class trick
+- Reference design: institutional style (white + `#1a56db` blue), inspired by Honduran government portal aesthetics
 
 ## Design Principles
 - Modular architecture
