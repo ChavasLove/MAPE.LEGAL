@@ -71,6 +71,11 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 - `GET+PATCH /api/admin/config` — configuración del sistema
 - `GET+POST /api/admin/roles` + `PATCH+DELETE /api/admin/roles/[id]` — gestión de roles
 - `GET+POST /api/admin/usuarios` — lista y creación de usuarios (POST envía welcome email automáticamente)
+- `GET /api/broadcast` — estado: último broadcast, suscriptores activos, precios más recientes
+- `POST /api/broadcast/run` — disparar broadcast diario (protegido por `CRON_SECRET` header, sin auth cookie)
+- `GET /api/broadcast/config` — configuración de métricas del reporte diario
+- `PATCH /api/broadcast/config` — cambiar métrica: `{ metric, action, currency?, patch?, updated_by? }`
+- `GET /api/broadcast/prices?days=7` — historial de precios; `?latest=true` para solo el más reciente
 
 ## Asistente Virtual María (`app/api/whatsapp/route.js`)
 Webhook Twilio que conecta WhatsApp con Claude AI.
@@ -92,6 +97,8 @@ Webhook Twilio que conecta WhatsApp con Claude AI.
   - `clientes` — lookup y auto-registro por `telefono_whatsapp`
 - **Trigger de transacción**: respuesta contiene `"Listo"` **y** `"Confirmas"` → insert en `transacciones_pendientes`
 - **Auto-registro**: respuesta contiene `"te voy a registrar"` y cliente no existe → insert en `clientes` con defaults de Iriona
+- **Admin broadcast commands**: si `usuarios_broadcast.rol = 'admin'`, María recibe bloque de comandos en su prompt. Emite `[CMD:action:args]` → servidor ejecuta y lo despoja de la respuesta visible. Comandos: `enable_metric`, `disable_metric`, `set_currency`, `send_broadcast_now`
+- **Auto-alta broadcast**: todo número que pase por el webhook se registra automáticamente en `usuarios_broadcast` (rol `minero`) si no existe
 
 ## Landing page — imágenes
 Todas las imágenes están en `public/images/`. Distribución actual:
@@ -153,7 +160,31 @@ ANTHROPIC_API_KEY              # Requerida por app/api/whatsapp/route.js (asiste
 TWILIO_ACCOUNT_SID             # Consola Twilio — contact forwarding a Willis
 TWILIO_AUTH_TOKEN              # Consola Twilio — contact forwarding a Willis
 TWILIO_WHATSAPP_FROM           # whatsapp:+14155238886 (sandbox) o sender aprobado
+# ── Sistema de broadcast (nuevas) ────────────────────────────────────────────
+GOLDAPI_KEY                    # goldapi.io — precios oro/plata/cobre (free tier disponible)
+EXCHANGE_RATE_API_KEY          # exchangerate-api.com v6 (opcional; sin clave usa tier gratuito)
+CRON_SECRET                    # Header Bearer para proteger POST /api/broadcast/run desde cron externo
 ```
+
+## Sistema de Broadcast Diario (`jobs/`, `services/broadcastService.ts`)
+
+- **Tablas**: `usuarios_broadcast`, `daily_report_config`, `precios_diarios`, `broadcast_log`
+- **Roles broadcast**: `minero` (default), `comprador`, `tecnico`, `admin`
+- **Flujo**: cron → `POST /api/broadcast/run` → `runDailyBroadcast()` → fetch precios → store → `generateDailyMessage()` (Claude) → `sendDailyBroadcast()` → Meta Cloud API → log
+- **Formato de reporte**: fecha + métricas habilitadas + comentario de María (≤2 oraciones)
+- **Servicios**:
+  - `services/userService.ts` — `getOrCreateUserByPhone`, `assignRole`, `getActiveSubscribers`, `listUsers`
+  - `services/pricingService.ts` — `fetchGoldPrice`, `fetchSilverPrice`, `fetchUSDHNL`, `fetchCopperPrice`, `fetchAndStorePrices`
+  - `services/broadcastService.ts` — `generateDailyMessage`, `sendDailyBroadcast`, `getLastBroadcastLog`
+  - `services/configService.ts` — extendido con `getDailyReportConfig`, `enableMetric`, `disableMetric`, `updateMetricCurrency`, `updateMetricConfig`
+- **Cron en producción**: configurar en Vercel o servicio externo para `POST /api/broadcast/run` con `Authorization: Bearer <CRON_SECRET>` una vez al día
+- **Comando de prueba local**:
+  ```bash
+  curl -X POST http://localhost:3000/api/broadcast/run \
+    -H "Authorization: Bearer <CRON_SECRET>" \
+    -H "Content-Type: application/json" \
+    -d '{"triggered_by":"test"}'
+  ```
 
 ## Modo Admin — María WhatsApp
 Trigger: mensaje contiene `willis yang` + `TENKA-2026` (passphrase en código, línea 206 de `route.js`).

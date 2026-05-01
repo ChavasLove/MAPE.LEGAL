@@ -11,6 +11,7 @@ function isPublic(pathname: string): boolean {
     pathname.startsWith('/api/admin/auth/') || // legacy admin auth
     pathname.startsWith('/api/webhook/') ||    // external webhooks (Meta, etc.)
     pathname === '/api/whatsapp' ||            // Twilio webhook — no cookies from external
+    pathname === '/api/broadcast/run' ||       // cron trigger — protected by CRON_SECRET header
     pathname.startsWith('/_next/') ||
     pathname.startsWith('/images/') ||
     pathname === '/favicon.ico'
@@ -33,6 +34,9 @@ export function proxy(request: NextRequest) {
     pathname.startsWith('/api/mensajes') ||
     pathname.startsWith('/api/email/') ||
     pathname.startsWith('/api/whatsapp/') ||
+    pathname.startsWith('/api/broadcast/config') ||
+    pathname.startsWith('/api/broadcast/prices') ||
+    pathname === '/api/broadcast' ||
     pathname.startsWith('/api/prices');
 
   if (!isProtected) return NextResponse.next();
@@ -64,6 +68,9 @@ export function proxy(request: NextRequest) {
     pathname.startsWith('/api/mensajes') ||
     pathname.startsWith('/api/email/') ||
     pathname.startsWith('/api/whatsapp/') ||
+    pathname.startsWith('/api/broadcast/config') ||
+    pathname.startsWith('/api/broadcast/prices') ||
+    pathname === '/api/broadcast' ||
     pathname.startsWith('/api/prices')
   ) {
     if (!DASHBOARD_ROLES.has(role)) return NextResponse.redirect(new URL('/login', request.url));
@@ -92,6 +99,8 @@ export const config = {
     '/api/mensajes/:path*',
     '/api/email/:path*',
     '/api/whatsapp/:path*',
+    '/api/broadcast',
+    '/api/broadcast/:path*',
     '/api/prices',
     '/api/webhook/:path*',
   ],
