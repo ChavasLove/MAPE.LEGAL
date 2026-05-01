@@ -121,7 +121,7 @@ Reglas:
       }],
     });
 
-    const raw = (res.content?.[0]?.text ?? '{}')
+    const raw = ((res.content?.[0] as { text?: string })?.text ?? '{}')
       .replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     return JSON.parse(raw) as ExtractedFields;
   } catch {
