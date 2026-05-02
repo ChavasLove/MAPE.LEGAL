@@ -62,7 +62,7 @@ export function PriceWidgets() {
       return;
     }
     const raw = (await res.json().catch(() => null)) as {
-      gold?: number; silver?: number; hnlPerUsd?: number;
+      gold?: MetalData; silver?: MetalData; hnlPerUsd?: number;
     } | null;
     if (!raw) {
       setError('No se pudo actualizar precios');
@@ -70,8 +70,8 @@ export function PriceWidgets() {
       return;
     }
     setPrices({
-      gold: raw.gold ?? null,
-      silver: raw.silver ?? null,
+      gold: raw.gold ?? EMPTY_METAL,
+      silver: raw.silver ?? EMPTY_METAL,
       hnlPerUsd: raw.hnlPerUsd ?? null,
       lastUpdated: new Date().toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' }),
     });

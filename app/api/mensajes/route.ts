@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getDashMensajes } from '@/services/dashboardService';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const mensajes = await getDashMensajes();

@@ -3,6 +3,8 @@ import { getLastBroadcastLog } from '@/services/broadcastService';
 import { getActiveSubscribers } from '@/services/userService';
 import { getLatestPrices } from '@/services/pricingService';
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/broadcast — status: last run, subscriber count, latest prices
 export async function GET() {
   try {

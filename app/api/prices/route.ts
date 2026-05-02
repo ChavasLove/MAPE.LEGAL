@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 // Module-level state: persists within a server instance, resets on cold start.
 // Adequate for pilot scale; replace with DB persistence if needed.
 const prev = { gold: 0, silver: 0 };
@@ -17,11 +19,11 @@ export async function GET() {
       fetch('https://api.metals.live/v1/spot', {
         headers: { Accept: 'application/json' },
         next: { revalidate: 60 },
-      }),
+      } as RequestInit),
       fetch('https://api.exchangerate-api.com/v4/latest/USD', {
         headers: { Accept: 'application/json' },
         next: { revalidate: 3600 },
-      }),
+      } as RequestInit),
     ]);
 
     const metalsData = await metalsRes.json();
