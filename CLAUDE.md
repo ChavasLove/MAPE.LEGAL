@@ -83,21 +83,17 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 Webhook Twilio que conecta WhatsApp con Claude AI.
 
 - **Modelo**: `claude-haiku-4-5-20251001`
-- **Persona**: María, hondureña del equipo CHT — expresiones hondureñas naturales, sin emojis, respuestas cortas (≤5 líneas)
-- **Conocimiento**: 3 servicios completos con precios, 38 pasos de formalización en 4 fases, marco legal (Acuerdo 042-2013), obligaciones del cliente, fechas críticas
+- **Persona**: María, asistente de CHT — español sencillo, respuestas cortas (≤5 líneas), sin emojis, sin jerga
+- **Conocimiento**: 3 servicios completos con precios, 38 pasos de formalización en 4 fases, titulación, sociedad minera, obligaciones del cliente, fechas críticas
 - **Precios vigentes**:
   - Formalización minera: L 1,600,000 (3 hitos: 20/30/50%)
   - Titulación de propiedad: L 60,000 base (hasta 2 manzanas) + L 25,000 por manzana extra
   - Contrato de sociedad minera: L 55,000 (co-pagado 50/50)
 - **Historial**: últimos 20 mensajes de `conversaciones_whatsapp` por número de WhatsApp
-- **Lookup de cliente**: busca en tabla `clientes` por `telefono_whatsapp` (strip de `whatsapp:` prefix) — si existe, inyecta nombre/municipio/tierra en el prompt
+- **Lookup de cliente**: busca en tabla `clientes` por `telefono_whatsapp` (strip de `whatsapp:` prefix) — si existe, inyecta nombre/municipio/tierra en el prompt; si no, instruye registro natural
 - **Contexto de expediente**: tras el lookup de cliente, consulta `expedientes` por `cliente_id = cliente.id` (fallback: `cliente ILIKE nombre`). Inyecta en el prompt: `numero_expediente`, fase actual, paso actual, estado, cierre estimado, hitos pendientes. Si no hay expediente: instruye a María a explicar Fase 0 e Hito 1. Helper: `buildExpedienteContext(exps)` en `route.js`.
 - **Prompt dinámico**: base + contexto de cliente + contexto de expediente + (si conversación en curso) bloque `CONTEXTO CRÍTICO` que prohíbe re-saludos
 - **Dedup**: filtra mensajes assistant consecutivos antes de enviar a Claude
-- **Modo ejecutivo**: mensaje con `"willis yang"` + passphrase → reporte completo de métricas (WhatsApp, clientes, expedientes, facturación)
-- **Onboarding**: nuevos números sin cliente → flujo `onboardingService` antes de llegar a María
-- **Admin commands**: usuarios con rol `admin` → `adminCommandService` intercepta antes de Claude
-- **Alertas de contacto**: cuando María dice que alguien va a llamar → Twilio notifica a Willis (+50432100683)
 - **Tablas Supabase**:
   - `conversaciones_whatsapp` — historial por `numero_whatsapp`, columnas `role`, `content`
   - `transacciones_pendientes` — registros pendientes de confirmación (`estado: "pendiente_confirmacion"`)
@@ -105,11 +101,11 @@ Webhook Twilio que conecta WhatsApp con Claude AI.
   - `expedientes` — consultado para contexto de fase/hitos del cliente
   - `hitos_pago` — usado en reporte ejecutivo
 - **Trigger de transacción**: respuesta contiene `"Listo"` **y** `"Confirmas"` → insert en `transacciones_pendientes`
-- **Auto-registro**: respuesta contiene `"te voy a registrar"` → insert en `clientes` con defaults de Iriona
+- **Auto-registro**: respuesta contiene `"te voy a registrar"` y cliente no existe → insert en `clientes` con defaults de Iriona
 - **Extracción estructurada**: segunda llamada a Haiku post-respuesta — parsea JSON de la conversación para registrar nombre/municipio/manzanas; strip de bloques markdown antes del parse; variable de error: `clientInsertError` (no `insertError`)
-- **Admin command interpreter**: si `usuarios_broadcast.rol = 'admin'`, el mensaje pasa por `interpretAndExecute()` (`services/adminCommandService.ts`) **antes** de llamar a Claude. Si detecta comandos, los ejecuta vía `configService` y retorna TwiML directamente (Claude no se llama).
-- **Auto-alta broadcast**: todo número que complete el onboarding se registra en `usuarios_broadcast` (rol `minero` por defecto)
-- **Env vars adicionales requeridas**: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`
+- **Admin command interpreter**: si `usuarios_broadcast.rol = 'admin'`, el mensaje pasa por `interpretAndExecute()` (`services/adminCommandService.ts`) **antes** de llamar a Claude. Si detecta comandos, los ejecuta vía `configService` y retorna TwiML directamente (Claude no se llama). Comandos: `ENABLE_METRIC`, `DISABLE_METRIC`, `SET_CURRENCY`, `SET_AUDIENCE`, `SET_BROADCAST_TIME`, `SEND_BROADCAST`. Todos los comandos se loguean en `admin_actions`.
+- **Onboarding**: números nuevos (sin registro en `clientes` y sin estado en `onboarding_states`) entran al flujo de onboarding (`services/onboardingService.ts`) — 4 preguntas (nombre → DPI → ubicación → rol). Estado persistido en `onboarding_states`. Al completar: escribe en `clientes` + `usuarios_broadcast`.
+- **Auto-alta broadcast**: todo número que complete el onboarding (o que ya tenga registro) se registra en `usuarios_broadcast` (rol `minero` por defecto, puede cambiar en la pregunta de rol)
 
 ## Landing page — imágenes
 Todas las imágenes están en `public/images/`. Distribución actual:
