@@ -309,11 +309,21 @@ Cuando el cliente pregunte por el avance de su trámite, usa esta información. 
   }).join('\n');
 }
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request) {
   try {
     const formData = await request.formData();
     const incomingMessage = formData.get("Body") || '';
     const fromNumber = formData.get("From") || '';
+
+    // Media messages (images, voice notes) arrive with no Body text
+    if (!incomingMessage.trim()) {
+      return new Response(
+        `<?xml version="1.0" encoding="UTF-8"?><Response><Message>Lo sentimos, solo puedo procesar mensajes de texto. Escribime tu consulta.</Message></Response>`,
+        { status: 200, headers: { 'Content-Type': 'text/xml' } }
+      );
+    }
 
     // --- EXECUTIVE MODE: Willis Yang admin trigger ---
     const ADMIN_PASSPHRASE = 'TENKA-2026';
@@ -503,6 +513,8 @@ Comandos disponibles:
     // --- Query expedientes linked to this client ---
     let expedienteContext = '';
     if (cliente) {
+      // Sanitize nombre: strip PostgREST or() separator chars to prevent filter injection
+      const safeNombre = cliente.nombre.replace(/[,()]/g, ' ').trim();
       const { data: exps } = await supabase
         .from('expedientes')
         .select(`
@@ -511,7 +523,7 @@ Comandos disponibles:
           hitos(numero, monto, porcentaje, estado),
           progress_fases(nombre, estado, orden)
         `)
-        .or(`cliente_id.eq.${cliente.id},cliente.ilike.${cliente.nombre}`)
+        .or(`cliente_id.eq.${cliente.id},cliente.ilike.%${safeNombre}%`)
         .order('created_at', { ascending: false })
         .limit(3);
 
@@ -565,29 +577,36 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
     }
 
     // --- Onboarding check (new users, runs BEFORE building the prompt) ---
+    // Wrapped in try/catch so a missing onboarding_states table or any DB error
+    // gracefully falls through to the normal María flow instead of erroring.
     if (!isAdmin) {
-      const onboardingState = await getOnboardingState(cleanNumber);
-      if (!cliente && onboardingState === null) {
-        const firstQ = await startOnboarding(cleanNumber);
-        await supabase.from("conversaciones_whatsapp").insert([
-          { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
-          { numero_whatsapp: fromNumber, role: "assistant", content: firstQ },
-        ]);
-        return new Response(
-          `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(firstQ)}</Message></Response>`,
-          { status: 200, headers: { "Content-Type": "text/xml" } }
-        );
-      }
-      if (onboardingState && onboardingState.estado !== 'COMPLETE') {
-        const reply = await handleOnboarding(cleanNumber, incomingMessage);
-        await supabase.from("conversaciones_whatsapp").insert([
-          { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
-          { numero_whatsapp: fromNumber, role: "assistant", content: reply },
-        ]);
-        return new Response(
-          `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(reply)}</Message></Response>`,
-          { status: 200, headers: { "Content-Type": "text/xml" } }
-        );
+      try {
+        const onboardingState = await getOnboardingState(cleanNumber);
+        if (!cliente && onboardingState === null) {
+          const firstQ = await startOnboarding(cleanNumber);
+          await supabase.from("conversaciones_whatsapp").insert([
+            { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
+            { numero_whatsapp: fromNumber, role: "assistant", content: firstQ },
+          ]);
+          return new Response(
+            `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(firstQ)}</Message></Response>`,
+            { status: 200, headers: { "Content-Type": "text/xml" } }
+          );
+        }
+        if (onboardingState && onboardingState.estado !== 'COMPLETE') {
+          const reply = await handleOnboarding(cleanNumber, incomingMessage);
+          await supabase.from("conversaciones_whatsapp").insert([
+            { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
+            { numero_whatsapp: fromNumber, role: "assistant", content: reply },
+          ]);
+          return new Response(
+            `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(reply)}</Message></Response>`,
+            { status: 200, headers: { "Content-Type": "text/xml" } }
+          );
+        }
+      } catch (onboardingErr) {
+        console.log('Onboarding unavailable, falling through to María:', onboardingErr.message);
+        // Fall through to normal María flow
       }
     }
 
