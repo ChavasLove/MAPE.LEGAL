@@ -3,19 +3,19 @@ import Image from 'next/image';
 const pillars = [
   {
     title: 'Rigor legal',
-    desc: 'Cada expediente sigue el Manual Operativo MAPE.LEGAL — 54 pasos verificados ante INHGEOMIN, SERNA e ILO 169.',
+    desc: 'Cada expediente sigue el Manual Operativo MAPE.LEGAL — 54 pasos verificados ante INHGEOMIN, SERNA y el marco normativo vigente.',
   },
   {
     title: 'Independencia técnica',
-    desc: 'Abogados y PSAs asignados a cada productor. Sin conflictos de interés con intermediarios o compradores.',
+    desc: 'Abogados y técnicos ambientales asignados a cada productor. Sin conflictos de interés con intermediarios, compradores ni refinadores.',
   },
   {
     title: 'Estándares internacionales',
     desc: 'CRAFT Code, Fairmined, RJC y EUDR 2027. Los productores que formalizan hoy acceden al mercado premium de mañana.',
   },
   {
-    title: 'Impacto territorial',
-    desc: 'El programa está diseñado para comunidades —no corporaciones— en zonas de alta biodiversidad como la cuenca de Iriona.',
+    title: 'Cobertura nacional',
+    desc: 'Operamos en el corredor aurífero hondureño — acompañando operaciones artesanales en todo el territorio nacional con la misma rigurosidad.',
   },
 ];
 
@@ -24,7 +24,7 @@ export function About() {
     <section className="py-24 bg-earth-50" id="nosotros">
       <div className="max-w-6xl mx-auto px-6">
 
-        <div className="grid lg:grid-cols-2 gap-16 items-center">
+        <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
 
           {/* Left */}
           <div>
@@ -32,14 +32,18 @@ export function About() {
             <h2 className="text-4xl text-primary-900 mb-6">
               Corporación Hondureña Tenka
             </h2>
-            <p className="text-primary-500 text-lg leading-relaxed mb-6 font-sans">
+            <p className="text-primary-500 text-lg leading-relaxed mb-4 font-sans">
               Somos la empresa operadora de MAPE.LEGAL — la plataforma de evidencia legal de origen mineral
-              para la minería artesanal y pequeña minería (MAPE) en Honduras.
+              para la minería artesanal y pequeña minería en Honduras.
+            </p>
+            <p className="text-primary-500 leading-relaxed mb-4 font-sans">
+              Nuestra misión es transformar operaciones informales en negocios mineros formalizados,
+              trazables y certificados para el mercado ético internacional,
+              con acompañamiento legal continuo y tecnología de trazabilidad de clase mundial.
             </p>
             <p className="text-primary-500 leading-relaxed mb-6 font-sans">
-              Nuestro modelo combina tecnología de trazabilidad, asesoría legal especializada y acceso
-              directo a mercados de oro ético. Operamos bajo los más altos estándares de transparencia,
-              con auditorías independientes y cadena de custodia verificable desde el campo.
+              Nuestra visión es convertirnos en el estándar de referencia para la formalización del oro
+              artesanal en Honduras y el corredor aurífero de América Central.
             </p>
 
             {/* Legal services image */}
@@ -54,7 +58,7 @@ export function About() {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              {['ILO 169', 'SLAS-2', 'CRAFT', 'Fairmined', 'RJC'].map(cert => (
+              {['ILO 169', 'SLAS-2', 'CRAFT', 'Fairmined', 'RJC', 'EUDR 2027'].map(cert => (
                 <span key={cert} className="text-xs font-bold uppercase tracking-wider font-sans text-forest-800 bg-earth-50 border border-earth-200 px-3 py-1.5 rounded-full">
                   {cert}
                 </span>
@@ -75,12 +79,12 @@ export function About() {
 
         </div>
 
-        {/* Partners strip */}
+        {/* Standards strip */}
         <div className="mt-20 pt-12 border-t border-[#E5E7EB]">
           <p className="text-center text-primary-300 text-xs uppercase tracking-widest font-semibold mb-8 font-sans">
             Marco normativo y estándares aplicados
           </p>
-          <div className="flex flex-wrap justify-center gap-x-12 gap-y-4 text-primary-500 text-sm font-medium font-sans">
+          <div className="flex flex-wrap justify-center gap-x-6 sm:gap-x-12 gap-y-3 sm:gap-y-4 text-primary-500 text-sm font-medium font-sans">
             {[
               'Ley de Minería Honduras',
               'Reglamento MAPE',
@@ -90,9 +94,7 @@ export function About() {
               'Fairmined',
               'RJC',
               'EUDR 2027',
-            ].map(item => (
-              <span key={item}>{item}</span>
-            ))}
+            ].map(item => <span key={item}>{item}</span>)}
           </div>
         </div>
 

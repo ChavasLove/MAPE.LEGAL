@@ -169,11 +169,20 @@ td { border-bottom: 1px solid #E1E5EA; }
 
 ```css
 filter: brightness(0.80) contrast(1.05) saturate(0.82);
-overlay: bg-gradient-to-b from-black/30 via-black/20 to-black/60;
+overlay: bg-gradient-to-b from-black/40 via-black/30 to-black/70;
 fallback: bg-gradient-to-br from-primary-950 via-primary-900 to-primary-950;
 ```
 
 Tono: documental, no promocional.
+
+### Navegación (nav)
+
+Marca exclusivamente tipográfica — sin logotipo de imagen:
+
+```
+MAPE.LEGAL          ← text-white font-bold text-base tracking-tight
+Corporación Hondureña Tenka  ← text-white/45 text-[10px] tracking-widest uppercase
+```
 
 ### Botones CTA
 

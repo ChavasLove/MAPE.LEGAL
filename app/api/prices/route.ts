@@ -1,5 +1,16 @@
 import { NextResponse } from 'next/server';
 
+// Module-level state: persists within a server instance, resets on cold start.
+// Adequate for pilot scale; replace with DB persistence if needed.
+const prev = { gold: 0, silver: 0 };
+
+function computeDelta(current: number, previous: number) {
+  if (!previous) return { change: 0, changePercent: 0 };
+  const change = Math.round((current - previous) * 100) / 100;
+  const changePercent = Math.round(((current - previous) / previous) * 1_000_000) / 10_000;
+  return { change, changePercent };
+}
+
 export async function GET() {
   try {
     const [metalsRes, fxRes] = await Promise.all([
@@ -16,7 +27,6 @@ export async function GET() {
     const metalsData = await metalsRes.json();
     const fxData = await fxRes.json();
 
-    // metals.live returns an array: [{gold: 2345}, {silver: 29}, ...]
     const find = (key: string): number | null => {
       if (Array.isArray(metalsData)) {
         const entry = metalsData.find((m: Record<string, number>) => key in m);
@@ -25,9 +35,18 @@ export async function GET() {
       return metalsData?.[key] ?? null;
     };
 
+    const gold = find('gold');
+    const silver = find('silver');
+
+    const goldDelta   = gold   !== null && prev.gold   ? computeDelta(gold,   prev.gold)   : { change: 0, changePercent: 0 };
+    const silverDelta = silver !== null && prev.silver ? computeDelta(silver, prev.silver) : { change: 0, changePercent: 0 };
+
+    if (gold   !== null) prev.gold   = gold;
+    if (silver !== null) prev.silver = silver;
+
     return NextResponse.json({
-      gold: find('gold'),
-      silver: find('silver'),
+      gold:   { price: gold,   ...goldDelta },
+      silver: { price: silver, ...silverDelta },
       hnlPerUsd: fxData.rates?.HNL ?? null,
     });
   } catch {

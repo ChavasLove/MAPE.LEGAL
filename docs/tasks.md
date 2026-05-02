@@ -18,6 +18,8 @@
 ## In Progress
 - (none)
 
+---
+
 ## Completed
 - [x] ESLint / TypeScript bug fixes (2026-05-02)
   - `supabase.ts`: `Function` type → explicit `(...args: unknown[]) => unknown`

@@ -71,8 +71,7 @@ Landing page — imagery, brand enforcement, and commercial messaging complete
 
 ---
 
-## In Progress
-- Nothing active
+## Known Issues / Limitations
 
 ---
 
