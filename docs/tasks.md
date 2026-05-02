@@ -14,15 +14,15 @@
 ## In Progress
 - (none)
 
+---
+
 ## Completed
-- [x] Project initial setup
-- [x] Supabase integration
-- [x] Create fases table in database
-- [x] Implement payment validation logic (per-fase, via `pagos` table)
-- [x] Add audit log system (`registro_auditoria` with `user_id` and `accion`)
-- [x] Define expediente state transitions (explicit graph in `transiciones_fase`)
-- [x] Expediente workflow engine (`getNextActions`, `getBlockingReasons`, `advancePhase`)
-- [x] Phase history tracking (`expediente_fases` with `entrada_en` / `salida_en`)
-- [x] Bilingual naming convention (Spanish DB/domain, English code logic)
+
+- [x] Project initial setup and Supabase integration
+- [x] Database schema (migrations 001–009): all tables with RLS
+- [x] Payment validation logic (per-fase, via `pagos` table)
+- [x] Audit log system (`registro_auditoria`)
+- [x] Expedition workflow engine (`getNextActions`, `getBlockingReasons`, `advancePhase`)
+- [x] Phase history tracking (`expediente_fases`)
 - [x] Decision endpoint `GET /api/expedientes/:id/next-actions`
 - [x] Public landing page (`/`) — bilingual ES/EN, all sections, animated mockup, CTA form

@@ -68,190 +68,10 @@
 
 
 <script>
-/* MAPE LEGAL — Data */
+/* MAPE LEGAL — API layer */
 var ML_DATA = {
-  expedientes: [
-    {
-      id: 'EXP-2026-001', cliente: 'Juan Antonio Zelaya',
-      tipo: 'Exploración minera', municipio: 'Iriona, Colón',
-      fase: 1, paso: 9, totalPasos: 13, estado: 'activo',
-      inicio: '12 abr 2026', cierreEst: 'oct 2026',
-      abogado: { nombre: 'Abg. Ana Rodríguez', initials: 'AR' },
-      psa: { nombre: 'PSA Pedro Méndez', initials: 'PM' },
-      legalidad: 20,
-      hitos: [
-        { id: 1, monto: 320000, pct: 30, trigger: 'Firma del contrato', estado: 'cobrado', ref: 'Finacoop #4521', fecha: '12 abr 2026' },
-        { id: 2, monto: 480000, pct: 40, trigger: 'Constancia INHGEOMIN emitida', estado: 'pendiente' },
-        { id: 3, monto: 800000, pct: 30, trigger: 'Lic. ambiental + permiso minero', estado: 'bloqueado' }
-      ],
-      documentos: [
-        { id: 'd1', nombre: 'RTN autenticado', estado: 'verificado', info: 'Verificado 09:30 · PSA Méndez' },
-        { id: 'd2', nombre: 'Documento de identidad (DPI)', estado: 'pendiente', info: 'Recibido 10:48 · en revisión' },
-        { id: 'd3', nombre: 'Escritura del terreno', estado: 'faltante', info: 'Pendiente del cliente' },
-        { id: 'd4', nombre: 'Garantía bancaria', estado: 'faltante', info: 'Pendiente del cliente' }
-      ],
-      fases: [
-        { nombre: 'Fase 0 · Onboarding', estado: 'completada', pasos: 6, totalPasos: 6, subpasos: [] },
-        { nombre: 'Fase 1 · INHGEOMIN', estado: 'activa', pasos: 9, totalPasos: 13,
-          responsable: 'Abg. Rodríguez', vence: '22 abr 2026',
-          subpasos: [
-            { nombre: 'Paso 8 · Recolección de documentos', estado: 'completado' },
-            { nombre: 'Paso 9 · Publicación en periódico', estado: 'activo' },
-            { nombre: 'Paso 10 · Constancia INHGEOMIN', estado: 'pendiente' }
-          ]
-        },
-        { nombre: 'Fase 2 · SERNA', estado: 'pendiente', subpasos: [] },
-        { nombre: 'Fase 3 · Resolución minera', estado: 'pendiente', subpasos: [] },
-        { nombre: 'Fase 4 · Municipal + Comercializador', estado: 'pendiente', subpasos: [] }
-      ],
-      legalidadItems: [
-        { nombre: 'Tierra', estado: 'ok' }, { nombre: 'INHGEO', estado: 'proceso' },
-        { nombre: 'Ambiental', estado: 'pendiente' }, { nombre: 'Municipal', estado: 'pendiente' },
-        { nombre: 'Registro', estado: 'pendiente' }
-      ]
-    },
-    {
-      id: 'EXP-2026-007', cliente: 'María Isabel López',
-      tipo: 'Explotación minera', municipio: 'Trujillo, Colón',
-      fase: 1, paso: 11, totalPasos: 13, estado: 'alerta',
-      inicio: '3 feb 2026', cierreEst: 'ago 2026',
-      abogado: { nombre: 'Abg. Carlos Morales', initials: 'CM' },
-      psa: { nombre: 'PSA Luisa García', initials: 'LG' },
-      legalidad: 35,
-      hitos: [
-        { id: 1, monto: 480000, pct: 30, trigger: 'Firma del contrato', estado: 'cobrado' },
-        { id: 2, monto: 640000, pct: 40, trigger: 'Permiso de explotación', estado: 'pendiente' },
-        { id: 3, monto: 480000, pct: 30, trigger: 'Inicio de operaciones', estado: 'bloqueado' }
-      ],
-      documentos: [
-        { id: 'd1', nombre: 'RTN autenticado', estado: 'verificado', info: 'Verificado 3 feb' },
-        { id: 'd2', nombre: 'DPI', estado: 'verificado', info: 'Verificado 3 feb' },
-        { id: 'd3', nombre: 'Escritura del terreno', estado: 'verificado', info: 'Verificado 10 feb' },
-        { id: 'd4', nombre: 'Estudio de impacto ambiental', estado: 'pendiente', info: 'En revisión por SERNA' }
-      ],
-      fases: [
-        { nombre: 'Fase 0 · Onboarding', estado: 'completada', pasos: 6, totalPasos: 6, subpasos: [] },
-        { nombre: 'Fase 1 · INHGEOMIN', estado: 'alerta', pasos: 11, totalPasos: 13,
-          responsable: 'Abg. Morales', vence: '29 abr 2026',
-          subpasos: [
-            { nombre: 'Paso 10 · Constancia provisional', estado: 'completado' },
-            { nombre: 'Paso 11 · Oposición de terceros', estado: 'alerta' },
-            { nombre: 'Paso 12 · Resolución de oposición', estado: 'pendiente' }
-          ]
-        },
-        { nombre: 'Fase 2 · SERNA', estado: 'pendiente', subpasos: [] }
-      ],
-      legalidadItems: [
-        { nombre: 'Tierra', estado: 'ok' }, { nombre: 'INHGEO', estado: 'alerta' },
-        { nombre: 'Ambiental', estado: 'pendiente' }, { nombre: 'Municipal', estado: 'pendiente' },
-        { nombre: 'Registro', estado: 'pendiente' }
-      ]
-    },
-    {
-      id: 'EXP-2026-003', cliente: 'Carlos Eduardo Mejía',
-      tipo: 'Concesión artesanal', municipio: 'El Paraíso, Copán',
-      fase: 0, paso: 4, totalPasos: 6, estado: 'activo',
-      inicio: '1 abr 2026', cierreEst: 'dic 2026',
-      abogado: { nombre: 'Abg. Ana Rodríguez', initials: 'AR' },
-      psa: { nombre: 'PSA Pedro Méndez', initials: 'PM' },
-      legalidad: 0,
-      hitos: [
-        { id: 1, monto: 160000, pct: 30, trigger: 'Firma del contrato', estado: 'cobrado' },
-        { id: 2, monto: 213000, pct: 40, trigger: 'Concesión aprobada', estado: 'pendiente' },
-        { id: 3, monto: 160000, pct: 30, trigger: 'Operación iniciada', estado: 'bloqueado' }
-      ],
-      documentos: [
-        { id: 'd1', nombre: 'RTN autenticado', estado: 'verificado', info: 'Verificado 1 abr' },
-        { id: 'd2', nombre: 'DPI', estado: 'pendiente', info: 'Recibido 10:42 · en revisión' },
-        { id: 'd3', nombre: 'Escritura del terreno', estado: 'faltante', info: 'Pendiente del cliente' },
-        { id: 'd4', nombre: 'Garantía bancaria', estado: 'faltante', info: 'Pendiente del cliente' }
-      ],
-      fases: [
-        { nombre: 'Fase 0 · Onboarding', estado: 'activa', pasos: 4, totalPasos: 6,
-          responsable: 'PSA Méndez', vence: '28 abr 2026',
-          subpasos: [
-            { nombre: 'Paso 3 · Viabilidad INHGEOMIN', estado: 'completado' },
-            { nombre: 'Paso 4 · Recolección de documentos', estado: 'activo' },
-            { nombre: 'Paso 5 · Revisión documental', estado: 'pendiente' }
-          ]
-        },
-        { nombre: 'Fase 1 · INHGEOMIN', estado: 'pendiente', subpasos: [] }
-      ],
-      legalidadItems: [
-        { nombre: 'Tierra', estado: 'pendiente' }, { nombre: 'INHGEO', estado: 'pendiente' },
-        { nombre: 'Ambiental', estado: 'pendiente' }, { nombre: 'Municipal', estado: 'pendiente' },
-        { nombre: 'Registro', estado: 'pendiente' }
-      ]
-    },
-    {
-      id: 'EXP-2026-008', cliente: 'Roberto Paz Andino',
-      tipo: 'Exploración minera', municipio: 'Iriona, Colón',
-      fase: 0, paso: 1, totalPasos: 6, estado: 'nuevo',
-      inicio: '22 abr 2026', cierreEst: 'ene 2027',
-      abogado: { nombre: 'Abg. Carlos Morales', initials: 'CM' },
-      psa: { nombre: 'PSA Pedro Méndez', initials: 'PM' },
-      legalidad: 0,
-      hitos: [
-        { id: 1, monto: 320000, pct: 30, trigger: 'Firma del contrato', estado: 'pendiente' },
-        { id: 2, monto: 480000, pct: 40, trigger: 'Constancia INHGEOMIN', estado: 'bloqueado' },
-        { id: 3, monto: 800000, pct: 30, trigger: 'Permiso completo', estado: 'bloqueado' }
-      ],
-      documentos: [
-        { id: 'd1', nombre: 'RTN autenticado', estado: 'faltante', info: 'Pendiente del cliente' },
-        { id: 'd2', nombre: 'DPI', estado: 'faltante', info: 'Pendiente del cliente' },
-        { id: 'd3', nombre: 'Escritura del terreno', estado: 'faltante', info: 'Pendiente del cliente' },
-        { id: 'd4', nombre: 'Garantía bancaria', estado: 'faltante', info: 'Pendiente del cliente' }
-      ],
-      fases: [
-        { nombre: 'Fase 0 · Onboarding', estado: 'activa', pasos: 1, totalPasos: 6,
-          responsable: 'Abg. Morales', vence: '24 abr 2026',
-          subpasos: [{ nombre: 'Paso 1 · Consulta SIMHON/INHGEOMIN', estado: 'activo' }]
-        }
-      ],
-      legalidadItems: [
-        { nombre: 'Tierra', estado: 'pendiente' }, { nombre: 'INHGEO', estado: 'pendiente' },
-        { nombre: 'Ambiental', estado: 'pendiente' }, { nombre: 'Municipal', estado: 'pendiente' },
-        { nombre: 'Registro', estado: 'pendiente' }
-      ]
-    }
-  ],
-
-  mensajes: [
-    {
-      id: 'wa1', expId: 'EXP-2026-001', cliente: 'Juan Zelaya', hora: '10:48',
-      archivo: 'DPI-zelaya.jpg', tipo: 'imagen',
-      docTipo: 'Documento de identidad (DPI)', estado: 'listo', docId: 'd2',
-      campos: [
-        { label: 'Tipo de documento', valor: 'DPI Honduras', confianza: 'ok' },
-        { label: 'Nombres', valor: 'Juan Antonio', confianza: 'ok' },
-        { label: 'Apellidos', valor: 'Zelaya Martínez', confianza: 'ok' },
-        { label: 'Número DPI', valor: '0801-1985-01234', confianza: 'warn', nota: 'Confianza media — verifica el último dígito' },
-        { label: 'Fecha de nacimiento', valor: '15/03/1985', confianza: 'ok' },
-        { label: 'Vencimiento', valor: '15/03/2028', confianza: 'ok' }
-      ]
-    },
-    {
-      id: 'wa2', expId: 'EXP-2026-003', cliente: 'C. Mejía', hora: '10:42',
-      archivo: 'DPI-mejia.jpg', tipo: 'imagen',
-      docTipo: 'DPI', estado: 'procesando', docId: 'd2', campos: []
-    },
-    {
-      id: 'wa3', expId: 'EXP-2026-007', cliente: 'M. López', hora: '10:15',
-      archivo: 'estudio-ambiental.jpg', tipo: 'imagen',
-      docTipo: 'Estudio de impacto ambiental', estado: 'ilegible', docId: 'd4',
-      campos: [
-        { label: 'Tipo de documento', valor: 'Estudio ambiental', confianza: 'ok' },
-        { label: 'Propietario', valor: 'María Isabel López', confianza: 'warn', nota: 'Verificar segunda inicial' },
-        { label: 'Número expediente SERNA', valor: '???', confianza: 'err', nota: 'No legible — imagen borrosa' }
-      ]
-    },
-    {
-      id: 'wa4', expId: 'EXP-2026-001', cliente: 'Juan Zelaya', hora: '09:30',
-      archivo: 'RTN-zelaya.pdf', tipo: 'PDF',
-      docTipo: 'RTN autenticado', estado: 'verificado', docId: 'd1', campos: []
-    }
-  ],
-
+  expedientes: [],
+  mensajes: [],
   motivos: [
     { id: 'm1', texto: 'Ilegible o borroso — reenviar con mejor calidad',
       msg: 'El documento está borroso y no podemos leer los datos. Por favor toma la foto con buena iluminación y que se vean todos los bordes.' },
@@ -265,6 +85,34 @@ var ML_DATA = {
   ]
 };
 
+var API = {
+  get: function(url) {
+    return fetch(url).then(function(r) {
+      if (!r.ok) throw new Error('API error ' + r.status + ' ' + url);
+      return r.json();
+    });
+  },
+  patch: function(url, body) {
+    return fetch(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function(r) {
+      if (!r.ok) throw new Error('API error ' + r.status + ' ' + url);
+      return r.json();
+    });
+  },
+  post: function(url, body) {
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function(r) {
+      if (!r.ok) return r.json().then(function(e) { throw new Error(e.error || 'Error'); });
+      return r.json();
+    });
+  }
+};
 </script>
 <script type="text/babel">/* ml-panels.jsx — ExpDetail, VerifyPanel, RejectModal */
 const { useState: useStateP } = React;
@@ -2792,7 +2640,7 @@ function Badge({ v='muted', children, style={} }) {
   return <span style={{ display:'inline-flex', alignItems:'center', padding:'1px 8px', borderRadius:20, fontSize:11, fontWeight:600, ...map[v], ...style }}>{children}</span>;
 }
 
-function Btn({ v='default', onClick, children, sm, full, style={} }) {
+function Btn({ v='default', onClick, children, sm, full, disabled, style={} }) {
   const map = {
     default: { background:C.bg, color:C.t2, border:`1px solid ${C.border}` },
     primary: { background:C.blue, color:'#fff', border:`1px solid ${C.blue}` },
@@ -2800,10 +2648,11 @@ function Btn({ v='default', onClick, children, sm, full, style={} }) {
     success: { background:'#057a55', color:'#fff', border:'1px solid #057a55' }
   };
   return (
-    <button onClick={onClick} style={{
+    <button onClick={onClick} disabled={disabled} style={{
       display:'inline-flex', alignItems:'center', justifyContent:'center',
       padding: sm ? '4px 10px' : '6px 14px', borderRadius:4,
-      fontSize:12, fontWeight:500, cursor:'pointer',
+      fontSize:12, fontWeight:500, cursor: disabled ? 'not-allowed' : 'pointer',
+      opacity: disabled ? 0.55 : 1,
       width: full ? '100%' : undefined,
       ...map[v], ...style
     }}>{children}</button>
@@ -2847,25 +2696,24 @@ function Topbar({ exps, msgs }) {
 
 // ─── SIDEBAR ──────────────────────────────────────────────────────────────────
 
-function Sidebar({ exps, selId, onSel }) {
+function Sidebar({ exps, selId, onSel, onNewExp, loading }) {
   const estadoBadge = { activo:'green', alerta:'red', nuevo:'blue', completado:'muted' };
   const estadoLabel = { activo:'Activo', alerta:'Alerta', nuevo:'Nuevo', completado:'Completo' };
   return (
     <div style={{ width:210, flexShrink:0, borderRight:`1px solid ${C.border}`, display:'flex', flexDirection:'column', background:C.bg2, overflow:'hidden' }}>
-      {/* Search */}
       <div style={{ padding:'8px 10px', borderBottom:`1px solid ${C.border}` }}>
         <div style={{ display:'flex', alignItems:'center', gap:6, background:'#fff', border:`1px solid ${C.border}`, borderRadius:4, padding:'5px 9px' }}>
           <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="4" stroke={C.t3} strokeWidth="1.2"/><path d="M9 9l2 2" stroke={C.t3} strokeWidth="1.2" strokeLinecap="round"/></svg>
           <input readOnly placeholder="Buscar expediente…" style={{ background:'none', border:'none', fontSize:12, color:C.t3, width:'100%', cursor:'default' }} />
         </div>
       </div>
-      {/* Stats strip */}
       <div style={{ padding:'6px 12px', borderBottom:`1px solid ${C.border}`, display:'flex', gap:12 }}>
-        <span style={{ fontSize:10, color:C.t3 }}><strong style={{ color:C.t1 }}>{exps.length}</strong> activos</span>
+        <span style={{ fontSize:10, color:C.t3 }}><strong style={{ color:C.t1 }}>{exps.length}</strong> expedientes</span>
         {exps.filter(e=>e.estado==='alerta').length>0&&<span style={{ fontSize:10, color:C.red, fontWeight:600 }}>↑{exps.filter(e=>e.estado==='alerta').length} alerta</span>}
       </div>
-      {/* List */}
       <div style={{ flex:1, overflowY:'auto' }}>
+        {loading && <div style={{ padding:20, textAlign:'center', fontSize:12, color:C.t3 }}>Cargando…</div>}
+        {!loading && exps.length === 0 && <div style={{ padding:20, textAlign:'center', fontSize:12, color:C.t3 }}>Sin expedientes</div>}
         {exps.map(exp => {
           const sel = exp.id === selId;
           return (
@@ -2893,7 +2741,82 @@ function Sidebar({ exps, selId, onSel }) {
         })}
       </div>
       <div style={{ padding:'8px 12px', borderTop:`1px solid ${C.border}` }}>
-        <Btn full v="primary" style={{ fontSize:11 }}>+ Nuevo expediente</Btn>
+        <Btn full v="primary" onClick={onNewExp} style={{ fontSize:11 }}>+ Nuevo expediente</Btn>
+      </div>
+    </div>
+  );
+}
+
+// ─── NUEVO EXPEDIENTE MODAL ───────────────────────────────────────────────────
+
+function NewExpModal({ onCreated, onClose }) {
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    cliente: '', tipo: 'Exploración minera', municipio: '',
+    abogado_nombre: 'Abg. Ana Rodríguez', abogado_iniciales: 'AR',
+    psa_nombre: 'PSA Pedro Méndez', psa_iniciales: 'PM'
+  });
+
+  const ABOGADOS = { 'Abg. Ana Rodríguez': 'AR', 'Abg. Carlos Morales': 'CM' };
+  const PSAS     = { 'PSA Pedro Méndez': 'PM', 'PSA Luisa García': 'LG' };
+
+  const set = (k, v) => setForm(prev => {
+    const next = { ...prev, [k]: v };
+    if (k === 'abogado_nombre') next.abogado_iniciales = ABOGADOS[v] || 'XX';
+    if (k === 'psa_nombre')     next.psa_iniciales     = PSAS[v]     || 'XX';
+    return next;
+  });
+
+  const handleSubmit = () => {
+    if (!form.cliente.trim() || !form.municipio.trim()) return;
+    setSaving(true);
+    API.post('/api/expedientes', form)
+      .then(newExp => {
+        onCreated(newExp);
+      })
+      .catch(err => {
+        alert('Error al crear expediente: ' + err.message);
+        setSaving(false);
+      });
+  };
+
+  const field = (label, key, type='text', opts) => (
+    <div>
+      <div style={{ fontSize:11, fontWeight:600, color:C.t1, marginBottom:4 }}>{label}</div>
+      {type === 'select' ? (
+        <select value={form[key]} onChange={e=>set(key,e.target.value)}
+          style={{ width:'100%', border:`1px solid ${C.border}`, borderRadius:4, padding:'6px 9px', fontSize:12, fontFamily:'inherit', color:C.t1, background:'#fff' }}>
+          {opts.map(o => <option key={o} value={o}>{o}</option>)}
+        </select>
+      ) : (
+        <input value={form[key]} onChange={e=>set(key,e.target.value)} placeholder={opts}
+          style={{ width:'100%', border:`1px solid ${C.border}`, borderRadius:4, padding:'6px 9px', fontSize:12, fontFamily:'inherit', color:C.t1 }} />
+      )}
+    </div>
+  );
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.55)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+      <div style={{ background:'#fff', borderRadius:8, width:'100%', maxWidth:460, boxShadow:'0 20px 60px rgba(0,0,0,0.3)', overflow:'hidden' }}>
+        <div style={{ background:C.blue, padding:'14px 18px' }}>
+          <div style={{ fontSize:15, fontWeight:700, color:'#fff' }}>Nuevo expediente</div>
+          <div style={{ fontSize:11, color:'rgba(255,255,255,0.7)', marginTop:2 }}>Se creará con documentos y hitos predeterminados</div>
+        </div>
+        <div style={{ padding:'16px 18px', display:'flex', flexDirection:'column', gap:12 }}>
+          {field('Cliente (nombre completo)', 'cliente', 'text', 'Ej: Juan Antonio Zelaya')}
+          {field('Tipo de trámite', 'tipo', 'select', ['Exploración minera','Explotación minera','Concesión artesanal'])}
+          {field('Municipio', 'municipio', 'text', 'Ej: Iriona, Colón')}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+            {field('Abogado asignado', 'abogado_nombre', 'select', ['Abg. Ana Rodríguez','Abg. Carlos Morales'])}
+            {field('PSA asignado', 'psa_nombre', 'select', ['PSA Pedro Méndez','PSA Luisa García'])}
+          </div>
+        </div>
+        <div style={{ padding:'10px 18px', borderTop:`1px solid ${C.border}`, background:C.bg2, display:'flex', gap:8 }}>
+          <Btn onClick={onClose} style={{ flex:1 }} disabled={saving}>Cancelar</Btn>
+          <Btn v="primary" onClick={handleSubmit} style={{ flex:1 }} disabled={saving || !form.cliente.trim() || !form.municipio.trim()}>
+            {saving ? 'Creando…' : 'Crear expediente'}
+          </Btn>
+        </div>
       </div>
     </div>
   );
@@ -2916,20 +2839,17 @@ function WAFeed({ msgs, onVerify, selExpId }) {
 
   return (
     <div style={{ width:230, flexShrink:0, borderLeft:`1px solid ${C.border}`, display:'flex', flexDirection:'column', background:C.bg, overflow:'hidden' }}>
-      {/* Header */}
       <div style={{ background:C.blue, padding:'8px 10px' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <div style={{ fontSize:12, fontWeight:700, color:'#fff' }}>WhatsApp — en vivo</div>
           {pendientes>0&&<div style={{ background:'#ef4444', color:'#fff', borderRadius:20, padding:'0 7px', fontSize:10, fontWeight:700 }}>{pendientes}</div>}
         </div>
       </div>
-      {/* Filter tabs */}
       <div style={{ display:'flex', borderBottom:`1px solid ${C.border}`, background:C.bg }}>
         {[['todos','Todos'],['pending','Pendientes']].map(([k,l]) => (
           <div key={k} onClick={()=>setFilter(k)} style={{ flex:1, padding:'7px 0', textAlign:'center', fontSize:11, fontWeight:600, cursor:'pointer', color:filter===k?C.blue:C.t3, borderBottom:filter===k?`2px solid ${C.blue}`:'2px solid transparent' }}>{l}</div>
         ))}
       </div>
-      {/* Messages */}
       <div style={{ flex:1, overflowY:'auto' }}>
         {filtered.map((m,i) => (
           <div key={m.id} style={{ padding:'9px 10px', borderBottom:`1px solid ${C.border}`, background:i%2===0?C.bg:C.bg2, opacity:m.estado==='verificado'||m.estado==='rechazado'?0.45:1 }}>
@@ -2949,7 +2869,6 @@ function WAFeed({ msgs, onVerify, selExpId }) {
         ))}
         {filtered.length===0&&<div style={{ padding:20, textAlign:'center', fontSize:12, color:C.t3 }}>Sin mensajes pendientes</div>}
       </div>
-      {/* Footer stats */}
       <div style={{ padding:'7px 10px', borderTop:`1px solid ${C.border}`, background:C.bg2 }}>
         <div style={{ fontSize:10, color:C.t3, textAlign:'center' }}>{msgs.filter(m=>m.estado==='verificado').length} verificados hoy · {msgs.filter(m=>m.estado==='listo'||m.estado==='ilegible').length} pendientes</div>
       </div>
@@ -2971,19 +2890,49 @@ function EmptyState() {
 // ─── APP ──────────────────────────────────────────────────────────────────────
 
 function App() {
-  const [exps, setExps] = useState(ML_DATA.expedientes);
-  const [msgs, setMsgs] = useState(ML_DATA.mensajes);
-  const [selId, setSelId] = useState('EXP-2026-001');
-  const [view, setView] = useState('detail');   // 'detail' | 'verify'
+  const [exps, setExps]           = useState([]);
+  const [msgs, setMsgs]           = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [selId, setSelId]         = useState(null);
+  const [view, setView]           = useState('detail');
   const [verifyMsg, setVerifyMsg] = useState(null);
-  const [showReject, setShowReject] = useState(false);
-  const [toast, setToast] = useState(null);
+  const [showReject, setShowReject]   = useState(false);
+  const [showNewExp, setShowNewExp]   = useState(false);
+  const [toast, setToast]         = useState(null);
+
+  // Load data from API on mount
+  useEffect(() => {
+    Promise.all([
+      API.get('/api/expedientes'),
+      API.get('/api/mensajes')
+    ]).then(([loadedExps, loadedMsgs]) => {
+      setExps(Array.isArray(loadedExps) ? loadedExps : []);
+      setMsgs(Array.isArray(loadedMsgs) ? loadedMsgs : []);
+      if (Array.isArray(loadedExps) && loadedExps.length > 0) {
+        setSelId(loadedExps[0].id);
+      }
+      setLoading(false);
+    }).catch(err => {
+      console.error('Dashboard load error:', err);
+      setLoading(false);
+    });
+  }, []);
 
   const selExp = exps.find(e => e.id === selId);
 
   const showToast = (msg, type='success') => {
     setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  const reload = () => {
+    Promise.all([
+      API.get('/api/expedientes'),
+      API.get('/api/mensajes')
+    ]).then(([e, m]) => {
+      setExps(Array.isArray(e) ? e : []);
+      setMsgs(Array.isArray(m) ? m : []);
+    }).catch(console.error);
   };
 
   const handleSelectExp = id => {
@@ -2998,31 +2947,67 @@ function App() {
     setView('verify');
   };
 
+  // Approve: persist to DB then update local state
   const handleApprove = campos => {
     const now = new Date().toLocaleTimeString('es', { hour:'2-digit', minute:'2-digit' });
-    setExps(prev => prev.map(e => {
-      if (e.id !== verifyMsg.expId) return e;
-      return {
-        ...e,
-        documentos: e.documentos.map(d =>
-          d.id === verifyMsg.docId
-            ? { ...d, estado:'verificado', info:`Verificado ${now} · PSA Méndez` }
-            : d
-        )
-      };
-    }));
-    setMsgs(prev => prev.map(m => m.id === verifyMsg.id ? { ...m, estado:'verificado' } : m));
-    showToast('Documento verificado y registrado correctamente ✓');
-    setView('detail');
-    setVerifyMsg(null);
+    const info = `Verificado ${now}`;
+
+    Promise.all([
+      API.patch(`/api/documentos/${verifyMsg.docId}`, { estado:'verificado', info }),
+      API.patch(`/api/mensajes/${verifyMsg.id}`,     { estado:'verificado' })
+    ]).then(() => {
+      setExps(prev => prev.map(e => {
+        if (e.id !== verifyMsg.expId) return e;
+        return {
+          ...e,
+          documentos: e.documentos.map(d =>
+            d.id === verifyMsg.docId ? { ...d, estado:'verificado', info } : d
+          )
+        };
+      }));
+      setMsgs(prev => prev.map(m => m.id === verifyMsg.id ? { ...m, estado:'verificado' } : m));
+      showToast('Documento verificado y registrado ✓');
+      setView('detail');
+      setVerifyMsg(null);
+    }).catch(err => {
+      showToast('Error al registrar verificación', 'error');
+      console.error(err);
+    });
   };
 
+  // Reject: persist to DB then update local state
   const handleRejectSend = (motivoId, nota) => {
-    setMsgs(prev => prev.map(m => m.id === verifyMsg.id ? { ...m, estado:'rechazado' } : m));
-    showToast('Rechazo enviado al cliente por WhatsApp', 'error');
-    setShowReject(false);
+    const info = `Rechazado — motivo ${motivoId}`;
+    Promise.all([
+      API.patch(`/api/documentos/${verifyMsg.docId}`, { estado:'rechazado', info }),
+      API.patch(`/api/mensajes/${verifyMsg.id}`,     { estado:'rechazado' })
+    ]).then(() => {
+      setExps(prev => prev.map(e => {
+        if (e.id !== verifyMsg.expId) return e;
+        return {
+          ...e,
+          documentos: e.documentos.map(d =>
+            d.id === verifyMsg.docId ? { ...d, estado:'rechazado', info } : d
+          )
+        };
+      }));
+      setMsgs(prev => prev.map(m => m.id === verifyMsg.id ? { ...m, estado:'rechazado' } : m));
+      showToast('Rechazo enviado al cliente por WhatsApp', 'error');
+      setShowReject(false);
+      setView('detail');
+      setVerifyMsg(null);
+    }).catch(err => {
+      showToast('Error al enviar rechazo', 'error');
+      console.error(err);
+    });
+  };
+
+  const handleNewExpCreated = newExp => {
+    setExps(prev => [newExp, ...prev]);
+    setSelId(newExp.id);
     setView('detail');
-    setVerifyMsg(null);
+    setShowNewExp(false);
+    showToast(`Expediente ${newExp.id} creado exitosamente`);
   };
 
   return (
@@ -3030,10 +3015,16 @@ function App() {
       {toast && <Toast msg={toast.msg} type={toast.type} />}
       <Topbar exps={exps} msgs={msgs} />
       <div style={{ display:'flex', flex:1, overflow:'hidden' }}>
-        <Sidebar exps={exps} selId={selId} onSel={handleSelectExp} />
+        <Sidebar exps={exps} selId={selId} onSel={handleSelectExp} onNewExp={()=>setShowNewExp(true)} loading={loading} />
         <main style={{ flex:1, overflowY:'auto', background:C.bg2 }}>
-          {view==='detail' && (selExp ? <ExpDetail exp={selExp} /> : <EmptyState />)}
-          {view==='verify' && verifyMsg && (
+          {loading && (
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100%', gap:12, flexDirection:'column', opacity:0.5 }}>
+              <div style={{ width:28, height:28, border:`2px solid ${C.blue}`, borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}></div>
+              <div style={{ fontSize:13, color:C.t3 }}>Cargando expedientes…</div>
+            </div>
+          )}
+          {!loading && view==='detail' && (selExp ? <ExpDetail exp={selExp} /> : <EmptyState />)}
+          {!loading && view==='verify' && verifyMsg && (
             <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
               <VerifyPanel
                 msg={verifyMsg}
@@ -3055,12 +3046,19 @@ function App() {
           onClose={()=>setShowReject(false)}
         />
       )}
+      {showNewExp && (
+        <NewExpModal
+          onCreated={handleNewExpCreated}
+          onClose={()=>setShowNewExp(false)}
+        />
+      )}
     </div>
   );
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);
 </script>
+
 
 
 </body></html>
