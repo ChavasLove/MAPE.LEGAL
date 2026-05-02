@@ -4,7 +4,7 @@
 2026-05-02
 
 ## Current Module
-Landing page — imagery, brand enforcement, and commercial messaging complete
+Deployment fix — build passes cleanly on 41 routes; all ESLint errors resolved
 
 ---
 
@@ -63,15 +63,32 @@ Landing page — imagery, brand enforcement, and commercial messaging complete
 
 ---
 
-### Bug fixes (2026-05-02)
-- `services/supabase.ts` — `@typescript-eslint/no-unsafe-function-type` fixed: `Function` → explicit `(...args: unknown[]) => unknown`
-- `components/landing/Impact.tsx` — `react/no-unescaped-entities` fixed: raw `"` → `&ldquo;` / `&rdquo;`
-- `components/landing/PriceWidgets.tsx` — `react-hooks/set-state-in-effect` resolved: `fetchPrices` restructured so all setState calls follow awaits; eslint-disable comment documents the async-safe exception
-- `components/landing/Hero.tsx`, `Problem.tsx`, `Impact.tsx`, `About.tsx` — `<img>` → `<Image>` from `next/image` (LCP optimization, automatic sizing)
+### Bug fixes — session 1 (2026-05-02)
+- `services/supabase.ts` — `@typescript-eslint/no-unsafe-function-type` fixed
+- `components/landing/Impact.tsx` — unescaped HTML entities fixed
+- `components/landing/PriceWidgets.tsx` — `react-hooks/set-state-in-effect` resolved; fetchPrices restructured
+- `Hero.tsx`, `Problem.tsx`, `Impact.tsx`, `About.tsx` — `<img>` → `<Image>` from next/image
 
----
+### Deployment fix — session 2 (2026-05-02)
+Root causes of 3 failed Vercel deployments (PR #36 merge + follow-up commits):
 
-## Known Issues / Limitations
+**TypeScript error — `PriceWidgets.tsx`:** merged code introduced `MetalData`
+interface `{price, change, changePercent}` but `fetchPrices` was setting
+`gold`/`silver` as bare numbers. Fixed type cast and `setPrices` to use
+`EMPTY_METAL` fallback.
+
+**Runtime crash — `app/api/whatsapp/route.js`:** `createClient()` called at
+module evaluation time ("supabaseUrl is required" during static page collection).
+Replaced with lazy getter pattern matching `services/adminSupabase.ts`.
+
+**ESLint cleanup (0 errors):**
+- `Hero.tsx`: removed stale `PriceWidgets` import (component rebuilt without it)
+- `app/api/admin/clientes/route.ts`: `let` → `const`
+- `app/page.tsx` + 9 admin/dashboard pages: `eslint-disable-next-line` for
+  `react-hooks/set-state-in-effect` (async fetch pattern; setState only after awaits)
+- `package-lock.json`: package name updated temp-app → mape-legal
+
+**Build result:** ✓ Compiled, TypeScript clean, 41 routes, 0 ESLint errors.
 
 ---
 

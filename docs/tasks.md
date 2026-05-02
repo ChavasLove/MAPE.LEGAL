@@ -21,6 +21,13 @@
 ---
 
 ## Completed
+- [x] Vercel deployment fix (2026-05-02)
+  - `PriceWidgets.tsx`: TypeScript error — `MetalData` type mismatch in `fetchPrices` fixed
+  - `app/api/whatsapp/route.js`: runtime crash — lazy Supabase getter replaces module-level `createClient()`
+  - 9 admin/dashboard pages + `app/page.tsx`: `eslint-disable-next-line set-state-in-effect` for async data-fetch pattern
+  - `app/api/admin/clientes/route.ts`: `let` → `const`
+  - `Hero.tsx`: removed stale `PriceWidgets` import
+  - Build: 41 routes, TypeScript clean, 0 ESLint errors
 - [x] ESLint / TypeScript bug fixes (2026-05-02)
   - `supabase.ts`: `Function` type → explicit `(...args: unknown[]) => unknown`
   - `Impact.tsx`: unescaped `"` entities → `&ldquo;` / `&rdquo;`
