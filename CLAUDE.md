@@ -76,22 +76,31 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 Webhook Twilio que conecta WhatsApp con Claude AI.
 
 - **Modelo**: `claude-haiku-4-5-20251001`
-- **Persona**: María, asistente de CHT — español sencillo, respuestas cortas (≤5 líneas), sin emojis, sin jerga
-- **Conocimiento**: 3 servicios completos con precios, 38 pasos de formalización en 4 fases, titulación, sociedad minera, obligaciones del cliente, fechas críticas
+- **Persona**: María, hondureña del equipo CHT — expresiones hondureñas naturales, sin emojis, respuestas cortas (≤5 líneas)
+- **Conocimiento**: 3 servicios completos con precios, 38 pasos de formalización en 4 fases, marco legal (Acuerdo 042-2013), obligaciones del cliente, fechas críticas
 - **Precios vigentes**:
   - Formalización minera: L 1,600,000 (3 hitos: 20/30/50%)
   - Titulación de propiedad: L 60,000 base (hasta 2 manzanas) + L 25,000 por manzana extra
   - Contrato de sociedad minera: L 55,000 (co-pagado 50/50)
 - **Historial**: últimos 20 mensajes de `conversaciones_whatsapp` por número de WhatsApp
-- **Lookup de cliente**: busca en tabla `clientes` por `telefono_whatsapp` (strip de `whatsapp:` prefix) — si existe, inyecta nombre/municipio/tierra en el prompt; si no, instruye registro natural
-- **Prompt dinámico**: base + contexto de cliente + (si conversación en curso) bloque `CONTEXTO CRÍTICO` que prohíbe re-saludos
+- **Lookup de cliente**: busca en tabla `clientes` por `telefono_whatsapp` (strip de `whatsapp:` prefix) — si existe, inyecta nombre/municipio/tierra/expediente en el prompt
+- **Lookup de expediente**: si el cliente existe, consulta `expedientes` (fases, hitos, paso actual) e inyecta en el prompt
+- **Prompt dinámico**: base + contexto de cliente + contexto de expediente + (si conversación en curso) bloque `CONTEXTO CRÍTICO` que prohíbe re-saludos
 - **Dedup**: filtra mensajes assistant consecutivos antes de enviar a Claude
+- **Modo ejecutivo**: mensaje con `"willis yang"` + passphrase → reporte completo de métricas (WhatsApp, clientes, expedientes, facturación)
+- **Onboarding**: nuevos números sin cliente → flujo `onboardingService` antes de llegar a María
+- **Admin commands**: usuarios con rol `admin` → `adminCommandService` intercepta antes de Claude
+- **Alertas de contacto**: cuando María dice que alguien va a llamar → Twilio notifica a Willis (+50432100683)
 - **Tablas Supabase**:
   - `conversaciones_whatsapp` — historial por `numero_whatsapp`, columnas `role`, `content`
   - `transacciones_pendientes` — registros pendientes de confirmación (`estado: "pendiente_confirmacion"`)
   - `clientes` — lookup y auto-registro por `telefono_whatsapp`
+  - `expedientes` — consultado para contexto de fase/hitos del cliente
+  - `hitos_pago` — usado en reporte ejecutivo
 - **Trigger de transacción**: respuesta contiene `"Listo"` **y** `"Confirmas"` → insert en `transacciones_pendientes`
-- **Auto-registro**: respuesta contiene `"te voy a registrar"` y cliente no existe → insert en `clientes` con defaults de Iriona
+- **Auto-registro**: respuesta contiene `"te voy a registrar"` → insert en `clientes` con defaults de Iriona
+- **Extracción estructurada**: segunda llamada a Haiku post-respuesta — parsea JSON de la conversación para registrar nombre/municipio/manzanas; strip de bloques markdown antes del parse; variable de error: `clientInsertError` (no `insertError`)
+- **Env vars adicionales requeridas**: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`
 
 ## Landing page — imágenes
 Todas las imágenes están en `public/images/`. Distribución actual:
