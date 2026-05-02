@@ -316,8 +316,7 @@ export async function POST(request) {
     const fromNumber = formData.get("From") || '';
 
     // --- EXECUTIVE MODE: Willis Yang admin trigger ---
-    // Whatsapp:+504 3210 0683
-    const ADMIN_PASSPHRASE = 'TENKA-2026'; // Willis: change this directly in code
+    const ADMIN_PASSPHRASE = 'TENKA-2026';
     const isAdminCommand =
       incomingMessage.toLowerCase().includes('willis yang') &&
       incomingMessage.includes(ADMIN_PASSPHRASE);
@@ -353,7 +352,6 @@ Notas: ${exp.notas || 'Sin notas'}`
       const last24h = new Date(now - 24 * 60 * 60 * 1000).toISOString();
       const last7d = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-      // === ALL QUERIES IN PARALLEL ===
       const [
         { data: activeHour },
         { data: active24h },
@@ -374,13 +372,11 @@ Notas: ${exp.notas || 'Sin notas'}`
         supabase.from('hitos_pago').select('estado, monto, tipo_hito').order('fecha_emision', { ascending: false }),
       ]);
 
-      // === WHATSAPP ACTIVITY ===
       const activeHourNumbers = new Set(activeHour?.map(r => r.numero_whatsapp) || []);
       const active24hNumbers = new Set(active24h?.map(r => r.numero_whatsapp) || []);
       const active7dNumbers = new Set(active7d?.map(r => r.numero_whatsapp) || []);
       const userMessages24h = active24h?.filter(r => r.role === 'user').length || 0;
 
-      // === CLIENTS ===
       const totalClientes = allClientes?.length || 0;
       const recentClientes = allClientes?.slice(0, 3) || [];
 
@@ -396,7 +392,6 @@ Notas: ${exp.notas || 'Sin notas'}`
         bySituacion[s] = (bySituacion[s] || 0) + 1;
       });
 
-      // === EXPEDIENTES ===
       const totalExpedientes = expedientes?.length || 0;
       const expByEstado = {};
       const expByServicio = {};
@@ -405,17 +400,14 @@ Notas: ${exp.notas || 'Sin notas'}`
         expByServicio[e.tipo_servicio] = (expByServicio[e.tipo_servicio] || 0) + 1;
       });
 
-      // === TRANSACTIONS ===
       const pendingTx = transacciones?.filter(t => t.estado === 'pendiente_confirmacion') || [];
       const recentTx = transacciones?.slice(0, 3) || [];
 
-      // === HITOS / PAYMENTS ===
       const hitosPendientes = hitos?.filter(h => h.estado === 'pendiente') || [];
       const hitosConfirmados = hitos?.filter(h => h.estado === 'confirmado') || [];
       const totalCobrado = hitosConfirmados.reduce((sum, h) => sum + (parseFloat(h.monto) || 0), 0);
       const totalPendiente = hitosPendientes.reduce((sum, h) => sum + (parseFloat(h.monto) || 0), 0);
 
-      // === FORMAT REPORT — split into 3 messages for WhatsApp length limits ===
       const report1 =
 `CHT EXECUTIVE REPORT
 ${now.toLocaleDateString('es-HN')} ${now.toLocaleTimeString('es-HN')}
@@ -558,8 +550,6 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
     const isAdmin = broadcastUser?.rol === 'admin';
 
     // --- Admin command interception (runs BEFORE Claude) ---
-    // If commands are detected, execute them and return immediately.
-    // null means no commands → fall through to normal María flow.
     if (isAdmin && broadcastUser) {
       const cmdReply = await interpretAndExecute(broadcastUser, incomingMessage);
       if (cmdReply !== null) {
@@ -575,11 +565,9 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
     }
 
     // --- Onboarding check (new users, runs BEFORE building the prompt) ---
-    // Admins bypass onboarding entirely.
     if (!isAdmin) {
       const onboardingState = await getOnboardingState(cleanNumber);
       if (!cliente && onboardingState === null) {
-        // Brand-new number: start onboarding flow
         const firstQ = await startOnboarding(cleanNumber);
         await supabase.from("conversaciones_whatsapp").insert([
           { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
@@ -591,7 +579,6 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
         );
       }
       if (onboardingState && onboardingState.estado !== 'COMPLETE') {
-        // In-progress onboarding — process the message
         const reply = await handleOnboarding(cleanNumber, incomingMessage);
         await supabase.from("conversaciones_whatsapp").insert([
           { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
@@ -750,7 +737,7 @@ Si algún dato no está claramente mencionado, deja null.`
             .single();
 
           if (!existing) {
-            const { error: insertError } = await supabase
+            const { error: clientInsertError } = await supabase
               .from('clientes')
               .insert([{
                 nombre: extracted.nombre,
@@ -760,8 +747,8 @@ Si algún dato no está claramente mencionado, deja null.`
                 situacion_tierra: 'arrendatario_sin_titulo'
               }]);
 
-            if (insertError) {
-              console.log('Insert error:', insertError.message);
+            if (clientInsertError) {
+              console.log('Insert error:', clientInsertError.message);
             } else {
               console.log('Client auto-registered:', extracted.nombre);
             }
