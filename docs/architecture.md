@@ -1,14 +1,15 @@
 # System Architecture
 
 ## Description
-Legal mining management system (MAPE / CHT).
-The system manages mining formalization processes, tracking each project as an "expediente" (case file) through multiple legal and operational fases.
+MAPE.LEGAL — legal mining management platform (CHT / MAPE).
+Manages mining formalization processes in Honduras, tracking each project as an `expediente` (case file) through legal and operational phases, and certifying the legal origin of gold for commercialization.
 
 ## Stack
-- Frontend: Next.js 16.2.4 App Router + Turbopack (Vercel)
-- Backend: Supabase (PostgreSQL + Auth + RLS)
-- AI: Claude Haiku (`claude-haiku-4-5-20251001`) — María assistant + onboarding field extraction + broadcast commentary
-- Messaging: Twilio (inbound WhatsApp) + Meta Cloud API v21.0 (outbound WhatsApp) + SendGrid (email)
+- **Frontend/Backend**: Next.js 16.2.4 (App Router, Turbopack) on Vercel
+- **Database**: Supabase (PostgreSQL + Auth + Storage)
+- **IA**: Anthropic Claude Haiku — WhatsApp virtual assistant María
+- **Email**: SendGrid REST API
+- **WhatsApp**: Meta Cloud API v21.0 + Twilio (María bot)
 
 ---
 
@@ -16,8 +17,8 @@ The system manages mining formalization processes, tracking each project as an "
 
 | Layer | Language | Examples |
 |---|---|---|
-| AI prompts / docs (`/docs`) | English | This file |
-| Code logic (functions, utilities) | English | `advancePhase()`, `getNextActions()` |
+| Docs (`/docs`) | English | This file |
+| Code logic (functions) | English | `advancePhase()`, `getNextActions()` |
 | Domain entity names | Spanish | `expediente`, `fase`, `pago` |
 | Database tables and columns | Spanish | `fases`, `fase_actual_id`, `registro_auditoria` |
 | JSONB condition keys | Spanish | `requiere_pago`, `requiere_documentos` |
@@ -25,176 +26,128 @@ The system manages mining formalization processes, tracking each project as an "
 | API route nouns | Spanish | `/api/expedientes/:id/transition` |
 
 **Hard rules:**
-- Never translate domain concepts. `expediente` = always `expediente`. Never "case", "file", or "record".
-- JSONB keys stored in the DB follow the same rule as columns: Spanish always.
+- Never translate domain concepts. `expediente` = always `expediente`.
 - `condition.requiere_pago` ✅ — `condition.requires_payment` ❌
-
----
-
-## Database Tables
-
-### Workflow core
-| Table | Purpose |
-|---|---|
-| `expedientes` | Core case file; holds `fase_actual_id` FK |
-| `fases` | Ordered workflow phases (`nombre`, `orden`) |
-| `transiciones_fase` | Explicit transition graph with `condicion` JSONB |
-| `pagos` | Payments scoped per expediente + fase |
-| `expediente_fases` | Full fase history per expediente (timeline) |
-| `registro_auditoria` | Append-only audit trail with `user_id` and `accion` |
-
-### People & assignments
-| Table | Purpose |
-|---|---|
-| `clientes` | Miners and landowners — `telefono_whatsapp`, `dpi`, `municipio`, `tipo_mineral`, `situacion_tierra` |
-| `perfiles_profesionales` | Lawyers, PSA staff |
-| `asignaciones` | Abogado + PSA assignment per expediente |
-| `user_roles` | User ↔ role mapping |
-| `roles` | Role definitions |
-
-### Content & config
-| Table | Purpose |
-|---|---|
-| `contenido_cms` | CMS content blocks (editable from admin panel) |
-| `configuracion_sistema` | Key-value config store — includes `broadcast_audience`, `broadcast_time` |
-| `notificaciones` | System notifications |
-| `contactos_web` | Web contact form submissions |
-
-### Documents & tasks
-| Table | Purpose |
-|---|---|
-| `documentos` | Documents per expediente (estado: verificado / rechazado / pendiente) |
-| `mensajes` | Internal messages |
-| `hitos_pago` | Payment milestones |
-| `tareas` | 54-step task list per expediente |
-
-### Mining operations
-| Table | Purpose |
-|---|---|
-| `minas` | Mine coordinates, environmental category, legal status |
-| `contratos` | Consulting, mining society, leasehold contracts |
-| `indice_legalidad` | 5-component legality index per mina (0–100%) |
-| `transacciones_oro` | Gold traceability |
-
-### WhatsApp & broadcast
-| Table | Purpose |
-|---|---|
-| `conversaciones_whatsapp` | Chat history per `numero_whatsapp` (role + content) |
-| `transacciones_pendientes` | Pending confirmations from WhatsApp ("Listo" + "Confirmas") |
-| `usuarios_broadcast` | Broadcast subscriber list with `rol` (minero/comprador/tecnico/admin) |
-| `daily_report_config` | Per-metric config (enabled, currency, order_index) |
-| `precios_diarios` | Daily gold/silver/copper/USD-HNL prices |
-| `broadcast_log` | Log of every broadcast run |
-
-### Admin & onboarding
-| Table | Purpose |
-|---|---|
-| `admin_actions` | Log of every admin command executed via María |
-| `onboarding_states` | Onboarding progress per phone number (estado + datos JSONB) |
-
----
-
-## Workflow Engine
-
-The core engine lives in `modules/workflow.ts` and `modules/expedientes.ts`.
-
-**Decision flow:**
-```
-GET /api/expedientes/:id/next-actions
-  → getNextActions(expedienteId)
-      → getAvailableTransitions(fase_actual_id)   ← reads transiciones_fase graph
-      → getBlockingReasons(expedienteId, faseId, condicion)  ← evaluates conditions
-  → returns { can_advance, is_final, blocking[], available_transitions[] }
-```
-
-**Execution flow:**
-```
-POST /api/expedientes/:id/transition
-  → advancePhase(expedienteId, userId?, transitionId?)
-      → getNextActions()          ← validates conditions
-      → close expediente_fases row (salida_en)
-      → update expedientes.fase_actual_id
-      → open new expediente_fases row (entrada_en, ingresado_por)
-      → insert registro_auditoria (TRANSICION_FASE)
-      [rollback expedientes.fase_actual_id if expediente_fases insert fails]
-```
-
-**Condition keys in `transiciones_fase.condicion`:**
-- `requiere_pago: true` — checks `pagos` for a `completado` record for this fase
-- `requiere_documentos: ["EIA"]` — checks `documentos` table (estado `verificado`)
-
----
-
-## María WhatsApp Assistant (`app/api/whatsapp/route.js`)
-
-Execution order per incoming message:
-1. Admin passphrase report (`TENKA-2026`) → early exit
-2. `expediente [id]` sub-command → early exit
-3. Admin command interpreter (`interpretAndExecute`) → early exit if commands found
-4. Onboarding check — new numbers routed to `handleOnboarding` → early exit
-5. Normal María flow: history + client context + Claude call + response
 
 ---
 
 ## Folder Structure
 
 ```
-/app
-  /api
-    /auth              login, logout, me
-    /expedientes       CRUD + transition + next-actions
-    /documentos        verify/reject
-    /contacto          web contact form
-    /email             send via SendGrid
-    /whatsapp          Twilio webhook (María assistant)
-    /webhook/whatsapp  Meta Cloud webhook
-    /admin             cms, config, roles, usuarios
-    /broadcast         run (cron), config, prices, status
-  /admin               admin UI pages
-  /dashboard           abogado/admin UI pages
-  /portal              client read-only portal
-  /login               unified login page
-/modules
-  workflow.ts          getNextActions, getBlockingReasons, getAvailableTransitions
-  expedientes.ts       advancePhase, validatePaymentForPhase, logAction
-  types.ts             domain types
-/services
-  adminSupabase.ts     service-role Supabase client (RLS bypass)
-  supabase.ts          anon Supabase client
-  emailService.ts      SendGrid — 6 templates
-  whatsappService.ts   Meta Cloud API v21.0
-  cmsService.ts        contenido_cms read/write
-  configService.ts     configuracion_sistema + daily_report_config
-  dashboardService.ts  expediente data for dashboard
-  userService.ts       usuarios_broadcast CRUD
-  pricingService.ts    goldapi.io + exchangerate-api
-  broadcastService.ts  generateDailyMessage, sendDailyBroadcast, getLastBroadcastLog
-  adminCommandService.ts  deterministic admin command interpreter
-  onboardingService.ts    5-state onboarding machine
-/jobs
-  dailyBroadcast.ts    runDailyBroadcast() orchestrator
-/components
-  /landing             11 responsive landing page components
-/supabase
-  /migrations          001–010 SQL migration files
-/scripts
-  seed-super-admin.mjs  idempotent super admin seed
-/docs
-  architecture.md      this file
-  current-state.md     production readiness checklist
-  tasks.md             pending and completed work
-  ai-context.md        language + coding conventions
-/public
-  /images              8 brand images
+/app              → Pages (App Router) and API routes
+/modules          → Business logic (workflow.ts, expedientes.ts, types.ts)
+/services         → External integrations (supabase, email, whatsapp, cms, dashboard)
+/components       → UI components (landing/, ui/)
+/scripts          → Utility scripts (seed, env check)
+/docs             → System documentation and AI context
+/supabase         → Database schema and migrations (001–009)
+/public           → Static assets (images, dashboard prototype)
+```
+
+---
+
+## Database Tables
+
+### Workflow engine
+| Table | Purpose |
+|---|---|
+| `expedientes` | Core case file; holds `fase_actual_id` FK and all progress fields |
+| `fases` | Ordered workflow phases (`nombre`, `orden`) |
+| `transiciones_fase` | Explicit transition graph with `condicion` JSONB |
+| `pagos` | Payments scoped per expediente + fase |
+| `expediente_fases` | Full fase history per expediente (timeline) |
+| `registro_auditoria` | Append-only audit trail with `user_id` and `accion` |
+
+### Dashboard / documents
+| Table | Purpose |
+|---|---|
+| `hitos` | Payment milestones (3 per expediente); estados: `pendiente`, `cobrado`, `bloqueado` |
+| `documentos` | Required documents; estados: `faltante`, `pendiente`, `verificado`, `rechazado` |
+| `mensajes_wa` | WhatsApp document submissions with AI field extraction |
+| `legalidad_items` | 5-component legality snapshot per expediente |
+| `progress_fases` / `progress_subpasos` | Visual progress tracking |
+
+### Admin & users
+| Table | Purpose |
+|---|---|
+| `perfiles_profesionales` | Lawyers and environmental technicians |
+| `user_roles` | App-level roles linked to auth.users |
+| `roles` | Dynamic role catalog with JSON permissions |
+
+### CMS & config
+| Table | Purpose |
+|---|---|
+| `contenido_cms` | Landing page editable content |
+| `configuracion_sistema` | Global system settings |
+| `notificaciones` | Notification log (email / whatsapp / interna) |
+| `contactos` | Landing page contact form submissions |
+
+### Pilot core (migration 008–009)
+| Table | Purpose |
+|---|---|
+| `clientes` | Minero entity; optionally linked to auth.users |
+| `minas` | Mining site with UTM coordinates, area, mineral type |
+| `contratos` | Service contract CHT ↔ client per expediente |
+| `indice_legalidad` | Per-mine legality index, 5 components × 20 pts = 100 max |
+| `transacciones_oro` | Gold sales; `total_usd` and `total_hnl` are generated columns |
+
+### WhatsApp bot
+| Table | Purpose |
+|---|---|
+| `conversaciones_whatsapp` | Message history per number (service-role only) |
+| `transacciones_pendientes` | Short-lived confirmation records from María |
+
+---
+
+## Workflow Engine
+
+**Decision flow:**
+```
+GET /api/expedientes/:id/next-actions
+  → getNextActions(expedienteId)
+      → getAvailableTransitions(fase_actual_id)   ← reads transiciones_fase graph
+      → getBlockingReasons(expedienteId, faseId)  ← evaluates condicion JSONB
+  → { can_advance, is_final, blocking[], available_transitions[] }
+```
+
+**Execution flow:**
+```
+POST /api/expedientes/:id/transition  { transition_id }
+  → advancePhase(expedienteId, userId, transitionId)
+      → getNextActions()              ← validates conditions
+      → close expediente_fases row (salida_en)
+      → update expedientes.fase_actual_id
+      → open new expediente_fases row (entrada_en, ingresado_por)
+      → insert registro_auditoria (TRANSICION_FASE)
+      → revert expedientes.fase_actual_id if insert fails
+```
+
+**Condition keys in `transiciones_fase.condicion`:**
+- `requiere_pago: true` — checks `pagos` for a `completado` record for this fase
+- `requiere_documentos: ["RTN"]` — checks `documentos` table (estado `verificado`)
+
+---
+
+## Authentication Flow
+
+```
+POST /api/auth/login  { email, password }
+  → supabase.auth.signInWithPassword()
+  → fetch user_roles for role
+  → set httpOnly cookies: auth-token, auth-role, user-email
+  → return { role } for client-side redirect
+
+proxy.ts (Next.js 16 middleware replacement)
+  → reads auth-token + auth-role cookies
+  → guards /admin (admin only), /dashboard (abogado/tecnico/admin), /portal (cliente)
+  → unauthenticated → redirect /login?from=<path>
 ```
 
 ---
 
 ## Core Rules
-- An expediente cannot advance to the next fase without payment validation
-- Every fase must be fully validated before advancing
+- An expediente cannot advance without all required documents and payments validated
 - Every action must be logged in `registro_auditoria`
-- Backend is the source of truth — never trust frontend state
-- All server DB operations use service-role client (RLS bypass) — no anon client on server
-- TypeScript strict mode — zero compile errors enforced
-- Admin commands intercepted server-side before Claude is called — María never executes config changes herself
+- Backend is the source of truth — no business logic in frontend
+- No direct DB queries from UI components — always via services or API routes
+- Service-role Supabase client only for writes and admin operations

@@ -326,17 +326,17 @@ export async function POST(request) {
       const expNum = incomingMessage.split(' ')[1];
       const { data: exp } = await supabase
         .from('expedientes')
-        .select('*, clientes(nombre, telefono_whatsapp)')
+        .select('*')
         .eq('id', expNum)
         .single();
 
       const expDetail = exp
         ? `EXPEDIENTE ${expNum}
-Cliente: ${exp.clientes?.nombre}
+Cliente: ${exp.cliente || 'Sin datos'}
 Estado: ${exp.estado}
-Servicio: ${exp.tipo_servicio}
-Inicio: ${exp.fecha_inicio?.slice(0, 10)}
-Paso actual: ${exp.paso_actual || 'Sin datos'}
+Servicio: ${exp.tipo || 'Sin datos'}
+Inicio: ${exp.inicio?.slice(0, 10) || 'Sin fecha'}
+Paso actual: ${exp.paso || 'Sin datos'}
 Notas: ${exp.notas || 'Sin notas'}`
         : `Expediente ${expNum} no encontrado.`;
 
@@ -366,10 +366,10 @@ Notas: ${exp.notas || 'Sin notas'}`
         supabase.from('conversaciones_whatsapp').select('numero_whatsapp, role, created_at').gte('created_at', last24h),
         supabase.from('conversaciones_whatsapp').select('numero_whatsapp').gte('created_at', last7d),
         supabase.from('conversaciones_whatsapp').select('*', { count: 'exact', head: true }),
-        supabase.from('clientes').select('nombre, municipio, situacion_tierra, tipo_mineral, fecha_registro, telefono_whatsapp').order('fecha_registro', { ascending: false }),
-        supabase.from('expedientes').select('estado, tipo_servicio, fecha_inicio, cliente_id').order('fecha_inicio', { ascending: false }),
+        supabase.from('clientes').select('nombre, municipio, situacion_tierra, tipo_mineral, fecha_registro, telefono_whatsapp').order('created_at', { ascending: false }),
+        supabase.from('expedientes').select('estado, tipo, inicio').order('inicio', { ascending: false }),
         supabase.from('transacciones_pendientes').select('estado, created_at, mensaje_original').order('created_at', { ascending: false }),
-        supabase.from('hitos_pago').select('estado, monto, tipo_hito').order('fecha_emision', { ascending: false }),
+        supabase.from('hitos').select('estado, monto, trigger_evento').order('created_at', { ascending: false }),
       ]);
 
       const activeHourNumbers = new Set(activeHour?.map(r => r.numero_whatsapp) || []);
@@ -397,14 +397,14 @@ Notas: ${exp.notas || 'Sin notas'}`
       const expByServicio = {};
       expedientes?.forEach(e => {
         expByEstado[e.estado] = (expByEstado[e.estado] || 0) + 1;
-        expByServicio[e.tipo_servicio] = (expByServicio[e.tipo_servicio] || 0) + 1;
+        expByServicio[e.tipo] = (expByServicio[e.tipo] || 0) + 1;
       });
 
       const pendingTx = transacciones?.filter(t => t.estado === 'pendiente_confirmacion') || [];
       const recentTx = transacciones?.slice(0, 3) || [];
 
       const hitosPendientes = hitos?.filter(h => h.estado === 'pendiente') || [];
-      const hitosConfirmados = hitos?.filter(h => h.estado === 'confirmado') || [];
+      const hitosConfirmados = hitos?.filter(h => h.estado === 'cobrado') || [];
       const totalCobrado = hitosConfirmados.reduce((sum, h) => sum + (parseFloat(h.monto) || 0), 0);
       const totalPendiente = hitosPendientes.reduce((sum, h) => sum + (parseFloat(h.monto) || 0), 0);
 

@@ -1,43 +1,41 @@
-# MAPE.LEGAL — README HYPER-DETALLADO
+# MAPE.LEGAL — Plataforma de Formalización Minera
 
-**Versión 1.0 — Piloto Iriona 2026**
-Fecha de creación: 26 de abril de 2026
+**Versión 1.1 — Piloto Iriona 2026**
+Última actualización: 2 de mayo de 2026
 Propietario: Corporación Hondureña Tenka, S.A. (CHT)
 Administrador Único: Willis Yang
-Dominio: www.mape.legal (público futuro) / App privada en Vercel + Supabase
+Dominio: mape.legal · App privada en Vercel + Supabase
 
 ---
 
-## 1. VISIÓN Y PROPÓSITO (OFICIAL)
+## 1. VISIÓN Y PROPÓSITO
 
-MAPE.LEGAL es la plataforma digital interna de CHT que actúa como **motor de evidencia legal de origen mineral** para minería artesanal y de pequeña minería en Honduras.
+MAPE.LEGAL es la plataforma digital interna de CHT que actúa como **motor de evidencia legal de origen mineral** para minería artesanal y de pequeña escala en Honduras.
 
-Su propósito principal es generar, almacenar y certificar de forma automática evidencia legalmente defendible de que el oro proviene de operaciones formalizadas conforme a la **Ley de Minería, Reglamento MAPE, ILO 169, SLAS-2** y estándares internacionales (CRAFT / Fairmined / RJC).
+Su propósito es generar, almacenar y certificar evidencia legalmente defendible de que el oro proviene de operaciones formalizadas conforme a la **Ley de Minería, Reglamento MAPE (Acuerdo 042-2013), ILO 169, SLAS-2** y estándares internacionales (CRAFT / Fairmined / RJC).
 
-**Frase de una línea:**
-> "La plataforma que convierte minería informal en oro traceable, certificado y premium para Chiopa Industrias planta de refinamiento de oro en Honduras y mercados éticos internacionales."
-
-**Visión ampliada (CEO level):**
-Convertirse en el Verra / Fairmined de Honduras: la primera plataforma nacional que une formalización legal + trazabilidad + comercialización de oro responsable. Escalamiento: Iriona → todo el corredor aurífero hondureño → Centroamérica.
+> "La plataforma que convierte minería informal en oro traceable, certificado y premium para Chiopa Industrias y mercados éticos internacionales."
 
 ---
 
-## 2. CONTEXTO DE NEGOCIO (CHT)
+## 2. CONTEXTO DE NEGOCIO
 
 - **CHT** = Corporación Hondureña Tenka, S.A.
-- **Fundador y Administrador Único:** Willis Yang
+- **Fundador:** Willis Yang (Administrador Único)
 - **Socio 50%:** Ricardo Alfredo Montes Nájera
 
-**Modelo de ingresos dual:**
-1. Servicios de formalización (paquete ancla L 1.600.000 + titulaciones + contratos de sociedad minera)
-2. Margen de comercialización de oro (compra a mineros 80% LBMA → venta a Chiopa Industrias 85% LBMA)
+**Modelo de ingresos:**
+1. Servicios de formalización — paquete ancla L 1.600.000 + titulaciones + contratos de sociedad minera
+2. Margen de comercialización de oro — compra a mineros 80% LBMA → venta a Chiopa Industrias 85% LBMA
 
 **Piloto 2026:** Asociación de Mineros de Iriona, Colón (~60 mineros)
 
-**Servicios que la plataforma soporta:**
-- Paquete Ancla Formalización Minera (L 1.600.000 – 3 hitos: 30%/40%/30%)
-- Titulación de Propiedad (L 38.000 base + L 8.000 por manzana adicional)
-- Contrato de Sociedad Minera (L 55.000 – co-pagado 50/50)
+**Catálogo de servicios:**
+| Servicio | Precio | Pagos |
+|---|---|---|
+| Formalización Minera MAPE | L 1.600.000 | 3 hitos: 20% / 30% / 50% |
+| Titulación de Propiedad | L 60.000 base + L 25.000/manzana adicional | Único |
+| Contrato de Sociedad Minera | L 55.000 (co-pago 50/50) | Único |
 
 ---
 
@@ -45,110 +43,220 @@ Convertirse en el Verra / Fairmined de Honduras: la primera plataforma nacional 
 
 | Componente | Decisión |
 |---|---|
-| Hosting | Vercel (app privada) |
-| Base de datos | Supabase (PostgreSQL + Auth + Storage + Realtime) |
+| Hosting | Vercel |
+| Base de datos | Supabase (PostgreSQL + Auth + Storage) |
 | Framework | Next.js 16.2.4 (App Router, Turbopack) |
-| Frontend | React + Tailwind v4 (`@theme inline`) |
-| Autenticación | httpOnly cookies (`auth-token`, `auth-role`) — 4 roles: admin, abogado, tecnico_ambiental, cliente |
+| Frontend | React 19 + Tailwind v4 (`@theme inline`) |
+| Autenticación | httpOnly cookies (`auth-token`, `auth-role`, `user-email`) — 4 roles |
 | Guard de rutas | `proxy.ts` (Next.js 16 — reemplaza `middleware.ts`) |
-| Almacenamiento | Supabase Storage (fotos georeferenciadas, documentos, constancias) |
-| Notificaciones | Meta WhatsApp Business Cloud API v21.0 + SendGrid REST API |
-| Documentos | Plantillas HTML → PDF (Certificate of Origin automático) |
-| CMS | Tabla `contenido_cms` en Supabase — editable desde panel admin |
-
-> Dominio público (www.mape.legal) se activa solo en lanzamiento comercial.
+| Email | SendGrid REST API |
+| WhatsApp | Meta Cloud API v21.0 (webhook) + Twilio (María bot) |
+| IA | Anthropic Claude Haiku (`claude-haiku-4-5-20251001`) — asistente María |
 
 ---
 
-## 4. ESQUEMA DE BASE DE DATOS
+## 4. ESQUEMA DE BASE DE DATOS (9 migraciones)
 
-Objeto central: **unidad minera (mina)**
+| Migración | Contenido |
+|---|---|
+| 001 | Workflow por fases, pagos, auditoría |
+| 002 | Grafo de transiciones explícito, historial de fases |
+| 003 | Renombrado al español (fases, pagos, registro_auditoria…) |
+| 004 | Dashboard: hitos, documentos, mensajes_wa, legalidad_items, progress_fases |
+| 005 | Admin: perfiles_profesionales, user_roles |
+| 006 | Roles dinámicos, CMS (contenido_cms), configuracion_sistema, notificaciones |
+| 007 | Contactos del formulario de landing |
+| 008 | Piloto core: clientes, minas, contratos, indice_legalidad, transacciones_oro, conversaciones_whatsapp, transacciones_pendientes |
+| 009 | Patch: columnas WhatsApp en clientes (telefono_whatsapp, situacion_tierra, tipo_mineral, fecha_registro) y transacciones_pendientes (mensaje_original, respuesta_asistente) |
+
+**Tablas principales:**
 
 | Tabla | Descripción |
 |---|---|
-| `clientes` | Mineros y dueños de tierra por separado |
-| `minas` | Coordenadas UTM, categoría ambiental, estado legal |
-| `indice_legalidad` | 5 componentes (0–100%) |
-| `contratos` | Consultoría, sociedad minera, arrendamiento |
-| `tipos_tramite` | Catálogo de trámites |
-| `plantillas_hitos` | Hitos por tipo de servicio |
-| `expedientes` | Número EXP-2026-XXX, fase, progreso visual |
-| `asignaciones` | Abogado + PSA por expediente |
-| `tareas` | 54 pasos del Manual Operativo con rol codificado |
-| `notificaciones` | WhatsApp + sistema |
-| `documentos` | Estado: listo / procesando / ilegible / verificado / rechazado |
-| `transacciones_oro` | Trazabilidad futura |
+| `expedientes` | Expediente legal EXP-2026-XXX con progreso por fases |
+| `fases` / `transiciones_fase` | Grafo del workflow operativo |
+| `expediente_fases` | Historial de fases por expediente |
+| `pagos` | Pagos validados por fase |
+| `hitos` | Hitos de cobro (3 por expediente) |
+| `documentos` | Documentos requeridos por expediente |
+| `mensajes_wa` | Feed de documentos enviados por WhatsApp |
+| `legalidad_items` | Snapshot de 5 componentes de legalidad por expediente |
+| `clientes` | Entidad minero/cliente, vinculable a auth.users |
+| `minas` | Sitio minero con coordenadas UTM, área, tipo |
+| `contratos` | Contrato CHT ↔ cliente por expediente |
+| `indice_legalidad` | Índice de legalidad por mina (5 componentes, 0–100 pts) |
+| `transacciones_oro` | Ventas de oro con tasa BCH; totals generados automáticamente |
+| `conversaciones_whatsapp` | Historial del bot María por número |
+| `transacciones_pendientes` | Confirmaciones pendientes del bot |
+| `perfiles_profesionales` | Abogados y técnicos ambientales CHT |
+| `user_roles` | Roles de usuarios del sistema (admin/abogado/tecnico/cliente) |
+| `roles` | Catálogo dinámico de roles con permisos JSON |
+| `contenido_cms` | Contenido editable de la landing page |
+| `configuracion_sistema` | Configuración global del sistema |
+| `notificaciones` | Log de notificaciones enviadas |
+| `contactos` | Formulario de contacto de la landing |
+| `registro_auditoria` | Audit trail append-only |
 
 ---
 
-## 5. MÓDULOS ESENCIALES DEL PILOTO (4 módulos)
+## 5. RUTAS DE LA PLATAFORMA
 
-1. **Registro de Productores** — Verificación real-time de permisos INHGEOMIN/SERNA, ficha completa (RTN, coordenadas, situación de tierra, foto GPS)
-2. **Registro de Transacciones** — Compra de oro con peso, ley, fecha, coordenadas de origen + Certificate of Origin automático
-3. **Generación Automática de Certificado de Origen** — Evidencia legal defendible (fotos georeferenciadas + constancia ILO 169 + índice de legalidad)
-4. **Seguimiento de Expedientes Legales** — Dashboard con barra de progreso por fase
+### Páginas
+| Ruta | Acceso | Estado |
+|---|---|---|
+| `/` | Público | ✅ Landing page completa |
+| `/login` | Público | ✅ Login unificado con redirección por rol |
+| `/admin` | admin | ✅ Panel de administración |
+| `/admin/usuarios` | admin | ✅ Gestión de usuarios + welcome email |
+| `/admin/roles` | admin | ✅ Gestión de roles |
+| `/admin/contenido` | admin | ✅ Editor CMS |
+| `/admin/config` | admin | ✅ Configuración del sistema |
+| `/admin/profesionales` | admin | ✅ Perfiles profesionales |
+| `/dashboard` | abogado / tecnico / admin | ✅ Dashboard operativo |
+| `/dashboard/expedientes` | abogado / tecnico / admin | ✅ Lista de expedientes |
+| `/dashboard/expedientes/[id]` | abogado / tecnico / admin | ✅ Detalle con 4 tabs |
+| `/dashboard/mensajes` | abogado / tecnico / admin | ✅ Feed WhatsApp |
+| `/portal` | cliente | ✅ Portal read-only de estado del expediente |
 
----
-
-## 6. DASHBOARD
-
-Prototipo React completo funcional en `/public/dashboard.html`. Características:
-
-- **Sidebar izquierdo:** Lista de expedientes con ID, cliente, tipo, barra de progreso, badge de estado
-- **Área principal:** Detalle del expediente, hitos y documentos
-- **WA Feed (barra derecha):** Mensajes WhatsApp en vivo, estados de documentos, botones de verificación, filtros y contador de pendientes
-- **Topbar:** Logo MAPE.LEGAL + usuario + notificaciones
-
-El prototipo simula: actualización de estado de documentos, toast de éxito/error, modales de rechazo con motivo, verificación PSA / Abogado.
-
----
-
-## 7. INTEGRACIÓN CON MANUAL OPERATIVO 2026
-
-El dashboard y Supabase están diseñados para mapear exactamente los **54 pasos del Manual Operativo 2026** (versión 1.0).
-
-Cada paso tiene: Rol, acciones, documentos requeridos, plazo y deliverable.
-
-> **Regla de oro:** Ningún paso se marca como completado sin deliverable físico/digital en el expediente.
-
-Fase 0 (Onboarding) ya está 100% mapeada en la plataforma.
-
----
-
-## 8. FLUJOS CLAVE (Camino B)
-
-1. Onboarding → Hito 1 (30%) → Apertura expediente en MAPE.LEGAL
-2. Visita de campo (fotos GPS) → Categorización SLAS-2
-3. Generación automática de constancias y Certificate of Origin
-4. Feed WhatsApp → Verificación IA / humana → Evidencia sellada
-5. Comercialización provisional (mientras tramitan permisos)
+### API principal
+| Endpoint | Método | Descripción |
+|---|---|---|
+| `/api/auth/login` | POST | Login unificado → cookies httpOnly |
+| `/api/expedientes` | GET / POST | Lista y creación de expedientes |
+| `/api/expedientes/[id]` | GET | Detalle del expediente |
+| `/api/expedientes/[id]/next-actions` | GET | Estado del workflow |
+| `/api/expedientes/[id]/transition` | POST | Avanzar fase |
+| `/api/documentos/[id]` | PATCH | Verificar / rechazar documento |
+| `/api/contacto` | POST | Formulario landing → emails gerencia + acuse |
+| `/api/email/send` | POST | Envío directo vía SendGrid |
+| `/api/whatsapp/send` | POST | Envío WhatsApp Meta Cloud API |
+| `/api/webhook/whatsapp` | GET + POST | Webhook Meta (verificación + mensajes) |
+| `/api/whatsapp` | GET + POST | Webhook Twilio — asistente María |
+| `/api/admin/cms` | GET / POST / DELETE | Editor CMS |
+| `/api/admin/config` | GET / PATCH | Configuración del sistema |
+| `/api/admin/roles` | GET / POST | Gestión de roles |
+| `/api/admin/usuarios` | GET / POST | Gestión de usuarios |
+| `/api/prices` | GET | Precios LBMA en tiempo real |
 
 ---
 
-## 9. ESTADO ACTUAL (02-may-2026)
+## 6. ASISTENTE VIRTUAL MARÍA
+
+Webhook Twilio en `app/api/whatsapp/route.js` conecta WhatsApp con Claude AI.
+
+- **Modelo**: `claude-haiku-4-5-20251001`
+- **Persona**: María, asistente CHT — español hondureño, tuteo, ≤5 líneas por mensaje, cero emojis
+- **Conocimiento**: Servicios CHT + Reglamento Ley Minería Honduras (Acuerdo 042-2013)
+- **Historial**: últimos 20 mensajes de `conversaciones_whatsapp` por número
+- **Contexto dinámico**: inyecta datos del cliente conocido; suprime re-saludos en conversaciones en curso
+- **Auto-registro**: extrae nombre y municipio de la conversación y registra en `clientes`
+- **Dedup**: filtra mensajes assistant consecutivos antes de enviar a Claude
+- **Trigger de transacción**: "✅ Listo" + "Confirmas" → inserta en `transacciones_pendientes`
+- **Modo admin**: `willis yang` + `TENKA-2026` → reporte ejecutivo de 3 mensajes
+- **Contact forwarding**: respuestas con promesa de callback → alerta WhatsApp a Willis (+504 3210 0683)
+
+---
+
+## 7. MOTOR DE WORKFLOW
+
+```
+GET /api/expedientes/:id/next-actions
+  → getNextActions(expedienteId)
+      → getAvailableTransitions(fase_actual_id)   ← grafo transiciones_fase
+      → getBlockingReasons(expedienteId, faseId)  ← chequea documentos + pagos
+  → { can_advance, is_final, blocking[], available_transitions[] }
+
+POST /api/expedientes/:id/transition
+  → advancePhase(expedienteId, userId, transitionId)
+      → valida condiciones
+      → cierra expediente_fases (salida_en)
+      → actualiza expedientes.fase_actual_id
+      → abre nuevo expediente_fases (entrada_en)
+      → inserta registro_auditoria
+      → revierte si falla el insert
+```
+
+---
+
+## 8. ESTADO ACTUAL (2 mayo 2026)
 
 ### Completado
-- [x] Dominio confirmado
-- [x] Arquitectura decidida (Vercel + Supabase)
-- [x] Prototipo Dashboard 100% funcional
-- [x] Schema ER completo — 10 migraciones aplicadas en desarrollo
-- [x] Manual Operativo 54 pasos completo
-- [x] Menu de Servicios 2026 aprobado
-- [x] Mapa Iriona con 60 mineros
-- [x] Sistema de diseño CHT implementado (Playfair Display + Inter, tokens de color completos)
-- [x] Landing page — todos los componentes alineados al brand (11 componentes)
-- [x] Imagen hero colocada (`RIVER AND MOUNTAINS.png`)
-- [x] Mapa zona piloto actualizado a imagen topográfica (`Tophographic map.png`)
-- [x] Widget de precios con indicadores de tendencia (TrendingUp/Down, CHT tokens)
-- [x] Navegación texto-only — logotipo removido, marca tipográfica sola
-- [ ] Schema Supabase creado
-- [ ] Primera pantalla real (productor registry)
-- [ ] Conexión WhatsApp Business API
+- [x] Dominio y hosting (Vercel + Supabase)
+- [x] Schema completo — 9 migraciones aplicadas en desarrollo
+- [x] Motor de workflow con chequeo real de documentos e `is_final`
+- [x] Sistema RBAC: 4 roles, cookies httpOnly, guard `proxy.ts`
+- [x] Login unificado con redirección por rol
+- [x] Dashboard operativo (abogado / técnico / admin)
+- [x] Portal de cliente (read-only)
+- [x] Panel admin completo: usuarios, roles, CMS, configuración, profesionales
+- [x] Servicios de email (SendGrid) — 6 plantillas
+- [x] Servicio WhatsApp (Meta Cloud API v21.0)
+- [x] Asistente María con base de conocimiento legal (Reglamento 042-2013)
+- [x] Modo admin Willis Yang — reporte ejecutivo en WhatsApp
+- [x] Auto-registro de clientes desde conversación WhatsApp
+- [x] Tablas piloto core: clientes, minas, contratos, indice_legalidad, transacciones_oro
+- [x] RLS activo en todas las tablas (005–009)
+- [x] Sistema de diseño CHT en DESIGN.md — tokens en globals.css
+- [x] Landing page completa — 8 componentes, imágenes, Open Graph
+
+### Pendiente para producción
+- [ ] Aplicar migraciones 007–009 en Supabase producción
+- [ ] Variables de entorno en Vercel (ver sección 9)
+- [ ] `node scripts/seed-super-admin.mjs` post-deploy
+- [ ] SPF + DKIM para `gerencia@mape.legal` en SendGrid
+- [ ] Webhook Meta Business Portal → `/api/webhook/whatsapp`
+- [ ] Webhook Twilio → `/api/whatsapp`
 
 ---
 
-## 10. CONFIDENCIALIDAD Y USO
+## 9. VARIABLES DE ENTORNO REQUERIDAS
 
-> Uso exclusivo interno de CHT y socios autorizados.
-> Documento confidencial. Prohibida reproducción sin autorización escrita del Administrador Único.
-> Todos los datos de mineros y expedientes están protegidos por RLS de Supabase.
+```bash
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+
+# App
+NEXT_PUBLIC_SITE_URL=https://mape.legal
+
+# Email (SendGrid)
+SENDGRID_API_KEY=
+SENDGRID_FROM_EMAIL=gerencia@mape.legal
+SENDGRID_FROM_NAME=MAPE.LEGAL
+
+# WhatsApp — Meta Cloud API
+WHATSAPP_TOKEN=
+WHATSAPP_PHONE_ID=
+WHATSAPP_VERIFY_TOKEN=
+
+# WhatsApp — Twilio (asistente María)
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
+
+# IA — Anthropic (asistente María)
+ANTHROPIC_API_KEY=
+```
+
+Ver `.env.example` en el repositorio para plantilla completa.
+
+---
+
+## 10. SCRIPTS DE UTILIDAD
+
+```bash
+# Crear cuenta admin inicial (idempotente)
+node scripts/seed-super-admin.mjs
+
+# Verificar variables de entorno requeridas
+node scripts/check-env.mjs
+```
+
+---
+
+## 11. CONFIDENCIALIDAD
+
+Uso exclusivo interno de CHT y socios autorizados.
+Documento confidencial — prohibida reproducción sin autorización del Administrador Único.
+Todos los datos de mineros y expedientes están protegidos por RLS de Supabase.

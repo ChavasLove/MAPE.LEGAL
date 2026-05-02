@@ -21,9 +21,14 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 - Supabase (PostgreSQL). Dos clientes:
   - `services/supabase.ts` — cliente anónimo para lecturas públicas y portales de cliente
   - `services/adminSupabase.ts` — cliente service-role para escrituras admin y operaciones privilegiadas
-- Migraciones en `supabase/migrations/` (001–011). La 006 incluye tablas: `roles`, `contenido_cms`, `configuracion_sistema`, `notificaciones`
+- Migraciones en `supabase/migrations/` (001–009):
+  - 006: `roles`, `contenido_cms`, `configuracion_sistema`, `notificaciones`
+  - 007: `contactos` (formulario de landing)
+  - 008: `clientes`, `minas`, `contratos`, `indice_legalidad`, `transacciones_oro`, `conversaciones_whatsapp`, `transacciones_pendientes`
+  - 009: Patch — columnas WhatsApp en `clientes` y `transacciones_pendientes`
 - Tablas del motor de workflow: `fases`, `transiciones_fase`, `expediente_fases`, `pagos`, `documentos`, `registro_auditoria`
-- **Migration 011**: `expedientes.cliente_id uuid FK → clientes(id)` (nullable, `on delete set null`). Índice: `idx_expedientes_cliente_id`. Permite vincular expedientes a clientes de WhatsApp de forma relacional.
+- Tabla `clientes` (piloto core) — columnas clave: `telefono_whatsapp`, `situacion_tierra`, `tipo_mineral`, `fecha_registro`, `nombre`, `municipio`
+- **`expedientes` NO tiene FK a `clientes`** — el campo `cliente` es texto libre. Usar `contratos` para la relación correcta.
 
 ## Motor de Workflow (`modules/`)
 - `modules/types.ts` — tipos de dominio: `Fase`, `TransicionFase`, `NextActionsResult` (incluye `is_final: boolean`)
@@ -94,15 +99,16 @@ Webhook Twilio que conecta WhatsApp con Claude AI.
 - **Contexto de expediente**: tras el lookup de cliente, consulta `expedientes` por `cliente_id = cliente.id` (fallback: `cliente ILIKE nombre`). Inyecta en el prompt: `numero_expediente`, fase actual, paso actual, estado, cierre estimado, hitos pendientes. Si no hay expediente: instruye a María a explicar Fase 0 e Hito 1. Helper: `buildExpedienteContext(exps)` en `route.js`.
 - **Prompt dinámico**: base + contexto de cliente + contexto de expediente + (si conversación en curso) bloque `CONTEXTO CRÍTICO` que prohíbe re-saludos
 - **Dedup**: filtra mensajes assistant consecutivos antes de enviar a Claude
+- **Base de conocimiento legal**: Reglamento Minería Honduras (Acuerdo 042-2013) embebido en el system prompt — números clave, scripts de respuesta rápida, áreas excluidas, sanciones
 - **Tablas Supabase**:
   - `conversaciones_whatsapp` — historial por `numero_whatsapp`, columnas `role`, `content`
-  - `transacciones_pendientes` — registros pendientes de confirmación (`estado: "pendiente_confirmacion"`)
-  - `clientes` — lookup y auto-registro por `telefono_whatsapp`
-- **Trigger de transacción**: respuesta contiene `"Listo"` **y** `"Confirmas"` → insert en `transacciones_pendientes`
-- **Auto-registro**: respuesta contiene `"te voy a registrar"` y cliente no existe → insert en `clientes` con defaults de Iriona
-- **Admin command interpreter**: si `usuarios_broadcast.rol = 'admin'`, el mensaje pasa por `interpretAndExecute()` (`services/adminCommandService.ts`) **antes** de llamar a Claude. Si detecta comandos, los ejecuta vía `configService` y retorna TwiML directamente (Claude no se llama). Comandos: `ENABLE_METRIC`, `DISABLE_METRIC`, `SET_CURRENCY`, `SET_AUDIENCE`, `SET_BROADCAST_TIME`, `SEND_BROADCAST`. Todos los comandos se loguean en `admin_actions`.
-- **Onboarding**: números nuevos (sin registro en `clientes` y sin estado en `onboarding_states`) entran al flujo de onboarding (`services/onboardingService.ts`) — 4 preguntas (nombre → DPI → ubicación → rol). Estado persistido en `onboarding_states`. Al completar: escribe en `clientes` + `usuarios_broadcast`.
-- **Auto-alta broadcast**: todo número que complete el onboarding (o que ya tenga registro) se registra en `usuarios_broadcast` (rol `minero` por defecto, puede cambiar en la pregunta de rol)
+  - `transacciones_pendientes` — registros pendientes (`estado`, `mensaje_original`, `respuesta_asistente`, `detalle`)
+  - `clientes` — lookup por `telefono_whatsapp`; auto-registro desde conversación
+- **Trigger de transacción**: cuando la respuesta incluye `"Listo"` + `"Confirmas"` se inserta en `transacciones_pendientes`
+- **Columnas correctas en queries** (errores comunes a evitar):
+  - `expedientes.tipo` (no `tipo_servicio`) · `expedientes.inicio` (no `fecha_inicio`)
+  - `hitos` (no `hitos_pago`) · `hito.estado === 'cobrado'` (no `'confirmado'`)
+  - `expedientes.cliente` es texto (no FK) — no hacer join a `clientes` desde `expedientes`
 
 ## Landing page — imágenes
 Todas las imágenes están en `public/images/`. Distribución actual:
