@@ -15,8 +15,41 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "MAPE Legal — Dashboard CHT",
-  description: "Sistema de gestión de expedientes mineros · Piloto Iriona 2026",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? 'https://mape.legal'
+  ),
+  title: {
+    default: 'MAPE.LEGAL — Corporación Hondureña Tenka',
+    template: '%s · MAPE.LEGAL',
+  },
+  description:
+    'Transformamos la minería artesanal en oro trazable, certificado y premium. ' +
+    'Acompañamiento legal continuo desde INHGEOMIN hasta los mercados éticos internacionales.',
+  openGraph: {
+    type:        'website',
+    locale:      'es_HN',
+    url:         '/',
+    siteName:    'MAPE.LEGAL — Corporación Hondureña Tenka',
+    title:       'MAPE.LEGAL — Formalización minera en Honduras',
+    description:
+      'Transformamos la minería artesanal en oro trazable, certificado y premium. ' +
+      'ILO 169 · CRAFT · Fairmined · RJC · EUDR 2027.',
+    images: [
+      {
+        url:    '/images/RIVER AND MOUNTAINS.png',
+        width:  1200,
+        height: 630,
+        alt:    'Corredor aurífero hondureño — MAPE.LEGAL',
+      },
+    ],
+  },
+  twitter: {
+    card:        'summary_large_image',
+    title:       'MAPE.LEGAL — Formalización minera en Honduras',
+    description:
+      'Acompañamiento legal continuo desde INHGEOMIN hasta los mercados éticos internacionales.',
+    images:      ['/images/RIVER AND MOUNTAINS.png'],
+  },
 };
 
 export default function RootLayout({

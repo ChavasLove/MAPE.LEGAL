@@ -47,12 +47,14 @@ Convertirse en el Verra / Fairmined de Honduras: la primera plataforma nacional 
 |---|---|
 | Hosting | Vercel (app privada) |
 | Base de datos | Supabase (PostgreSQL + Auth + Storage + Realtime) |
-| Frontend | React + Tailwind |
-| Backend | Supabase Edge Functions + Row Level Security |
-| Autenticación | Supabase Auth (roles: Admin CHT, Abogado, Técnico Ambiental, Cliente) |
+| Framework | Next.js 16.2.4 (App Router, Turbopack) |
+| Frontend | React + Tailwind v4 (`@theme inline`) |
+| Autenticación | httpOnly cookies (`auth-token`, `auth-role`) — 4 roles: admin, abogado, tecnico_ambiental, cliente |
+| Guard de rutas | `proxy.ts` (Next.js 16 — reemplaza `middleware.ts`) |
 | Almacenamiento | Supabase Storage (fotos georeferenciadas, documentos, constancias) |
-| Notificaciones | Supabase Realtime + WhatsApp Business API |
+| Notificaciones | Meta WhatsApp Business Cloud API v21.0 + SendGrid REST API |
 | Documentos | Plantillas HTML → PDF (Certificate of Origin automático) |
+| CMS | Tabla `contenido_cms` en Supabase — editable desde panel admin |
 
 > Dominio público (www.mape.legal) se activa solo en lanzamiento comercial.
 
@@ -125,10 +127,11 @@ Fase 0 (Onboarding) ya está 100% mapeada en la plataforma.
 
 ## 9. ESTADO ACTUAL (02-may-2026)
 
+### Completado
 - [x] Dominio confirmado
 - [x] Arquitectura decidida (Vercel + Supabase)
 - [x] Prototipo Dashboard 100% funcional
-- [x] Schema ER diseñado (3 iteraciones)
+- [x] Schema ER completo — 10 migraciones aplicadas en desarrollo
 - [x] Manual Operativo 54 pasos completo
 - [x] Menu de Servicios 2026 aprobado
 - [x] Mapa Iriona con 60 mineros
