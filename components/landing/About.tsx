@@ -1,3 +1,5 @@
+import Image from 'next/image';
+
 const pillars = [
   {
     title: 'Rigor legal',
@@ -41,12 +43,13 @@ export function About() {
             </p>
 
             {/* Legal services image */}
-            <div className="rounded-xl overflow-hidden mb-6 border border-earth-200">
-              <img
-                src="/images/Servicios%20Legales.png"
+            <div className="rounded-xl overflow-hidden mb-6 border border-earth-200 relative" style={{ height: '200px' }}>
+              <Image
+                src="/images/Servicios Legales.png"
                 alt="Servicios legales especializados"
-                className="w-full object-cover"
-                style={{ maxHeight: '200px', objectPosition: 'center top' }}
+                fill
+                className="object-cover"
+                style={{ objectPosition: 'center top' }}
               />
             </div>
 

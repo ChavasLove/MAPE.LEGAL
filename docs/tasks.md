@@ -19,6 +19,11 @@
 - (none)
 
 ## Completed
+- [x] ESLint / TypeScript bug fixes (2026-05-02)
+  - `supabase.ts`: `Function` type → explicit `(...args: unknown[]) => unknown`
+  - `Impact.tsx`: unescaped `"` entities → `&ldquo;` / `&rdquo;`
+  - `PriceWidgets.tsx`: setState calls restructured to follow awaits; `set-state-in-effect` disabled with async-safe comment
+  - `Hero.tsx`, `Problem.tsx`, `Impact.tsx`, `About.tsx`: `<img>` → `<Image>` (next/image)
 - [x] Project initial setup
 - [x] Supabase integration
 - [x] Create fases table in database

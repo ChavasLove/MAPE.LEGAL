@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { PriceWidgets } from './PriceWidgets';
 
 export function Hero() {
@@ -25,10 +26,13 @@ export function Hero() {
       {/* Top nav bar */}
       <nav className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-8 py-5">
         <div className="flex items-center gap-3">
-          <img
-            src="/images/LOGO%20CHT.png"
+          <Image
+            src="/images/LOGO CHT.png"
             alt="Corporación Hondureña Tenka"
+            width={160}
+            height={40}
             className="h-10 w-auto"
+            style={{ width: 'auto' }}
           />
           <span className="text-white font-bold text-lg tracking-tight font-sans">MAPE.LEGAL</span>
         </div>

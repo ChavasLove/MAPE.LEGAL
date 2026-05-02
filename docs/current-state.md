@@ -1,7 +1,7 @@
 # Current State
 
 ## Last Updated
-2026-04-26
+2026-05-02
 
 ## Current Module
 Landing page — imagery, brand enforcement, and commercial messaging complete
@@ -60,6 +60,14 @@ Landing page — imagery, brand enforcement, and commercial messaging complete
 - Hero h1 accent updated: "el menor tiempo posible"
 - All primary CTAs changed to "Solicitar cotización privada" (contact by email)
 - Quotation flow: private email request only — `contacto@mape.legal`
+
+---
+
+### Bug fixes (2026-05-02)
+- `services/supabase.ts` — `@typescript-eslint/no-unsafe-function-type` fixed: `Function` → explicit `(...args: unknown[]) => unknown`
+- `components/landing/Impact.tsx` — `react/no-unescaped-entities` fixed: raw `"` → `&ldquo;` / `&rdquo;`
+- `components/landing/PriceWidgets.tsx` — `react-hooks/set-state-in-effect` resolved: `fetchPrices` restructured so all setState calls follow awaits; eslint-disable comment documents the async-safe exception
+- `components/landing/Hero.tsx`, `Problem.tsx`, `Impact.tsx`, `About.tsx` — `<img>` → `<Image>` from `next/image` (LCP optimization, automatic sizing)
 
 ---
 

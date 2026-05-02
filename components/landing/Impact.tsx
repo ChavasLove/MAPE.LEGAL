@@ -1,3 +1,5 @@
+import Image from 'next/image';
+
 const stats = [
   { value: '60+', label: 'Productores identificados', sub: 'Cuenca de Iriona, Colón' },
   { value: '80–85%', label: 'Precio LBMA garantizado', sub: 'vs 60–75% con intermediarios' },
@@ -33,19 +35,19 @@ export function Impact() {
 
         {/* Field work callout */}
         <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl overflow-hidden flex flex-col md:flex-row items-stretch">
-          <div className="md:w-64 shrink-0 overflow-hidden">
-            <img
-              src="/images/Technitians%20Field%20Work.png"
+          <div className="md:w-64 shrink-0 overflow-hidden relative" style={{ minHeight: '200px' }}>
+            <Image
+              src="/images/Technitians Field Work.png"
               alt="Trabajo de campo — técnicos MAPE"
-              className="w-full h-full object-cover"
-              style={{ minHeight: '200px' }}
+              fill
+              className="object-cover"
             />
           </div>
           <div className="flex flex-col md:flex-row items-center gap-6 p-8 flex-1">
             <div className="flex-1 text-center md:text-left">
               <p className="text-white text-xl font-semibold leading-relaxed mb-3 font-sans">
-                "La minería artesanal responsable es viable cuando hay estructura legal y trazabilidad.
-                MAPE.LEGAL convierte esa visión en expedientes concretos."
+                &ldquo;La minería artesanal responsable es viable cuando hay estructura legal y trazabilidad.
+                MAPE.LEGAL convierte esa visión en expedientes concretos.&rdquo;
               </p>
               <p className="text-earth-200/70 text-sm font-sans">
                 Corporación Hondureña Tenka — Piloto Iriona 2026
