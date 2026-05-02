@@ -1,16 +1,12 @@
 # Tasks
 
 ## Pending
-- [ ] Apply migrations 007–010 to Supabase production
-- [ ] Configure all Vercel env vars (GOLDAPI_KEY, EXCHANGE_RATE_API_KEY, CRON_SECRET, WHATSAPP_TOKEN, WHATSAPP_PHONE_ID, WHATSAPP_VERIFY_TOKEN, Twilio vars)
-- [ ] Configure Twilio webhook → `/api/whatsapp`
-- [ ] Configure Meta Business Portal webhook → `/api/webhook/whatsapp`
-- [ ] Configure cron job: `POST /api/broadcast/run` with `Authorization: Bearer <CRON_SECRET>`
-- [ ] Register WhatsApp Business number in Meta for outbound broadcast sends
-- [ ] Configure verified sender domain in SendGrid for `gerencia@mape.legal` (SPF + DKIM)
-- [ ] Run `node scripts/seed-super-admin.mjs` after production deploy
-- [ ] Move `ADMIN_PASSPHRASE` (`TENKA-2026`) to env var — currently hardcoded in `route.js` (operator preference)
-- [ ] Add RLS policies for authenticated dashboard users (current: service_role only)
+- [ ] Configure `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in Vercel Environment Variables
+- [ ] Implement `documentos` table and fill real document check in `getBlockingReasons`
+- [ ] Add Row Level Security (RLS) policies to all Supabase tables
+- [ ] Implement Supabase Auth and wire `user_id` to session
+- [ ] Add UI for advancing fases (transition button + blocking reason display)
+- [ ] Add UI for pagos management (register and validate payments)
 - [ ] Add `GET /api/fases` endpoint for frontend fase listing
 - [ ] Add `GET /api/expedientes/:id/fases` to retrieve fase history
 - [ ] Define permissions per fase (which role can advance each phase)
@@ -33,47 +29,8 @@
 - [x] Payment validation logic (per-fase, via `pagos` table)
 - [x] Audit log system (`registro_auditoria`)
 - [x] Expediente workflow engine (`getNextActions`, `getBlockingReasons`, `advancePhase`)
-- [x] Phase history tracking (`expediente_fases`)
-- [x] Real document check against `documentos` table (estado `verificado`)
-- [x] `is_final: true` when no outgoing transitions
-- [x] Explicit `transition_id` required when multiple paths available
-- [x] Phase rollback on failed `expediente_fases` insert
-- [x] CHT design system enforcement — all UI components
-- [x] Role-based auth system (admin / abogado / tecnico_ambiental / cliente)
-- [x] Unified login `/login` with role-based redirect
-- [x] Route guard `proxy.ts` (replaces deprecated `middleware.ts`)
-- [x] Dashboard (abogado/admin): expediente list, detail 4 tabs, messages, stats
-- [x] Client portal (read-only): estado, hitos, documentos
-- [x] Admin panel: roles, CMS editor, system config, users, profesionales
-- [x] Script seed super admin: `scripts/seed-super-admin.mjs`
-- [x] Open Graph + Twitter Card in `app/layout.tsx`
-- [x] Contact form → `gerencia@mape.legal` (internal notification + visitor acknowledgment)
-- [x] Auto welcome email on user creation from admin panel
-- [x] Email service (SendGrid REST) — 6 templates
-- [x] WhatsApp Meta Cloud API v21.0 webhook
-- [x] María WhatsApp assistant — Twilio + Claude Haiku, conversation history, dynamic prompt, client lookup
-- [x] María — Willis executive report (3-part, 8 parallel DB queries)
-- [x] María — `expediente [id]` drill-down sub-command
-- [x] María — contact forwarding (Twilio alert to Willis, non-fatal)
-- [x] María — XML injection fix (`esc()` on all TwiML dynamic content)
-- [x] María — null safety for media messages (`incomingMessage`/`fromNumber` default to `''`)
-- [x] María — transaction trigger ("Listo" + "Confirmas" → `transacciones_pendientes`)
-- [x] Admin command interpreter (`services/adminCommandService.ts`) — 6 command types, multi-command, allowlists, `admin_actions` log
-- [x] Admin command interpreter wired in `route.js` — pre-Claude interception, early exit if commands detected
-- [x] Onboarding state machine (`services/onboardingService.ts`) — 5 states, Claude Haiku field extraction, multi-field
-- [x] Onboarding wired in `route.js` — new numbers routed to flow, bypass for admins and returning users
-- [x] `configService.ts` — extended with `updateAudience()`, `updateSchedule()`
-- [x] `userService.ts` — `usuarios_broadcast` CRUD (getOrCreateUserByPhone, assignRole, getActiveSubscribers, listUsers)
-- [x] `pricingService.ts` — goldapi.io metals + exchangerate-api USD/HNL, `fetchAndStorePrices`, history
-- [x] `broadcastService.ts` — `generateDailyMessage` (Claude commentary), `sendDailyBroadcast` (batched Meta API), log
-- [x] `jobs/dailyBroadcast.ts` — `runDailyBroadcast()` orchestrator
-- [x] `GET /api/broadcast` — status endpoint (last run, subscriber count, latest prices)
-- [x] `POST /api/broadcast/run` — cron trigger (CRON_SECRET protected, marked public in proxy.ts)
-- [x] `GET/PATCH /api/broadcast/config` — metric enable/disable/currency/order
-- [x] `GET /api/broadcast/prices` — price history (?days=N, ?latest=true)
-- [x] TypeScript strict mode — zero compile errors (`npx tsc --noEmit` clean)
-- [x] Bug fix: `/api/whatsapp` added to `isPublic()` in `proxy.ts` (Twilio webhooks have no auth cookies)
-- [x] Bug fix: `ContentBlock.text` TS2339 — cast to `{ text?: string }` in broadcastService + onboardingService
-- [x] Bug fix: `Parameters<typeof fn>[0]` index error — import `DailyBroadcastOptions` type directly
-- [x] Bug fix: `users.map()` null crash in `app/api/admin/usuarios/route.ts` — guard added
-- [x] Bug fix: inline `[CMD:...]` handler removed from `route.js` — replaced by `adminCommandService.ts`
+- [x] Phase history tracking (`expediente_fases` with `entrada_en` / `salida_en`)
+- [x] Bilingual naming convention (Spanish DB/domain, English code logic)
+- [x] Decision endpoint `GET /api/expedientes/:id/next-actions`
+- [x] Fix Vercel build failure — lazy Proxy on Supabase client + `force-dynamic` on all API routes
+- [x] Add `.env.example` documenting required environment variables
