@@ -24,13 +24,9 @@ export function Hero() {
 
       {/* Top nav bar */}
       <nav className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-8 py-5">
-        <div className="flex items-center gap-3">
-          <img
-            src="/images/LOGO%20CHT.png"
-            alt="Corporación Hondureña Tenka"
-            className="h-10 w-auto"
-          />
-          <span className="text-white font-bold text-lg tracking-tight font-sans">MAPE.LEGAL</span>
+        <div className="flex flex-col leading-tight">
+          <span className="text-white font-bold text-base tracking-tight font-sans">MAPE.LEGAL</span>
+          <span className="text-white/45 text-[10px] tracking-widest uppercase font-sans">Corporación Hondureña Tenka</span>
         </div>
         <div className="hidden md:flex items-center gap-8 text-white/80 text-sm font-medium font-sans">
           <a href="#problema" className="hover:text-white transition-colors">El Problema</a>

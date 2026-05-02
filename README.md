@@ -123,7 +123,7 @@ Fase 0 (Onboarding) ya está 100% mapeada en la plataforma.
 
 ---
 
-## 9. ESTADO ACTUAL (26-abr-2026)
+## 9. ESTADO ACTUAL (02-may-2026)
 
 - [x] Dominio confirmado
 - [x] Arquitectura decidida (Vercel + Supabase)
@@ -134,7 +134,10 @@ Fase 0 (Onboarding) ya está 100% mapeada en la plataforma.
 - [x] Mapa Iriona con 60 mineros
 - [x] Sistema de diseño CHT implementado (Playfair Display + Inter, tokens de color completos)
 - [x] Landing page — todos los componentes alineados al brand (11 componentes)
-- [ ] Imagen hero (`public/images/hero-rio-honduras.jpg`) — colocar manualmente
+- [x] Imagen hero colocada (`RIVER AND MOUNTAINS.png`)
+- [x] Mapa zona piloto actualizado a imagen topográfica (`Tophographic map.png`)
+- [x] Widget de precios con indicadores de tendencia (TrendingUp/Down, CHT tokens)
+- [x] Navegación texto-only — logotipo removido, marca tipográfica sola
 - [ ] Schema Supabase creado
 - [ ] Primera pantalla real (productor registry)
 - [ ] Conexión WhatsApp Business API
