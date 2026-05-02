@@ -25,18 +25,11 @@ export function Hero() {
       {/* Overlay */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/70" />
 
-      {/* Nav */}
-      <nav className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 sm:px-6 md:px-8 py-4 sm:py-5">
-        <div className="flex items-center gap-2 sm:gap-3">
-          <Image
-            src="/images/MAPE LEGAL LOGO 1.JPG"
-            alt="Corporación Hondureña Tenka"
-            width={160}
-            height={64}
-            className="h-8 sm:h-10 w-auto"
-            priority
-          />
-          <span className="hidden sm:inline text-white font-bold text-lg tracking-tight font-sans">MAPE.LEGAL</span>
+      {/* Top nav bar */}
+      <nav className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-8 py-5">
+        <div className="flex flex-col leading-tight">
+          <span className="text-white font-bold text-base tracking-tight font-sans">MAPE.LEGAL</span>
+          <span className="text-white/45 text-[10px] tracking-widest uppercase font-sans">Corporación Hondureña Tenka</span>
         </div>
         <div className="hidden md:flex items-center gap-8 text-white/80 text-sm font-medium font-sans">
           <a href="#nosotros"  className="hover:text-white transition-colors">Quiénes somos</a>

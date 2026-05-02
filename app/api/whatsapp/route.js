@@ -1,5 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
+import { getUserByPhone, getOrCreateUserByPhone } from "@/services/userService";
+import { interpretAndExecute } from "@/services/adminCommandService";
+import { getOnboardingState, startOnboarding, handleOnboarding } from "@/services/onboardingService";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -280,6 +283,32 @@ LO QUE MARÍA NUNCA HACE
 - Compartir información de otros clientes
 - Comprometerse con trámites en áreas protegidas, territorios indígenas o con derechos mineros previos`;
 
+function buildExpedienteContext(exps) {
+  const FASE_NOMBRES = [
+    'Onboarding',
+    'Solicitud INHGEOMIN',
+    'Licencia Ambiental SERNA',
+    'Resolución y Título INHGEOMIN',
+    'Permiso Municipal y Comercializador',
+  ];
+  return exps.map(exp => {
+    const faseNombre = FASE_NOMBRES[exp.fase_numero] ?? `Fase ${exp.fase_numero}`;
+    const faseActual = exp.progress_fases?.find(f => f.estado === 'activo')?.nombre ?? faseNombre;
+    const hitosPend = exp.hitos
+      ?.filter(h => h.estado === 'pendiente')
+      .map(h => `Hito ${h.numero} (L ${Number(h.monto ?? 0).toLocaleString('es-HN')})`)
+      .join(', ');
+    return `
+EXPEDIENTE ACTIVO: ${exp.numero_expediente}
+- Tipo: ${exp.tipo || 'Formalización minera'}
+- Fase actual: ${faseActual} (Fase ${exp.fase_numero}, paso ${exp.paso} de ${exp.total_pasos})
+- Estado: ${exp.estado}
+- Cierre estimado: ${exp.cierre_estimado ?? 'por definir'}
+- Hitos pendientes de pago: ${hitosPend || 'ninguno'}
+Cuando el cliente pregunte por el avance de su trámite, usa esta información. Sé específico con el número de expediente y la fase.`;
+  }).join('\n');
+}
+
 export async function POST(request) {
   try {
     const formData = await request.formData();
@@ -287,8 +316,7 @@ export async function POST(request) {
     const fromNumber = formData.get("From") || '';
 
     // --- EXECUTIVE MODE: Willis Yang admin trigger ---
-    // Whatsapp:+504 3210 0683
-    const ADMIN_PASSPHRASE = 'TENKA-2026'; // Willis: change this directly in code
+    const ADMIN_PASSPHRASE = 'TENKA-2026';
     const isAdminCommand =
       incomingMessage.toLowerCase().includes('willis yang') &&
       incomingMessage.includes(ADMIN_PASSPHRASE);
@@ -324,7 +352,6 @@ Notas: ${exp.notas || 'Sin notas'}`
       const last24h = new Date(now - 24 * 60 * 60 * 1000).toISOString();
       const last7d = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-      // === ALL QUERIES IN PARALLEL ===
       const [
         { data: activeHour },
         { data: active24h },
@@ -345,13 +372,11 @@ Notas: ${exp.notas || 'Sin notas'}`
         supabase.from('hitos').select('estado, monto, trigger_evento').order('created_at', { ascending: false }),
       ]);
 
-      // === WHATSAPP ACTIVITY ===
       const activeHourNumbers = new Set(activeHour?.map(r => r.numero_whatsapp) || []);
       const active24hNumbers = new Set(active24h?.map(r => r.numero_whatsapp) || []);
       const active7dNumbers = new Set(active7d?.map(r => r.numero_whatsapp) || []);
       const userMessages24h = active24h?.filter(r => r.role === 'user').length || 0;
 
-      // === CLIENTS ===
       const totalClientes = allClientes?.length || 0;
       const recentClientes = allClientes?.slice(0, 3) || [];
 
@@ -367,7 +392,6 @@ Notas: ${exp.notas || 'Sin notas'}`
         bySituacion[s] = (bySituacion[s] || 0) + 1;
       });
 
-      // === EXPEDIENTES ===
       const totalExpedientes = expedientes?.length || 0;
       const expByEstado = {};
       const expByServicio = {};
@@ -376,17 +400,14 @@ Notas: ${exp.notas || 'Sin notas'}`
         expByServicio[e.tipo] = (expByServicio[e.tipo] || 0) + 1;
       });
 
-      // === TRANSACTIONS ===
       const pendingTx = transacciones?.filter(t => t.estado === 'pendiente_confirmacion') || [];
       const recentTx = transacciones?.slice(0, 3) || [];
 
-      // === HITOS / PAYMENTS ===
       const hitosPendientes = hitos?.filter(h => h.estado === 'pendiente') || [];
       const hitosConfirmados = hitos?.filter(h => h.estado === 'cobrado') || [];
       const totalCobrado = hitosConfirmados.reduce((sum, h) => sum + (parseFloat(h.monto) || 0), 0);
       const totalPendiente = hitosPendientes.reduce((sum, h) => sum + (parseFloat(h.monto) || 0), 0);
 
-      // === FORMAT REPORT — split into 3 messages for WhatsApp length limits ===
       const report1 =
 `CHT EXECUTIVE REPORT
 ${now.toLocaleDateString('es-HN')} ${now.toLocaleTimeString('es-HN')}
@@ -479,6 +500,28 @@ Comandos disponibles:
 
     console.log('Cliente found:', cliente ? cliente.nombre : 'Unknown');
 
+    // --- Query expedientes linked to this client ---
+    let expedienteContext = '';
+    if (cliente) {
+      const { data: exps } = await supabase
+        .from('expedientes')
+        .select(`
+          numero_expediente, tipo, estado, fase_numero, paso, total_pasos,
+          cierre_estimado,
+          hitos(numero, monto, porcentaje, estado),
+          progress_fases(nombre, estado, orden)
+        `)
+        .or(`cliente_id.eq.${cliente.id},cliente.ilike.${cliente.nombre}`)
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (exps?.length) {
+        expedienteContext = buildExpedienteContext(exps);
+      } else {
+        expedienteContext = `\nEXPEDIENTE: Este cliente no tiene expediente activo todavía. Si pregunta por su trámite, explícale el proceso de Fase 0 y el Hito 1 de L 320,000 para iniciarlo.`;
+      }
+    }
+
     // --- Build client context for María ---
     const clienteContext = cliente
       ? `
@@ -498,7 +541,57 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
     // Detect if conversation already started
     const isNewConversation = conversationHistory.length === 0;
 
-    const dynamicPrompt = CHT_SYSTEM_PROMPT + clienteContext + (isNewConversation
+    // --- Broadcast user lookup (role-based admin commands) ---
+    let broadcastUser = null;
+    try {
+      broadcastUser = await getUserByPhone(cleanNumber);
+    } catch { /* non-fatal */ }
+
+    const isAdmin = broadcastUser?.rol === 'admin';
+
+    // --- Admin command interception (runs BEFORE Claude) ---
+    if (isAdmin && broadcastUser) {
+      const cmdReply = await interpretAndExecute(broadcastUser, incomingMessage);
+      if (cmdReply !== null) {
+        await supabase.from("conversaciones_whatsapp").insert([
+          { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
+          { numero_whatsapp: fromNumber, role: "assistant", content: cmdReply },
+        ]);
+        return new Response(
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(cmdReply)}</Message></Response>`,
+          { status: 200, headers: { "Content-Type": "text/xml" } }
+        );
+      }
+    }
+
+    // --- Onboarding check (new users, runs BEFORE building the prompt) ---
+    if (!isAdmin) {
+      const onboardingState = await getOnboardingState(cleanNumber);
+      if (!cliente && onboardingState === null) {
+        const firstQ = await startOnboarding(cleanNumber);
+        await supabase.from("conversaciones_whatsapp").insert([
+          { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
+          { numero_whatsapp: fromNumber, role: "assistant", content: firstQ },
+        ]);
+        return new Response(
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(firstQ)}</Message></Response>`,
+          { status: 200, headers: { "Content-Type": "text/xml" } }
+        );
+      }
+      if (onboardingState && onboardingState.estado !== 'COMPLETE') {
+        const reply = await handleOnboarding(cleanNumber, incomingMessage);
+        await supabase.from("conversaciones_whatsapp").insert([
+          { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
+          { numero_whatsapp: fromNumber, role: "assistant", content: reply },
+        ]);
+        return new Response(
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(reply)}</Message></Response>`,
+          { status: 200, headers: { "Content-Type": "text/xml" } }
+        );
+      }
+    }
+
+    const dynamicPrompt = CHT_SYSTEM_PROMPT + clienteContext + expedienteContext + (isNewConversation
       ? ''
       : `
 
@@ -525,8 +618,13 @@ Responde DIRECTAMENTE a lo que acaba de decir el usuario.`);
       messages: cleanHistory,
     });
 
-    const assistantReply = claudeResponse.content[0].text;
+    let assistantReply = claudeResponse.content?.[0]?.text ?? 'Lo siento, no pude procesar tu mensaje en este momento.';
     console.log(`🤖 Claude responds: ${assistantReply}`);
+
+    // --- Auto-create broadcast user if not yet registered ---
+    if (!broadcastUser) {
+      getOrCreateUserByPhone(cleanNumber, cliente?.nombre ?? undefined).catch(() => {});
+    }
 
     const { error: insertError } = await supabase.from("conversaciones_whatsapp").insert([
       { numero_whatsapp: fromNumber, role: "user", content: incomingMessage },
@@ -623,7 +721,7 @@ Si algún dato no está claramente mencionado, deja null.`
 
       try {
         // Strip markdown code blocks if Claude wraps the JSON
-        let rawText = extractionResponse.content[0].text;
+        let rawText = extractionResponse.content?.[0]?.text ?? '';
         rawText = rawText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
         console.log('Raw extraction text:', rawText);
@@ -639,7 +737,7 @@ Si algún dato no está claramente mencionado, deja null.`
             .single();
 
           if (!existing) {
-            const { error: insertError } = await supabase
+            const { error: clientInsertError } = await supabase
               .from('clientes')
               .insert([{
                 nombre: extracted.nombre,
@@ -649,8 +747,8 @@ Si algún dato no está claramente mencionado, deja null.`
                 situacion_tierra: 'arrendatario_sin_titulo'
               }]);
 
-            if (insertError) {
-              console.log('Insert error:', insertError.message);
+            if (clientInsertError) {
+              console.log('Insert error:', clientInsertError.message);
             } else {
               console.log('Client auto-registered:', extracted.nombre);
             }
@@ -662,7 +760,7 @@ Si algún dato no está claramente mencionado, deja null.`
         }
       } catch (e) {
         console.log('Extraction parse error:', e.message);
-        console.log('Raw text was:', extractionResponse.content[0].text);
+        console.log('Raw text was:', extractionResponse.content?.[0]?.text);
       }
     }
 
