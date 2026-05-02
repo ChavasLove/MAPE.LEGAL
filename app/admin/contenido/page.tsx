@@ -42,6 +42,7 @@ export default function ContenidoPage() {
     finally { setLoading(false); }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   const sections = [...new Set(fields.map(f => f.seccion))];

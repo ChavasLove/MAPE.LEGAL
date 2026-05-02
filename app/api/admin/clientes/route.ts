@@ -15,7 +15,7 @@ export async function GET() {
 
   // Fetch expedientes linked to each client via cliente_id FK
   const ids = (data ?? []).map(c => c.id);
-  let expedientesByCliente: Record<string, unknown[]> = {};
+  const expedientesByCliente: Record<string, unknown[]> = {};
 
   if (ids.length > 0) {
     const { data: exps } = await admin

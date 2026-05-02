@@ -11,6 +11,7 @@ export default function LandingPage() {
   useEffect(() => {
     try {
       const saved = localStorage.getItem('ml_lang')
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (saved === 'es' || saved === 'en') setLang(saved)
     } catch {}
   }, [])

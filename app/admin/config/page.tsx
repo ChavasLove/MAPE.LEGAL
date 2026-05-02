@@ -33,6 +33,7 @@ export default function ConfigPage() {
     finally { setLoading(false); }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   async function handleSave(e: React.FormEvent) {

@@ -57,6 +57,7 @@ export default function UsuariosPage() {
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   async function handleCreate(e: React.FormEvent) {
