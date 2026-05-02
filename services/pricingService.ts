@@ -21,7 +21,7 @@ async function fetchMetalPrice(symbol: 'XAU' | 'XAG' | 'HG'): Promise<number | n
     const res = await fetch(`https://www.goldapi.io/api/${symbol}/USD`, {
       headers: { 'x-access-token': apiKey, 'Content-Type': 'application/json' },
       next: { revalidate: 0 },
-    });
+    } as RequestInit);
     if (!res.ok) throw new Error(`goldapi ${res.status}`);
     const data = await res.json() as { price?: number; price_gram_24k?: number };
     return data.price ?? null;
@@ -39,7 +39,7 @@ async function fetchExchangeRate(): Promise<number | null> {
     : 'https://api.exchangerate-api.com/v4/latest/USD';
 
   try {
-    const res = await fetch(url, { next: { revalidate: 0 } });
+    const res = await fetch(url, { next: { revalidate: 0 } } as RequestInit);
     if (!res.ok) throw new Error(`exchangerate-api ${res.status}`);
     const data = await res.json() as { rates?: Record<string, number>; conversion_rates?: Record<string, number> };
     const rates = data.conversion_rates ?? data.rates ?? {};

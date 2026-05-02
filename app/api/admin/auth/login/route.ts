@@ -15,6 +15,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Configuración de servidor incompleta' }, { status: 500 });
     }
 
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
     const supabase = createClient(url, key, { auth: { persistSession: false } });
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
@@ -22,8 +24,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Credenciales incorrectas' }, { status: 401 });
     }
 
-    // Verify the user has admin role in user_roles table
-    const { data: roleRow } = await supabase
+    // Verify the user has admin role using service role client to bypass RLS.
+    // Anon client with persistSession:false can silently return null from user_roles
+    // even when a row exists, because the JWT session context may not be propagated.
+    const roleClient = serviceKey
+      ? createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } })
+      : supabase;
+
+    const { data: roleRow } = await roleClient
       .from('user_roles')
       .select('rol, activo')
       .eq('user_id', data.user.id)

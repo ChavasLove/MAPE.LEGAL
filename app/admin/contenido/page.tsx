@@ -44,7 +44,7 @@ export default function ContenidoPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const sections = [...new Set(fields.map(f => f.seccion))];
+  const sections = Array.from(new Set<string>(fields.map(f => f.seccion)));
 
   function toggleSection(s: string) {
     setExpanded(prev => {
