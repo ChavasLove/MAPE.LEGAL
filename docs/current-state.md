@@ -1,10 +1,10 @@
 # Current State
 
 ## Last Updated
-2026-05-02
+2026-05-01
 
 ## Current Module
-Pilot core schema complete. María legal knowledge base added. Bug fixes in progress.
+Landing page — public-facing marketing page complete
 
 ---
 
@@ -87,6 +87,15 @@ Pilot core schema complete. María legal knowledge base added. Bug fixes in prog
 - `scripts/seed-super-admin.mjs` — idempotent, creates admin account and assigns role
 - `scripts/check-env.mjs` — validates all required environment variables before deploy
 
+### Landing page (`app/page.tsx`)
+- Full bilingual (ES/EN) landing page implemented as Next.js Client Component
+- Language persisted in `localStorage`; defaults to Spanish
+- Sections: Nav, Hero (with animated dashboard mockup), Stats bar, How it works, Traceability (with progress card), 5 Fases, Quote, CTA form, Footer
+- CTA form uses React state — no external service wired yet (shows success message on submit)
+- Font switched from Geist to Inter via `next/font/google` in `layout.tsx`
+- All design tokens (colors, spacing) in `globals.css` as CSS custom properties
+- Build passes: Turbopack ✓ · TypeScript ✓ · 6 routes generated ✓
+
 ---
 
 ## Known Issues / Limitations
@@ -97,12 +106,9 @@ Pilot core schema complete. María legal knowledge base added. Bug fixes in prog
 
 ---
 
-## Next Steps
-
-- Apply migrations 007–009 to Supabase production
-- Configure Vercel environment variables (see README.md section 9)
-- Configure SendGrid domain verification for `gerencia@mape.legal`
-- Configure Meta Business Portal webhook → `/api/webhook/whatsapp`
-- Configure Twilio sandbox/sender → `/api/whatsapp`
-- Build client registration flow in `/portal` (form to complete profile)
-- Build gold transaction logging UI in `/dashboard`
+## Next Step
+- Wire CTA form to a real backend (Supabase table or WhatsApp API)
+- Implement `documentos` table and real document check in `getBlockingReasons`
+- Add RLS policies to all Supabase tables
+- Implement Supabase Auth integration
+- Add UI for advancing fases and managing pagos (dashboard view at `/expedientes`)
