@@ -21,10 +21,10 @@ const cards = [
     bg:    '#E6F2EC',
   },
   {
-    href:  '/expedientes',
+    href:  '/dashboard/expedientes',
     Icon:  FileText,
     title: 'Expedientes activos',
-    desc:  'Ver y gestionar los expedientes mineros en curso del piloto Iriona 2026.',
+    desc:  'Ver y gestionar los expedientes mineros en curso en el dashboard operativo.',
     cta:   'Ver expedientes',
     color: '#C49A4A',
     bg:    '#F5EBDD',
@@ -37,7 +37,7 @@ export default function AdminPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-1">Panel de administración</h1>
         <p className="text-sm font-sans" style={{ color: '#A3AAB3' }}>
-          MAPE.LEGAL · Piloto Iriona 2026
+          MAPE.LEGAL · Corporación Hondureña Tenka
         </p>
       </div>
 

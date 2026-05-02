@@ -1,148 +1,168 @@
-# MAPE.LEGAL — README HYPER-DETALLADO
+# MAPE.LEGAL — Internal Development Reference
 
-**Versión 1.0 — Piloto Iriona 2026**
-Fecha de creación: 26 de abril de 2026
-Propietario: Corporación Hondureña Tenka, S.A. (CHT)
+**Corporación Hondureña Tenka, S.A. (CHT)**
 Administrador Único: Willis Yang
-Dominio: www.mape.legal (público futuro) / App privada en Vercel + Supabase
+Dominio: www.mape.legal · Plataforma privada: Vercel + Supabase
 
 ---
 
-## 1. VISIÓN Y PROPÓSITO (OFICIAL)
+## 1. Propósito
 
-MAPE.LEGAL es la plataforma digital interna de CHT que actúa como **motor de evidencia legal de origen mineral** para minería artesanal y de pequeña minería en Honduras.
+MAPE.LEGAL es el **motor de evidencia legal de origen mineral** de CHT para la minería artesanal y de pequeña minería en Honduras.
 
-Su propósito principal es generar, almacenar y certificar de forma automática evidencia legalmente defendible de que el oro proviene de operaciones formalizadas conforme a la **Ley de Minería, Reglamento MAPE, ILO 169, SLAS-2** y estándares internacionales (CRAFT / Fairmined / RJC).
-
-**Frase de una línea:**
-> "La plataforma que convierte minería informal en oro traceable, certificado y premium para Chiopa Industrias planta de refinamiento de oro en Honduras y mercados éticos internacionales."
-
-**Visión ampliada (CEO level):**
-Convertirse en el Verra / Fairmined de Honduras: la primera plataforma nacional que une formalización legal + trazabilidad + comercialización de oro responsable. Escalamiento: Iriona → todo el corredor aurífero hondureño → Centroamérica.
+Genera, almacena y certifica evidencia legalmente defendible de que el oro proviene de operaciones formalizadas conforme a la **Ley de Minería, Reglamento MAPE, ILO 169, SLAS-2** y estándares internacionales (CRAFT / Fairmined / RJC / EUDR 2027).
 
 ---
 
-## 2. CONTEXTO DE NEGOCIO (CHT)
+## 2. Arquitectura Técnica
 
-- **CHT** = Corporación Hondureña Tenka, S.A.
-- **Fundador y Administrador Único:** Willis Yang
-- **Socio 50%:** Ricardo Alfredo Montes Nájera
-
-**Modelo de ingresos dual:**
-1. Servicios de formalización (paquete ancla L 1.600.000 + titulaciones + contratos de sociedad minera)
-2. Margen de comercialización de oro (compra a mineros 80% LBMA → venta a Chiopa Industrias 85% LBMA)
-
-**Piloto 2026:** Asociación de Mineros de Iriona, Colón (~60 mineros)
-
-**Servicios que la plataforma soporta:**
-- Paquete Ancla Formalización Minera (L 1.600.000 – 3 hitos: 30%/40%/30%)
-- Titulación de Propiedad (L 38.000 base + L 8.000 por manzana adicional)
-- Contrato de Sociedad Minera (L 55.000 – co-pagado 50/50)
-
----
-
-## 3. ARQUITECTURA TÉCNICA
-
-| Componente | Decisión |
+| Componente | Implementación |
 |---|---|
-| Hosting | Vercel (app privada) |
+| Framework | Next.js 16 — App Router, TypeScript, React 19 |
+| Hosting | Vercel |
 | Base de datos | Supabase (PostgreSQL + Auth + Storage + Realtime) |
-| Frontend | React + Tailwind |
-| Backend | Supabase Edge Functions + Row Level Security |
-| Autenticación | Supabase Auth (roles: Admin CHT, Abogado, Técnico Ambiental, Cliente) |
-| Almacenamiento | Supabase Storage (fotos georeferenciadas, documentos, constancias) |
+| Estilos | Tailwind CSS v4 — `@theme inline` en globals.css |
+| Autenticación | Supabase Auth + cookies httpOnly |
+| Almacenamiento | Supabase Storage |
 | Notificaciones | Supabase Realtime + WhatsApp Business API |
 | Documentos | Plantillas HTML → PDF (Certificate of Origin automático) |
 
-> Dominio público (www.mape.legal) se activa solo en lanzamiento comercial.
+> **IMPORTANTE:** Tailwind v4 usa `@theme inline` — no usar `tailwind.config.js`.
+> Ver `DESIGN.md` para todos los tokens de color y tipografía del sistema CHT.
 
 ---
 
-## 4. ESQUEMA DE BASE DE DATOS
+## 3. Estructura del Proyecto
 
-Objeto central: **unidad minera (mina)**
+```
+app/
+  (landing)         → página pública www.mape.legal
+  admin/
+    login/          → login del panel de administración
+    (protected)/    → panel de administración (requiere cookie admin-token)
+      usuarios/     → gestión de cuentas de acceso
+      profesionales/ → gestión de perfiles abogados/técnicos
+  dashboard/        → dashboard operativo CHT (pendiente)
+  api/
+    admin/          → CRUD admin (service role Supabase)
+    contacto/       → formulario de contacto landing
+    ...
 
-| Tabla | Descripción |
+components/landing/ → 8 secciones de la landing pública
+modules/
+  types.ts          → tipos de dominio (español, espejo del DB)
+  workflow.ts       → motor de transiciones de fase
+  expedientes.ts    → lógica de avance de expediente
+services/
+  supabase.ts       → cliente anon (browser)
+  adminSupabase.ts  → cliente service role (server-only)
+supabase/migrations/ → migraciones SQL numeradas (001–007)
+```
+
+---
+
+## 4. Esquema de Base de Datos
+
+Migraciones aplicadas en orden:
+
+| Migración | Contenido |
 |---|---|
-| `clientes` | Mineros y dueños de tierra por separado |
-| `minas` | Coordenadas UTM, categoría ambiental, estado legal |
-| `indice_legalidad` | 5 componentes (0–100%) |
-| `contratos` | Consultoría, sociedad minera, arrendamiento |
-| `tipos_tramite` | Catálogo de trámites |
-| `plantillas_hitos` | Hitos por tipo de servicio |
-| `expedientes` | Número EXP-2026-XXX, fase, progreso visual |
-| `asignaciones` | Abogado + PSA por expediente |
-| `tareas` | 54 pasos del Manual Operativo con rol codificado |
-| `notificaciones` | WhatsApp + sistema |
-| `documentos` | Estado: listo / procesando / ilegible / verificado / rechazado |
-| `transacciones_oro` | Trazabilidad futura |
+| 001 | Workflow por fases (fases, transiciones, expedientes) |
+| 002 | Motor de workflow (registro de auditoría, pagos) |
+| 003 | Nomenclatura española |
+| 004 | Schema dashboard inicial |
+| 005 | Schema admin: `perfiles_profesionales`, `user_roles` |
+| 006 | Schema ER completo: `clientes`, `minas`, `asignaciones`, `plantillas_tareas`, `tareas`, `contratos`, `notificaciones`, `transacciones_oro` |
+| 007 | Seed: 54 pasos del Manual Operativo 2026 + titulación + sociedad minera |
+
+Objeto central: **expediente** (vinculado a un cliente y una mina).
 
 ---
 
-## 5. MÓDULOS ESENCIALES DEL PILOTO (4 módulos)
+## 5. Roles del Sistema
 
-1. **Registro de Productores** — Verificación real-time de permisos INHGEOMIN/SERNA, ficha completa (RTN, coordenadas, situación de tierra, foto GPS)
-2. **Registro de Transacciones** — Compra de oro con peso, ley, fecha, coordenadas de origen + Certificate of Origin automático
-3. **Generación Automática de Certificado de Origen** — Evidencia legal defendible (fotos georeferenciadas + constancia ILO 169 + índice de legalidad)
-4. **Seguimiento de Expedientes Legales** — Dashboard con barra de progreso por fase
+| Rol | Acceso |
+|---|---|
+| `admin` | Panel `/admin` completo + Dashboard completo |
+| `abogado` | Dashboard operativo `/dashboard` |
+| `tecnico_ambiental` | Dashboard operativo `/dashboard` |
+| `cliente` | Vista de expediente (futuro) |
 
----
-
-## 6. DASHBOARD
-
-Prototipo React completo funcional en `/public/dashboard.html`. Características:
-
-- **Sidebar izquierdo:** Lista de expedientes con ID, cliente, tipo, barra de progreso, badge de estado
-- **Área principal:** Detalle del expediente, hitos y documentos
-- **WA Feed (barra derecha):** Mensajes WhatsApp en vivo, estados de documentos, botones de verificación, filtros y contador de pendientes
-- **Topbar:** Logo MAPE.LEGAL + usuario + notificaciones
-
-El prototipo simula: actualización de estado de documentos, toast de éxito/error, modales de rechazo con motivo, verificación PSA / Abogado.
+La función `is_cht_staff()` (SQL, SECURITY DEFINER) controla RLS en todas las tablas nuevas.
 
 ---
 
-## 7. INTEGRACIÓN CON MANUAL OPERATIVO 2026
+## 6. Autenticación
 
-El dashboard y Supabase están diseñados para mapear exactamente los **54 pasos del Manual Operativo 2026** (versión 1.0).
-
-Cada paso tiene: Rol, acciones, documentos requeridos, plazo y deliverable.
-
-> **Regla de oro:** Ningún paso se marca como completado sin deliverable físico/digital en el expediente.
-
-Fase 0 (Onboarding) ya está 100% mapeada en la plataforma.
+- **Panel Admin (`/admin`):** Cookie httpOnly `admin-token` (Supabase access_token). Middleware protege todas las rutas `/admin/*` excepto `/admin/login`. La verificación de rol `admin` ocurre en el endpoint de login.
+- **Dashboard (`/dashboard`):** Cookie httpOnly `dashboard-session` — pendiente de implementación.
+- **`/api/admin/*`:** Usa cliente service role (`SUPABASE_SERVICE_ROLE_KEY`) — nunca exponer al browser.
 
 ---
 
-## 8. FLUJOS CLAVE (Camino B)
+## 7. Variables de Entorno Requeridas
 
-1. Onboarding → Hito 1 (30%) → Apertura expediente en MAPE.LEGAL
-2. Visita de campo (fotos GPS) → Categorización SLAS-2
-3. Generación automática de constancias y Certificate of Origin
-4. Feed WhatsApp → Verificación IA / humana → Evidencia sellada
-5. Comercialización provisional (mientras tramitan permisos)
-
----
-
-## 9. ESTADO ACTUAL (26-abr-2026)
-
-- [x] Dominio confirmado
-- [x] Arquitectura decidida (Vercel + Supabase)
-- [x] Prototipo Dashboard 100% funcional
-- [x] Schema ER diseñado (3 iteraciones)
-- [x] Manual Operativo 54 pasos completo
-- [x] Menu de Servicios 2026 aprobado
-- [x] Mapa Iriona con 60 mineros
-- [x] Sistema de diseño CHT implementado (Playfair Display + Inter, tokens de color completos)
-- [x] Landing page — todos los componentes alineados al brand (11 componentes)
-- [ ] Imagen hero (`public/images/hero-rio-honduras.jpg`) — colocar manualmente
-- [ ] Schema Supabase creado
-- [ ] Primera pantalla real (productor registry)
-- [ ] Conexión WhatsApp Business API
+```env
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
+```
 
 ---
 
-## 10. CONFIDENCIALIDAD Y USO
+## 8. Sistema de Diseño
 
-> Uso exclusivo interno de CHT y socios autorizados.
-> Documento confidencial. Prohibida reproducción sin autorización escrita del Administrador Único.
-> Todos los datos de mineros y expedientes están protegidos por RLS de Supabase.
+Ver **`DESIGN.md`** — guía obligatoria de colores, tipografía y componentes.
+
+Principios clave:
+- Fuentes: Playfair Display (títulos) + Inter (UI/cuerpo)
+- Colores: tokens CHT únicamente — no usar clases Tailwind genéricas (`gray-*`, `green-*`, `slate-*`)
+- Background landing: `primary-50` / `earth-50`
+- Background dashboard: `primary-900` / `primary-950`
+
+---
+
+## 9. Motor de Tareas (54 Pasos)
+
+El proceso de formalización minera consta de **54 pasos** agrupados en 5 fases:
+
+| Fase | Nombre | Pasos |
+|---|---|---|
+| 0 | Onboarding | 1–6 |
+| 1 | INHGEOMIN | 7–19 |
+| 2 | SERNA / MiAmbiente | 20–31 |
+| 3 | Resolución Minera | 32–42 |
+| 4 | Municipal + Comercializador | 43–54 |
+
+Las plantillas viven en `plantillas_tareas` (migración 007). Al crear un expediente se instancian en `tareas` (una fila por paso por expediente).
+
+Procesos adicionales: `titulacion` (8 pasos) y `sociedad_minera` (6 pasos).
+
+---
+
+## 10. Estado del Proyecto (02-may-2026)
+
+**Completado:**
+- [x] Sistema de diseño CHT (Tailwind v4, tokens completos)
+- [x] Landing pública — 8 secciones, DESIGN.md compliant, sin precios ni datos confidenciales
+- [x] Optimización de imágenes (`next/image`, avif/webp, LCP priority)
+- [x] Panel admin: login + usuarios + perfiles profesionales
+- [x] Migraciones 001–007: schema completo + 54 pasos del Manual Operativo
+- [x] Tipos de dominio en TypeScript (`modules/types.ts`)
+- [x] Middleware de autenticación (rutas `/admin/*` protegidas)
+- [x] API routes admin: CRUD usuarios (service role), CRUD profesionales, auth login/logout
+
+**Pendiente:**
+- [ ] Dashboard operativo (`/dashboard`) — layout, login, expedientes, 54-step engine
+- [ ] Índice de legalidad — cálculo en tiempo real
+- [ ] Certificate of Origin — generación PDF
+- [ ] WhatsApp Business API — notificaciones
+- [ ] Variables de entorno en Vercel
+- [ ] Aplicar migraciones en Supabase producción
+
+---
+
+## 11. Confidencialidad
+
+Uso exclusivo interno de CHT y socios autorizados.
+Prohibida la reproducción sin autorización escrita del Administrador Único.

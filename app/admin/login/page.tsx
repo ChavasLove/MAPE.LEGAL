@@ -76,7 +76,7 @@ function LoginForm() {
                 onChange={e => setEmail(e.target.value)}
                 required
                 className="w-full px-3.5 py-2.5 rounded-lg border text-sm font-sans outline-none focus:ring-2 transition"
-                style={{ borderColor: '#E5E7EB', color: '#162033', focusRingColor: '#1F2A44' } as React.CSSProperties}
+                style={{ borderColor: '#E5E7EB', color: '#162033' }}
                 placeholder="admin@cht.hn"
                 autoComplete="email"
               />
@@ -92,7 +92,7 @@ function LoginForm() {
                 onChange={e => setPassword(e.target.value)}
                 required
                 className="w-full px-3.5 py-2.5 rounded-lg border text-sm font-sans outline-none focus:ring-2 transition"
-                style={{ borderColor: '#E5E7EB', color: '#162033' } as React.CSSProperties}
+                style={{ borderColor: '#E5E7EB', color: '#162033' }}
                 placeholder="••••••••"
                 autoComplete="current-password"
               />
