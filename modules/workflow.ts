@@ -19,7 +19,39 @@ export async function getAvailableTransitions(
 
   if (error) throw error;
 
-  return (data ?? []) as TransicionFase[];
+  // Supabase infers forward-reference joins as arrays; at runtime they are
+  // single objects. Normalize defensively then cast.
+  return (data ?? []).map((row: Record<string, unknown>) => ({
+    ...row,
+    fase_destino: Array.isArray(row.fase_destino)
+      ? (row.fase_destino as unknown[])[0]
+      : row.fase_destino,
+  })) as unknown as TransicionFase[];
+}
+
+async function checkDocumentos(
+  expedienteId: string,
+  nombresRequeridos: string[]
+): Promise<BlockingReason[]> {
+  if (!nombresRequeridos.length) return [];
+
+  const { data, error } = await supabase
+    .from('documentos')
+    .select('nombre, estado')
+    .eq('expediente_id', expedienteId)
+    .in('nombre', nombresRequeridos);
+
+  if (error) throw error;
+
+  const verificados = new Set(
+    (data ?? [])
+      .filter((d: { nombre: string; estado: string }) => d.estado === 'verificado')
+      .map((d: { nombre: string; estado: string }) => d.nombre)
+  );
+
+  return nombresRequeridos
+    .filter((nombre) => !verificados.has(nombre))
+    .map((nombre) => ({ type: 'documento' as const, name: nombre, status: 'pending' as const }));
 }
 
 export async function getBlockingReasons(
@@ -37,10 +69,8 @@ export async function getBlockingReasons(
   }
 
   if (condicion.requiere_documentos?.length) {
-    // Stub: document check will be filled when the documentos table is ready.
-    for (const docNombre of condicion.requiere_documentos) {
-      reasons.push({ type: 'documento', name: docNombre, status: 'pending' });
-    }
+    const docBlocking = await checkDocumentos(expedienteId, condicion.requiere_documentos);
+    reasons.push(...docBlocking);
   }
 
   return reasons;
@@ -67,6 +97,7 @@ export async function getNextActions(
 
     return {
       can_advance: primeraFase !== null,
+      is_final: false,
       blocking: [],
       available_transitions: primeraFase
         ? [{ transition_id: 'entry', fase: primeraFase }]
@@ -76,8 +107,9 @@ export async function getNextActions(
 
   const transitions = await getAvailableTransitions(expediente.fase_actual_id);
 
+  // No outgoing transitions — this is the final phase
   if (transitions.length === 0) {
-    return { can_advance: false, blocking: [], available_transitions: [] };
+    return { can_advance: false, is_final: true, blocking: [], available_transitions: [] };
   }
 
   const available: NextActionsResult['available_transitions'] = [];
@@ -101,6 +133,7 @@ export async function getNextActions(
 
   return {
     can_advance: available.length > 0,
+    is_final: false,
     blocking: allBlocking,
     available_transitions: available,
   };

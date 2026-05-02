@@ -9,18 +9,25 @@
 - [ ] Add UI for pagos management (register and validate payments)
 - [ ] Add `GET /api/fases` endpoint for frontend fase listing
 - [ ] Add `GET /api/expedientes/:id/fases` to retrieve fase history
-- [ ] Define roles and permissions per fase (e.g. who can advance SERNA)
+- [ ] Define permissions per fase (which role can advance each phase)
+- [ ] Populate `scripts/visual-guide.ts` — interactive token reference for designers
 
 ## In Progress
 - (none)
 
 ## Completed
-- [x] Project initial setup
-- [x] Supabase integration
-- [x] Create fases table in database
-- [x] Implement payment validation logic (per-fase, via `pagos` table)
-- [x] Add audit log system (`registro_auditoria` with `user_id` and `accion`)
-- [x] Define expediente state transitions (explicit graph in `transiciones_fase`)
+- [x] Project initial setup and Supabase integration
+- [x] Database schema migrations 001–010 (all tables current)
+- [x] Workflow tables: `fases`, `transiciones_fase`, `expedientes`, `pagos`, `expediente_fases`, `registro_auditoria`
+- [x] Extended tables: `perfiles_profesionales`, `asignaciones`, `documentos`, `mensajes`, `hitos_pago`, `tareas`
+- [x] `user_roles` table (migration 005)
+- [x] `roles`, `contenido_cms`, `configuracion_sistema`, `notificaciones` (migration 006)
+- [x] `contactos_web` (migration 007)
+- [x] `clientes`, `minas`, `contratos`, `indice_legalidad`, `transacciones_oro`, `conversaciones_whatsapp`, `transacciones_pendientes` (migration 008)
+- [x] `usuarios_broadcast`, `daily_report_config`, `precios_diarios`, `broadcast_log` (migration 009)
+- [x] `admin_actions`, `onboarding_states`; `clientes.telefono_whatsapp/situacion_tierra/tipo_mineral` (migration 010)
+- [x] Payment validation logic (per-fase, via `pagos` table)
+- [x] Audit log system (`registro_auditoria`)
 - [x] Expediente workflow engine (`getNextActions`, `getBlockingReasons`, `advancePhase`)
 - [x] Phase history tracking (`expediente_fases` with `entrada_en` / `salida_en`)
 - [x] Bilingual naming convention (Spanish DB/domain, English code logic)

@@ -1,11 +1,54 @@
+import { Hero }          from '@/components/landing/Hero';
+import { About }         from '@/components/landing/About';
+import { ValorSection }  from '@/components/landing/ValorSection';
+import { Services }      from '@/components/landing/Services';
+import { Solution }      from '@/components/landing/Solution';
+import { Beneficiarios } from '@/components/landing/Beneficiarios';
+import { Contacto }      from '@/components/landing/Contacto';
+import { Footer }        from '@/components/landing/Footer';
+
+export const metadata = {
+  title: 'MAPE.LEGAL — Formalización minera en Honduras · Corporación Hondureña Tenka',
+  description:
+    'Transformamos la minería artesanal en oro trazable, certificado y premium. ' +
+    'Acompañamiento legal continuo desde INHGEOMIN hasta los mercados éticos internacionales. ' +
+    'ILO 169 · CRAFT · Fairmined · RJC · EUDR 2027.',
+  openGraph: {
+    title:       'MAPE.LEGAL — Formalización minera en Honduras',
+    description:
+      'Transformamos la minería artesanal en oro trazable, certificado y premium. ' +
+      'ILO 169 · CRAFT · Fairmined · RJC · EUDR 2027.',
+    url:         '/',
+    images: [
+      {
+        url:    '/images/RIVER AND MOUNTAINS.png',
+        width:  1200,
+        height: 630,
+        alt:    'Corredor aurífero hondureño — MAPE.LEGAL · Corporación Hondureña Tenka',
+      },
+    ],
+  },
+};
+
 export default function Home() {
   return (
-    <main style={{ background: "#1a1a1a", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui, sans-serif" }}>
-      <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: "11px", letterSpacing: "0.1em", color: "#6b6a67", marginBottom: "8px" }}>MAPE LEGAL</div>
-        <div style={{ fontSize: "24px", color: "#e8e6e0", fontWeight: 500, marginBottom: "4px" }}>Dashboard CHT</div>
-        <div style={{ fontSize: "13px", color: "#9b9a96" }}>Piloto Iriona 2026</div>
-      </div>
-    </main>
-  )
+    <div className="min-h-screen bg-primary-50 text-primary-900 overflow-x-hidden">
+      {/* 1. Hero */}
+      <Hero />
+      {/* 2. Quiénes somos */}
+      <About />
+      {/* 3. Propuesta de valor — Sin CHT vs Con CHT */}
+      <ValorSection />
+      {/* 4. Servicios (sin precios) */}
+      <Services />
+      {/* 5. MAPE.LEGAL — Motor de evidencia */}
+      <Solution />
+      {/* 6. Beneficios por actor */}
+      <Beneficiarios />
+      {/* 7. Contacto + CTA final */}
+      <Contacto />
+      {/* 8. Footer institucional */}
+      <Footer />
+    </div>
+  );
 }

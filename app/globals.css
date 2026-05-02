@@ -1,26 +1,86 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* CHT Design Tokens — Corporación Hondureña Tenka */
+
+  /* Primary Palette (Authority / Legal) */
+  --cht-primary-navy: #1F2A44;
+  --cht-deep-navy: #162033;
+  --cht-slate: #5E6B7A;
+  --cht-light-slate: #A3AAB3;
+  --cht-off-white: #F5F6F7;
+
+  /* Nature Layer (Territory / Sustainability) */
+  --cht-forest: #2F5D50;
+  --cht-olive: #6E7F5E;
+  --cht-earth: #8C6A4A;
+  --cht-sand: #D8C3A5;
+  --cht-cream: #F0EDE8;
+
+  /* Functional (System Feedback) */
+  --cht-success: #3E7C59;
+  --cht-warning: #C49A4A;
+  --cht-danger: #A94442;
+  --cht-info: #3A6EA5;
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+
+  /* Shadow */
+  --shadow-card: 0 2px 6px rgba(0, 0, 0, 0.05);
+
+  --background: #F5F6F7;
+  --foreground: #162033;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-playfair);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Primary Palette */
+  --color-primary-950: #1F2A44;
+  --color-primary-900: #162033;
+  --color-primary-500: #5E6B7A;
+  --color-primary-300: #A3AAB3;
+  --color-primary-50: #F5F6F7;
+
+  /* Natural Palette */
+  --color-forest-800: #2F5D50;
+  --color-forest-600: #6E7F5E;
+  --color-earth-600: #8C6A4A;
+  --color-earth-200: #D8C3A5;
+  --color-earth-50: #F0EDE8;
+
+  /* Functional Colors */
+  --color-action-green: #3E7C59;
+  --color-action-gold: #C49A4A;
+  --color-action-red: #A94442;
+  --color-action-blue: #3A6EA5;
+
+  /* Badge Surfaces */
+  --color-badge-success-bg: #E6F2EC;
+  --color-badge-warning-bg: #F5EBDD;
+  --color-badge-danger-bg: #F8E5E4;
+  --color-badge-info-bg: #DBEAFE;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter, 'Inter', system-ui, sans-serif);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-playfair, 'Playfair Display', Georgia, serif);
+  line-height: 1.15;
 }

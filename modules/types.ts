@@ -72,6 +72,7 @@ export interface BlockingReason {
 
 export interface NextActionsResult {
   can_advance: boolean;
+  is_final: boolean;
   blocking: BlockingReason[];
   available_transitions: Array<{
     transition_id: string;
