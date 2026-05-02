@@ -35,22 +35,19 @@ export function Impact() {
 
         {/* Field work callout */}
         <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl overflow-hidden flex flex-col md:flex-row items-stretch">
-          {/* Full image — no artificial height cap */}
-          <div className="md:w-72 shrink-0 overflow-hidden">
+          <div className="md:w-64 shrink-0 overflow-hidden relative" style={{ minHeight: '200px' }}>
             <Image
-              src="/images/Artisanal Miner Image 01 .JPG"
-              alt="Minero artesanal — corredor aurífero Honduras"
-              width={1080}
-              height={1440}
-              className="w-full h-auto md:h-full md:object-cover"
-              sizes="(max-width: 768px) 100vw, 288px"
+              src="/images/Technitians Field Work.png"
+              alt="Trabajo de campo — técnicos MAPE"
+              fill
+              className="object-cover"
             />
           </div>
           <div className="flex flex-col md:flex-row items-center gap-6 p-8 flex-1">
             <div className="flex-1 text-center md:text-left">
               <p className="text-white text-xl font-semibold leading-relaxed mb-3 font-sans">
-                "La minería artesanal responsable es viable cuando hay estructura legal y trazabilidad.
-                MAPE.LEGAL convierte esa visión en expedientes concretos."
+                &ldquo;La minería artesanal responsable es viable cuando hay estructura legal y trazabilidad.
+                MAPE.LEGAL convierte esa visión en expedientes concretos.&rdquo;
               </p>
               <p className="text-earth-200/70 text-sm font-sans">
                 Corporación Hondureña Tenka — Piloto Iriona 2026

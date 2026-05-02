@@ -243,15 +243,23 @@ Ver `.env.example` en el repositorio para plantilla completa.
 
 ---
 
-## 10. SCRIPTS DE UTILIDAD
+## 9. ESTADO ACTUAL (26-abr-2026)
 
-```bash
-# Crear cuenta admin inicial (idempotente)
-node scripts/seed-super-admin.mjs
-
-# Verificar variables de entorno requeridas
-node scripts/check-env.mjs
-```
+- [x] Dominio confirmado
+- [x] Arquitectura decidida (Vercel + Supabase)
+- [x] Prototipo Dashboard 100% funcional
+- [x] Schema ER diseñado (3 iteraciones)
+- [x] Manual Operativo 54 pasos completo
+- [x] Menu de Servicios 2026 aprobado
+- [x] Mapa Iriona con 60 mineros
+- [x] Sistema de diseño CHT implementado (Playfair Display + Inter, tokens de color completos)
+- [x] Landing page — todos los componentes alineados al brand (11 componentes)
+- [x] Imágenes territoriales aplicadas en landing (río, mapa, campo, legal, logo CHT)
+- [x] Precios eliminados de la landing — cotizaciones por solicitud privada únicamente
+- [x] Garantía de tiempo de gestión como mensaje principal
+- [ ] Schema Supabase creado
+- [ ] Primera pantalla real (productor registry)
+- [ ] Conexión WhatsApp Business API
 
 ---
 

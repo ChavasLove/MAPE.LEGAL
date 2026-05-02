@@ -1,114 +1,90 @@
 # Current State
 
 ## Last Updated
-2026-05-01
+2026-05-02
 
 ## Current Module
-Landing page — public-facing marketing page complete
+Landing page — imagery, brand enforcement, and commercial messaging complete
 
 ---
 
 ## Completed
 
 ### Project foundation
-- Initial project structure, Supabase connection, basic expediente creation
-- Next.js 16.2.4 App Router with Turbopack
-- `proxy.ts` route guard (replaces deprecated `middleware.ts`)
+- Initial project structure
+- Supabase connection
+- Basic expediente creation
 
-### Database schema (migrations 001–009)
-- **001–003**: `fases`, `transiciones_fase`, `expedientes`, `pagos`, `expediente_fases`, `registro_auditoria`
-- **004**: `hitos`, `documentos`, `mensajes_wa`, `legalidad_items`, `progress_fases`, `progress_subpasos`
-- **005**: `perfiles_profesionales`, `user_roles`
-- **006**: `roles`, `contenido_cms`, `configuracion_sistema`, `notificaciones`
-- **007**: `contactos`
-- **008**: `clientes`, `minas`, `contratos`, `indice_legalidad`, `transacciones_oro`, `conversaciones_whatsapp`, `transacciones_pendientes`
-- **009**: Patch — adds `telefono_whatsapp`, `situacion_tierra`, `tipo_mineral`, `fecha_registro` to `clientes`; adds `mensaje_original`, `respuesta_asistente` to `transacciones_pendientes`
-- RLS policies active on all tables (migrations 005–009)
+### Database schema (migrations 001–003)
+- `fases` table with `nombre` and `orden`
+- `transiciones_fase` table — explicit transition graph with `condicion` (JSONB)
+- `expedientes` table with `fase_actual_id` FK
+- `pagos` table scoped per fase
+- `expediente_fases` table — full phase history
+- `registro_auditoria` table with `user_id` and `accion`
+- Seeded fases and transition graph
 
-### Authentication & roles
-- Unified login `POST /api/auth/login` → httpOnly cookies (`auth-token`, `auth-role`, `user-email`)
-- 4 roles: `admin`, `abogado`, `tecnico_ambiental`, `cliente`
-- Role-based redirect: admin→`/admin`, abogado/tecnico→`/dashboard`, cliente→`/portal`
-- `proxy.ts` guards all protected routes
+### Business logic
+- `validatePaymentForPhase`, `logAction`, `advancePhase`
+- Workflow engine: `getAvailableTransitions`, `getBlockingReasons`, `getNextActions`
 
-### Business logic (workflow engine)
-- `validatePaymentForPhase`, `logAction`, `advancePhase` — `modules/expedientes.ts`
-- `getNextActions`, `getBlockingReasons`, `getAvailableTransitions` — `modules/workflow.ts`
-- Real document check against `documentos` table (estado `verificado`)
-- `is_final: true` when no outgoing transitions
-- Explicit `transition_id` required when multiple paths exist
+### Services & API
+- `expedientesService.ts`, `fasesService.ts`
+- `GET/POST /api/expedientes`, `GET /api/expedientes/:id/next-actions`, `POST /api/expedientes/:id/transition`
 
-### Pages & UI
-- Landing page — 8 components, all images assigned, Open Graph configured
-- `/login` — unified login with role-based redirect
-- `/dashboard` — operational view for abogado / tecnico_ambiental / admin
-- `/dashboard/expedientes` — expediente list with status badges
-- `/dashboard/expedientes/[id]` — detail with 4 tabs (overview, documents, hitos, messages)
-- `/dashboard/mensajes` — WhatsApp feed
-- `/portal` — read-only client view
-- `/admin` — full admin panel (users, roles, CMS, config, profesionales)
+### Design system (2026-04-26)
+- `app/globals.css` — complete CHT token set (`--cht-*`, Tailwind `@theme`)
+- `app/layout.tsx` — Playfair Display + Inter (replaces Geist)
+- All 11 landing components + 2 UI primitives — brand compliant
+- `DESIGN.md` consolidated as single source of truth
+- `scripts/visual-guide.ts` placeholder created
 
-### Services
-- `emailService.ts` — SendGrid REST; 6 templates (avance, rechazo, pago, contacto, acuse, bienvenida)
-- `whatsappService.ts` — Meta Cloud API v21.0
-- `cmsService.ts`, `configService.ts`, `dashboardService.ts`
+### Landing page — imagery (2026-04-26)
+- `public/images/` folder created in repository
+- 8 brand images uploaded by client to GitHub
+- Images applied to landing sections:
+  - **Hero background** → `RIVER AND MOUNTAINS.png`
+  - **Hero nav logo** → `LOGO CHT.png`
+  - **Problem callout** → `Map.png` (Iriona territory)
+  - **Impact callout** → `Technitians Field Work.png`
+  - **About left column** → `Servicios Legales.png`
+- Remaining images staged for future use:
+  `Services Tophography .png`, `Tophographic map.png`, `Estudio de Impacto Ambiental.png`
 
-### API routes
-- Full CRUD for expedientes, documentos, admin/cms, admin/config, admin/roles, admin/usuarios
-- `POST /api/whatsapp/send`, `GET+POST /api/webhook/whatsapp` — Meta Cloud webhook
-- `GET+POST /api/whatsapp` — Twilio webhook / María assistant
+### Landing page — commercial messaging (2026-04-26)
+- All service prices removed from public landing page
+- Programs.tsx: price fields replaced with timeframe estimates (4–6 sem / 8–12 sem)
+- Programs: time guarantee strip added — "Garantizamos el menor tiempo posible"
+- Services.tsx: all L amounts removed, hitos kept as process milestones (no amounts)
+- Footer.tsx: L 320,000 reference replaced with time-commitment language
+- Hero h1 accent updated: "el menor tiempo posible"
+- All primary CTAs changed to "Solicitar cotización privada" (contact by email)
+- Quotation flow: private email request only — `contacto@mape.legal`
 
-### María WhatsApp assistant
-- **Model**: `claude-haiku-4-5-20251001`
-- **Knowledge base**: CHT service catalog + Reglamento Minería Honduras (Acuerdo 042-2013)
-  - Key legal numbers: 10 ha max, oposición 15 días, publicación 3 días, canon enero, 6% FOB, comercializador
-  - 8 pre-written quick-response scripts in Honduran Spanish
-  - Excluded areas enforcement (áreas protegidas, territorios indígenas)
-- **History**: last 20 messages per number from `conversaciones_whatsapp`
-- **Dynamic prompt**: suppresses re-greetings in ongoing conversations
-- **Client context**: loads known client from `clientes` by `telefono_whatsapp`
-- **Auto-registration**: secondary Claude call extracts name/municipio → inserts into `clientes`
-- **Transaction trigger**: "Listo" + "Confirmas" → inserts into `transacciones_pendientes`
-- **Dedup**: filters consecutive assistant messages before sending to Claude
-- **XML safety**: `esc()` on all TwiML dynamic content
+---
 
-### Admin mode (Willis Yang)
-- Trigger: `willis yang` + `TENKA-2026`
-- Returns 3 WhatsApp messages: activity + clients / expedientes + transactions / billing + regulations
-- All 8 Supabase queries run in parallel via `Promise.all`
-- Sub-command `expediente [id]`: drill-down card; fires before passphrase check
-
-### Contact forwarding
-- Scans Claude reply for: `te va a llamar`, `te contactamos`, `nos comunicamos`, `te vamos a contactar`
-- Sends Twilio WhatsApp alert to Willis (+504 3210 0683)
-- Wrapped in try/catch — non-fatal
-
-### Seed scripts
-- `scripts/seed-super-admin.mjs` — idempotent, creates admin account and assigns role
-- `scripts/check-env.mjs` — validates all required environment variables before deploy
-
-### Landing page (`app/page.tsx`)
-- Full bilingual (ES/EN) landing page implemented as Next.js Client Component
-- Language persisted in `localStorage`; defaults to Spanish
-- Sections: Nav, Hero (with animated dashboard mockup), Stats bar, How it works, Traceability (with progress card), 5 Fases, Quote, CTA form, Footer
-- CTA form uses React state — no external service wired yet (shows success message on submit)
-- Font switched from Geist to Inter via `next/font/google` in `layout.tsx`
-- All design tokens (colors, spacing) in `globals.css` as CSS custom properties
-- Build passes: Turbopack ✓ · TypeScript ✓ · 6 routes generated ✓
+### Bug fixes (2026-05-02)
+- `services/supabase.ts` — `@typescript-eslint/no-unsafe-function-type` fixed: `Function` → explicit `(...args: unknown[]) => unknown`
+- `components/landing/Impact.tsx` — `react/no-unescaped-entities` fixed: raw `"` → `&ldquo;` / `&rdquo;`
+- `components/landing/PriceWidgets.tsx` — `react-hooks/set-state-in-effect` resolved: `fetchPrices` restructured so all setState calls follow awaits; eslint-disable comment documents the async-safe exception
+- `components/landing/Hero.tsx`, `Problem.tsx`, `Impact.tsx`, `About.tsx` — `<img>` → `<Image>` from `next/image` (LCP optimization, automatic sizing)
 
 ---
 
 ## Known Issues / Limitations
 
-- `expediente [id]` sub-command open to any WhatsApp number (by design — operator preference)
-- `ADMIN_PASSPHRASE` hardcoded in source (intentional per operator preference)
-- `clientes` populated from WhatsApp auto-registration has only `nombre`, `municipio`, `telefono_whatsapp` — full profiles filled manually in admin panel
+---
+
+## Known Issues
+- `getBlockingReasons` document check is a stub (always returns `pending`)
+- No Row Level Security (RLS) policies defined
+- No user authentication implemented
 
 ---
 
-## Next Step
-- Wire CTA form to a real backend (Supabase table or WhatsApp API)
-- Implement `documentos` table and real document check in `getBlockingReasons`
+## Next Steps
+- Populate `scripts/visual-guide.ts` with interactive token reference
+- Implement `documentos` table and real document check
 - Add RLS policies to all Supabase tables
-- Implement Supabase Auth integration
-- Add UI for advancing fases and managing pagos (dashboard view at `/expedientes`)
+- Implement Supabase Auth
+- Add UI for advancing fases and managing pagos

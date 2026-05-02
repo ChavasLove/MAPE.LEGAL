@@ -47,14 +47,13 @@ export function About() {
             </p>
 
             {/* Legal services image */}
-            <div className="rounded-xl overflow-hidden mb-6 border border-earth-200">
+            <div className="rounded-xl overflow-hidden mb-6 border border-earth-200 relative" style={{ height: '200px' }}>
               <Image
                 src="/images/Servicios Legales.png"
-                alt="Servicios legales especializados MAPE"
-                width={1920}
-                height={1080}
-                className="w-full h-auto"
-                sizes="(max-width: 1024px) 100vw, 50vw"
+                alt="Servicios legales especializados"
+                fill
+                className="object-cover"
+                style={{ objectPosition: 'center top' }}
               />
             </div>
 

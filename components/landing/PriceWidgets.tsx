@@ -55,27 +55,35 @@ export function PriceWidgets() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchPrices = async () => {
-    try {
-      setError(null);
-      const res = await fetch('/api/prices');
-      if (!res.ok) throw new Error('api_error');
-      const data = await res.json();
-      setPrices({
-        gold:      data.gold   ?? EMPTY_METAL,
-        silver:    data.silver ?? EMPTY_METAL,
-        hnlPerUsd: data.hnlPerUsd ?? null,
-        lastUpdated: new Date().toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' }),
-      });
-    } catch {
+    const res = await fetch('/api/prices').catch(() => null);
+    if (!res?.ok) {
       setError('No se pudo actualizar precios');
-    } finally {
       setLoading(false);
+      return;
     }
+    const raw = (await res.json().catch(() => null)) as {
+      gold?: number; silver?: number; hnlPerUsd?: number;
+    } | null;
+    if (!raw) {
+      setError('No se pudo actualizar precios');
+      setLoading(false);
+      return;
+    }
+    setPrices({
+      gold: raw.gold ?? null,
+      silver: raw.silver ?? null,
+      hnlPerUsd: raw.hnlPerUsd ?? null,
+      lastUpdated: new Date().toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' }),
+    });
+    setError(null);
+    setLoading(false);
   };
 
   useEffect(() => {
-    fetchPrices();
-    const interval = setInterval(fetchPrices, 60_000);
+    // All setState calls inside fetchPrices happen after awaits — no synchronous cascading renders.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchPrices();
+    const interval = setInterval(() => void fetchPrices(), 60_000);
     return () => clearInterval(interval);
   }, []);
 

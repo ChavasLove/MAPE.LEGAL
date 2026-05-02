@@ -78,15 +78,12 @@ export function Problem() {
 
         {/* Map callout */}
         <div className="mt-10 bg-earth-50 border border-earth-200 rounded-xl overflow-hidden flex flex-col md:flex-row items-stretch">
-          {/* Full topographic map — no height constraint */}
-          <div className="md:w-56 shrink-0 overflow-hidden">
+          <div className="md:w-48 shrink-0 overflow-hidden relative" style={{ minHeight: '160px' }}>
             <Image
-              src="/images/Tophographic map.png"
-              alt="Mapa topográfico zona piloto Iriona"
-              width={1080}
-              height={1440}
-              className="w-full h-auto md:h-full md:object-cover"
-              sizes="(max-width: 768px) 100vw, 224px"
+              src="/images/Map.png"
+              alt="Mapa zona piloto Iriona"
+              fill
+              className="object-cover"
             />
           </div>
           <div className="flex flex-col md:flex-row items-center gap-6 p-8 flex-1">

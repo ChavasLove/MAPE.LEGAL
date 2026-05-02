@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { PriceWidgets } from './PriceWidgets';
 
 export function Hero() {
   const scrollTo = (id: string) =>
@@ -27,9 +28,16 @@ export function Hero() {
 
       {/* Top nav bar */}
       <nav className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-8 py-5">
-        <div className="flex flex-col leading-tight">
-          <span className="text-white font-bold text-base tracking-tight font-sans">MAPE.LEGAL</span>
-          <span className="text-white/45 text-[10px] tracking-widest uppercase font-sans">Corporación Hondureña Tenka</span>
+        <div className="flex items-center gap-3">
+          <Image
+            src="/images/LOGO CHT.png"
+            alt="Corporación Hondureña Tenka"
+            width={160}
+            height={40}
+            className="h-10 w-auto"
+            style={{ width: 'auto' }}
+          />
+          <span className="text-white font-bold text-lg tracking-tight font-sans">MAPE.LEGAL</span>
         </div>
         <div className="hidden md:flex items-center gap-8 text-white/80 text-sm font-medium font-sans">
           <a href="#nosotros"  className="hover:text-white transition-colors">Quiénes somos</a>
