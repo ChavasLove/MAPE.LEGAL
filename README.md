@@ -125,7 +125,7 @@ Fase 0 (Onboarding) ya está 100% mapeada en la plataforma.
 
 ---
 
-## 9. ESTADO ACTUAL (01-may-2026)
+## 9. ESTADO ACTUAL (02-may-2026)
 
 ### Completado
 - [x] Dominio confirmado
@@ -135,42 +135,15 @@ Fase 0 (Onboarding) ya está 100% mapeada en la plataforma.
 - [x] Manual Operativo 54 pasos completo
 - [x] Menu de Servicios 2026 aprobado
 - [x] Mapa Iriona con 60 mineros
-- [x] Sistema de diseño CHT (Playfair Display + Inter, tokens de color, DESIGN.md)
-- [x] Landing page — todos los componentes alineados al brand, mobile-first
-- [x] Landing page — 8 imágenes distribuidas sin duplicados (ver tabla en CLAUDE.md)
-- [x] Landing page — logo correcto en navbar (`MAPE LEGAL LOGO 1.JPG`)
-- [x] Sistema RBAC completo: 4 roles, cookies httpOnly, guard `proxy.ts`
-- [x] Login unificado `/login` con redirección por rol
-- [x] Dashboard (abogado/admin): resumen operativo, lista de expedientes, detalle con 4 tabs, mensajes WhatsApp
-- [x] Portal de cliente (read-only): estado del expediente, hitos, documentos
-- [x] Panel Admin: gestión de roles, CMS editor, configuración del sistema, gestión de usuarios
-- [x] Motor de workflow completo: chequeo real de documentos, `is_final`, atomicidad, branching explícito
-- [x] Script de seed super admin: `scripts/seed-super-admin.mjs`
-- [x] Open Graph + Twitter Card en `app/layout.tsx` — previews en WhatsApp, Telegram, etc.
-- [x] Formulario de contacto wired a `gerencia@mape.legal` (notificación interna + acuse al visitante)
-- [x] Email de bienvenida automático al crear un nuevo usuario desde panel admin
-- [x] Servicio de email (SendGrid REST) con 6 plantillas: avance, rechazo, pago, contacto interno, acuse, bienvenida
-- [x] Servicio WhatsApp (Meta Cloud API v21.0) con webhook de entrada
-- [x] Email oficial unificado: `gerencia@mape.legal`
-- [x] Asistente María (Twilio + Claude Haiku) — historial, lookup de cliente, reporte ejecutivo Willis, `expediente [id]`, contact forwarding, dedup, XML safety
-- [x] Tablas `clientes`, `minas`, `contratos`, `indice_legalidad`, `transacciones_oro` (migración 008)
-- [x] Sistema de broadcast diario — precios oro/plata/cobre/USD-HNL, audiencia por roles, comentario de María
-- [x] Admin command interpreter — 6 tipos de comando, multi-comando, acceso-controlado, log en `admin_actions`
-- [x] Onboarding WhatsApp — máquina de estados 4 preguntas, extracción con Haiku, escribe a `clientes` + `usuarios_broadcast`
-- [x] TypeScript strict mode — cero errores de compilación (verificado `npx tsc --noEmit`)
-- [x] Bug fix: `/api/whatsapp` (Twilio webhook) correctamente marcada como pública en `proxy.ts`
-- [x] Bug fix: columnas faltantes `clientes.telefono_whatsapp/situacion_tierra/tipo_mineral` añadidas en migración 010
-
-### Pendiente para producción
-- [ ] Aplicar migraciones 007–010 en Supabase producción
-- [ ] Configurar todas las variables de entorno en Vercel (ver lista completa en CLAUDE.md)
-- [ ] Ejecutar `node scripts/seed-super-admin.mjs` post-deploy para crear cuenta admin inicial
-- [ ] Configurar dominio verificado en SendGrid para `gerencia@mape.legal` (SPF + DKIM)
-- [ ] Configurar webhook de WhatsApp en Meta Business Portal → `/api/webhook/whatsapp`
-- [ ] Configurar webhook Twilio → `/api/whatsapp`
-- [ ] Configurar cron externo (Vercel o servicio): `POST /api/broadcast/run` con `Authorization: Bearer <CRON_SECRET>` una vez al día
-- [ ] Obtener `GOLDAPI_KEY` (goldapi.io, free tier disponible)
-- [ ] Registrar número de WhatsApp Business en Meta para envíos outbound (broadcast)
+- [x] Sistema de diseño CHT implementado (Playfair Display + Inter, tokens de color completos)
+- [x] Landing page — todos los componentes alineados al brand (11 componentes)
+- [x] Imagen hero colocada (`RIVER AND MOUNTAINS.png`)
+- [x] Mapa zona piloto actualizado a imagen topográfica (`Tophographic map.png`)
+- [x] Widget de precios con indicadores de tendencia (TrendingUp/Down, CHT tokens)
+- [x] Navegación texto-only — logotipo removido, marca tipográfica sola
+- [ ] Schema Supabase creado
+- [ ] Primera pantalla real (productor registry)
+- [ ] Conexión WhatsApp Business API
 
 ---
 
