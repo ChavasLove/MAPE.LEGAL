@@ -185,14 +185,26 @@ export interface CreateExpedienteInput {
 export async function createDashExpediente(
   input: CreateExpedienteInput
 ): Promise<DashExpediente> {
-  // Generate numero_expediente
-  const { count } = await supabase
-    .from('expedientes')
-    .select('id', { count: 'exact', head: true });
+  // Generate numero_expediente from the highest existing number for the
+  // current year. Using COUNT collided after deletes and raced under
+  // concurrent creates; parsing the latest numero tolerates gaps. The unique
+  // constraint on numero_expediente will still reject any genuine collision.
+  const year   = new Date().getFullYear();
+  const prefix = `EXP-${year}-`;
 
-  const num = String((count ?? 0) + 1).padStart(3, '0');
-  const year = new Date().getFullYear();
-  const numero = `EXP-${year}-${num}`;
+  const { data: latest } = await supabase
+    .from('expedientes')
+    .select('numero_expediente')
+    .like('numero_expediente', `${prefix}%`)
+    .order('numero_expediente', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const lastNum = latest?.numero_expediente
+    ? parseInt(latest.numero_expediente.slice(prefix.length), 10) || 0
+    : 0;
+  const num    = String(lastNum + 1).padStart(3, '0');
+  const numero = `${prefix}${num}`;
 
   const { data: exp, error: expErr } = await supabase
     .from('expedientes')

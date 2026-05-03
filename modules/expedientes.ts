@@ -68,11 +68,12 @@ export async function advancePhase(
 
   const { data: expediente } = await supabase
     .from('expedientes')
-    .select('fase_actual_id')
+    .select('fase_actual_id, fase_numero')
     .eq('id', expedienteId)
     .single();
 
-  const faseAnteriorId = expediente?.fase_actual_id ?? null;
+  const faseAnteriorId     = expediente?.fase_actual_id ?? null;
+  const faseAnteriorNumero = expediente?.fase_numero ?? null;
 
   // Close the current fase record in history
   if (faseAnteriorId) {
@@ -103,9 +104,10 @@ export async function advancePhase(
   });
 
   if (historyError) {
+    // Restore both columns to keep fase_numero ↔ fase_actual_id in sync
     await supabase
       .from('expedientes')
-      .update({ fase_actual_id: faseAnteriorId })
+      .update({ fase_actual_id: faseAnteriorId, fase_numero: faseAnteriorNumero })
       .eq('id', expedienteId);
     throw new Error('Error al registrar historial de fase — operación revertida');
   }
@@ -121,9 +123,11 @@ export async function advancePhase(
     userId
   );
 
-  // Fire notifications without blocking the response — failures are logged
-  // inside notifyPhaseAdvance and never surface to the caller.
-  notifyPhaseAdvance(expedienteId, chosen.fase.nombre).catch(() => { /* logged inside */ });
+  // Fire notifications without blocking the response. Inner errors are logged
+  // by notifyPhaseAdvance; the outer catch only fires if the promise itself
+  // rejects synchronously (e.g. missing env vars in getAdminClient).
+  notifyPhaseAdvance(expedienteId, chosen.fase.nombre)
+    .catch(err => console.error('[expedientes] notifyPhaseAdvance crashed:', err));
 
   return updated;
 }

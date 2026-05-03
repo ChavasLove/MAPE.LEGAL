@@ -86,7 +86,9 @@ export async function POST(req: NextRequest) {
 
     const res = NextResponse.json({ ok: true, role, redirectTo });
     res.cookies.set('auth-token', data.session.access_token, cookieOpts);
-    res.cookies.set('auth-role',  role, cookieOpts);
+    // auth-role must outlive the access token so the proxy guard can still
+    // read the role between access-token expiry and the next /refresh call.
+    res.cookies.set('auth-role',  role, { ...cookieOpts, maxAge: 60 * 60 * 24 * 30 });
     // Long-lived refresh token — used by /api/auth/refresh to mint a new access token
     res.cookies.set('auth-refresh', data.session.refresh_token, {
       ...cookieOpts,
