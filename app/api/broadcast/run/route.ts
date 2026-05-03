@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { runDailyBroadcast, type DailyBroadcastOptions } from '@/jobs/dailyBroadcast';
+import { validatePriceFreshness } from '@/services/pricingService';
 
 // POST /api/broadcast/run
 // Trigger the daily broadcast. Protected by CRON_SECRET header.
@@ -19,7 +20,18 @@ export async function POST(req: NextRequest) {
       triggeredBy: body.triggered_by ?? 'api',
       roles:       body.roles,
     });
-    return NextResponse.json(result);
+
+    // Post-broadcast: check whether the gold price has been static for too many days.
+    // Non-fatal — log a warning but return success so the cron doesn't retry forever.
+    const freshness = await validatePriceFreshness(2).catch(() => null);
+    if (freshness && !freshness.isFresh) {
+      console.warn(`[POST /api/broadcast/run] ${freshness.warning}`);
+    }
+
+    return NextResponse.json({
+      ...result,
+      price_freshness: freshness,
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error('[POST /api/broadcast/run]', msg);

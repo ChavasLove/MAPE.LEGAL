@@ -4,7 +4,6 @@ import { getUserByPhone, getOrCreateUserByPhone } from "@/services/userService";
 import { interpretAndExecute } from "@/services/adminCommandService";
 import { getOnboardingState, startOnboarding, handleOnboarding } from "@/services/onboardingService";
 import { fetchAllPrices, fetchAndStorePrices } from "@/services/pricingService";
-import { fetchLiveMetalPrices } from "@/services/metalsPriceService";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -43,8 +42,45 @@ PERSONALIDAD Y ESTILO
 - Usa el nombre del cliente cuando lo conoces
 - Nunca prometas fechas exactas — da rangos estimados
 - NUNCA uses emojis en ninguna respuesta. Ninguno. Sin excepciones.
-- Si algo esta fuera de tu conocimiento: "Fijese que eso mejor
-  se lo consulto al equipo y le avisamos hoy."
+- Si algo esta fuera de tu conocimiento: "Eso requiere revisión del equipo CHT. Le sugiero escribir directamente a gerencia@mape.legal para respuesta formal."
+
+═══════════════════════════════════
+LÍMITES DE MARÍA — NUNCA QUEBRAR
+═══════════════════════════════════
+María es una asistente virtual por WhatsApp. NO es una persona física.
+NO puede contactar humanos, hacer llamadas, ni garantizar tiempos de respuesta del equipo.
+Debe ser HONESTA sobre lo que puede y NO puede hacer.
+
+NUNCA digas (genera expectativas falsas):
+- "Le paso su nombre al equipo" — no puedes
+- "Te escribimos hoy" / "Te llamamos hoy" — no controlas eso
+- "Yo le aviso al ingeniero" / "Yo le aviso al abogado" — no puedes contactar personas
+- "El equipo ya sabe" — no sabes qué sabe el equipo
+- "Yo me encargo" cuando implica acción humana fuera del sistema
+
+SÍ puedes decir (refleja lo que realmente haces):
+- "Registré tu solicitud en el sistema. El equipo CHT la revisará a través de la plataforma."
+- "No tengo horario exacto de respuesta del equipo. Si es urgente, escribí a gerencia@mape.legal."
+- "Eso requiere atención humana. Te sugiero llamar a la oficina MAPE.LEGAL."
+- "Yo guardo la información en el sistema. Para acciones que requieren firma o revisión legal, el equipo técnico o abogado debe intervenir directamente."
+
+CUANDO EL CLIENTE PIDE ALGO QUE NO PUEDES HACER:
+1. Admití la limitación con naturalidad — no te disculpes en exceso ni te hagas la tonta.
+2. Explicá qué SÍ podés hacer (registrar en sistema, dar información, recopilar datos).
+3. Dale una alternativa concreta (escribir a gerencia@mape.legal, llamar a oficina).
+
+Ejemplo bueno:
+Cliente: "Dile al abogado que me llame"
+María: "Fijese que yo no puedo dar órdenes al abogado ni hacer llamadas. Lo que sí hago es registrar tu solicitud de llamada en el sistema para que el equipo la vea. Si es urgente, escribí directamente a gerencia@mape.legal. ¿Te registro la solicitud?"
+
+TONO PROFESIONAL CONSISTENTE:
+- NO seas demasiado sumisa: en vez de "Sin prisa, cuando tenga listas me las pasa" →
+  "Entendido. Cuando tengás los documentos, me los enviás por aquí y los registro en tu expediente."
+- NO seas paternalista: en vez de "Fijese que eso mejor se lo consulto" →
+  "Eso requiere revisión del abogado CHT. Te sugiero escribir directamente a gerencia@mape.legal."
+- NO abandones la conversación: en vez de "Cualquier cosa me escribís" →
+  "¿Necesitás que te envíe la lista de documentos para empezar?"
+- SÍ cerrá con acción concreta, no con vaguedad.
 
 ═══════════════════════════════════
 SERVICIOS Y PRECIOS CHT
@@ -215,7 +251,7 @@ Recopila UNO por UNO:
 2. Municipio y zona (si no está en su perfil, no lo pidas de nuevo si ya lo tienes)
 3. Manzanas estimadas del área
 Cuando tengas los 3 datos, responde EXACTAMENTE con este patron:
-"Listo [nombre], registré tu solicitud de [tipo_de_servicio]. El equipo te confirma los detalles en 24 horas."
+"Listo [nombre], registré tu solicitud de [tipo_de_servicio] en el sistema. El equipo CHT la revisará. Si es urgente, escribí a gerencia@mape.legal."
 No agregues nada más a esa respuesta.
 
 CUANDO QUIEREN INICIAR UN TRÁMITE:
@@ -225,7 +261,7 @@ Recopila UNO por UNO:
 3. Situación de su tierra (¿es dueño, arrienda tierra con título, arrienda sin título?)
 4. ¿Ya tiene algún permiso en proceso?
 5. Número de manzanas aproximado
-Cuando tengas todos, di: "Perfecto [nombre], con esa información el equipo CHT puede preparar tu evaluación inicial. ¿Quieres que te contactemos hoy mismo?"
+Cuando tengas todos, di: "Perfecto [nombre], registré tus datos en el sistema. Para que el equipo CHT prepare tu evaluación inicial, ellos revisan las solicitudes en la plataforma. Si es urgente, escribí a gerencia@mape.legal."
 
 CUANDO REPORTAN UNA TRANSACCIÓN DE ORO:
 Recopila UNO por UNO:
@@ -247,13 +283,17 @@ CUANDO EL CLIENTE NO TIENE DOCUMENTOS:
 Explica con calma qué necesita conseguir y por qué.
 Ofrece conectarlos con el equipo para asesoría personalizada.
 
-CIERRES NATURALES HONDUREÑOS:
-- "Dale pues, ahorita le aviso al equipo."
-- "Vaya pues, con mucho gusto le ayudamos."
+CIERRES NATURALES HONDUREÑOS (sin sobre-prometer):
+- "Dale pues, registré tu solicitud en el sistema."
+- "Vaya pues, con mucho gusto te ayudo con la información."
 - "Fijese que si, eso si lo podemos hacer."
-- "No se preocupe, el equipo le llama hoy."
-- "Dale, cualquier cosa me escribe."
+- "Para que el equipo te llame, escribí a gerencia@mape.legal — yo no puedo coordinar llamadas."
 - "Con todo gusto, para eso estamos."
+
+NUNCA cierres con frases que prometan acción humana que no controlás:
+- NO: "Dale pues, ahorita le aviso al equipo." (no podés avisarle a nadie)
+- NO: "No se preocupe, el equipo le llama hoy." (no controlás eso)
+- NO: "Le paso su nombre al ingeniero." (no podés)
 
 ═══════════════════════════════════
 NOTIFICACIÓN DIARIA DE PRECIOS (Broadcast de las 8 AM)
@@ -520,16 +560,18 @@ Notas: ${exp.notas || 'Sin notas'}`
       const last1h = new Date(now - 60 * 60 * 1000).toISOString();
       const last24h = new Date(now - 24 * 60 * 60 * 1000).toISOString();
       const last7d = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const today = now.toISOString().slice(0, 10);
 
       const [
-        { data: activeHour },
-        { data: active24h },
-        { data: active7d },
-        { count: totalMessages },
-        { data: allClientes },
-        { data: expedientes },
-        { data: transacciones },
-        { data: hitos },
+        activeHourRes,
+        active24hRes,
+        active7dRes,
+        totalMessagesRes,
+        allClientesRes,
+        expedientesRes,
+        transaccionesRes,
+        hitosRes,
+        precioRes,
       ] = await Promise.all([
         supabase.from('conversaciones_whatsapp').select('numero_whatsapp, created_at').gte('created_at', last1h),
         supabase.from('conversaciones_whatsapp').select('numero_whatsapp, role, created_at').gte('created_at', last24h),
@@ -539,7 +581,18 @@ Notas: ${exp.notas || 'Sin notas'}`
         supabase.from('expedientes').select('estado, tipo, inicio').order('inicio', { ascending: false }),
         supabase.from('transacciones_pendientes').select('estado, created_at, mensaje_original').order('created_at', { ascending: false }),
         supabase.from('hitos').select('estado, monto, trigger_evento').order('created_at', { ascending: false }),
+        supabase.from('precios_diarios').select('fecha, oro, usd_hnl, fuente, fetched_at').order('fecha', { ascending: false }).limit(1).maybeSingle(),
       ]);
+
+      const activeHour = activeHourRes.data;
+      const active24h = active24hRes.data;
+      const active7d = active7dRes.data;
+      const totalMessages = totalMessagesRes.count;
+      const allClientes = allClientesRes.data;
+      const expedientes = expedientesRes.data;
+      const transacciones = transaccionesRes.data;
+      const hitos = hitosRes.data;
+      const precioLatest = precioRes.data;
 
       const activeHourNumbers = new Set(activeHour?.map(r => r.numero_whatsapp) || []);
       const active24hNumbers = new Set(active24h?.map(r => r.numero_whatsapp) || []);
@@ -577,9 +630,45 @@ Notas: ${exp.notas || 'Sin notas'}`
       const totalCobrado = hitosConfirmados.reduce((sum, h) => sum + (parseFloat(h.monto) || 0), 0);
       const totalPendiente = hitosPendientes.reduce((sum, h) => sum + (parseFloat(h.monto) || 0), 0);
 
+      // Section builders that distinguish "no data" from "query error"
+      const expedientesSection = expedientesRes.error
+        ? `Error leyendo expedientes: ${expedientesRes.error.message}`
+        : totalExpedientes === 0
+          ? 'Total expedientes: 0\n→ No hay expedientes registrados. Sistema operativo, esperando piloto Iriona o registros nuevos.'
+          : `Total expedientes: ${totalExpedientes}\n\nPor estado:\n${Object.entries(expByEstado).map(([k, v]) => `- ${k}: ${v}`).join('\n')}\n\nPor servicio:\n${Object.entries(expByServicio).map(([k, v]) => `- ${k}: ${v}`).join('\n')}`;
+
+      const transaccionesSection = transaccionesRes.error
+        ? `Error leyendo transacciones: ${transaccionesRes.error.message}`
+        : (transacciones?.length ?? 0) === 0
+          ? 'Pendientes de revision: 0\n→ Sin transacciones registradas.'
+          : `Pendientes de revision: ${pendingTx.length}\nUltimas transacciones:\n${recentTx.map(t => `- ${t.created_at?.slice(0, 10)}: ${t.estado}`).join('\n')}`;
+
+      const hitosSection = hitosRes.error
+        ? `Error leyendo hitos: ${hitosRes.error.message}`
+        : (hitos?.length ?? 0) === 0
+          ? 'Total cobrado confirmado: L 0\nHitos pendientes de cobro: 0\n→ Sin hitos registrados.'
+          : `Total cobrado confirmado: L ${totalCobrado.toLocaleString('es-HN')}\nHitos pendientes de cobro: ${hitosPendientes.length}\nMonto pendiente total: L ${totalPendiente.toLocaleString('es-HN')}`;
+
+      // Price freshness section
+      let preciosSection;
+      if (precioRes.error || !precioLatest) {
+        preciosSection = `Sin precio registrado.\nVerificar API de precios o cron de broadcast.`;
+      } else {
+        const isToday = precioLatest.fecha === today;
+        const fetchedAtStr = precioLatest.fetched_at
+          ? new Date(precioLatest.fetched_at).toLocaleString('es-HN', { timeZone: 'America/Tegucigalpa' })
+          : 'fecha de obtención desconocida';
+        preciosSection =
+`${isToday ? 'PRECIO ORO HOY' : `ULTIMO REGISTRO (${precioLatest.fecha})`}
+LBMA: $${precioLatest.oro ?? 'N/D'} USD/oz
+Tasa: L ${precioLatest.usd_hnl ?? 'N/D'}/USD
+Fuente: ${precioLatest.fuente ?? 'N/D'}
+Obtenido: ${fetchedAtStr}${!isToday ? '\n⚠️ ALERTA: Precio no actualizado hoy. Revisar cron de broadcast.' : ''}`;
+      }
+
       const report1 =
 `CHT EXECUTIVE REPORT
-${now.toLocaleDateString('es-HN')} ${now.toLocaleTimeString('es-HN')}
+${now.toLocaleString('es-HN', { timeZone: 'America/Tegucigalpa' })}
 ━━━━━━━━━━━━━━━━━━━━
 MARIA / WHATSAPP
 Conversaciones activas ahora: ${activeHourNumbers.size}
@@ -589,38 +678,26 @@ Mensajes recibidos hoy: ${userMessages24h}
 Total mensajes historico: ${totalMessages || 0}
 ━━━━━━━━━━━━━━━━━━━━
 CLIENTES REGISTRADOS
-Total: ${totalClientes}
-Recientes:
-${recentClientes.map(c => `- ${c.nombre} (${c.municipio || 'sin municipio'})`).join('\n') || '- Sin clientes aun'}
+${allClientesRes.error ? `Error: ${allClientesRes.error.message}` : `Total: ${totalClientes}`}
+${totalClientes > 0 ? `Recientes:\n${recentClientes.map(c => `- ${c.nombre} (${c.municipio || 'sin municipio'})`).join('\n')}` : '→ Sin clientes registrados todavia.'}
 
-Por municipio:
-${Object.entries(byMunicipio).map(([k, v]) => `- ${k}: ${v}`).join('\n') || '- Sin datos'}
-
-Por situacion de tierra:
-${Object.entries(bySituacion).map(([k, v]) => `- ${k}: ${v}`).join('\n') || '- Sin datos'}`;
+${totalClientes > 0 ? `Por municipio:\n${Object.entries(byMunicipio).map(([k, v]) => `- ${k}: ${v}`).join('\n')}\n\nPor situacion de tierra:\n${Object.entries(bySituacion).map(([k, v]) => `- ${k}: ${v}`).join('\n')}` : ''}`;
 
       const report2 =
 `━━━━━━━━━━━━━━━━━━━━
 EXPEDIENTES ACTIVOS
-Total expedientes: ${totalExpedientes}
-
-Por estado:
-${Object.entries(expByEstado).map(([k, v]) => `- ${k}: ${v}`).join('\n') || '- Sin expedientes'}
-
-Por servicio:
-${Object.entries(expByServicio).map(([k, v]) => `- ${k}: ${v}`).join('\n') || '- Sin datos'}
+${expedientesSection}
 ━━━━━━━━━━━━━━━━━━━━
 TRANSACCIONES DE ORO
-Pendientes de revision: ${pendingTx.length}
-Ultimas transacciones:
-${recentTx.map(t => `- ${t.created_at?.slice(0, 10)}: ${t.estado}`).join('\n') || '- Sin transacciones'}`;
+${transaccionesSection}
+━━━━━━━━━━━━━━━━━━━━
+PRECIOS
+${preciosSection}`;
 
       const report3 =
 `━━━━━━━━━━━━━━━━━━━━
 FACTURACION Y PAGOS
-Total cobrado confirmado: L ${totalCobrado.toLocaleString('es-HN')}
-Hitos pendientes de cobro: ${hitosPendientes.length}
-Monto pendiente total: L ${totalPendiente.toLocaleString('es-HN')}
+${hitosSection}
 ━━━━━━━━━━━━━━━━━━━━
 REGULACIONES
 INHGEOMIN: Operativo. Ventanilla presencial Tegucigalpa.
@@ -693,22 +770,28 @@ Comandos disponibles:
     try {
       const { data: cached } = await supabase
         .from('precios_diarios')
-        .select('oro, plata, usd_hnl, fecha')
+        .select('oro, plata, usd_hnl, fecha, fetched_at, fuente')
         .eq('fecha', today)
         .single();
       if (cached?.oro) {
         preciosHoy = cached;
-        console.log('Precios from cache:', `oro=${cached.oro}`);
+        console.log('Precios from cache:', `oro=${cached.oro} fetched_at=${cached.fetched_at}`);
       }
     } catch { /* table may not exist or be empty — fall through to live fetch */ }
 
     if (!preciosHoy) {
-      // Use the same proven 2-call approach as /api/prices (PriceWidgets landing page)
       try {
-        const live = await fetchLiveMetalPrices();
-        if (live.gold) {
-          preciosHoy = { oro: live.gold, plata: live.silver, usd_hnl: live.hnlPerUsd, fecha: today };
-          console.log('Precios fetched live:', `oro=${live.gold} usd_hnl=${live.hnlPerUsd}`);
+        const live = await fetchAllPrices();
+        if (live.oro) {
+          preciosHoy = {
+            oro: live.oro,
+            plata: live.plata,
+            usd_hnl: live.usd_hnl,
+            fecha: today,
+            fetched_at: live.fetched_at,
+            fuente: live.fuente,
+          };
+          console.log('Precios fetched live:', `oro=${live.oro} usd_hnl=${live.usd_hnl} fuente=${live.fuente}`);
           // Best-effort DB cache write — non-fatal
           fetchAndStorePrices().catch(e => console.log('Price DB cache failed (non-fatal):', e.message));
         }
@@ -723,14 +806,34 @@ Comandos disponibles:
       : null;
     const plataLBMA = preciosHoy?.plata  != null ? `$${Number(preciosHoy.plata).toFixed(2)} USD/oz troy` : null;
 
+    // Freshness label for the price block
+    let frescuraLabel = '';
+    if (preciosHoy?.fetched_at) {
+      try {
+        const fetchedDate = new Date(preciosHoy.fetched_at);
+        const horaHN = fetchedDate.toLocaleTimeString('es-HN', {
+          timeZone: 'America/Tegucigalpa',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        });
+        const fechaFetched = fetchedDate.toISOString().slice(0, 10);
+        frescuraLabel = fechaFetched === today
+          ? `actualizado hoy ${horaHN}`
+          : `último registro ${fechaFetched} ${horaHN}`;
+      } catch { frescuraLabel = ''; }
+    }
+
     const priceContext = preciosHoy
-      ? `\n\nPRECIOS DE REFERENCIA (${preciosHoy.fecha ?? 'hoy'}):
+      ? `\n\nPRECIOS DE REFERENCIA (${preciosHoy.fecha ?? 'hoy'}${frescuraLabel ? ` — ${frescuraLabel}` : ''}):
 - Oro LBMA: ${oroLBMA ?? 'no disponible'}
 - Precio de compra CHT (80% LBMA): ${oroCompra ?? 'el equipo confirma hoy'}
 - Plata LBMA: ${plataLBMA ?? 'no disponible'}
 - Tipo de cambio: ${preciosHoy.usd_hnl != null ? `L ${preciosHoy.usd_hnl}/USD` : 'no disponible'}
-Cuando el cliente pregunte por precios del oro, usa estos valores. Aclara que CHT paga al 80% del precio LBMA del dia, en lempiras al tipo de cambio BCH.`
-      : `\n\nPRECIOS DE REFERENCIA: No hay datos de precios cargados hoy. Si el cliente pregunta por precio de compra del oro, di: "El precio cambia a diario — ahorita le consulto al equipo y le confirmo hoy mismo."`;
+${preciosHoy.fuente ? `- Fuente: ${preciosHoy.fuente}` : ''}
+Cuando el cliente pregunte por precios del oro, usa estos valores. Aclara que CHT paga al 80% del precio LBMA del dia, en lempiras al tipo de cambio BCH.
+${frescuraLabel ? `Cuando cites el precio, agregá una línea con "(${frescuraLabel})" para que el cliente sepa qué tan reciente es el dato.` : ''}`
+      : `\n\nPRECIOS DE REFERENCIA: No hay datos de precios cargados hoy. Si el cliente pregunta por precio de compra del oro, di: "Hoy no tengo el precio cargado en el sistema. Para precio actualizado escribí a gerencia@mape.legal."`;
 
     // --- Query expedientes linked to this client ---
     let expedienteContext = '';
@@ -1027,8 +1130,7 @@ Si algún dato no está claramente mencionado, deja null.`
     // --- Detect new expediente intake pattern ---
     if (
       assistantReply.includes("Listo") &&
-      assistantReply.includes("registré tu solicitud de") &&
-      assistantReply.includes("El equipo te confirma los detalles en 24 horas")
+      assistantReply.includes("registré tu solicitud de")
     ) {
       const tipoMatch = assistantReply.match(/registré tu solicitud de ([^.]+)\./i);
       const tipoServicio = tipoMatch ? tipoMatch[1].trim() : 'servicio no especificado';
