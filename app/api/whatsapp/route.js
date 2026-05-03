@@ -476,27 +476,29 @@ const MANUAL_TRIGGERS = /\bpaso\s+\d+\b|primer\s+paso|siguiente\s+paso|pr[oó]xi
 
 const FIRST_STEP_TRIGGERS  = /primer\s+paso|c[oó]mo\s+(empiezo|empezar|inicio|iniciar)|por\s+d[oó]nde\s+(empiezo|empezar|inicio|iniciar)/i;
 
-// documentos_referencia currently holds the 38 formalización steps only.
-// Skip the DB lookup when the conversation is clearly about titulación or
-// sociedad — María already has those processes in her base prompt and
-// returning a formalización step would mislead her.
-const NON_FORMALIZACION = /titulaci[oó]n|titular|propiedad|sociedad\s+minera|contrato\s+de\s+sociedad/i;
+// Detect which of the three CHT processes the conversation is about, so we can
+// scope the documentos_referencia query (the table now stores all three:
+// formalizacion 1-38, titulacion 1-9, sociedad 1-7).
+function detectProceso(haystack) {
+  if (/sociedad\s+minera|contrato\s+de\s+sociedad|due\s+diligence/i.test(haystack)) return 'sociedad';
+  if (/titulaci[oó]n|titular(?!.*minero)|propiedad|topograf[ií]a|registro\s+de\s+la\s+propiedad/i.test(haystack)) return 'titulacion';
+  if (/formalizaci[oó]n|inhgeomin|serna|hito\s*[123]|dupai|gaceta|comercializador/i.test(haystack)) return 'formalizacion';
+  return null; // unknown → caller decides default
+}
 
 async function buildManualContext(message, supabaseClient, recentHistory = '') {
   if (!MANUAL_TRIGGERS.test(message)) return '';
 
-  // If the current message OR recent history is about titulación / sociedad,
-  // don't query — the table only covers formalización.
-  const haystack = `${message}\n${recentHistory}`;
-  const isFormalizacion = /formalizaci[oó]n|inhgeomin|serna|hito\s*[123]/i.test(haystack);
-  const isOtherService  = NON_FORMALIZACION.test(haystack);
-  if (isOtherService && !isFormalizacion) return '';
-
   try {
+    const haystack = `${message}\n${recentHistory}`;
+    // Default to formalización when no service was mentioned — it's the most
+    // common path and the original behaviour of this lookup.
+    const proceso = detectProceso(haystack) ?? 'formalizacion';
+
     const stepMatch = /\bpaso\s+(\d+)\b/i.exec(message);
     let stepNum     = stepMatch ? parseInt(stepMatch[1], 10) : null;
 
-    // "primer paso" / "cómo empiezo" → paso 1 of formalización
+    // "primer paso" / "cómo empiezo" → paso 1 of the detected proceso
     if (!stepNum && FIRST_STEP_TRIGGERS.test(message)) stepNum = 1;
 
     // Sanitise keyword: strip PostgREST/ILIKE special chars, cap at 40 chars
@@ -504,7 +506,8 @@ async function buildManualContext(message, supabaseClient, recentHistory = '') {
 
     let query = supabaseClient
       .from('documentos_referencia')
-      .select('paso_numero, titulo_paso, rol, acciones, documentos, plazo, deliverable, advertencias');
+      .select('proceso, paso_numero, titulo_paso, rol, acciones, documentos, plazo, deliverable, advertencias')
+      .eq('proceso', proceso);
 
     query = stepNum
       ? query.or(`paso_numero.eq.${stepNum},titulo_paso.ilike.%${keyword}%`)
@@ -513,7 +516,13 @@ async function buildManualContext(message, supabaseClient, recentHistory = '') {
     const { data, error } = await query.limit(1).single();
     if (error || !data) return '';
 
-    return `\n\nREFERENCIA MANUAL OPERATIVO — Paso ${data.paso_numero}: ${data.titulo_paso}
+    const procesoLabel = {
+      formalizacion: 'Formalización Minera',
+      titulacion:    'Titulación de Propiedad',
+      sociedad:      'Contrato de Sociedad Minera',
+    }[data.proceso] ?? data.proceso;
+
+    return `\n\nREFERENCIA MANUAL OPERATIVO — ${procesoLabel}, Paso ${data.paso_numero}: ${data.titulo_paso}
 - Responsable: ${data.rol ?? 'no especificado'}
 - Acciones: ${data.acciones ?? '—'}
 - Documentos requeridos: ${data.documentos ?? '—'}
@@ -772,7 +781,7 @@ Comandos disponibles:
       .select("role, content")
       .eq("numero_whatsapp", fromNumber)
       .order("created_at", { ascending: true })
-      .limit(20);
+      .limit(40);
 
     const conversationHistory = history || [];
     console.log('History found:', conversationHistory.length, 'messages');
