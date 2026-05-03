@@ -1,4 +1,5 @@
 import { supabase } from '@/services/supabase';
+import { notifyPhaseAdvance } from '@/modules/notifications';
 import type { Expediente } from '@/modules/types';
 
 export async function validatePaymentForPhase(
@@ -83,10 +84,11 @@ export async function advancePhase(
       .is('salida_en', null);
   }
 
-  // Advance expediente
+  // Advance expediente — keep dashboard column fase_numero in sync with the
+  // workflow column fase_actual_id by mirroring the destination fase.orden.
   const { data: updated, error } = await supabase
     .from('expedientes')
-    .update({ fase_actual_id: chosen.fase.id })
+    .update({ fase_actual_id: chosen.fase.id, fase_numero: chosen.fase.orden })
     .eq('id', expedienteId)
     .select()
     .single();
@@ -118,6 +120,10 @@ export async function advancePhase(
     },
     userId
   );
+
+  // Fire notifications without blocking the response — failures are logged
+  // inside notifyPhaseAdvance and never surface to the caller.
+  notifyPhaseAdvance(expedienteId, chosen.fase.nombre).catch(() => { /* logged inside */ });
 
   return updated;
 }

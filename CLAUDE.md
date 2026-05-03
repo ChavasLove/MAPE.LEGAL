@@ -10,12 +10,14 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 - Leer `node_modules/next/dist/docs/` antes de escribir código relacionado con routing o server components
 
 ## Autenticación
-- Login unificado: `POST /api/auth/login` → cookies httpOnly (`auth-token`, `auth-role`, `user-email`)
+- Login unificado: `POST /api/auth/login` → cookies httpOnly (`auth-token`, `auth-role`, `auth-refresh`, `user-email`)
 - 4 roles: `admin`, `abogado`, `tecnico_ambiental`, `cliente`
 - Redirección por rol: admin→`/admin`, abogado/tecnico→`/dashboard`, cliente→`/portal`
 - Guard de rutas en `proxy.ts` — siempre mantener sincronia con nuevas rutas protegidas
 - Cookie `admin-token` mantenida por compatibilidad con código heredado
 - `/admin/login` redirige automáticamente a `/login` — no duplicar lógica de auth
+- **Rate limit**: 5 intentos por (IP + email) cada 15 min en `/api/auth/login` y `/api/admin/auth/login` — `lib/rateLimit.ts` (in-memory, defensa adicional sobre Supabase)
+- **Refresh**: `POST /api/auth/refresh` rota `auth-token` (1h) usando `auth-refresh` (30d). Cliente debe llamar antes de la expiración del access token.
 
 ## Base de Datos
 - Supabase (PostgreSQL). Dos clientes:
@@ -31,13 +33,18 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 - **`expedientes` NO tiene FK a `clientes`** — el campo `cliente` es texto libre. Usar `contratos` para la relación correcta.
 
 ## Motor de Workflow (`modules/`)
-- `modules/types.ts` — tipos de dominio: `Fase`, `TransicionFase`, `NextActionsResult` (incluye `is_final: boolean`)
+- `modules/types.ts` — tipos de dominio: `Fase`, `TransicionFase`, `NextActionsResult` (incluye `is_final: boolean`). `AccionAuditoria` cubre `TRANSICION_FASE`, `PAGO_REGISTRADO`, `EXPEDIENTE_CREADO`, `DOCUMENTO_VERIFICADO`, `DOCUMENTO_RECHAZADO`, `NOTIFICACION_ENVIADA`.
 - `modules/workflow.ts` — `getNextActions()`, `getBlockingReasons()`, `getAvailableTransitions()`
   - Chequeo real de documentos contra tabla `documentos` (estado `verificado`)
   - `is_final: true` cuando no hay transiciones salientes — distingue proceso completado de bloqueado
 - `modules/expedientes.ts` — `advancePhase()`, `validatePaymentForPhase()`, `logAction()`
   - Requiere `transition_id` explícito si hay múltiples transiciones disponibles (evita pick silencioso)
   - Revierte `expedientes.fase_actual_id` si falla el insert en `expediente_fases`
+  - Mantiene `expedientes.fase_numero` sincronizado con `chosen.fase.orden` (columna del dashboard)
+  - Tras avance exitoso dispara `notifyPhaseAdvance()` fire-and-forget
+- `modules/notifications.ts` — `notifyPhaseAdvance()`, `notifyDocumentVerified()`, `notifyDocumentRejected()`
+  - Lookup de cliente vía service-role client (RLS bloquearía la consulta desde anon)
+  - Falla silenciosa: errores se loggean, nunca propagan a la respuesta del API
 
 ## Servicios
 | Archivo | Propósito |
@@ -78,6 +85,8 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 - `GET+POST /api/admin/roles` + `PATCH+DELETE /api/admin/roles/[id]` — gestión de roles
 - `GET+POST /api/admin/usuarios` — lista y creación de usuarios (POST envía welcome email automáticamente)
 - `GET /api/admin/clientes` — lista todos los clientes registrados por WhatsApp con sus expedientes vinculados vía `cliente_id` FK (admin client, protegido por proxy)
+- `GET /api/admin/minas` — lista todas las minas con cliente asociado (admin client, protegido por proxy)
+- `POST /api/auth/refresh` — renueva el `auth-token` usando el `auth-refresh` cookie; limpia cookies si el refresh expiró
 - `GET /api/broadcast` — estado: último broadcast, suscriptores activos, precios más recientes
 - `POST /api/broadcast/run` — disparar broadcast diario (protegido por `CRON_SECRET` header, sin auth cookie)
 - `GET /api/broadcast/config` — configuración de métricas del reporte diario

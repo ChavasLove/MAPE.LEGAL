@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit';
 
 const ROLE_REDIRECT: Record<string, string> = {
   admin:             '/admin',
@@ -8,12 +9,24 @@ const ROLE_REDIRECT: Record<string, string> = {
   cliente:           '/portal',
 };
 
+const LOGIN_LIMIT       = 5;
+const LOGIN_WINDOW_MS   = 15 * 60 * 1000;
+
 export async function POST(req: NextRequest) {
   try {
     const { email, password } = await req.json();
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Correo y contraseña son requeridos' }, { status: 400 });
+    }
+
+    const rateKey = `login:${clientIpFrom(req)}:${String(email).toLowerCase()}`;
+    const rate    = checkRateLimit(rateKey, LOGIN_LIMIT, LOGIN_WINDOW_MS);
+    if (!rate.ok) {
+      return NextResponse.json(
+        { error: `Demasiados intentos. Intenta nuevamente en ${Math.ceil(rate.retryAfterSec / 60)} minutos.` },
+        { status: 429, headers: { 'Retry-After': String(rate.retryAfterSec) } }
+      );
     }
 
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -74,6 +87,11 @@ export async function POST(req: NextRequest) {
     const res = NextResponse.json({ ok: true, role, redirectTo });
     res.cookies.set('auth-token', data.session.access_token, cookieOpts);
     res.cookies.set('auth-role',  role, cookieOpts);
+    // Long-lived refresh token — used by /api/auth/refresh to mint a new access token
+    res.cookies.set('auth-refresh', data.session.refresh_token, {
+      ...cookieOpts,
+      maxAge: 60 * 60 * 24 * 30,  // 30 days
+    });
     // Non-httpOnly so the client can read it for display purposes only — not trusted for auth
     res.cookies.set('user-email', email, { ...cookieOpts, httpOnly: false });
 
