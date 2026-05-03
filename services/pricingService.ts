@@ -10,11 +10,34 @@ export interface PreciosDiarios {
 
 // ─── External API fetchers ────────────────────────────────────────────────────
 
+// Free fallback: metals.live requires no API key
+async function fetchMetalPriceFree(metal: 'gold' | 'silver' | 'copper'): Promise<number | null> {
+  try {
+    const res = await fetch('https://api.metals.live/v1/spot', {
+      headers: { Accept: 'application/json' },
+      next: { revalidate: 0 },
+    } as RequestInit);
+    if (!res.ok) throw new Error(`metals.live ${res.status}`);
+    const data = await res.json() as Array<Record<string, number>>;
+    if (Array.isArray(data)) {
+      const entry = data.find((m) => metal in m);
+      return entry?.[metal] ?? null;
+    }
+    return (data as Record<string, number>)?.[metal] ?? null;
+  } catch (e) {
+    console.error(`fetchMetalPriceFree(${metal}) failed —`, e);
+    return null;
+  }
+}
+
 async function fetchMetalPrice(symbol: 'XAU' | 'XAG' | 'HG'): Promise<number | null> {
   const apiKey = process.env.GOLDAPI_KEY;
   if (!apiKey) {
-    console.warn('pricingService: GOLDAPI_KEY not set — skipping metal price fetch');
-    return null;
+    // No GoldAPI key — fall back to free metals.live endpoint
+    const metalMap: Record<string, 'gold' | 'silver' | 'copper'> = {
+      XAU: 'gold', XAG: 'silver', HG: 'copper',
+    };
+    return fetchMetalPriceFree(metalMap[symbol] ?? 'gold');
   }
 
   try {
