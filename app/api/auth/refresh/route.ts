@@ -10,8 +10,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No hay sesión activa' }, { status: 401 });
   }
 
-  const url     = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url        = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey    = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !anonKey) {
     return NextResponse.json({ error: 'Configuración incompleta' }, { status: 500 });
   }
@@ -28,7 +29,28 @@ export async function POST(req: NextRequest) {
     return res;
   }
 
-  const role    = req.cookies.get('auth-role')?.value ?? 'cliente';
+  // Re-derive role from user_roles instead of trusting the (likely-expired)
+  // auth-role cookie. The cookie was set with the same maxAge as the access
+  // token, so by the time refresh is called it's usually gone — defaulting to
+  // 'cliente' would silently demote admins.
+  const roleClient = serviceKey
+    ? createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } })
+    : supabase;
+  const { data: roleRow } = await roleClient
+    .from('user_roles')
+    .select('rol, activo')
+    .eq('user_id', data.session.user.id)
+    .single();
+
+  if (!roleRow || !roleRow.activo) {
+    const res = NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
+    for (const name of ['auth-token', 'auth-role', 'auth-refresh', 'user-email', 'admin-token']) {
+      res.cookies.set(name, '', { maxAge: 0, path: '/' });
+    }
+    return res;
+  }
+
+  const role    = roleRow.rol as string;
   const maxAge  = data.session.expires_in ?? 3600;
   const cookieOpts = {
     httpOnly: true,
@@ -38,8 +60,11 @@ export async function POST(req: NextRequest) {
     path: '/',
   };
 
-  const res = NextResponse.json({ ok: true, expires_in: maxAge });
+  const res = NextResponse.json({ ok: true, role, expires_in: maxAge });
   res.cookies.set('auth-token', data.session.access_token, cookieOpts);
+  // auth-role outlives the access token so the proxy guard still has a role
+  // to read between expiry and the next refresh call.
+  res.cookies.set('auth-role', role, { ...cookieOpts, maxAge: 60 * 60 * 24 * 30 });
   res.cookies.set('auth-refresh', data.session.refresh_token, {
     ...cookieOpts,
     maxAge: 60 * 60 * 24 * 30,
