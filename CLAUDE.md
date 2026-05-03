@@ -91,7 +91,7 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 - `GET /api/admin/minas` — lista todas las minas con cliente asociado (admin client, protegido por proxy)
 - `POST /api/auth/refresh` — renueva el `auth-token` usando el `auth-refresh` cookie; limpia cookies si el refresh expiró
 - `GET /api/broadcast` — estado: último broadcast, suscriptores activos, precios más recientes
-- `POST /api/broadcast/run` — disparar broadcast diario (protegido por `CRON_SECRET` header, sin auth cookie)
+- `GET+POST /api/broadcast/run` — disparar broadcast diario (protegido por `CRON_SECRET` header, sin auth cookie). Vercel Cron envía `GET`; `POST` queda para invocación manual con body JSON
 - `GET /api/broadcast/config` — configuración de métricas del reporte diario
 - `PATCH /api/broadcast/config` — cambiar métrica: `{ metric, action, currency?, patch?, updated_by? }`
 - `GET /api/broadcast/prices?days=7` — historial de precios; `?latest=true` para solo el más reciente
@@ -200,21 +200,21 @@ TWILIO_WHATSAPP_FROM           # whatsapp:+14155238886 (sandbox) o sender aproba
 # ── Sistema de broadcast (nuevas) ────────────────────────────────────────────
 GOLDAPI_KEY                    # goldapi.io — precios oro/plata/cobre (free tier disponible)
 EXCHANGE_RATE_API_KEY          # exchangerate-api.com v6 (opcional; sin clave usa tier gratuito)
-CRON_SECRET                    # Header Bearer para proteger POST /api/broadcast/run desde cron externo
+CRON_SECRET                    # Header Bearer para proteger /api/broadcast/run. Vercel Cron lo inyecta automáticamente como Authorization: Bearer en el GET
 ```
 
 ## Sistema de Broadcast Diario (`jobs/`, `services/broadcastService.ts`)
 
 - **Tablas**: `usuarios_broadcast`, `daily_report_config`, `precios_diarios`, `broadcast_log`
 - **Roles broadcast**: `minero` (default), `comprador`, `tecnico`, `admin`
-- **Flujo**: cron → `POST /api/broadcast/run` → `runDailyBroadcast()` → fetch precios → store → `generateDailyMessage()` (template fijo) → `sendDailyBroadcast()` → Meta Cloud API → log
+- **Flujo**: cron → `GET /api/broadcast/run` → `runDailyBroadcast()` → fetch precios → store → `generateDailyMessage()` (template fijo) → `sendDailyBroadcast()` → Meta Cloud API → log
 - **Formato de reporte**: template determinístico "Estimado Socio MAPE" — LBMA USD/oz, conversión a LPS, TC, precio de compra al 80% LBMA, fecha+hora Honduras (UTC-6), enlaces a goldapi.io y www.mape.legal. **No llama a Claude** — garantiza consistencia y evita alucinaciones de precio. Fallback automático cuando `precios.oro` es null/0.
 - **Servicios**:
   - `services/userService.ts` — `getOrCreateUserByPhone`, `assignRole`, `getActiveSubscribers`, `listUsers`
   - `services/pricingService.ts` — `fetchGoldPrice`, `fetchSilverPrice`, `fetchUSDHNL`, `fetchCopperPrice`, `fetchAndStorePrices`
   - `services/broadcastService.ts` — `generateDailyMessage` (template fijo), `sendDailyBroadcast`, `getLastBroadcastLog`
   - `services/configService.ts` — extendido con `getDailyReportConfig`, `enableMetric`, `disableMetric`, `updateMetricCurrency`, `updateMetricConfig`, `updateAudience`, `updateSchedule`
-- **Cron en producción**: configurado en `vercel.json` — schedule `0 14 * * *` (14:00 UTC = 8:00 AM Honduras, UTC-6 todo el año) → `POST /api/broadcast/run` con `Authorization: Bearer <CRON_SECRET>`. Si `CRON_SECRET` no está seteado, el endpoint queda abierto (skip de auth).
+- **Cron en producción**: configurado en `vercel.json` — schedule `0 14 * * *` (14:00 UTC = 8:00 AM Honduras, UTC-6 todo el año) → `GET /api/broadcast/run` con `Authorization: Bearer <CRON_SECRET>`. Vercel Cron Jobs envían **GET** (no POST) e inyectan ese header automáticamente cuando `CRON_SECRET` está seteado en las env vars del proyecto. La ruta también acepta `POST` para invocación manual con body JSON (`roles`, `triggered_by`). Si `CRON_SECRET` no está seteado, el endpoint queda abierto (skip de auth).
 - **Comando de prueba local**:
   ```bash
   curl -X POST http://localhost:3000/api/broadcast/run \

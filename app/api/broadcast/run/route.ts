@@ -2,10 +2,19 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { runDailyBroadcast, type DailyBroadcastOptions } from '@/jobs/dailyBroadcast';
 import { validatePriceFreshness } from '@/services/pricingService';
 
-// POST /api/broadcast/run
+export const dynamic = 'force-dynamic';
+
+// /api/broadcast/run
 // Trigger the daily broadcast. Protected by CRON_SECRET header.
-// Cron job example (Vercel): POST this URL with Authorization: Bearer <CRON_SECRET>
-export async function POST(req: NextRequest) {
+//
+// Vercel Cron Jobs send GET requests with `Authorization: Bearer <CRON_SECRET>`
+// when CRON_SECRET is configured as a project env var. POST is kept for manual
+// invocation (curl, admin actions) where a JSON body can supply roles overrides.
+async function handle(
+  req: NextRequest,
+  options: DailyBroadcastOptions,
+  defaultTrigger: string
+) {
   const secret = process.env.CRON_SECRET;
   if (secret) {
     const auth = req.headers.get('authorization');
@@ -15,26 +24,36 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = await req.json().catch(() => ({})) as { roles?: DailyBroadcastOptions['roles']; triggered_by?: string };
     const result = await runDailyBroadcast({
-      triggeredBy: body.triggered_by ?? 'api',
-      roles:       body.roles,
+      triggeredBy: options.triggeredBy ?? defaultTrigger,
+      roles:       options.roles,
     });
 
-    // Post-broadcast: check whether the gold price has been static for too many days.
-    // Non-fatal — log a warning but return success so the cron doesn't retry forever.
     const freshness = await validatePriceFreshness(2).catch(() => null);
     if (freshness && !freshness.isFresh) {
-      console.warn(`[POST /api/broadcast/run] ${freshness.warning}`);
+      console.warn(`[/api/broadcast/run] ${freshness.warning}`);
     }
 
-    return NextResponse.json({
-      ...result,
-      price_freshness: freshness,
-    });
+    return NextResponse.json({ ...result, price_freshness: freshness });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    console.error('[POST /api/broadcast/run]', msg);
+    console.error('[/api/broadcast/run]', msg);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
+}
+
+export async function GET(req: NextRequest) {
+  return handle(req, {}, 'cron');
+}
+
+export async function POST(req: NextRequest) {
+  const body = await req.json().catch(() => ({})) as {
+    roles?: DailyBroadcastOptions['roles'];
+    triggered_by?: string;
+  };
+  return handle(
+    req,
+    { roles: body.roles, triggeredBy: body.triggered_by },
+    'api'
+  );
 }
