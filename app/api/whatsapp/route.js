@@ -24,6 +24,9 @@ Tu función es orientar, informar y recopilar datos — no ejecutar trámites.
 ═══════════════════════════════════
 PERSONALIDAD Y ESTILO
 ═══════════════════════════════════
+- NUNCA pidas un dato que ya aparece en el bloque CONTEXTO DEL MINERO ACTIVO.
+  Usalo directamente. Si necesitas confirmar algo ya conocido, di:
+  "Veo que tu municipio es [municipio], ¿es correcto?" — no preguntes como si no lo supieras.
 - Eres hondureña. Hablas como alguien del equipo CHT en Honduras.
 - Usas expresiones hondureñas naturales pero profesionales:
   "con mucho gusto", "dale pues", "fijese que", "ahorita le digo",
@@ -172,6 +175,29 @@ Pregunta primero qué servicio necesita (formalización, titulación o contrato)
 Luego da el precio exacto con el desglose de pagos.
 Menciona que todos los pagos son vía Finacoop.
 
+CUANDO PREGUNTAN POR EL PRECIO DEL ORO (compra CHT):
+Si tienes datos en el bloque PRECIOS DE REFERENCIA, responde con exactitud:
+"El precio de referencia LBMA hoy es [precio LBMA]. CHT compra a [precio_compra_CHT]/gramo (80% del LBMA), pagado via Finacoop en lempiras."
+Si no hay datos en ese bloque: "El precio de compra cambia a diario — ahorita le consulto al equipo y le confirmo hoy mismo."
+NUNCA inventes precios. Solo usa los datos del bloque PRECIOS DE REFERENCIA.
+
+CUANDO PREGUNTAN "¿YA TIENES MIS DATOS?" O "¿ESTOY REGISTRADO?":
+Revisa el campo "Perfil completo" en CONTEXTO DEL MINERO ACTIVO.
+- Si dice "si": "Si [nombre], ya tengo tus datos completos en el sistema."
+- Si dice "no — faltan: [campos]": "Tengo la mayoria de tus datos, pero me falta tu [campo(s)]. ¿Me los puedes dar?"
+- Sin CONTEXTO DEL MINERO ACTIVO: "Todavia no estas registrado — dame tu nombre completo para empezar."
+
+CUANDO UN CLIENTE REGISTRADO QUIERE INICIAR UN NUEVO EXPEDIENTE:
+(Solo si el cliente ya está en CONTEXTO DEL MINERO ACTIVO y pregunta por un servicio nuevo)
+Recopila UNO por UNO:
+1. Tipo de servicio: formalización minera, titulación de propiedad, o contrato de sociedad
+   (si ya lo sabes por contexto, no lo preguntes de nuevo)
+2. Municipio y zona (si no está en su perfil, no lo pidas de nuevo si ya lo tienes)
+3. Manzanas estimadas del área
+Cuando tengas los 3 datos, responde EXACTAMENTE con este patron:
+"Listo [nombre], registré tu solicitud de [tipo_de_servicio]. El equipo te confirma los detalles en 24 horas."
+No agregues nada más a esa respuesta.
+
 CUANDO QUIEREN INICIAR UN TRÁMITE:
 Recopila UNO por UNO:
 1. Nombre completo
@@ -279,7 +305,7 @@ LO QUE MARÍA NUNCA HACE
 - Inventar fechas exactas de aprobación
 - Garantizar resultados sin contrato firmado
 - Ejecutar trámites que son obligación del cliente
-- Dar información de precios LBMA en tiempo real (el precio cambia diario — el equipo confirma)
+- Inventar precios si no hay datos en el bloque PRECIOS DE REFERENCIA — si no hay datos, di que el equipo confirma hoy
 - Compartir información de otros clientes
 - Comprometerse con trámites en áreas protegidas, territorios indígenas o con derechos mineros previos`;
 
@@ -504,11 +530,56 @@ Comandos disponibles:
     const cleanNumber = fromNumber.replace('whatsapp:', '');
     const { data: cliente } = await supabase
       .from('clientes')
-      .select('id, nombre, situacion_tierra, municipio, tipo_mineral')
+      .select('id, nombre, situacion_tierra, municipio, tipo_mineral, dpi, telefono_whatsapp')
       .eq('telefono_whatsapp', cleanNumber)
       .single();
 
     console.log('Cliente found:', cliente ? cliente.nombre : 'Unknown');
+
+    // --- Profile completeness check ---
+    let completenessSummary = '';
+    if (cliente) {
+      const camposRequeridos = {
+        'Nombre':              !!cliente.nombre,
+        'DPI':                 !!cliente.dpi,
+        'Municipio':           !!cliente.municipio,
+        'Situacion de tierra': !!cliente.situacion_tierra,
+        'Tipo de mineral':     !!cliente.tipo_mineral,
+      };
+      const faltantes = Object.entries(camposRequeridos)
+        .filter(([, ok]) => !ok)
+        .map(([campo]) => campo);
+      completenessSummary = faltantes.length === 0
+        ? '\n- Perfil completo: si'
+        : `\n- Perfil completo: no — faltan: ${faltantes.join(', ')}`;
+    }
+
+    // --- Fetch latest stored gold/silver prices ---
+    let preciosHoy = null;
+    try {
+      const { data: preciosData } = await supabase
+        .from('precios_diarios')
+        .select('oro, plata, usd_hnl, fecha')
+        .order('fecha', { ascending: false })
+        .limit(1)
+        .single();
+      preciosHoy = preciosData ?? null;
+    } catch { /* non-fatal — table may not have data yet */ }
+
+    const oroLBMA   = preciosHoy?.oro    != null ? `$${Number(preciosHoy.oro).toFixed(2)} USD/oz troy`   : null;
+    const oroCompra = (preciosHoy?.oro != null && preciosHoy?.usd_hnl != null)
+      ? `L ${(preciosHoy.oro * 0.80 * preciosHoy.usd_hnl / 31.1035).toFixed(2)}/gramo`
+      : null;
+    const plataLBMA = preciosHoy?.plata  != null ? `$${Number(preciosHoy.plata).toFixed(2)} USD/oz troy` : null;
+
+    const priceContext = preciosHoy
+      ? `\n\nPRECIOS DE REFERENCIA (${preciosHoy.fecha ?? 'hoy'}):
+- Oro LBMA: ${oroLBMA ?? 'no disponible'}
+- Precio de compra CHT (80% LBMA): ${oroCompra ?? 'el equipo confirma hoy'}
+- Plata LBMA: ${plataLBMA ?? 'no disponible'}
+- Tipo de cambio: ${preciosHoy.usd_hnl != null ? `L ${preciosHoy.usd_hnl}/USD` : 'no disponible'}
+Cuando el cliente pregunte por precios del oro, usa estos valores. Aclara que CHT paga al 80% del precio LBMA del dia, en lempiras al tipo de cambio BCH.`
+      : `\n\nPRECIOS DE REFERENCIA: No hay datos de precios cargados hoy. Si el cliente pregunta por precio de compra del oro, di: "El precio cambia a diario — ahorita le consulto al equipo y le confirmo hoy mismo."`;
 
     // --- Query expedientes linked to this client ---
     let expedienteContext = '';
@@ -542,6 +613,7 @@ CONTEXTO DEL MINERO ACTIVO:
 - Municipio: ${cliente.municipio || 'Iriona, Colón'}
 - Situación de tierra: ${cliente.situacion_tierra || 'no registrada'}
 - Mineral: ${cliente.tipo_mineral || 'oro'}
+- DPI: ${cliente.dpi || 'no registrado'}${completenessSummary}
 Usa su nombre naturalmente en la conversación. Ya lo conoces — no le pidas datos que ya tienes.`
       : `
 MINERO NO REGISTRADO:
@@ -610,7 +682,7 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
       }
     }
 
-    const dynamicPrompt = CHT_SYSTEM_PROMPT + clienteContext + expedienteContext + (isNewConversation
+    const dynamicPrompt = CHT_SYSTEM_PROMPT + priceContext + clienteContext + expedienteContext + (isNewConversation
       ? ''
       : `
 
@@ -790,6 +862,24 @@ Si algún dato no está claramente mencionado, deja null.`
         respuesta_asistente: assistantReply,
         estado: "pendiente_confirmacion",
       }]);
+    }
+
+    // --- Detect new expediente intake pattern ---
+    if (
+      assistantReply.includes("Listo") &&
+      assistantReply.includes("registré tu solicitud de") &&
+      assistantReply.includes("El equipo te confirma los detalles en 24 horas")
+    ) {
+      const tipoMatch = assistantReply.match(/registré tu solicitud de ([^.]+)\./i);
+      const tipoServicio = tipoMatch ? tipoMatch[1].trim() : 'servicio no especificado';
+      await supabase.from("transacciones_pendientes").insert([{
+        numero_whatsapp: fromNumber,
+        mensaje_original: incomingMessage,
+        respuesta_asistente: assistantReply,
+        estado: "pendiente_confirmacion",
+        detalle: `Nuevo expediente solicitado: ${tipoServicio}. Cliente: ${cliente?.nombre ?? 'no registrado'}. Mensaje: "${incomingMessage}"`,
+      }]).catch(err => console.log('Nuevo expediente insert (non-fatal):', err.message));
+      console.log('Nuevo expediente registrado para:', cliente?.nombre ?? fromNumber);
     }
 
     const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
