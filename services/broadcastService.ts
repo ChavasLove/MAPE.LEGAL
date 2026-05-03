@@ -1,112 +1,79 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { getAdminClient } from '@/services/adminSupabase';
 import { sendWhatsAppText } from '@/services/whatsappService';
-import { getDailyReportConfig, type DailyReportConfig } from '@/services/configService';
 import { type PreciosDiarios } from '@/services/pricingService';
 import { getActiveSubscribers, type BroadcastRol } from '@/services/userService';
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-// ─── Metric label map ─────────────────────────────────────────────────────────
-
-const METRIC_LABELS: Record<string, string> = {
-  gold:    'Oro',
-  silver:  'Plata',
-  usd_hnl: 'USD/HNL',
-  copper:  'Cobre',
-};
-
-const METRIC_UNITS: Record<string, string> = {
-  gold:    '/ oz',
-  silver:  '/ oz',
-  usd_hnl: '',
-  copper:  '/ lb',
-};
-
-const PRICE_KEYS: Record<string, keyof PreciosDiarios> = {
-  gold:    'oro',
-  silver:  'plata',
-  usd_hnl: 'usd_hnl',
-  copper:  'cobre',
-};
-
-// ─── Format price based on config ────────────────────────────────────────────
-
-function formatPrice(
-  value: number | null,
-  metric: string,
-  cfg: DailyReportConfig,
-  usdHnl: number | null
-): string {
-  if (value === null) return 'N/D';
-
-  let displayValue = value;
-  let symbol = '$';
-
-  if (cfg.currency === 'HNL' && metric !== 'usd_hnl' && usdHnl) {
-    displayValue = value * usdHnl;
-    symbol = 'L';
-  } else if (metric === 'usd_hnl') {
-    symbol = '';
-  }
-
-  const formatted = new Intl.NumberFormat('es-HN', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(displayValue);
-
-  const unit = METRIC_UNITS[metric] ?? '';
-  return `${symbol}${formatted}${unit ? ' ' + unit : ''}`;
-}
-
-// ─── Generate daily message via María (Claude) ────────────────────────────────
+// ─── Generate daily price message — FIXED TEMPLATE ───────────────────────────
+//
+// Formato canónico del broadcast diario de las 8 AM Honduras.
+// No llama a Claude — el mensaje es determinístico para garantizar consistencia
+// y evitar alucinaciones de precio.
 
 export async function generateDailyMessage(precios: PreciosDiarios): Promise<string> {
-  const config = await getDailyReportConfig();
-  const enabled = config.filter(c => c.enabled).sort((a, b) => a.order_index - b.order_index);
+  const now = new Date();
 
-  if (enabled.length === 0) return 'Actualizacion diaria: sin metricas configuradas.';
-
-  // Build price lines
-  const usdHnl = precios.usd_hnl;
-  const priceLines = enabled.map(cfg => {
-    const key = PRICE_KEYS[cfg.metric];
-    const value = precios[key] as number | null;
-    const label = METRIC_LABELS[cfg.metric] ?? cfg.metric;
-    return `${label}: ${formatPrice(value, cfg.metric, cfg, usdHnl)}`;
-  });
-
-  // Ask María for a short market commentary
-  const priceContext = priceLines.join('\n');
-  let commentary = '';
-
-  try {
-    const res = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 120,
-      messages: [{
-        role: 'user',
-        content: `Eres Maria, asistente de CHT Honduras. Con base en estos precios de hoy, escribe UN comentario corto (maximo 2 oraciones) en espanol hondureno para mineros artesanales. No uses emojis. No repitas los precios.
-
-${priceContext}`,
-      }],
-    });
-    commentary = ((res.content?.[0] as { text?: string })?.text ?? '').trim();
-  } catch {
-    commentary = 'Los precios de hoy estan disponibles para su consulta.';
-  }
-
-  const fecha = new Date().toLocaleDateString('es-HN', {
+  // Honduras: UTC-6, sin horario de verano
+  const hondurasTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Tegucigalpa' }));
+  const fechaLarga = hondurasTime.toLocaleDateString('es-HN', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   });
+  const horaCorta = hondurasTime.toLocaleTimeString('es-HN', {
+    hour: '2-digit', minute: '2-digit', hour12: true,
+  });
 
-  return [
-    `Actualizacion diaria — ${fecha}`,
-    '',
-    ...priceLines,
-    '',
-    commentary,
-  ].join('\n');
+  const tc = precios.usd_hnl ?? 0;
+  const oroUsd = precios.oro ?? 0;
+  const oroLps = oroUsd && tc ? oroUsd * tc : 0;
+  const compraLps = oroLps ? oroLps * 0.8 : 0;
+
+  const fmtLps = (n: number) =>
+    n > 0
+      ? 'L ' + n.toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : 'N/D';
+
+  const fmtUsd = (n: number) =>
+    n > 0
+      ? '$' + n.toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : 'N/D';
+
+  // Si no hay precio de oro, devolver mensaje de fallback
+  if (oroUsd <= 0) {
+    return [
+      `Estimado Socio MAPE`,
+      ``,
+      `Fijese que hoy no pude traer el precio exacto. Te lo envio en cuanto lo tengamos.`,
+      ``,
+      `Precios de referencia al ${fechaLarga} — ${horaCorta} Honduras`,
+      `Fuentes: [goldapi.io](http://goldapi.io) + BCH referencial`,
+      ``,
+      `Ver detalles: [www.mape.legal](http://www.mape.legal)`,
+      ``,
+      `Dale pues, cualquier consulta me escribis.`,
+    ].join('\n');
+  }
+
+  const lines = [
+    `Estimado Socio MAPE`,
+    ``,
+    `El precio de oro el dia de hoy es:`,
+    `- LBMA: ${fmtUsd(oroUsd)} USD/oz`,
+    `- En Lempiras: ${fmtLps(oroLps)} por onza (aprox.)`,
+    ``,
+    `Tasa de cambio referencia: ${tc > 0 ? 'L ' + tc.toFixed(2) + ' por USD' : 'N/D'}`,
+    ``,
+    `Precio de compra oro calculado en Lempiras:`,
+    `- MAPE LEGAL compra al 80% LBMA`,
+    `- ${fmtLps(compraLps)} por onza estimado`,
+    ``,
+    `Precios de referencia al ${fechaLarga} — ${horaCorta} Honduras`,
+    `Fuentes: [goldapi.io](http://goldapi.io) + BCH referencial`,
+    ``,
+    `Ver detalles: [www.mape.legal](http://www.mape.legal)`,
+    ``,
+    `Dale pues, cualquier consulta me escribis.`,
+  ];
+
+  return lines.join('\n');
 }
 
 // ─── Send broadcast to all active subscribers ─────────────────────────────────
