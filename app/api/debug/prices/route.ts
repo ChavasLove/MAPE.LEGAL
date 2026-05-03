@@ -65,5 +65,20 @@ export async function GET() {
     results.exchange_rate = { error: String(e) };
   }
 
+  // Test Yahoo Finance (gold futures GC=F)
+  try {
+    const start = Date.now();
+    const res = await fetch(
+      'https://query2.finance.yahoo.com/v8/finance/chart/GC%3DF?interval=1d&range=1d',
+      { headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0' }, cache: 'no-store' }
+    );
+    const elapsed = Date.now() - start;
+    const data = await res.json() as { chart?: { result?: Array<{ meta?: { regularMarketPrice?: number } }> } };
+    const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice ?? null;
+    results.yahoo_finance_gold = { ok: res.ok, status: res.status, elapsed_ms: elapsed, price };
+  } catch (e) {
+    results.yahoo_finance_gold = { error: String(e) };
+  }
+
   return NextResponse.json(results, { status: 200 });
 }
