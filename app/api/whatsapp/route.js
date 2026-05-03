@@ -365,7 +365,19 @@ LO QUE MARÍA NUNCA HACE
 - Ejecutar trámites que son obligación del cliente
 - Inventar precios si no hay datos en el bloque PRECIOS DE REFERENCIA — si no hay datos, di que el equipo confirma hoy
 - Compartir información de otros clientes
-- Comprometerse con trámites en áreas protegidas, territorios indígenas o con derechos mineros previos`;
+- Comprometerse con trámites en áreas protegidas, territorios indígenas o con derechos mineros previos
+
+═══════════════════════════════════
+MANUAL OPERATIVO 2026 — BASE DE DATOS
+═══════════════════════════════════
+Cuando alguien pregunte por un paso específico ("¿qué dice el paso 7?",
+"¿quién es responsable del paso 14?", "¿qué documentos necesito en el paso 19?"),
+el sistema puede inyectar un bloque REFERENCIA MANUAL OPERATIVO con datos exactos
+de la base de datos. Si ese bloque aparece en esta sesión, úsalo como fuente primaria:
+cita el número de paso, el responsable y el plazo con exactitud.
+Si el bloque NO aparece (pregunta fuera de los pasos cargados), responde con la
+información general que ya tienes arriba — nunca inventes detalles específicos
+de documentos, plazos o entregables que no estén en ese bloque.`;
 
 function buildExpedienteContext(exps) {
   const FASE_NOMBRES = [
@@ -393,7 +405,47 @@ Cuando el cliente pregunte por el avance de su trámite, usa esta información. 
   }).join('\n');
 }
 
-export const dynamic = 'force-dynamic';
+// ─── Manual Operativo 2026 lookup ─────────────────────────────────────────────
+// Triggers when the user asks about a specific paso, the Manual Operativo,
+// or who is responsible for a step. Uses the existing service-role client.
+
+const MANUAL_TRIGGERS = /\bpaso\s+\d+\b|manual\s+operativo|qu[eé]\s+dice\s+el\s+paso|qui[eé]n\s+es\s+responsable|rol\s+del\s+paso|responsable\s+del\s+paso|encargado\s+del\s+paso/i;
+
+async function buildManualContext(message, supabaseClient) {
+  if (!MANUAL_TRIGGERS.test(message)) return '';
+
+  try {
+    const stepMatch = /\bpaso\s+(\d+)\b/i.exec(message);
+    const stepNum   = stepMatch ? parseInt(stepMatch[1], 10) : null;
+
+    // Sanitise keyword: strip PostgREST/ILIKE special chars, cap at 40 chars
+    const keyword = message.replace(/[%_\\]/g, '').slice(0, 40).trim();
+
+    let query = supabaseClient
+      .from('documentos_referencia')
+      .select('paso_numero, titulo_paso, rol, acciones, documentos, plazo, deliverable, advertencias');
+
+    query = stepNum
+      ? query.or(`paso_numero.eq.${stepNum},titulo_paso.ilike.%${keyword}%`)
+      : query.ilike('titulo_paso', `%${keyword}%`);
+
+    const { data, error } = await query.limit(1).single();
+    if (error || !data) return '';
+
+    return `\n\nREFERENCIA MANUAL OPERATIVO — Paso ${data.paso_numero}: ${data.titulo_paso}
+- Responsable: ${data.rol ?? 'no especificado'}
+- Acciones: ${data.acciones ?? '—'}
+- Documentos requeridos: ${data.documentos ?? '—'}
+- Plazo: ${data.plazo ?? '—'}
+- Entregable: ${data.deliverable ?? '—'}
+- Advertencias: ${data.advertencias ?? '—'}
+Usa esta información para responder con precisión. No inventes datos fuera de este bloque.`;
+  } catch {
+    return ''; // silent failure — never block María's response
+  }
+}
+
+
 
 export async function POST(request) {
   try {
@@ -758,7 +810,10 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
       }
     }
 
-    const dynamicPrompt = CHT_SYSTEM_PROMPT + priceContext + clienteContext + expedienteContext + (isNewConversation
+    // --- Manual Operativo 2026 lookup (keyword-triggered, non-blocking) ---
+    const manualContext = await buildManualContext(incomingMessage, supabase);
+
+    const dynamicPrompt = CHT_SYSTEM_PROMPT + priceContext + clienteContext + expedienteContext + manualContext + (isNewConversation
       ? ''
       : `
 
