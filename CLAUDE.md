@@ -17,7 +17,8 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 - Cookie `admin-token` mantenida por compatibilidad con código heredado
 - `/admin/login` redirige automáticamente a `/login` — no duplicar lógica de auth
 - **Rate limit**: 5 intentos por (IP + email) cada 15 min en `/api/auth/login` y `/api/admin/auth/login` — `lib/rateLimit.ts` (in-memory, defensa adicional sobre Supabase)
-- **Refresh**: `POST /api/auth/refresh` rota `auth-token` (1h) usando `auth-refresh` (30d). Cliente debe llamar antes de la expiración del access token.
+- **Refresh**: `POST /api/auth/refresh` rota `auth-token` (1h) usando `auth-refresh` (30d) y re-deriva `auth-role` consultando `user_roles` con service-role client (no confía en la cookie expirada). Cliente debe llamar antes de la expiración del access token.
+- **`auth-role` cookie tiene maxAge 30d** (no 1h como el access token) — garantiza que el guard de `proxy.ts` siga teniendo rol disponible entre la expiración del access token y la siguiente llamada a `/refresh`. Se setea en `login` y se re-setea en cada `refresh`.
 
 ## Base de Datos
 - Supabase (PostgreSQL). Dos clientes:
@@ -41,9 +42,9 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
   - `is_final: true` cuando no hay transiciones salientes — distingue proceso completado de bloqueado
 - `modules/expedientes.ts` — `advancePhase()`, `validatePaymentForPhase()`, `logAction()`
   - Requiere `transition_id` explícito si hay múltiples transiciones disponibles (evita pick silencioso)
-  - Revierte `expedientes.fase_actual_id` si falla el insert en `expediente_fases`
+  - Revierte `expedientes.fase_actual_id` **y** `fase_numero` juntos si falla el insert en `expediente_fases` (el rollback antiguo desincronizaba ambas columnas)
   - Mantiene `expedientes.fase_numero` sincronizado con `chosen.fase.orden` (columna del dashboard)
-  - Tras avance exitoso dispara `notifyPhaseAdvance()` fire-and-forget
+  - Tras avance exitoso dispara `notifyPhaseAdvance()` fire-and-forget — el `.catch()` externo loggea cualquier rechazo síncrono (env vars faltantes, etc.) en lugar de tragárselo
 - `modules/notifications.ts` — `notifyPhaseAdvance()`, `notifyDocumentVerified()`, `notifyDocumentRejected()`
   - Lookup de cliente vía service-role client (RLS bloquearía la consulta desde anon)
   - Falla silenciosa: errores se loggean, nunca propagan a la respuesta del API
@@ -55,7 +56,7 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 | `services/whatsappService.ts` | Meta Cloud API v21.0 — texto, templates, webhook parser |
 | `services/cmsService.ts` | Lectura/escritura de `contenido_cms` — anon para leer, admin para escribir |
 | `services/configService.ts` | Lectura/escritura de `configuracion_sistema` — solo admin client |
-| `services/dashboardService.ts` | Datos de expedientes para el dashboard (`DashExpediente`, `DashHito`, `DashDoc`) |
+| `services/dashboardService.ts` | Datos de expedientes para el dashboard (`DashExpediente`, `DashHito`, `DashDoc`). `createDashExpediente()` genera `numero_expediente` desde `MAX(numero_expediente)` del año (no `COUNT(*)` — colisionaba tras deletes y bajo concurrencia) |
 
 ### Plantillas de email disponibles
 | Función | Destinatario | Evento |
