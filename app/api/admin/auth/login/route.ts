@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit';
+
+const LOGIN_LIMIT     = 5;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 
 export async function POST(req: Request) {
   try {
@@ -7,6 +11,15 @@ export async function POST(req: Request) {
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Email y contraseña requeridos' }, { status: 400 });
+    }
+
+    const rateKey = `admin-login:${clientIpFrom(req)}:${String(email).toLowerCase()}`;
+    const rate    = checkRateLimit(rateKey, LOGIN_LIMIT, LOGIN_WINDOW_MS);
+    if (!rate.ok) {
+      return NextResponse.json(
+        { error: `Demasiados intentos. Intenta nuevamente en ${Math.ceil(rate.retryAfterSec / 60)} minutos.` },
+        { status: 429, headers: { 'Retry-After': String(rate.retryAfterSec) } }
+      );
     }
 
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -57,6 +70,10 @@ export async function POST(req: Request) {
     // Unified auth cookies
     res.cookies.set('auth-token', data.session.access_token, cookieOpts);
     res.cookies.set('auth-role',  'admin', cookieOpts);
+    res.cookies.set('auth-refresh', data.session.refresh_token, {
+      ...cookieOpts,
+      maxAge: 60 * 60 * 24 * 30,  // 30 days
+    });
     res.cookies.set('user-email', data.user.email ?? '', { ...cookieOpts, httpOnly: false });
 
     return res;

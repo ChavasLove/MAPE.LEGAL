@@ -494,3 +494,45 @@ For full production readiness (Phase 2), add:
 ---
 
 *Report generated on May 3, 2026, based on analysis of the MAPE.LEGAL codebase at https://github.com/ChavasLove/MAPE.LEGAL.git*
+
+---
+
+## Appendix A — Verification Notes (post-implementation)
+
+After the report was committed, every Week 1 "critical" claim was checked
+against the actual codebase. Several are factually wrong; the following items
+were marked **NOT A BUG** during implementation. Future reviewers should not
+re-open them without a specific reproduction.
+
+| ID | Claim | Reality |
+|---|---|---|
+| C1 | "No middleware.ts — proxy.ts is dead code" | Per AGENTS.md / CLAUDE.md, Next.js 16 replaces `middleware.ts` with `proxy.ts` (named export `proxy`). The file is the live middleware. |
+| C2 | "Login sets `user-token`, layouts read `auth-token`" | Login sets `auth-token` (`app/api/auth/login/route.ts:75`). No mismatch. |
+| C4 | "Logout uses `redirect()` — cookies don't clear" | Logout sets `Max-Age=0` on every cookie before redirect. Browsers honour this. |
+| C5 | "WhatsApp imports non-existent `supabase` export" | `services/supabase.ts:23` exports a `supabase` Proxy. |
+| C6 | "WhatsApp env-var names mismatch" | `.env.example` and `services/whatsappService.ts` both use `WHATSAPP_TOKEN`. |
+| H2 | "Claude model name is non-existent" | `claude-haiku-4-5-20251001` is the documented model in CLAUDE.md and is available. |
+| H3 | "Admin roles DELETE handler lacks `return`" | Has `return NextResponse.json(...)` at `app/api/admin/roles/[id]/route.ts:44`. |
+| M1 | "Admin usuarios `DELETE` endpoint missing" | Exists at `app/api/admin/usuarios/[id]/route.ts:31`. |
+
+### Real issues that **were** addressed in this branch
+
+| Area | Fix |
+|---|---|
+| Quarry visibility | New `GET /api/admin/minas` + `/dashboard/minas` page + sidebar nav. |
+| Phase notifications | `modules/notifications.ts` + wired into `advancePhase()` (fire-and-forget). |
+| Document notifications | `PATCH /api/documentos/[id]` now fires WhatsApp on `verificado` and email on `rechazado`, plus audit log. |
+| Schema sync | `advancePhase()` now also writes `fase_numero` so dashboard column stays in sync with workflow column. |
+| Audit type coverage | `AccionAuditoria` now includes `DOCUMENTO_VERIFICADO`, `DOCUMENTO_RECHAZADO`, `NOTIFICACION_ENVIADA`. |
+| Login brute force | `lib/rateLimit.ts` enforces 5 attempts / 15 min per (IP + email) on both login routes. |
+| Session expiry | `POST /api/auth/refresh` rotates the access token using a 30-day `auth-refresh` cookie. Logout clears it too. |
+
+### Real issues **not yet** addressed
+
+- Atomic phase transitions (no `SELECT FOR UPDATE` / RPC) — needs a Postgres function migration; deferred.
+- SLA / escalation cron for overdue phases — `fecha_vencimiento` still unmonitored.
+- No `/api/pagos` endpoint to record payments programmatically.
+- Auto-link WhatsApp uploads to `documentos` rows — Maria still doesn't write documents.
+- Password reset flow — not implemented.
+- Persistent rate limiter — current implementation is per-process and weak under serverless cold starts.
+
