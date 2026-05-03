@@ -114,25 +114,35 @@ Webhook Twilio que conecta WhatsApp con Claude AI.
   - `hitos` (no `hitos_pago`) · `hito.estado === 'cobrado'` (no `'confirmado'`)
   - `expedientes.cliente` es texto (no FK) — no hacer join a `clientes` desde `expedientes`
 
-## Landing page — imágenes
-Todas las imágenes están en `public/images/`. Distribución actual:
-| Imagen | Componente |
+## Landing page
+
+**Estado real (auditoría 2026-05-03):** la landing activa es `app/page.tsx` (≈523 líneas, autocontenido, usa clases definidas en `app/globals.css`). Los 15 archivos de `components/landing/*` (`Hero.tsx`, `About.tsx`, `Problem.tsx`, `Solution.tsx`, `Services.tsx`, `Impact.tsx`, `Beneficiarios.tsx`, `Footer.tsx`, `Contacto.tsx`, `News.tsx`, `Programs.tsx`, `Roadmap.tsx`, `ValorSection.tsx`, `WhyNow.tsx`, `PriceWidgets.tsx`) están **huérfanos** — `grep` confirma cero imports en todo el repo. Cualquier cambio de UI debe hacerse en `app/page.tsx`, no en los componentes huérfanos.
+
+### Imágenes disponibles en `public/images/`
+| Archivo | Notas |
 |---|---|
-| `RIVER AND MOUNTAINS.png` | Hero (fondo) + og:image |
-| `MAPE LEGAL LOGO 1.JPG` | Hero (nav), Login, Admin, Dashboard, Portal |
-| `Servicios Legales.png` | About |
-| `Tophographic map.png` | Problem |
-| `Services Tophography .png` | Solution |
-| `Technitians Field Work.png` | Services |
-| `Artisanal Miner Image 01 .JPG` | Impact |
-| `Estudio de Impacto Ambiental.png` | Beneficiarios |
+| `RIVER AND MOUNTAINS.png` | Hero (fondo) — referenciado por `app/page.tsx` y `Hero.tsx` huérfano |
+| `MAPE LEGAL LOGO 1.JPG` | Logo institucional |
+| `Servicios Legales.png` | Disponible |
+| `Tophographic map.png` | Disponible |
+| `Services Tophography .png` | Disponible (espacio en el nombre — preservar) |
+| `Technitians Field Work.png` | Disponible (typo en el nombre — preservar) |
+| `Artisanal Miner Image 01 .JPG` | Disponible (espacios — preservar) |
+| `Estudio de Impacto Ambiental.png` | Disponible |
+
+### Imágenes referenciadas pero **inexistentes** (no agregar nuevos refs)
+- `LOGO CHT.png` — referenciado en `Hero.tsx:34` (huérfano). Usar `MAPE LEGAL LOGO 1.JPG`.
+- `Map.png` — referenciado en `Problem.tsx:83` (huérfano). Usar `Tophographic map.png`.
 
 ## SEO / Open Graph
-Configurado en `app/layout.tsx`:
+
+**Estado real (auditoría 2026-05-03):** `app/layout.tsx` solo declara `title` + `description`. **No** existe `metadataBase`, `openGraph` ni `twitter` — pendiente de implementar. Si se agrega, seguir el patrón documentado abajo.
+
+Patrón objetivo (cuando se implemente):
 - `metadataBase` usa `NEXT_PUBLIC_SITE_URL` (fallback: `https://mape.legal`)
 - `openGraph`: type website, locale `es_HN`, siteName, og:image apuntando a `RIVER AND MOUNTAINS.png`
 - `twitter`: card `summary_large_image`
-- La página principal (`app/page.tsx`) sobreescribe `openGraph` con título y descripción específicos
+- `app/page.tsx` puede sobreescribir `openGraph` con título y descripción específicos
 
 ## Admin inicial
 Script de seed para crear el super admin: `scripts/seed-super-admin.mjs`
@@ -145,10 +155,10 @@ Requiere env vars. Es idempotente — re-ejecutable sin efectos secundarios.
 - Tailwind v4 con `@theme inline` en `globals.css` — **no usar** `tailwind.config.js`
 - Colores siempre con `style={{ color: '...' }}` inline usando los tokens de DESIGN.md
 - No usar clases genéricas de Tailwind (`green-*`, `gray-*`, `slate-*`) — solo los hex del sistema de diseño
-- Fuentes: `font-sans` para Inter (UI), headings usan Playfair Display automáticamente vía `globals.css`
+- Fuentes: `font-sans` para Inter (UI). **Estado real:** Playfair Display **no** está cargada (ni en `app/layout.tsx` ni vía `@font-face` en `globals.css`). Los `<h1–h4>` caen al fallback `Georgia, serif`. Pendiente: cargar `Playfair_Display` desde `next/font/google` para cumplir DESIGN.md §2.
 
 ## Landing page — responsividad móvil
-Todos los componentes en `components/landing/` están optimizados para móvil. Convenciones establecidas:
+Convenciones aplicables a `app/page.tsx` (los componentes en `components/landing/` están huérfanos — ver sección "Landing page" arriba):
 
 - **Tipografía escalada**: H1 del Hero usa `text-3xl sm:text-4xl md:text-5xl lg:text-[4.5rem]` — nunca tamaño fijo grande
 - **`<br />` condicionales**: saltos de línea decorativos usan `<br className="hidden sm:block" />` para no romper el flujo en pantallas pequeñas
@@ -262,3 +272,37 @@ Flujo de registro guiado para números nuevos que contactan a María por primera
 - **Al completar**: escribe en `clientes` (nombre, dpi, municipio, telefono_whatsapp) + `usuarios_broadcast` (rol asignado)
 - **Idioma**: tuteo — consistente con la personalidad establecida de María
 - **Tabla**: `onboarding_states` — `telefono`, `estado`, `datos jsonb`, timestamps
+
+## Auditoría — deuda técnica conocida (2026-05-03)
+
+Documentado para evitar trabajo duplicado en futuras sesiones. Ninguno está bloqueando producción.
+
+### Landing
+- `components/landing/*` — 15 archivos huérfanos (cero imports). Decidir: revivir o eliminar.
+- `Hero.tsx:34` referencia `LOGO CHT.png` (no existe).
+- `Problem.tsx:83` referencia `Map.png` (no existe).
+- `Footer.tsx:3` — `border-t border-primary-900` sobre `bg-primary-950` queda invisible (`#1F2A44` vs `#162033`).
+
+### `app/page.tsx` (landing activa)
+- Línea ~192-193: hex hardcoded `#057a55` (Tailwind `emerald-700`) en lugar del token DESIGN.md `action-green` `#3E7C59`.
+- Líneas 129, 133, 137, 150 (aprox.): `fontWeight: 800` inline — DESIGN.md §2 cap = 700.
+- Línea 505 (aprox.): teléfono placeholder `+504 9XXX-XXXX` — CLAUDE.md prohíbe contacto personal en landing.
+- Línea 34 (aprox.): nav-logo con `href="#"` — usar `/` o `#top`.
+- Quote section (~464): mezcla comillas curvas `"` y rectas `"`.
+- `Roadmap.tsx:75` y `Problem.tsx:99` linkean a `/dashboard.html` — DESIGN.md §13 prohíbe esa cross-link.
+
+### `app/globals.css`
+- Tokens `--green: #057a55`, `--amber: #92580a` (líneas 8-10) — paletas Tailwind `emerald`/`amber` prohibidas por DESIGN.md.
+- `font-weight: 800` en líneas 59, 76, 129, 133, 137, 150, 203, 211 — exceden cap de 700.
+- `box-shadow` en `.mockup-window` (109), `.float-notif` (131), `.float-notif2` (139), `.progress-card` (183) — exceden `shadow-sm` permitido (DESIGN.md §8).
+- `animation: blink 1.4s` (línea 260) — animación continua prohibida por DESIGN.md §13.
+
+### `app/layout.tsx`
+- No carga Playfair Display — solo Inter. Headings caen a Georgia.
+- No declara `metadataBase`, `openGraph`, `twitter`. Solo `title` + `description`.
+
+### Componentes huérfanos (si se reviven)
+- `components/landing/PriceWidgets.tsx:33` — `${sign}<0.01%` produce `-<0.01%` (signo mal posicionado).
+- `components/landing/Roadmap.tsx:72` — `animate-pulse` viola DESIGN.md §13.
+- `components/landing/WhyNow.tsx:3,8,13,18` — emojis (🌍 ⚖️ 🏭 📊) violan tono de marca.
+- `components/landing/ValorSection.tsx:99` — hex `#1A1018` no documentado en DESIGN.md.
