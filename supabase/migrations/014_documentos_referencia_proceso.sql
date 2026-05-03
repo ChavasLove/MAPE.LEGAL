@@ -25,7 +25,24 @@ alter table documentos_referencia
   check (proceso in ('formalizacion', 'titulacion', 'sociedad'));
 
 -- Replace single-column unique index with composite (proceso, paso_numero).
+-- The old index must be dropped BEFORE the dedupe step, otherwise dedupe is
+-- a no-op (the old index already prevented duplicate paso_numero values).
 drop index if exists idx_documentos_referencia_paso;
+
+-- Dedupe before creating the new unique index. Some deployments accumulated
+-- duplicate (proceso, paso_numero) rows because the original migration 012
+-- declared the unique index but the table existed earlier without it. Keep
+-- one row per pair (arbitrary which — duplicates have identical content).
+with ranked as (
+  select id,
+         row_number() over (
+           partition by proceso, paso_numero
+           order by id
+         ) as rn
+    from documentos_referencia
+)
+delete from documentos_referencia
+ where id in (select id from ranked where rn > 1);
 
 create unique index if not exists idx_documentos_referencia_proceso_paso
   on documentos_referencia (proceso, paso_numero);
