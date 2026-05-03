@@ -1,10 +1,10 @@
 # Current State
 
 ## Last Updated
-2026-05-02
+2026-05-03
 
 ## Current Module
-Landing page — imagery, brand enforcement, and commercial messaging complete
+Landing page — auditoría completa. La landing activa (`app/page.tsx`) está en producción. Los componentes en `components/landing/*` son código huérfano (cero imports). Ver "Auditoría 2026-05-03" abajo y CLAUDE.md → "Auditoría — deuda técnica conocida".
 
 ---
 
@@ -33,23 +33,21 @@ Landing page — imagery, brand enforcement, and commercial messaging complete
 - `GET/POST /api/expedientes`, `GET /api/expedientes/:id/next-actions`, `POST /api/expedientes/:id/transition`
 
 ### Design system (2026-04-26)
-- `app/globals.css` — complete CHT token set (`--cht-*`, Tailwind `@theme`)
-- `app/layout.tsx` — Playfair Display + Inter (replaces Geist)
-- All 11 landing components + 2 UI primitives — brand compliant
+- `app/globals.css` — token set definido (algunos tokens `--green`, `--amber` violan DESIGN.md, ver auditoría)
+- `app/layout.tsx` — solo Inter cargada. Playfair Display planificada pero **no** integrada (auditoría 2026-05-03)
+- 15 componentes en `components/landing/` creados pero huérfanos — la landing activa es `app/page.tsx`
 - `DESIGN.md` consolidated as single source of truth
 - `scripts/visual-guide.ts` placeholder created
 
 ### Landing page — imagery (2026-04-26)
 - `public/images/` folder created in repository
-- 8 brand images uploaded by client to GitHub
-- Images applied to landing sections:
-  - **Hero background** → `RIVER AND MOUNTAINS.png`
-  - **Hero nav logo** → `LOGO CHT.png`
-  - **Problem callout** → `Map.png` (Iriona territory)
-  - **Impact callout** → `Technitians Field Work.png`
-  - **About left column** → `Servicios Legales.png`
-- Remaining images staged for future use:
-  `Services Tophography .png`, `Tophographic map.png`, `Estudio de Impacto Ambiental.png`
+- 8 brand images uploaded:
+  `RIVER AND MOUNTAINS.png`, `MAPE LEGAL LOGO 1.JPG`, `Servicios Legales.png`,
+  `Tophographic map.png`, `Services Tophography .png`, `Technitians Field Work.png`,
+  `Artisanal Miner Image 01 .JPG`, `Estudio de Impacto Ambiental.png`
+- **Imágenes referenciadas pero inexistentes (en componentes huérfanos):**
+  - `LOGO CHT.png` (`Hero.tsx:34`) — usar `MAPE LEGAL LOGO 1.JPG`
+  - `Map.png` (`Problem.tsx:83`) — usar `Tophographic map.png`
 
 ### Landing page — commercial messaging (2026-04-26)
 - All service prices removed from public landing page
@@ -79,6 +77,29 @@ Landing page — imagery, brand enforcement, and commercial messaging complete
 - `getBlockingReasons` document check is a stub (always returns `pending`)
 - No Row Level Security (RLS) policies defined
 - No user authentication implemented
+
+---
+
+## Auditoría 2026-05-03 — deuda técnica de la landing
+
+Resumen ejecutivo (detalle completo en CLAUDE.md → "Auditoría — deuda técnica conocida"):
+
+### Crítico
+- `components/landing/*` (15 archivos) — código huérfano, cero imports. Decidir: revivir o eliminar.
+- Imágenes inexistentes referenciadas: `LOGO CHT.png`, `Map.png` (solo en componentes huérfanos).
+- `app/layout.tsx` — sin Playfair Display, sin metadata SEO (`metadataBase`, `openGraph`, `twitter`).
+
+### Violaciones de DESIGN.md
+- `app/globals.css` — tokens `--green: #057a55`, `--amber: #92580a` (paletas Tailwind prohibidas).
+- `font-weight: 800` en globals.css y page.tsx — DESIGN.md §2 cap = 700.
+- `box-shadow` excediendo `shadow-sm` en `.mockup-window`, `.float-notif*`, `.progress-card`.
+- `animation: blink` continua en globals.css — prohibida por DESIGN.md §13.
+- `Footer.tsx:3` — borde invisible (primary-900 sobre primary-950).
+
+### Nits
+- `app/page.tsx` — placeholder `+504 9XXX-XXXX`, `href="#"` en logo, mezcla de comillas.
+- `Roadmap.tsx`/`Problem.tsx` linkean a `/dashboard.html` (DESIGN.md §13 prohíbe cross-link).
+- `WhyNow.tsx` usa emojis (viola tono de marca).
 
 ---
 
