@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { getUserByPhone, getOrCreateUserByPhone } from "@/services/userService";
 import { interpretAndExecute } from "@/services/adminCommandService";
 import { getOnboardingState, startOnboarding, handleOnboarding } from "@/services/onboardingService";
-import { fetchAndStorePrices } from "@/services/pricingService";
+import { fetchAllPrices, fetchAndStorePrices } from "@/services/pricingService";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -555,30 +555,37 @@ Comandos disponibles:
         : `\n- Perfil completo: no — faltan: ${faltantes.join(', ')}`;
     }
 
-    // --- Fetch gold/silver prices: use today's cached row or fetch live ---
+    // --- Fetch gold/silver prices: cache-first, then live API ---
     let preciosHoy = null;
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
     try {
-      const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
       const { data: cached } = await supabase
         .from('precios_diarios')
         .select('oro, plata, usd_hnl, fecha')
         .eq('fecha', today)
         .single();
-
       if (cached?.oro) {
         preciosHoy = cached;
         console.log('Precios from cache:', `oro=${cached.oro}`);
-      } else {
-        // No prices for today — fetch live from GoldAPI + exchange rate API
-        console.log('No cached prices for today — fetching live...');
-        const { precios } = await fetchAndStorePrices();
+      }
+    } catch { /* table may not exist or be empty — fall through to live fetch */ }
+
+    if (!preciosHoy) {
+      // Fetch directly from external APIs — DB storage is fire-and-forget
+      try {
+        console.log('Fetching live prices from metals.live...');
+        const precios = await fetchAllPrices();
         if (precios.oro) {
           preciosHoy = { ...precios, fecha: today };
-          console.log('Precios fetched live:', `oro=${precios.oro}`);
+          console.log('Precios fetched live:', `oro=${precios.oro} usd_hnl=${precios.usd_hnl}`);
+          // Try to cache for the day — non-fatal if it fails
+          fetchAndStorePrices().catch(e => console.log('Price cache write failed (non-fatal):', e.message));
+        } else {
+          console.log('Live price fetch returned null oro — APIs may be down');
         }
+      } catch (e) {
+        console.log('Live price fetch threw (non-fatal):', e.message);
       }
-    } catch (e) {
-      console.log('Price fetch failed (non-fatal):', e.message);
     }
 
     const oroLBMA   = preciosHoy?.oro    != null ? `$${Number(preciosHoy.oro).toFixed(2)} USD/oz troy`   : null;
