@@ -4,6 +4,7 @@ import { getUserByPhone, getOrCreateUserByPhone } from "@/services/userService";
 import { interpretAndExecute } from "@/services/adminCommandService";
 import { getOnboardingState, startOnboarding, handleOnboarding } from "@/services/onboardingService";
 import { fetchAllPrices, fetchAndStorePrices } from "@/services/pricingService";
+import { fetchLiveMetalPrices } from "@/services/metalsPriceService";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -571,20 +572,17 @@ Comandos disponibles:
     } catch { /* table may not exist or be empty — fall through to live fetch */ }
 
     if (!preciosHoy) {
-      // Fetch directly from external APIs — DB storage is fire-and-forget
+      // Use the same proven 2-call approach as /api/prices (PriceWidgets landing page)
       try {
-        console.log('Fetching live prices from metals.live...');
-        const precios = await fetchAllPrices();
-        if (precios.oro) {
-          preciosHoy = { ...precios, fecha: today };
-          console.log('Precios fetched live:', `oro=${precios.oro} usd_hnl=${precios.usd_hnl}`);
-          // Try to cache for the day — non-fatal if it fails
-          fetchAndStorePrices().catch(e => console.log('Price cache write failed (non-fatal):', e.message));
-        } else {
-          console.log('Live price fetch returned null oro — APIs may be down');
+        const live = await fetchLiveMetalPrices();
+        if (live.gold) {
+          preciosHoy = { oro: live.gold, plata: live.silver, usd_hnl: live.hnlPerUsd, fecha: today };
+          console.log('Precios fetched live:', `oro=${live.gold} usd_hnl=${live.hnlPerUsd}`);
+          // Best-effort DB cache write — non-fatal
+          fetchAndStorePrices().catch(e => console.log('Price DB cache failed (non-fatal):', e.message));
         }
       } catch (e) {
-        console.log('Live price fetch threw (non-fatal):', e.message);
+        console.log('Live price fetch failed (non-fatal):', e.message);
       }
     }
 
