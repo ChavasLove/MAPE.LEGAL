@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { getUserByPhone, getOrCreateUserByPhone } from "@/services/userService";
 import { interpretAndExecute } from "@/services/adminCommandService";
 import { getOnboardingState, startOnboarding, handleOnboarding } from "@/services/onboardingService";
+import { fetchAndStorePrices } from "@/services/pricingService";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -554,17 +555,31 @@ Comandos disponibles:
         : `\n- Perfil completo: no — faltan: ${faltantes.join(', ')}`;
     }
 
-    // --- Fetch latest stored gold/silver prices ---
+    // --- Fetch gold/silver prices: use today's cached row or fetch live ---
     let preciosHoy = null;
     try {
-      const { data: preciosData } = await supabase
+      const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      const { data: cached } = await supabase
         .from('precios_diarios')
         .select('oro, plata, usd_hnl, fecha')
-        .order('fecha', { ascending: false })
-        .limit(1)
+        .eq('fecha', today)
         .single();
-      preciosHoy = preciosData ?? null;
-    } catch { /* non-fatal — table may not have data yet */ }
+
+      if (cached?.oro) {
+        preciosHoy = cached;
+        console.log('Precios from cache:', `oro=${cached.oro}`);
+      } else {
+        // No prices for today — fetch live from GoldAPI + exchange rate API
+        console.log('No cached prices for today — fetching live...');
+        const { precios } = await fetchAndStorePrices();
+        if (precios.oro) {
+          preciosHoy = { ...precios, fecha: today };
+          console.log('Precios fetched live:', `oro=${precios.oro}`);
+        }
+      }
+    } catch (e) {
+      console.log('Price fetch failed (non-fatal):', e.message);
+    }
 
     const oroLBMA   = preciosHoy?.oro    != null ? `$${Number(preciosHoy.oro).toFixed(2)} USD/oz troy`   : null;
     const oroCompra = (preciosHoy?.oro != null && preciosHoy?.usd_hnl != null)
