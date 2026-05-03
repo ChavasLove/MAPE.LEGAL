@@ -445,6 +445,29 @@ Usa esta información para responder con precisión. No inventes datos fuera de 
   }
 }
 
+// ─── RAG: knowledge retrieval from maria_knowledge ────────────────────────────
+// Calls the search_maria_knowledge_fts RPC (Postgres full-text search) to pull
+// the top 3 most relevant chunks for the user's question. Returns a single
+// concatenated string of "[category] title: content" blocks, or null when
+// nothing matches or the RPC fails. Non-blocking by design.
+//
+// TODO: When embeddings are generated in maria_knowledge.embedding,
+// switch to match_maria_knowledge() for semantic similarity search.
+// For now, full-text search (FTS) works well for keyword-heavy mining queries.
+async function retrieveKnowledge(supabaseClient, userMessage) {
+  try {
+    const { data: chunks, error } = await supabaseClient.rpc('search_maria_knowledge_fts', {
+      query_text: userMessage,
+      match_count: 3,
+    });
+    if (error || !chunks?.length) return null;
+    return chunks.map(c => `[${c.category}] ${c.title}: ${c.content}`).join('\n\n');
+  } catch (e) {
+    console.error('RAG retrieve error:', e);
+    return null;
+  }
+}
+
 
 
 export async function POST(request) {
@@ -813,7 +836,13 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
     // --- Manual Operativo 2026 lookup (keyword-triggered, non-blocking) ---
     const manualContext = await buildManualContext(incomingMessage, supabase);
 
-    const dynamicPrompt = CHT_SYSTEM_PROMPT + priceContext + clienteContext + expedienteContext + manualContext + (isNewConversation
+    // --- RAG: retrieve top-3 relevant chunks from maria_knowledge (FTS) ---
+    const knowledgeContext = await retrieveKnowledge(supabase, incomingMessage);
+    const ragBlock = knowledgeContext
+      ? `\n\nCONTEXTO DEL SISTEMA (información relevante para esta consulta):\n${knowledgeContext}\n\nUsa esta información para responder precisamente. Si no puedes responder con esta información, di que consultarás con el equipo técnico.`
+      : '';
+
+    const dynamicPrompt = CHT_SYSTEM_PROMPT + priceContext + clienteContext + expedienteContext + manualContext + ragBlock + (isNewConversation
       ? ''
       : `
 
