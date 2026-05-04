@@ -3,6 +3,7 @@
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
+import TopoBand from '@/components/decor/TopoBand';
 
 function LoginForm() {
   const router       = useRouter();
@@ -39,8 +40,9 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: '#F5F6F7' }}>
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen flex items-center justify-center px-4 relative" style={{ background: '#F5F6F7' }}>
+      <TopoBand variant="light" position="overlay" />
+      <div className="w-full max-w-sm relative z-10">
 
         <div className="flex flex-col items-center mb-8">
           <Image
