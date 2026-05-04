@@ -24,6 +24,12 @@ alter table documentos_referencia
   add constraint documentos_referencia_proceso_check
   check (proceso in ('formalizacion', 'titulacion', 'sociedad'));
 
+-- The production table has an extra NOT NULL column (documento_nombre) that was
+-- added outside the migration system. New process rows don't use that column,
+-- so we must drop the NOT NULL constraint before inserting them.
+alter table documentos_referencia
+  alter column documento_nombre drop not null;
+
 -- Replace single-column unique index with composite (proceso, paso_numero).
 -- The old index must be dropped BEFORE the dedupe step, otherwise dedupe is
 -- a no-op (the old index already prevented duplicate paso_numero values).
