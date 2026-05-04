@@ -10,6 +10,7 @@ interface Usuario {
   email:        string;
   created_at:   string;
   last_sign_in: string | null;
+  confirmed:    boolean;
   rol:          string;
   activo:       boolean;
   perfil:       { nombre: string; iniciales: string } | null;
@@ -40,7 +41,6 @@ export default function UsuariosPage() {
   const [formError, setFormError]     = useState('');
 
   const [newEmail, setNewEmail]       = useState('');
-  const [newPassword, setNewPassword] = useState('');
   const [newRol, setNewRol]           = useState<Rol>('cliente');
 
   const load = useCallback(async () => {
@@ -67,13 +67,12 @@ export default function UsuariosPage() {
       const res = await fetch('/api/admin/usuarios', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ email: newEmail, password: newPassword, rol: newRol }),
+        body:    JSON.stringify({ email: newEmail, rol: newRol }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setShowForm(false);
       setNewEmail('');
-      setNewPassword('');
       setNewRol('cliente');
       await load();
     } catch (e) {
@@ -123,7 +122,7 @@ export default function UsuariosPage() {
             style={{ background: '#1F2A44', border: '1px solid rgba(94,107,122,0.4)' }}
           >
             <Plus size={16} strokeWidth={2} />
-            Nuevo usuario
+            Invitar usuario
           </button>
         </div>
       </div>
@@ -131,8 +130,11 @@ export default function UsuariosPage() {
       {/* Create form */}
       {showForm && (
         <div className="rounded-xl border p-6 mb-6" style={{ background: '#1F2A44', borderColor: 'rgba(94,107,122,0.3)' }}>
-          <h2 className="text-base font-semibold text-white mb-4 font-sans">Crear usuario</h2>
-          <form onSubmit={handleCreate} className="grid sm:grid-cols-3 gap-4">
+          <h2 className="text-base font-semibold text-white mb-1 font-sans">Invitar usuario</h2>
+          <p className="text-xs font-sans mb-4" style={{ color: '#A3AAB3' }}>
+            El usuario recibirá un correo con un enlace para configurar su propia contraseña.
+          </p>
+          <form onSubmit={handleCreate} className="grid sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider mb-1 font-sans" style={{ color: '#A3AAB3' }}>
                 Correo electrónico
@@ -143,21 +145,6 @@ export default function UsuariosPage() {
                 onChange={e => setNewEmail(e.target.value)}
                 required
                 placeholder="usuario@cht.hn"
-                className="w-full px-3 py-2 rounded-lg text-sm font-sans outline-none"
-                style={{ background: '#162033', border: '1px solid rgba(94,107,122,0.4)', color: 'white' }}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider mb-1 font-sans" style={{ color: '#A3AAB3' }}>
-                Contraseña inicial
-              </label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
-                required
-                minLength={8}
-                placeholder="Mínimo 8 caracteres"
                 className="w-full px-3 py-2 rounded-lg text-sm font-sans outline-none"
                 style={{ background: '#162033', border: '1px solid rgba(94,107,122,0.4)', color: 'white' }}
               />
@@ -179,18 +166,18 @@ export default function UsuariosPage() {
               </select>
             </div>
             {formError && (
-              <div className="sm:col-span-3 text-sm font-sans px-3 py-2 rounded-lg" style={{ color: '#A94442', background: '#F8E5E4' }}>
+              <div className="sm:col-span-2 text-sm font-sans px-3 py-2 rounded-lg" style={{ color: '#A94442', background: '#F8E5E4' }}>
                 {formError}
               </div>
             )}
-            <div className="sm:col-span-3 flex gap-3">
+            <div className="sm:col-span-2 flex gap-3">
               <button
                 type="submit"
                 disabled={submitting}
                 className="px-5 py-2 rounded-lg text-sm font-semibold font-sans text-white transition-opacity disabled:opacity-60 cursor-pointer"
                 style={{ background: '#2F5D50' }}
               >
-                {submitting ? 'Creando...' : 'Crear usuario'}
+                {submitting ? 'Enviando invitación...' : 'Enviar invitación'}
               </button>
               <button
                 type="button"

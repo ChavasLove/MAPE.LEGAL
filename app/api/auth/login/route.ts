@@ -44,6 +44,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Credenciales incorrectas' }, { status: 401 });
     }
 
+    // Block login until the user has confirmed their email. The login page
+    // reads `code: 'EMAIL_NOT_CONFIRMED'` to render a "Reenviar correo" button.
+    if (!data.user.email_confirmed_at) {
+      return NextResponse.json(
+        {
+          error: 'Confirma tu correo antes de iniciar sesión.',
+          code:  'EMAIL_NOT_CONFIRMED',
+          email,
+        },
+        { status: 403 }
+      );
+    }
+
     // Fetch role using service role client to bypass RLS — this is safe because:
     // 1. We have already authenticated the user above
     // 2. This code runs server-side only (API route)

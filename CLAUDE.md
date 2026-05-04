@@ -16,20 +16,29 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 - Guard de rutas en `proxy.ts` — siempre mantener sincronia con nuevas rutas protegidas
 - Cookie `admin-token` mantenida por compatibilidad con código heredado
 - `/admin/login` redirige automáticamente a `/login` — no duplicar lógica de auth
-- **Rate limit**: 5 intentos por (IP + email) cada 15 min en `/api/auth/login` y `/api/admin/auth/login` — `lib/rateLimit.ts` (in-memory, defensa adicional sobre Supabase)
+- **Rate limit**: 5 intentos por (IP + email) cada 15 min en `/api/auth/login` y `/api/admin/auth/login` — `lib/rateLimit.ts` (in-memory, defensa adicional sobre Supabase). `/api/auth/resend-confirmation` usa el mismo limiter con 3 intentos por (IP + email) cada 15 min.
 - **Refresh**: `POST /api/auth/refresh` rota `auth-token` (1h) usando `auth-refresh` (30d) y re-deriva `auth-role` consultando `user_roles` con service-role client (no confía en la cookie expirada). Cliente debe llamar antes de la expiración del access token.
 - **`auth-role` cookie tiene maxAge 30d** (no 1h como el access token) — garantiza que el guard de `proxy.ts` siga teniendo rol disponible entre la expiración del access token y la siguiente llamada a `/refresh`. Se setea en `login` y se re-setea en cada `refresh`.
+- **Confirmación de correo obligatoria**: el login (`app/api/auth/login/route.ts`) rechaza usuarios con `email_confirmed_at = null` retornando `403 { code: 'EMAIL_NOT_CONFIRMED' }`. La página de login renderiza un botón "Reenviar correo" que llama a `POST /api/auth/resend-confirmation` (genera link con `auth.admin.generateLink('signup')` y lo envía vía SendGrid usando `emailConfirmacionCorreo`).
+- **Trigger de auto-rol**: migración `015_auto_user_roles_trigger.sql` instala `on_auth_user_created` sobre `auth.users` que inserta `user_roles(user_id, 'cliente', true)` automáticamente. Garantiza que ningún usuario quede sin rol, sin importar el origen (Supabase Studio, API admin, signup futuro). El trigger requiere `grant insert on user_roles to supabase_auth_admin` — sin ese grant la creación de usuarios falla con "Database error saving new user".
+- **Flujo de invitación admin**: `POST /api/admin/usuarios` recibe `{ email, rol, perfil_id? }` (sin password). Llama `auth.admin.generateLink({ type: 'invite' })` para crear el usuario sin disparar el mailer interno de Supabase, luego envía la invitación con `emailInvitacionUsuario()` vía SendGrid. El invitado configura su propia contraseña en `/auth/establecer-password` (que usa el SDK de Supabase con `detectSessionInUrl: true` para leer el fragment de la URL post-redirect). Admins nunca ven ni transmiten contraseñas en claro.
+
+### Configuración requerida en Supabase Studio (deploy manual)
+- **Auth → URL Configuration → Redirect URLs**: agregar `${NEXT_PUBLIC_SITE_URL}/login?confirmed=1` y `${NEXT_PUBLIC_SITE_URL}/auth/establecer-password`. Sin esto los enlaces de confirmación e invitación rebotan silenciosamente con "redirect not allowed".
+- **Auth → Email**: `Enable email confirmations = ON`, `mailer_autoconfirm = OFF`, `Mailer OTP expiry = 86400` (24h, máximo permitido).
+- **Auth → SMTP**: dejar deshabilitado — los correos salen por SendGrid desde nuestro código, no desde el mailer interno de Supabase.
 
 ## Base de Datos
 - Supabase (PostgreSQL). Dos clientes:
   - `services/supabase.ts` — cliente anónimo para lecturas públicas y portales de cliente
   - `services/adminSupabase.ts` — cliente service-role para escrituras admin y operaciones privilegiadas
-- Migraciones en `supabase/migrations/` (001–012):
+- Migraciones en `supabase/migrations/` (001–015):
   - 006: `roles`, `contenido_cms`, `configuracion_sistema`, `notificaciones`
   - 007: `contactos` (formulario de landing)
   - 008: `clientes`, `minas`, `contratos`, `indice_legalidad`, `transacciones_oro`, `conversaciones_whatsapp`, `transacciones_pendientes`
   - 009: Patch — columnas WhatsApp en `clientes` y `transacciones_pendientes`
   - 012: `documentos_referencia` — Manual Operativo 2026, consultado por María en tiempo real
+  - 015: Trigger `on_auth_user_created` sobre `auth.users` que inserta `user_roles(user_id, 'cliente', true)` automáticamente + backfill de usuarios existentes
 - Tablas del motor de workflow: `fases`, `transiciones_fase`, `expediente_fases`, `pagos`, `documentos`, `registro_auditoria`
 - Tabla `clientes` (piloto core) — columnas clave: `telefono_whatsapp`, `situacion_tierra`, `tipo_mineral`, `fecha_registro`, `nombre`, `municipio`
 - Tabla `documentos_referencia` — columnas clave: `proceso` (`formalizacion` | `titulacion` | `sociedad`), `paso_numero` (int), `titulo_paso`, `rol`, `acciones`, `documentos`, `plazo`, `deliverable`, `advertencias`. Unique compuesto en `(proceso, paso_numero)` — cada proceso tiene su propia numeración (formalización 1-38, titulación 1-9, sociedad 1-7). Poblada con los pasos del Manual Operativo 2026.
@@ -52,7 +61,7 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 ## Servicios
 | Archivo | Propósito |
 |---|---|
-| `services/emailService.ts` | SendGrid REST API — `sendEmail()`, shell HTML de marca, plantillas: avance, rechazo, pago, contacto interno, acuse de contacto, bienvenida de usuario |
+| `services/emailService.ts` | SendGrid REST API — `sendEmail()`, shell HTML de marca, plantillas: avance, rechazo, pago, contacto interno, acuse de contacto, confirmación de correo, invitación de usuario |
 | `services/whatsappService.ts` | Meta Cloud API v21.0 — texto, templates, webhook parser |
 | `services/cmsService.ts` | Lectura/escritura de `contenido_cms` — anon para leer, admin para escribir |
 | `services/configService.ts` | Lectura/escritura de `configuracion_sistema` — solo admin client |
@@ -66,7 +75,8 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 | `emailHitoPago` | cliente | Hito de pago generado |
 | `emailContactoInterno` | `gerencia@mape.legal` | Formulario de contacto recibido |
 | `emailContactoAcuse` | visitante del sitio | Confirmación de recepción |
-| `emailBienvenidaUsuario` | nuevo usuario | Cuenta creada con credenciales y link de login |
+| `emailConfirmacionCorreo` | usuario | Enlace de confirmación de correo (signup / reenvío) |
+| `emailInvitacionUsuario` | nuevo usuario invitado | Enlace para configurar contraseña tras invitación admin |
 
 ## Tipos importantes
 - `DashExpediente.abogado` → `{ nombre: string; initials: string }` (inglés, no `iniciales`)
@@ -86,7 +96,8 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 - `GET+POST+DELETE /api/admin/cms` — editor CMS
 - `GET+PATCH /api/admin/config` — configuración del sistema
 - `GET+POST /api/admin/roles` + `PATCH+DELETE /api/admin/roles/[id]` — gestión de roles
-- `GET+POST /api/admin/usuarios` — lista y creación de usuarios (POST envía welcome email automáticamente)
+- `GET+POST /api/admin/usuarios` — lista y creación de usuarios. POST recibe `{ email, rol, perfil_id? }` (sin password); usa `auth.admin.generateLink('invite')` y envía la invitación vía SendGrid con `emailInvitacionUsuario`. El invitado configura contraseña en `/auth/establecer-password`.
+- `POST /api/auth/resend-confirmation` — genera un link de confirmación con `auth.admin.generateLink('signup')` y lo envía vía SendGrid. Rate-limited a 3 por (IP + email) cada 15 min. Responde `{ ok: true }` aunque el email no exista (anti-enumeración).
 - `GET /api/admin/clientes` — lista todos los clientes registrados por WhatsApp con sus expedientes vinculados vía `cliente_id` FK (admin client, protegido por proxy)
 - `GET /api/admin/minas` — lista todas las minas con cliente asociado (admin client, protegido por proxy)
 - `POST /api/auth/refresh` — renueva el `auth-token` usando el `auth-refresh` cookie; limpia cookies si el refresh expiró
