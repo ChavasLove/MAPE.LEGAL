@@ -32,7 +32,7 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
   - 012: `documentos_referencia` — Manual Operativo 2026, consultado por María en tiempo real
 - Tablas del motor de workflow: `fases`, `transiciones_fase`, `expediente_fases`, `pagos`, `documentos`, `registro_auditoria`
 - Tabla `clientes` (piloto core) — columnas clave: `telefono_whatsapp`, `situacion_tierra`, `tipo_mineral`, `fecha_registro`, `nombre`, `municipio`
-- Tabla `documentos_referencia` — columnas clave: `paso_numero` (int, unique), `titulo_paso`, `rol`, `acciones`, `documentos`, `plazo`, `deliverable`, `advertencias`. Poblada manualmente con los pasos del Manual Operativo 2026.
+- Tabla `documentos_referencia` — columnas clave: `proceso` (`formalizacion` | `titulacion` | `sociedad`), `paso_numero` (int), `titulo_paso`, `rol`, `acciones`, `documentos`, `plazo`, `deliverable`, `advertencias`. Unique compuesto en `(proceso, paso_numero)` — cada proceso tiene su propia numeración (formalización 1-38, titulación 1-9, sociedad 1-7). Poblada con los pasos del Manual Operativo 2026.
 - **`expedientes` NO tiene FK a `clientes`** — el campo `cliente` es texto libre. Usar `contratos` para la relación correcta.
 
 ## Motor de Workflow (`modules/`)
@@ -106,11 +106,13 @@ Webhook Twilio que conecta WhatsApp con Claude AI.
   - Formalización minera: L 1,600,000 (3 hitos: 20/30/50%)
   - Titulación de propiedad: L 60,000 base (hasta 2 manzanas) + L 25,000 por manzana extra
   - Contrato de sociedad minera: L 55,000 (co-pagado 50/50)
-- **Historial**: últimos 20 mensajes de `conversaciones_whatsapp` por número de WhatsApp
+- **Historial**: últimos 40 mensajes de `conversaciones_whatsapp` por número de WhatsApp (suficiente para sostener conversaciones multi-día sin truncar contexto importante)
 - **Lookup de cliente**: busca en tabla `clientes` por `telefono_whatsapp` (strip de `whatsapp:` prefix) — si existe, inyecta nombre/municipio/tierra en el prompt; si no, instruye registro natural
 - **Contexto de expediente**: tras el lookup de cliente, consulta `expedientes` por `cliente_id = cliente.id` (fallback: `cliente ILIKE nombre`). Inyecta en el prompt: `numero_expediente`, fase actual, paso actual, estado, cierre estimado, hitos pendientes. Si no hay expediente: instruye a María a explicar Fase 0 e Hito 1. Helper: `buildExpedienteContext(exps)` en `route.js`.
 - **Prompt dinámico**: base + contexto de cliente + contexto de expediente + **manualContext** + (si conversación en curso) bloque `CONTEXTO CRÍTICO` que prohíbe re-saludos
-- **Manual Operativo 2026**: cuando el mensaje menciona "paso N", "manual operativo", "quién es responsable" o similares, `buildManualContext()` consulta `documentos_referencia` antes de llamar a Claude y añade un bloque `REFERENCIA MANUAL OPERATIVO` al system prompt. Detección regex, no LLM. Falla silenciosa: si la tabla está vacía o la query falla, `manualContext = ''` y el flujo no se interrumpe.
+- **Manual Operativo 2026**: cuando el mensaje menciona "paso N", "primer paso", "siguiente paso", "cómo empiezo", "manual operativo", "quién es responsable" o similares, `buildManualContext(message, supabase, recentHistory)` consulta `documentos_referencia` y añade un bloque `REFERENCIA MANUAL OPERATIVO` al system prompt. Detección regex, no LLM. `detectProceso()` mira el mensaje + últimos 6 turnos para elegir `formalizacion` / `titulacion` / `sociedad` y filtra el query por `proceso`; defaultea a `formalizacion` si no hay señal. "primer paso" sin número se traduce a `paso_numero=1` del proceso detectado. Falla silenciosa: si la tabla está vacía o la query falla, `manualContext = ''` y el flujo no se interrumpe.
+
+- **Memoria de conversación**: el system prompt incluye un bloque `MEMORIA DE CONVERSACIÓN — REGLA INNEGOCIABLE` que prohíbe re-preguntar datos ya dichos en los últimos 6 turnos (servicio, nuevo-vs-en-trámite, etc.) y obliga a responder "primer paso" / "siguiente paso" con el paso concreto del servicio identificado en lugar de pedir aclaración.
 - **Dedup**: filtra mensajes assistant consecutivos antes de enviar a Claude
 - **Base de conocimiento legal**: Reglamento Minería Honduras (Acuerdo 042-2013) embebido en el system prompt — números clave, scripts de respuesta rápida, áreas excluidas, sanciones
 - **Tablas Supabase**:

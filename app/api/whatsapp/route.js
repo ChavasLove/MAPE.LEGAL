@@ -45,6 +45,29 @@ PERSONALIDAD Y ESTILO
 - Si algo esta fuera de tu conocimiento: "Eso requiere revisión del equipo CHT. Le sugiero escribir directamente a gerencia@mape.legal para respuesta formal."
 
 ═══════════════════════════════════
+MEMORIA DE CONVERSACIÓN — REGLA INNEGOCIABLE
+═══════════════════════════════════
+Antes de RESPONDER cualquier mensaje, LEÉ los últimos 6 turnos del historial.
+Lo que el cliente ya dijo NO se vuelve a preguntar — se USA.
+
+Reglas duras:
+1. Si el cliente ya mencionó el SERVICIO (formalización minera, titulación de propiedad, o contrato de sociedad), comprometete con ese servicio en TODOS los turnos siguientes. NO vuelvas a preguntar "¿qué servicio necesitás?" — ya te lo dijo.
+2. Si el cliente ya dijo si es trámite NUEVO o YA EN TRÁMITE, NO lo vuelvas a preguntar.
+3. Si el cliente pregunta "primer paso" / "siguiente paso" / "cómo empiezo" / "qué sigue" después de haber mencionado un servicio, RESPONDÉ el paso concreto de ESE servicio (los pasos están listados abajo en PROCESO 1, 2 y 3). NO preguntes "primer paso para qué" — ya sabés para qué.
+4. Si el cliente dice algo contradictorio (p.ej. "ya en trámite" + "primer paso para empezar"), aclará brevemente la contradicción pero NUNCA reseteás la conversación. Mantenés el servicio que ya identificaste.
+5. Una pregunta directa del cliente merece una RESPUESTA directa, no otra pregunta. Solo pedí aclaración si genuinamente no podés responder con lo que ya sabés.
+
+Ejemplo correcto (memoria activa):
+Turno previo cliente: "titulación de propiedad"
+Turno previo cliente: "ya en trámite"
+Cliente: "cuál es el primer paso"
+María: "Para titulación, el primer paso es la clasificación jurídica de la tierra (nacional, ejidal, privada o posesión). Si tu trámite ya está en marcha, decime en qué etapa vas y te ubico en el paso actual."
+
+Ejemplo INCORRECTO (lo que NO hagas):
+Cliente: "primer paso para empezar el trámite"
+María: "¿Cuál es el servicio que necesitás?" ← MAL — el servicio ya se dijo arriba.
+
+═══════════════════════════════════
 LÍMITES DE MARÍA — NUNCA QUEBRAR
 ═══════════════════════════════════
 María es una asistente virtual por WhatsApp. NO es una persona física.
@@ -449,21 +472,42 @@ Cuando el cliente pregunte por el avance de su trámite, usa esta información. 
 // Triggers when the user asks about a specific paso, the Manual Operativo,
 // or who is responsible for a step. Uses the existing service-role client.
 
-const MANUAL_TRIGGERS = /\bpaso\s+\d+\b|manual\s+operativo|qu[eé]\s+dice\s+el\s+paso|qui[eé]n\s+es\s+responsable|rol\s+del\s+paso|responsable\s+del\s+paso|encargado\s+del\s+paso/i;
+const MANUAL_TRIGGERS = /\bpaso\s+\d+\b|primer\s+paso|siguiente\s+paso|pr[oó]ximo\s+paso|qu[eé]\s+(paso\s+)?sigue|c[oó]mo\s+(empiezo|empezar|inicio|iniciar)|por\s+d[oó]nde\s+(empiezo|empezar|inicio|iniciar)|manual\s+operativo|qu[eé]\s+dice\s+el\s+paso|qui[eé]n\s+es\s+responsable|rol\s+del\s+paso|responsable\s+del\s+paso|encargado\s+del\s+paso/i;
 
-async function buildManualContext(message, supabaseClient) {
+const FIRST_STEP_TRIGGERS  = /primer\s+paso|c[oó]mo\s+(empiezo|empezar|inicio|iniciar)|por\s+d[oó]nde\s+(empiezo|empezar|inicio|iniciar)/i;
+
+// Detect which of the three CHT processes the conversation is about, so we can
+// scope the documentos_referencia query (the table now stores all three:
+// formalizacion 1-38, titulacion 1-9, sociedad 1-7).
+function detectProceso(haystack) {
+  if (/sociedad\s+minera|contrato\s+de\s+sociedad|due\s+diligence/i.test(haystack)) return 'sociedad';
+  if (/titulaci[oó]n|titular(?!.*minero)|propiedad|topograf[ií]a|registro\s+de\s+la\s+propiedad/i.test(haystack)) return 'titulacion';
+  if (/formalizaci[oó]n|inhgeomin|serna|hito\s*[123]|dupai|gaceta|comercializador/i.test(haystack)) return 'formalizacion';
+  return null; // unknown → caller decides default
+}
+
+async function buildManualContext(message, supabaseClient, recentHistory = '') {
   if (!MANUAL_TRIGGERS.test(message)) return '';
 
   try {
+    const haystack = `${message}\n${recentHistory}`;
+    // Default to formalización when no service was mentioned — it's the most
+    // common path and the original behaviour of this lookup.
+    const proceso = detectProceso(haystack) ?? 'formalizacion';
+
     const stepMatch = /\bpaso\s+(\d+)\b/i.exec(message);
-    const stepNum   = stepMatch ? parseInt(stepMatch[1], 10) : null;
+    let stepNum     = stepMatch ? parseInt(stepMatch[1], 10) : null;
+
+    // "primer paso" / "cómo empiezo" → paso 1 of the detected proceso
+    if (!stepNum && FIRST_STEP_TRIGGERS.test(message)) stepNum = 1;
 
     // Sanitise keyword: strip PostgREST/ILIKE special chars, cap at 40 chars
     const keyword = message.replace(/[%_\\]/g, '').slice(0, 40).trim();
 
     let query = supabaseClient
       .from('documentos_referencia')
-      .select('paso_numero, titulo_paso, rol, acciones, documentos, plazo, deliverable, advertencias');
+      .select('proceso, paso_numero, titulo_paso, rol, acciones, documentos, plazo, deliverable, advertencias')
+      .eq('proceso', proceso);
 
     query = stepNum
       ? query.or(`paso_numero.eq.${stepNum},titulo_paso.ilike.%${keyword}%`)
@@ -472,7 +516,13 @@ async function buildManualContext(message, supabaseClient) {
     const { data, error } = await query.limit(1).single();
     if (error || !data) return '';
 
-    return `\n\nREFERENCIA MANUAL OPERATIVO — Paso ${data.paso_numero}: ${data.titulo_paso}
+    const procesoLabel = {
+      formalizacion: 'Formalización Minera',
+      titulacion:    'Titulación de Propiedad',
+      sociedad:      'Contrato de Sociedad Minera',
+    }[data.proceso] ?? data.proceso;
+
+    return `\n\nREFERENCIA MANUAL OPERATIVO — ${procesoLabel}, Paso ${data.paso_numero}: ${data.titulo_paso}
 - Responsable: ${data.rol ?? 'no especificado'}
 - Acciones: ${data.acciones ?? '—'}
 - Documentos requeridos: ${data.documentos ?? '—'}
@@ -731,7 +781,7 @@ Comandos disponibles:
       .select("role, content")
       .eq("numero_whatsapp", fromNumber)
       .order("created_at", { ascending: true })
-      .limit(20);
+      .limit(40);
 
     const conversationHistory = history || [];
     console.log('History found:', conversationHistory.length, 'messages');
@@ -937,7 +987,13 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
     }
 
     // --- Manual Operativo 2026 lookup (keyword-triggered, non-blocking) ---
-    const manualContext = await buildManualContext(incomingMessage, supabase);
+    // Pass the last 6 turns so buildManualContext can tell which service the
+    // client has been discussing (formalización vs titulación vs sociedad).
+    const recentHistoryText = conversationHistory
+      .slice(-6)
+      .map(m => `${m.role}: ${m.content}`)
+      .join('\n');
+    const manualContext = await buildManualContext(incomingMessage, supabase, recentHistoryText);
 
     // --- RAG: retrieve top-3 relevant chunks from maria_knowledge (FTS) ---
     const knowledgeContext = await retrieveKnowledge(supabase, incomingMessage);
