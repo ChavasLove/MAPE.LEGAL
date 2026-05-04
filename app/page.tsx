@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import TopoBand from '@/components/decor/TopoBand'
 
 type Lang = 'es' | 'en'
 
@@ -48,8 +49,9 @@ export default function LandingPage() {
       </nav>
 
       {/* HERO */}
-      <section className="hero">
-        <div className="hero-content">
+      <section className="hero" style={{ position: 'relative' }}>
+        <TopoBand variant="light" position="overlay" />
+        <div className="hero-content" style={{ position: 'relative' }}>
           <div className="hero-eyebrow">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.5"/>
@@ -509,7 +511,8 @@ export default function LandingPage() {
       </section>
 
       {/* FOOTER */}
-      <footer>
+      <footer style={{ position: 'relative' }}>
+        <TopoBand variant="dark" position="band" />
         <div className="logo">MAPE LEGAL</div>
         <div className="copy">© 2026 CHT. {t('Todos los derechos reservados.', 'All rights reserved.')}</div>
         <div className="links">
