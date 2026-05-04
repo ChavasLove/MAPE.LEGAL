@@ -245,81 +245,91 @@ export function emailContactoAcuse(
   });
 }
 
-// ─── User welcome template ────────────────────────────────────────────────────
+// ─── Email confirmation + admin invite templates ─────────────────────────────
 
-/** Welcome email sent to a new user when their account is created from the admin panel. */
-export function emailBienvenidaUsuario(
+const ROL_LABELS: Record<string, string> = {
+  admin:             'Administrador',
+  abogado:           'Abogado',
+  tecnico_ambiental: 'Técnico Ambiental',
+  cliente:           'Cliente',
+};
+
+/** Confirmation link sent when a user signs up or requests a resend.
+ *  `actionLink` is a Supabase-signed URL from auth.admin.generateLink('signup'). */
+export function emailConfirmacionCorreo(
   correo: string,
-  password: string,
-  rol: string,
-  loginUrl?: string
+  actionLink: string
 ): Promise<void> {
-  const roleLabels: Record<string, string> = {
-    admin:             'Administrador',
-    abogado:           'Abogado',
-    tecnico_ambiental: 'Técnico Ambiental',
-    cliente:           'Cliente',
-  };
-  const rolLabel = roleLabels[rol] ?? rol;
-  const url = loginUrl ?? 'https://mape.legal/login';
-
   return sendEmail({
     to:      correo,
-    subject: 'Tu acceso a MAPE.LEGAL está listo',
+    subject: 'Confirma tu correo · MAPE.LEGAL',
     html: emailShell(`
       <p style="margin:0 0 20px;color:#162033;font-size:16px">
-        Bienvenido/a al sistema MAPE.LEGAL.
+        Confirma tu cuenta para acceder a MAPE.LEGAL.
       </p>
-      <p style="margin:0 0 24px;color:#5E6B7A;font-size:15px;line-height:1.6">
-        Tu cuenta ha sido creada con el perfil de <strong>${rolLabel}</strong>.
-        Estos son tus datos de acceso:
+      <p style="margin:0 0 28px;color:#5E6B7A;font-size:15px;line-height:1.6">
+        Recibimos una solicitud de acceso para <strong>${correo}</strong>.
+        Haz clic en el botón para verificar tu correo. El enlace expira en 24 horas.
       </p>
-
-      <table cellpadding="0" cellspacing="0" width="100%"
-             style="border:1px solid #E5E7EB;border-radius:8px;overflow:hidden;margin-bottom:28px">
-        <tr style="background:#F5F6F7">
-          <td style="padding:12px 16px;font-size:12px;color:#5E6B7A;font-weight:600;
-                     text-transform:uppercase;letter-spacing:1px;width:130px">
-            Correo
-          </td>
-          <td style="padding:12px 16px;font-size:14px;color:#162033;font-weight:600">
-            ${correo}
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:12px 16px;font-size:12px;color:#5E6B7A;font-weight:600;
-                     text-transform:uppercase;letter-spacing:1px;border-top:1px solid #E5E7EB">
-            Contraseña
-          </td>
-          <td style="padding:12px 16px;font-size:14px;color:#162033;font-weight:600;
-                     font-family:monospace;border-top:1px solid #E5E7EB">
-            ${password}
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:12px 16px;font-size:12px;color:#5E6B7A;font-weight:600;
-                     text-transform:uppercase;letter-spacing:1px;border-top:1px solid #E5E7EB">
-            Perfil
-          </td>
-          <td style="padding:12px 16px;font-size:14px;color:#162033;border-top:1px solid #E5E7EB">
-            ${rolLabel}
-          </td>
-        </tr>
-      </table>
 
       <div style="text-align:center;margin-bottom:28px">
-        <a href="${url}"
+        <a href="${actionLink}"
            style="display:inline-block;background:#1F2A44;color:#ffffff;text-decoration:none;
                   font-size:15px;font-weight:700;padding:14px 32px;border-radius:8px">
-          Iniciar sesión →
+          Confirmar correo →
         </a>
       </div>
 
-      <div style="background:#F8E5E4;border-radius:8px;padding:14px 18px;margin-bottom:20px">
-        <p style="margin:0;font-size:13px;color:#A94442;font-weight:600">
-          Por seguridad, cambia tu contraseña después de tu primer acceso.
-        </p>
+      <p style="margin:0 0 8px;color:#5E6B7A;font-size:13px">
+        Si el botón no funciona, copia esta dirección en tu navegador:
+      </p>
+      <p style="margin:0 0 28px;color:#5E6B7A;font-size:12px;word-break:break-all">
+        <a href="${actionLink}" style="color:#3A6EA5">${actionLink}</a>
+      </p>
+
+      <p style="margin:0;color:#A3AAB3;font-size:13px">
+        Si no solicitaste este correo, ignóralo o comunícate con
+        <a href="mailto:gerencia@mape.legal" style="color:#5E6B7A">gerencia@mape.legal</a>.
+      </p>
+    `),
+  });
+}
+
+/** Invitation sent when an admin creates a user. The recipient sets their own
+ *  password via the link — admins never see or transmit plaintext passwords. */
+export function emailInvitacionUsuario(
+  correo: string,
+  rol: string,
+  actionLink: string
+): Promise<void> {
+  const rolLabel = ROL_LABELS[rol] ?? rol;
+  return sendEmail({
+    to:      correo,
+    subject: 'Te han invitado a MAPE.LEGAL',
+    html: emailShell(`
+      <p style="margin:0 0 20px;color:#162033;font-size:16px">
+        Te han invitado a usar MAPE.LEGAL.
+      </p>
+      <p style="margin:0 0 24px;color:#5E6B7A;font-size:15px;line-height:1.6">
+        Se creó una cuenta para <strong>${correo}</strong> con el perfil de
+        <strong>${rolLabel}</strong>. Configura tu contraseña para iniciar sesión.
+        El enlace expira en 24 horas.
+      </p>
+
+      <div style="text-align:center;margin-bottom:28px">
+        <a href="${actionLink}"
+           style="display:inline-block;background:#1F2A44;color:#ffffff;text-decoration:none;
+                  font-size:15px;font-weight:700;padding:14px 32px;border-radius:8px">
+          Configurar contraseña →
+        </a>
       </div>
+
+      <p style="margin:0 0 8px;color:#5E6B7A;font-size:13px">
+        Si el botón no funciona, copia esta dirección en tu navegador:
+      </p>
+      <p style="margin:0 0 28px;color:#5E6B7A;font-size:12px;word-break:break-all">
+        <a href="${actionLink}" style="color:#3A6EA5">${actionLink}</a>
+      </p>
 
       <p style="margin:0;color:#A3AAB3;font-size:13px">
         Si no esperabas este correo, comunícate con
