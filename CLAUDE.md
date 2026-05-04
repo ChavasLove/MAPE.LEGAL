@@ -18,7 +18,8 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 - `/admin/login` redirige automáticamente a `/login` — no duplicar lógica de auth
 - **Rate limit**: 5 intentos por (IP + email) cada 15 min en `/api/auth/login` y `/api/admin/auth/login` — `lib/rateLimit.ts` (in-memory, defensa adicional sobre Supabase)
 - **Refresh**: `POST /api/auth/refresh` rota `auth-token` (1h) usando `auth-refresh` (30d) y re-deriva `auth-role` consultando `user_roles` con service-role client (no confía en la cookie expirada). Cliente debe llamar antes de la expiración del access token.
-- **`auth-role` cookie tiene maxAge 30d** (no 1h como el access token) — garantiza que el guard de `proxy.ts` siga teniendo rol disponible entre la expiración del access token y la siguiente llamada a `/refresh`. Se setea en `login` y se re-setea en cada `refresh`.
+- **`auth-role` cookie tiene maxAge 30d** (no 1h como el access token) — garantiza que el guard de `proxy.ts` siga teniendo rol disponible entre la expiración del access token y la siguiente llamada a `/refresh`. Se setea en ambos login routes (`/api/auth/login` y `/api/admin/auth/login`) y se re-setea en cada `refresh`.
+- **Logout admin** (`POST /api/admin/auth/logout`): limpia las 5 cookies (`admin-token`, `auth-token`, `auth-role`, `auth-refresh`, `user-email`) y redirige directamente a `/login`. Incluir `auth-refresh` es **crítico** — sin esa limpieza un refresh token huérfano podría mintear un nuevo access token después del logout.
 
 ## Base de Datos
 - Supabase (PostgreSQL). Dos clientes:
@@ -132,6 +133,8 @@ Webhook Twilio que conecta WhatsApp con Claude AI.
 ## Landing page
 
 **Estado real (auditoría 2026-05-03):** la landing activa es `app/page.tsx` (≈523 líneas, autocontenido, usa clases definidas en `app/globals.css`). Los 15 archivos de `components/landing/*` (`Hero.tsx`, `About.tsx`, `Problem.tsx`, `Solution.tsx`, `Services.tsx`, `Impact.tsx`, `Beneficiarios.tsx`, `Footer.tsx`, `Contacto.tsx`, `News.tsx`, `Programs.tsx`, `Roadmap.tsx`, `ValorSection.tsx`, `WhyNow.tsx`, `PriceWidgets.tsx`) están **huérfanos** — `grep` confirma cero imports en todo el repo. Cualquier cambio de UI debe hacerse en `app/page.tsx`, no en los componentes huérfanos.
+
+**Componente decorativo activo**: `components/decor/TopoBand.tsx` — SVG de líneas topográficas usado como watermark embossed en hero y footer (`app/page.tsx`) y como fondo del login (`app/login/page.tsx`). Variantes `light` / `dark` × posiciones `overlay` (full-bleed) / `band` (48px en top edge). `aria-hidden`, `pointer-events: none`, opacidad 0.06 (light, color `#162033`) / 0.18 (dark, color `#2F5D50`). No interactivo, no animado — quiet nod al territorio hondureño.
 
 ### Imágenes disponibles en `public/images/`
 | Archivo | Notas |
