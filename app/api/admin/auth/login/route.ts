@@ -69,7 +69,9 @@ export async function POST(req: Request) {
     res.cookies.set('admin-token', data.session.access_token, cookieOpts);
     // Unified auth cookies
     res.cookies.set('auth-token', data.session.access_token, cookieOpts);
-    res.cookies.set('auth-role',  'admin', cookieOpts);
+    // auth-role must outlive the access token so the proxy guard can still
+    // read the role between access-token expiry and the next /refresh call.
+    res.cookies.set('auth-role',  'admin', { ...cookieOpts, maxAge: 60 * 60 * 24 * 30 });
     res.cookies.set('auth-refresh', data.session.refresh_token, {
       ...cookieOpts,
       maxAge: 60 * 60 * 24 * 30,  // 30 days
