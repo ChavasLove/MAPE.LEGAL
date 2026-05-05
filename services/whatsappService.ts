@@ -8,6 +8,141 @@ function getConfig() {
   return { token, phoneId };
 }
 
+// ─── Typed errors ─────────────────────────────────────────────────────────────
+//
+// Meta returns auth failures under several shapes; the daily broadcast and any
+// per-message send must distinguish them from transient/per-recipient errors so
+// callers can fail fast and surface an actionable message instead of looping
+// the same 401 across every subscriber.
+
+// Meta error codes that mean "the WHATSAPP_TOKEN is invalid or expired".
+// https://developers.facebook.com/docs/graph-api/guides/error-handling/
+const META_AUTH_ERROR_CODES = new Set([
+  102, // Session has expired
+  190, // Access token has expired / been invalidated
+  463, // Access token has expired
+]);
+
+interface MetaErrorBody {
+  error?: {
+    message?: string;
+    type?: string;
+    code?: number;
+    error_subcode?: number;
+    fbtrace_id?: string;
+  };
+}
+
+export class WhatsAppApiError extends Error {
+  status: number;
+  code: number | null;
+  subcode: number | null;
+  type: string | null;
+  fbtraceId: string | null;
+  isAuthError: boolean;
+  rawBody: string;
+
+  constructor(status: number, rawBody: string, parsed: MetaErrorBody | null) {
+    const e = parsed?.error;
+    const code = typeof e?.code === 'number' ? e.code : null;
+    const subcode = typeof e?.error_subcode === 'number' ? e.error_subcode : null;
+    const type = typeof e?.type === 'string' ? e.type : null;
+    const isAuthError =
+      status === 401 ||
+      type === 'OAuthException' ||
+      (code !== null && META_AUTH_ERROR_CODES.has(code));
+
+    const summary = e?.message
+      ? `${e.message} (code=${code ?? '?'}${subcode ? `/${subcode}` : ''})`
+      : rawBody.slice(0, 300);
+
+    super(`WhatsApp API ${status}: ${summary}`);
+    this.name = 'WhatsAppApiError';
+    this.status = status;
+    this.code = code;
+    this.subcode = subcode;
+    this.type = type;
+    this.fbtraceId = e?.fbtrace_id ?? null;
+    this.isAuthError = isAuthError;
+    this.rawBody = rawBody;
+  }
+}
+
+async function throwFromResponse(res: Response): Promise<never> {
+  const rawBody = await res.text();
+  let parsed: MetaErrorBody | null = null;
+  try { parsed = JSON.parse(rawBody) as MetaErrorBody; } catch { /* not JSON */ }
+  throw new WhatsAppApiError(res.status, rawBody, parsed);
+}
+
+// ─── Token health check ───────────────────────────────────────────────────────
+//
+// Lightweight call against the configured phone-number node. Used as a
+// pre-flight before the daily broadcast and exposed via /api/admin/whatsapp/health
+// so ops can verify the token without sending a real message.
+
+export interface WhatsAppTokenHealth {
+  ok: boolean;
+  phoneId: string | null;
+  displayPhoneNumber?: string;
+  verifiedName?: string;
+  isAuthError: boolean;
+  error?: string;
+  errorCode?: number | null;
+}
+
+export async function checkWhatsAppTokenHealth(): Promise<WhatsAppTokenHealth> {
+  let token: string;
+  let phoneId: string;
+  try {
+    ({ token, phoneId } = getConfig());
+  } catch (e) {
+    return {
+      ok: false,
+      phoneId: null,
+      isAuthError: false,
+      error: e instanceof Error ? e.message : String(e),
+    };
+  }
+
+  try {
+    const res = await fetch(
+      `${META_BASE}/${phoneId}?fields=display_phone_number,verified_name`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    if (!res.ok) {
+      const rawBody = await res.text();
+      let parsed: MetaErrorBody | null = null;
+      try { parsed = JSON.parse(rawBody) as MetaErrorBody; } catch { /* not JSON */ }
+      const err = new WhatsAppApiError(res.status, rawBody, parsed);
+      return {
+        ok: false,
+        phoneId,
+        isAuthError: err.isAuthError,
+        error: err.message,
+        errorCode: err.code,
+      };
+    }
+
+    const data = await res.json() as { display_phone_number?: string; verified_name?: string };
+    return {
+      ok: true,
+      phoneId,
+      displayPhoneNumber: data.display_phone_number,
+      verifiedName: data.verified_name,
+      isAuthError: false,
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      phoneId,
+      isAuthError: false,
+      error: e instanceof Error ? e.message : String(e),
+    };
+  }
+}
+
 // ─── Core send functions ──────────────────────────────────────────────────────
 
 export async function sendWhatsAppText(to: string, body: string): Promise<string> {
@@ -28,10 +163,7 @@ export async function sendWhatsAppText(to: string, body: string): Promise<string
     }),
   });
 
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`WhatsApp API ${res.status}: ${err}`);
-  }
+  if (!res.ok) await throwFromResponse(res);
 
   const data = await res.json() as { messages?: Array<{ id: string }> };
   return data.messages?.[0]?.id ?? '';
@@ -59,10 +191,7 @@ export async function sendWhatsAppTemplate(
     }),
   });
 
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`WhatsApp API ${res.status}: ${err}`);
-  }
+  if (!res.ok) await throwFromResponse(res);
 
   const data = await res.json() as { messages?: Array<{ id: string }> };
   return data.messages?.[0]?.id ?? '';
