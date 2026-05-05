@@ -8,6 +8,9 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 - `middleware.ts` está **obsoleto** — usar `proxy.ts` con export named `proxy` (no `middleware`)
 - `params` en rutas dinámicas es `Promise<{id: string}>` — siempre `await params` antes de usar
 - Leer `node_modules/next/dist/docs/` antes de escribir código relacionado con routing o server components
+- **Nunca instanciar Supabase/Anthropic clients a nivel de módulo en route handlers ni en componentes** — el build de Next.js ejecuta los módulos durante "page data collection" y el SSR/prerender corre `useState` initializers; si las env vars no están disponibles en ese contexto, `createClient(undefined, ...)` lanza `supabaseUrl is required` y rompe el build entero. Patrones seguros:
+  - Route handlers: gatear el const con `process.env.X ? createClient(...) : null` (ver `app/api/whatsapp/route.js`), o instanciar dentro del handler.
+  - Client components: instanciar dentro de `useEffect` y guardar en `useRef` (ver `app/auth/establecer-password/page.tsx`). Combinar con `export const dynamic = 'force-dynamic'` cuando la página depende de datos de runtime.
 
 ## Autenticación
 - Login unificado: `POST /api/auth/login` → cookies httpOnly (`auth-token`, `auth-role`, `auth-refresh`, `user-email`)
