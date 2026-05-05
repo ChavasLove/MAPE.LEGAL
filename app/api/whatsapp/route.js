@@ -5,14 +5,17 @@ import { interpretAndExecute } from "@/services/adminCommandService";
 import { getOnboardingState, startOnboarding, handleOnboarding } from "@/services/onboardingService";
 import { fetchAllPrices, fetchAndStorePrices } from "@/services/pricingService";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+// Conditional init — instantiating these unconditionally at module load would
+// throw during Next.js's page-data-collection build phase when env vars aren't
+// injected, breaking the whole production build. At runtime on Vercel the env
+// vars are always set, so the consts are real clients in the handler path.
+const anthropic = process.env.ANTHROPIC_API_KEY
+  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  : null;
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const supabase = (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
+  ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+  : null;
 
 function esc(s) {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
