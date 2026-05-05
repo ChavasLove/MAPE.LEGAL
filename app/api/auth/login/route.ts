@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit';
+import { checkAuthEnv, logAuthEnvFailure } from '@/lib/authEnv';
 
 const ROLE_REDIRECT: Record<string, string> = {
   admin:             '/admin',
@@ -29,12 +30,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!url || !anonKey) {
-      return NextResponse.json({ error: 'Configuración de servidor incompleta' }, { status: 500 });
+    const env = checkAuthEnv();
+    if (!env.ok) {
+      logAuthEnvFailure('login', env);
+      return NextResponse.json(
+        { error: 'Configuración de servidor incompleta', code: 'SERVER_CONFIG' },
+        { status: 500 }
+      );
     }
+    const url        = process.env.NEXT_PUBLIC_SUPABASE_URL!.trim();
+    const anonKey    = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!.trim();
+    const serviceKey = env.serviceKey === 'ok'
+      ? process.env.SUPABASE_SERVICE_ROLE_KEY!.trim()
+      : undefined;
 
     // Authenticate with anon client (validates credentials via Supabase Auth)
     const supabase = createClient(url, anonKey, { auth: { persistSession: false } });
