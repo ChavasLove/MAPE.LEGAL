@@ -1,35 +1,50 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import TopoBand from '@/components/decor/TopoBand';
+
+// Force dynamic rendering — this page reads URL fragment + env vars at runtime
+// and must not be prerendered at build time (createClient throws without env).
+export const dynamic = 'force-dynamic';
 
 function EstablecerPasswordForm() {
   const router = useRouter();
 
-  const [supabase] = useState(() => {
-    const url     = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    // detectSessionInUrl picks up the access_token from the URL fragment that
-    // Supabase appends after consuming the invite link. Required for updateUser.
-    return createClient(url, anonKey, {
-      auth: { persistSession: false, detectSessionInUrl: true, flowType: 'implicit' },
-    });
-  });
+  const supabaseRef = useRef<SupabaseClient | null>(null);
 
+  // Lazy-init the initial error if env vars are missing — keeps the effect
+  // free of synchronous setState (avoids react-hooks/set-state-in-effect).
+  // NEXT_PUBLIC_* vars are inlined at build time, so this is a render-time
+  // check that doesn't depend on runtime conditions.
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [confirm,  setConfirm]  = useState('');
-  const [error,    setError]    = useState('');
+  const [error,    setError]    = useState(() =>
+    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      ? ''
+      : 'Configuración del cliente incompleta. Comunícate con el administrador.'
+  );
   const [loading,  setLoading]  = useState(false);
   const [ready,    setReady]    = useState(false);
 
-  // Wait for the SDK to ingest the URL fragment before allowing submit.
+  // Instantiate the Supabase client + ingest the URL-fragment session AFTER
+  // mount. Doing this in useState would run during SSR/prerender and crash
+  // when env vars aren't injected.
   useEffect(() => {
+    const url     = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !anonKey) return;
+
     let cancelled = false;
-    supabase.auth.getSession().then(({ data }) => {
+    const client = createClient(url, anonKey, {
+      auth: { persistSession: false, detectSessionInUrl: true, flowType: 'implicit' },
+    });
+    supabaseRef.current = client;
+
+    client.auth.getSession().then(({ data }) => {
       if (cancelled) return;
       if (!data.session) {
         setError('Enlace expirado o inválido. Pide una nueva invitación al administrador.');
@@ -39,7 +54,7 @@ function EstablecerPasswordForm() {
       }
     });
     return () => { cancelled = true; };
-  }, [supabase]);
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -54,9 +69,15 @@ function EstablecerPasswordForm() {
       return;
     }
 
+    const client = supabaseRef.current;
+    if (!client) {
+      setError('Cliente no inicializado. Recarga la página.');
+      return;
+    }
+
     setLoading(true);
     try {
-      const { error: updErr } = await supabase.auth.updateUser({ password });
+      const { error: updErr } = await client.auth.updateUser({ password });
       if (updErr) {
         setError(updErr.message ?? 'No se pudo establecer la contraseña.');
         return;
