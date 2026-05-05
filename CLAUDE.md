@@ -21,15 +21,8 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 - `/admin/login` redirige automáticamente a `/login` — no duplicar lógica de auth
 - **Rate limit**: 5 intentos por (IP + email) cada 15 min en `/api/auth/login` y `/api/admin/auth/login` — `lib/rateLimit.ts` (in-memory, defensa adicional sobre Supabase). `/api/auth/resend-confirmation` usa el mismo limiter con 3 intentos por (IP + email) cada 15 min.
 - **Refresh**: `POST /api/auth/refresh` rota `auth-token` (1h) usando `auth-refresh` (30d) y re-deriva `auth-role` consultando `user_roles` con service-role client (no confía en la cookie expirada). Cliente debe llamar antes de la expiración del access token.
-- **`auth-role` cookie tiene maxAge 30d** (no 1h como el access token) — garantiza que el guard de `proxy.ts` siga teniendo rol disponible entre la expiración del access token y la siguiente llamada a `/refresh`. Se setea en `login` y se re-setea en cada `refresh`.
-- **Confirmación de correo obligatoria**: el login (`app/api/auth/login/route.ts`) rechaza usuarios con `email_confirmed_at = null` retornando `403 { code: 'EMAIL_NOT_CONFIRMED' }`. La página de login renderiza un botón "Reenviar correo" que llama a `POST /api/auth/resend-confirmation` (genera link con `auth.admin.generateLink('signup')` y lo envía vía SendGrid usando `emailConfirmacionCorreo`).
-- **Trigger de auto-rol**: migración `015_auto_user_roles_trigger.sql` instala `on_auth_user_created` sobre `auth.users` que inserta `user_roles(user_id, 'cliente', true)` automáticamente. Garantiza que ningún usuario quede sin rol, sin importar el origen (Supabase Studio, API admin, signup futuro). El trigger requiere `grant insert on user_roles to supabase_auth_admin` — sin ese grant la creación de usuarios falla con "Database error saving new user".
-- **Flujo de invitación admin**: `POST /api/admin/usuarios` recibe `{ email, rol, perfil_id? }` (sin password). Llama `auth.admin.generateLink({ type: 'invite' })` para crear el usuario sin disparar el mailer interno de Supabase, luego envía la invitación con `emailInvitacionUsuario()` vía SendGrid. El invitado configura su propia contraseña en `/auth/establecer-password` (que usa el SDK de Supabase con `detectSessionInUrl: true` para leer el fragment de la URL post-redirect). Admins nunca ven ni transmiten contraseñas en claro.
-
-### Configuración requerida en Supabase Studio (deploy manual)
-- **Auth → URL Configuration → Redirect URLs**: agregar `${NEXT_PUBLIC_SITE_URL}/login?confirmed=1` y `${NEXT_PUBLIC_SITE_URL}/auth/establecer-password`. Sin esto los enlaces de confirmación e invitación rebotan silenciosamente con "redirect not allowed".
-- **Auth → Email**: `Enable email confirmations = ON`, `mailer_autoconfirm = OFF`, `Mailer OTP expiry = 86400` (24h, máximo permitido).
-- **Auth → SMTP**: dejar deshabilitado — los correos salen por SendGrid desde nuestro código, no desde el mailer interno de Supabase.
+- **`auth-role` cookie tiene maxAge 30d** (no 1h como el access token) — garantiza que el guard de `proxy.ts` siga teniendo rol disponible entre la expiración del access token y la siguiente llamada a `/refresh`. Se setea en ambos login routes (`/api/auth/login` y `/api/admin/auth/login`) y se re-setea en cada `refresh`.
+- **Logout admin** (`POST /api/admin/auth/logout`): limpia las 5 cookies (`admin-token`, `auth-token`, `auth-role`, `auth-refresh`, `user-email`) y redirige directamente a `/login`. Incluir `auth-refresh` es **crítico** — sin esa limpieza un refresh token huérfano podría mintear un nuevo access token después del logout.
 
 ## Base de Datos
 - Supabase (PostgreSQL). Dos clientes:
@@ -147,6 +140,8 @@ Webhook Twilio que conecta WhatsApp con Claude AI.
 ## Landing page
 
 **Estado real (auditoría 2026-05-03):** la landing activa es `app/page.tsx` (≈523 líneas, autocontenido, usa clases definidas en `app/globals.css`). Los 15 archivos de `components/landing/*` (`Hero.tsx`, `About.tsx`, `Problem.tsx`, `Solution.tsx`, `Services.tsx`, `Impact.tsx`, `Beneficiarios.tsx`, `Footer.tsx`, `Contacto.tsx`, `News.tsx`, `Programs.tsx`, `Roadmap.tsx`, `ValorSection.tsx`, `WhyNow.tsx`, `PriceWidgets.tsx`) están **huérfanos** — `grep` confirma cero imports en todo el repo. Cualquier cambio de UI debe hacerse en `app/page.tsx`, no en los componentes huérfanos.
+
+**Componente decorativo activo**: `components/decor/TopoBand.tsx` — SVG de líneas topográficas usado como watermark embossed en hero y footer (`app/page.tsx`) y como fondo del login (`app/login/page.tsx`). Variantes `light` / `dark` × posiciones `overlay` (full-bleed) / `band` (48px en top edge). `aria-hidden`, `pointer-events: none`, opacidad 0.06 (light, color `#162033`) / 0.18 (dark, color `#2F5D50`). No interactivo, no animado — quiet nod al territorio hondureño.
 
 ### Imágenes disponibles en `public/images/`
 | Archivo | Notas |
