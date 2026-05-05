@@ -1,5 +1,9 @@
 import { getAdminClient } from '@/services/adminSupabase';
-import { sendWhatsAppText } from '@/services/whatsappService';
+import {
+  sendWhatsAppText,
+  checkWhatsAppTokenHealth,
+  WhatsAppApiError,
+} from '@/services/whatsappService';
 import { type PreciosDiarios } from '@/services/pricingService';
 import { getActiveSubscribers, type BroadcastRol } from '@/services/userService';
 
@@ -84,7 +88,12 @@ export interface BroadcastResult {
   errores: number;
   precio_id: string;
   mensaje: string;
+  aborted_reason?: 'whatsapp_auth' | 'whatsapp_config';
 }
+
+const TOKEN_REFRESH_HINT =
+  'Regenera WHATSAPP_TOKEN en Meta Developer Console → WhatsApp → Configuration ' +
+  '(usa un System User access token sin expiración) y actualiza la env var en Vercel.';
 
 export async function sendDailyBroadcast(options: {
   precios: PreciosDiarios;
@@ -100,29 +109,82 @@ export async function sendDailyBroadcast(options: {
     getActiveSubscribers(roles),
   ]);
 
+  // Pre-flight: verify the WhatsApp token before fanning out. Without this, an
+  // expired token produces N identical 401s in the per-recipient loop and
+  // pollutes the broadcast_log with bogus errores=N when the real failure is
+  // a single config issue.
+  const health = await checkWhatsAppTokenHealth();
+  if (!health.ok) {
+    const reason: BroadcastResult['aborted_reason'] =
+      health.isAuthError ? 'whatsapp_auth' : 'whatsapp_config';
+    const detail = health.isAuthError
+      ? `[broadcast] WHATSAPP_TOKEN inválido o expirado — ${health.error}. ${TOKEN_REFRESH_HINT}`
+      : `[broadcast] WhatsApp pre-flight falló — ${health.error}`;
+    console.error(detail);
+
+    await admin.from('broadcast_log').insert({
+      fecha: new Date().toISOString().slice(0, 10),
+      precio_id,
+      mensaje_texto: mensaje,
+      total_enviados: 0,
+      total_errores: 0,
+      roles_destino: roles ?? ['minero', 'comprador', 'tecnico', 'admin'],
+      triggered_by: triggeredBy,
+      error_msg: detail.slice(0, 1000),
+    });
+
+    return {
+      total: subscribers.length,
+      enviados: 0,
+      errores: 0,
+      precio_id,
+      mensaje,
+      aborted_reason: reason,
+    };
+  }
+
   let enviados = 0;
   let errores = 0;
+  // Wrapper-object pattern: TS won't narrow through property access into
+  // nested closures, which lets us assign from inside `Promise.all` callbacks
+  // and still see the populated value on the read after the loop.
+  const authState: { aborted: WhatsAppApiError | null } = { aborted: null };
 
   // Send in batches of 10 to avoid rate limits
   const BATCH = 10;
   for (let i = 0; i < subscribers.length; i += BATCH) {
+    if (authState.aborted) break;
+
     const batch = subscribers.slice(i, i + BATCH);
     await Promise.all(
       batch.map(async (user) => {
+        if (authState.aborted) return;
         try {
           await sendWhatsAppText(user.telefono, mensaje);
           enviados++;
         } catch (e) {
+          // If the token died mid-broadcast (rare but possible), abort the
+          // remaining batches instead of generating one error per subscriber.
+          if (e instanceof WhatsAppApiError && e.isAuthError) {
+            authState.aborted = e;
+          }
           console.error(`broadcastService: failed to send to ${user.telefono} —`, e);
           errores++;
         }
       })
     );
     // Brief pause between batches
-    if (i + BATCH < subscribers.length) {
+    if (i + BATCH < subscribers.length && !authState.aborted) {
       await new Promise(r => setTimeout(r, 500));
     }
   }
+
+  const aborted_reason: BroadcastResult['aborted_reason'] | undefined =
+    authState.aborted ? 'whatsapp_auth' : undefined;
+  const errorMsg = authState.aborted
+    ? `[broadcast] WHATSAPP_TOKEN expiró durante el envío — ${authState.aborted.message}. ${TOKEN_REFRESH_HINT}`
+    : null;
+  if (errorMsg) console.error(errorMsg);
 
   // Log the broadcast run
   await admin.from('broadcast_log').insert({
@@ -133,9 +195,17 @@ export async function sendDailyBroadcast(options: {
     total_errores: errores,
     roles_destino: roles ?? ['minero', 'comprador', 'tecnico', 'admin'],
     triggered_by: triggeredBy,
+    error_msg: errorMsg ? errorMsg.slice(0, 1000) : null,
   });
 
-  return { total: subscribers.length, enviados, errores, precio_id, mensaje };
+  return {
+    total: subscribers.length,
+    enviados,
+    errores,
+    precio_id,
+    mensaje,
+    aborted_reason,
+  };
 }
 
 // Retrieve the latest broadcast log entry
