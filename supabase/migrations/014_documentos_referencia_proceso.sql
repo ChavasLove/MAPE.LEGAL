@@ -24,11 +24,30 @@ alter table documentos_referencia
   add constraint documentos_referencia_proceso_check
   check (proceso in ('formalizacion', 'titulacion', 'sociedad'));
 
--- The production table has an extra NOT NULL column (documento_nombre) that was
--- added outside the migration system. New process rows don't use that column,
--- so we must drop the NOT NULL constraint before inserting them.
-alter table documentos_referencia
-  alter column documento_nombre drop not null;
+-- The production table has extra NOT NULL columns (e.g. documento_nombre,
+-- categoria) added outside the migration system. New process rows don't
+-- populate those columns, so drop NOT NULL on every column except the ones
+-- this migration actually inserts into.
+do $$
+declare
+  col record;
+begin
+  for col in
+    select column_name
+      from information_schema.columns
+     where table_schema = 'public'
+       and table_name = 'documentos_referencia'
+       and is_nullable = 'NO'
+       and column_name not in (
+         'id', 'paso_numero', 'titulo_paso', 'proceso'
+       )
+  loop
+    execute format(
+      'alter table documentos_referencia alter column %I drop not null',
+      col.column_name
+    );
+  end loop;
+end $$;
 
 -- Replace single-column unique index with composite (proceso, paso_numero).
 -- The old index must be dropped BEFORE the dedupe step, otherwise dedupe is
