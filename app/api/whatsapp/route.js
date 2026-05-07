@@ -239,11 +239,21 @@ Pregunta primero qué servicio necesita (formalización, titulación o contrato)
 Luego da el precio exacto con el desglose de pagos.
 Menciona que todos los pagos son vía Finacoop.
 
-CUANDO PREGUNTAN POR EL PRECIO DEL ORO (compra CHT):
-Si tienes datos en el bloque PRECIOS DE REFERENCIA, responde con exactitud:
-"El precio de referencia LBMA hoy es [precio LBMA]. CHT compra a [precio_compra_CHT]/gramo (80% del LBMA), pagado via Finacoop en lempiras."
-Si no hay datos en ese bloque: "El precio de compra cambia a diario — ahorita le consulto al equipo y le confirmo hoy mismo."
-NUNCA inventes precios. Solo usa los datos del bloque PRECIOS DE REFERENCIA.
+CUANDO PREGUNTAN POR EL PRECIO DEL ORO (precio del día / precio hoy / precio diario / cuánto pagan):
+Si tienes datos en el bloque PRECIOS DE REFERENCIA, responde EXACTAMENTE con este formato (viñetas, sin saludo, sin parrafada):
+
+- LBMA: [oroLBMA] ([frescuraLabel])
+- CHT compra al 80% precio internacional de bolsa: [oroCompra] por gramo
+- Tipo de cambio: [tipo_cambio]
+
+El pago es vía Finacoop en lempiras.
+
+www.mape.legal
+
+Reglas:
+- Usa los valores TAL CUAL del bloque PRECIOS DE REFERENCIA — no recalcules ni reformatees números.
+- Si no hay [frescuraLabel] disponible, omite los paréntesis (no escribas "()" vacío).
+- NUNCA inventes precios. Si el bloque dice "no disponible": "El precio de compra cambia a diario — ahorita le consulto al equipo y le confirmo hoy mismo."
 
 SI EL CLIENTE MENCIONA UN PESO ESPECIFICO EN GRAMOS:
 Multiplica los gramos por el precio de compra CHT por gramo (del bloque
@@ -253,10 +263,15 @@ si ya tienes el precio por gramo en PRECIOS DE REFERENCIA.
 
 Formato de respuesta:
 "Listo [nombre]. Con [X] gramos de oro al precio de hoy:
-- LBMA: [precio_LBMA]
-- CHT compra al 80% LBMA: [precio_compra_CHT] por gramo
-- Tus [X] gramos: aproximadamente L [X * precio_por_gramo, 2 decimales]
-El pago es via Finacoop en lempiras."
+
+- LBMA: [oroLBMA] ([frescuraLabel])
+- CHT compra al 80% precio internacional de bolsa: [oroCompra] por gramo
+- Tipo de cambio: [tipo_cambio]
+- Tus [X] gramos: aproximadamente L [X * precio_por_gramo, 2 decimales con coma de miles]
+
+El pago es vía Finacoop en lempiras.
+
+www.mape.legal"
 
 Reglas estrictas:
 - Si X es decimal (4.5, 2.75, 0.5), usalo tal cual — no redondees.
@@ -853,11 +868,15 @@ Comandos disponibles:
       }
     }
 
-    const oroLBMA   = preciosHoy?.oro    != null ? `$${Number(preciosHoy.oro).toFixed(2)} USD/oz troy`   : null;
+    const fmt = (n, d = 2) => Number(n).toLocaleString('en-US', {
+      minimumFractionDigits: d,
+      maximumFractionDigits: d,
+    });
+    const oroLBMA   = preciosHoy?.oro    != null ? `$${fmt(preciosHoy.oro)} USD/oz troy`   : null;
     const oroCompra = (preciosHoy?.oro != null && preciosHoy?.usd_hnl != null)
-      ? `L ${(preciosHoy.oro * 0.80 * preciosHoy.usd_hnl / 31.1035).toFixed(2)}/gramo`
+      ? `L ${fmt(preciosHoy.oro * 0.80 * preciosHoy.usd_hnl / 31.1035)}/gramo`
       : null;
-    const plataLBMA = preciosHoy?.plata  != null ? `$${Number(preciosHoy.plata).toFixed(2)} USD/oz troy` : null;
+    const plataLBMA = preciosHoy?.plata  != null ? `$${fmt(preciosHoy.plata)} USD/oz troy` : null;
 
     // Freshness label for the price block
     let frescuraLabel = '';
@@ -877,15 +896,16 @@ Comandos disponibles:
       } catch { frescuraLabel = ''; }
     }
 
+    const tipoCambio = preciosHoy?.usd_hnl != null ? `L ${fmt(preciosHoy.usd_hnl)}/USD` : null;
     const priceContext = preciosHoy
       ? `\n\nPRECIOS DE REFERENCIA (${preciosHoy.fecha ?? 'hoy'}${frescuraLabel ? ` — ${frescuraLabel}` : ''}):
 - Oro LBMA: ${oroLBMA ?? 'no disponible'}
 - Precio de compra CHT (80% LBMA): ${oroCompra ?? 'el equipo confirma hoy'}
 - Plata LBMA: ${plataLBMA ?? 'no disponible'}
-- Tipo de cambio: ${preciosHoy.usd_hnl != null ? `L ${preciosHoy.usd_hnl}/USD` : 'no disponible'}
+- Tipo de cambio: ${tipoCambio ?? 'no disponible'}
+- Frescura: ${frescuraLabel || 'no disponible'}
 ${preciosHoy.fuente ? `- Fuente: ${preciosHoy.fuente}` : ''}
-Cuando el cliente pregunte por precios del oro, usa estos valores. Aclara que CHT paga al 80% del precio LBMA del dia, en lempiras al tipo de cambio BCH.
-${frescuraLabel ? `Cuando cites el precio, agregá una línea con "(${frescuraLabel})" para que el cliente sepa qué tan reciente es el dato.` : ''}`
+El formato canónico de respuesta para precio del día está en CUANDO PREGUNTAN POR EL PRECIO DEL ORO — síguelo al pie de la letra (3 viñetas + Finacoop + www.mape.legal). No agregues una línea extra de frescura al final: ya va inline con LBMA.`
       : `\n\nPRECIOS DE REFERENCIA: No hay datos de precios cargados hoy. Si el cliente pregunta por precio de compra del oro, di: "Hoy no tengo el precio cargado en el sistema. Para precio actualizado escribí a gerencia@mape.legal."`;
 
     // --- Query expedientes linked to this client ---
