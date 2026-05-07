@@ -15,11 +15,15 @@ function getConfig() {
 // callers can fail fast and surface an actionable message instead of looping
 // the same 401 across every subscriber.
 
-// Meta error codes that mean "the WHATSAPP_TOKEN is invalid or expired".
+// Meta error codes that mean "the WHATSAPP_TOKEN is invalid, expired, or
+// lacks the required scope". For broadcast purposes all three have the same
+// remediation: stop fanning out and regenerate the token in Business Manager.
 // https://developers.facebook.com/docs/graph-api/guides/error-handling/
-const META_AUTH_ERROR_CODES = new Set([
+const META_FATAL_TOKEN_ERROR_CODES = new Set([
+  10,  // Permission denied (token lacks required permission)
   102, // Session has expired
   190, // Access token has expired / been invalidated
+  200, // Permissions error (often paired with subcode 2500: missing scope)
   463, // Access token has expired
 ]);
 
@@ -50,7 +54,7 @@ export class WhatsAppApiError extends Error {
     const isAuthError =
       status === 401 ||
       type === 'OAuthException' ||
-      (code !== null && META_AUTH_ERROR_CODES.has(code));
+      (code !== null && META_FATAL_TOKEN_ERROR_CODES.has(code));
 
     const summary = e?.message
       ? `${e.message} (code=${code ?? '?'}${subcode ? `/${subcode}` : ''})`
