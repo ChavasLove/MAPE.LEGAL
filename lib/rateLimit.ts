@@ -50,8 +50,22 @@ export function checkRateLimit(
   return { ok: true, remaining: limit - existing.count, retryAfterSec: 0 };
 }
 
+// Resolves the originating client IP. Header preference matters because
+// `x-forwarded-for` is set directly by the client and can be forged to bypass
+// per-IP rate limits. On Vercel, `x-real-ip` and `x-vercel-forwarded-for` are
+// set by the edge after rewriting any client-supplied values, so they're
+// trustworthy. Falls back to the leftmost x-forwarded-for entry only when no
+// trusted proxy header is available — better than collapsing every anonymous
+// caller into a single 'unknown' bucket.
 export function clientIpFrom(req: Request): string {
+  const real = req.headers.get('x-real-ip');
+  if (real?.trim()) return real.trim();
+
+  const vercel = req.headers.get('x-vercel-forwarded-for');
+  if (vercel) return vercel.split(',')[0].trim();
+
   const fwd = req.headers.get('x-forwarded-for');
   if (fwd) return fwd.split(',')[0].trim();
-  return req.headers.get('x-real-ip') ?? 'unknown';
+
+  return 'unknown';
 }
