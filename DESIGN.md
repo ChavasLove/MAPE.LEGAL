@@ -279,6 +279,16 @@ box-shadow: 0 2px 6px rgba(0,0,0,0.05);  /* shadow-sm */
 - **Prohibido**: imágenes de stock genéricas, personas sin contexto territorial hondureño, minería industrial.
 - Todas las imágenes hero llevan overlay `bg-gradient-to-b from-black/30 via-black/20 to-black/60`.
 
+### 9.1 Motivo topográfico (decoración vectorial)
+
+Líneas de contorno topográficas como watermark embossed — quiet nod al territorio, nunca como contenido.
+
+- **Implementación**: `components/decor/TopoBand.tsx` (no improvisar nuevos SVG).
+- **Variantes**: `light` (color `#162033`, opacidad 0.06) sobre fondos claros · `dark` (color `#2F5D50`, opacidad 0.18) sobre fondos oscuros.
+- **Posiciones**: `overlay` (full-bleed detrás de contenido) · `band` (48px en top edge, p. ej. footer).
+- **Uso aprobado**: hero del landing, footer del landing, fondo del login.
+- **Reglas**: nunca interactivo (`pointer-events: none`, `aria-hidden`), nunca por encima de opacidad 0.2, nunca acompañado de fills coloreados, nunca animado.
+
 ---
 
 ## 10. Componente de Mapa

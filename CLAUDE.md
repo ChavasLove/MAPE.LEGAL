@@ -8,6 +8,9 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 - `middleware.ts` está **obsoleto** — usar `proxy.ts` con export named `proxy` (no `middleware`)
 - `params` en rutas dinámicas es `Promise<{id: string}>` — siempre `await params` antes de usar
 - Leer `node_modules/next/dist/docs/` antes de escribir código relacionado con routing o server components
+- **Nunca instanciar Supabase/Anthropic clients a nivel de módulo en route handlers ni en componentes** — el build de Next.js ejecuta los módulos durante "page data collection" y el SSR/prerender corre `useState` initializers; si las env vars no están disponibles en ese contexto, `createClient(undefined, ...)` lanza `supabaseUrl is required` y rompe el build entero. Patrones seguros:
+  - Route handlers: gatear el const con `process.env.X ? createClient(...) : null` (ver `app/api/whatsapp/route.js`), o instanciar dentro del handler.
+  - Client components: instanciar dentro de `useEffect` y guardar en `useRef` (ver `app/auth/establecer-password/page.tsx`). Combinar con `export const dynamic = 'force-dynamic'` cuando la página depende de datos de runtime.
 
 ## Autenticación
 - Login unificado: `POST /api/auth/login` → cookies httpOnly (`auth-token`, `auth-role`, `auth-refresh`, `user-email`)
@@ -16,9 +19,10 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 - Guard de rutas en `proxy.ts` — siempre mantener sincronia con nuevas rutas protegidas
 - Cookie `admin-token` mantenida por compatibilidad con código heredado
 - `/admin/login` redirige automáticamente a `/login` — no duplicar lógica de auth
-- **Rate limit**: 5 intentos por (IP + email) cada 15 min en `/api/auth/login` y `/api/admin/auth/login` — `lib/rateLimit.ts` (in-memory, defensa adicional sobre Supabase)
+- **Rate limit**: 5 intentos por (IP + email) cada 15 min en `/api/auth/login` y `/api/admin/auth/login` — `lib/rateLimit.ts` (in-memory, defensa adicional sobre Supabase). `/api/auth/resend-confirmation` usa el mismo limiter con 3 intentos por (IP + email) cada 15 min.
 - **Refresh**: `POST /api/auth/refresh` rota `auth-token` (1h) usando `auth-refresh` (30d) y re-deriva `auth-role` consultando `user_roles` con service-role client (no confía en la cookie expirada). Cliente debe llamar antes de la expiración del access token.
-- **`auth-role` cookie tiene maxAge 30d** (no 1h como el access token) — garantiza que el guard de `proxy.ts` siga teniendo rol disponible entre la expiración del access token y la siguiente llamada a `/refresh`. Se setea en `login` y se re-setea en cada `refresh`.
+- **`auth-role` cookie tiene maxAge 30d** (no 1h como el access token) — garantiza que el guard de `proxy.ts` siga teniendo rol disponible entre la expiración del access token y la siguiente llamada a `/refresh`. Se setea en ambos login routes (`/api/auth/login` y `/api/admin/auth/login`) y se re-setea en cada `refresh`.
+- **Logout admin** (`POST /api/admin/auth/logout`): limpia las 5 cookies (`admin-token`, `auth-token`, `auth-role`, `auth-refresh`, `user-email`) y redirige directamente a `/login`. Incluir `auth-refresh` es **crítico** — sin esa limpieza un refresh token huérfano podría mintear un nuevo access token después del logout.
 
 ## Base de Datos
 - Supabase (PostgreSQL). Dos clientes:
@@ -54,7 +58,7 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 ## Servicios
 | Archivo | Propósito |
 |---|---|
-| `services/emailService.ts` | SendGrid REST API — `sendEmail()`, shell HTML de marca, plantillas: avance, rechazo, pago, contacto interno, acuse de contacto, bienvenida de usuario |
+| `services/emailService.ts` | SendGrid REST API — `sendEmail()`, shell HTML de marca, plantillas: avance, rechazo, pago, contacto interno, acuse de contacto, confirmación de correo, invitación de usuario |
 | `services/whatsappService.ts` | Meta Cloud API v21.0 — texto, templates, webhook parser |
 | `services/cmsService.ts` | Lectura/escritura de `contenido_cms` — anon para leer, admin para escribir |
 | `services/configService.ts` | Lectura/escritura de `configuracion_sistema` — solo admin client |
@@ -68,7 +72,8 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 | `emailHitoPago` | cliente | Hito de pago generado |
 | `emailContactoInterno` | `gerencia@mape.legal` | Formulario de contacto recibido |
 | `emailContactoAcuse` | visitante del sitio | Confirmación de recepción |
-| `emailBienvenidaUsuario` | nuevo usuario | Cuenta creada con credenciales y link de login |
+| `emailConfirmacionCorreo` | usuario | Enlace de confirmación de correo (signup / reenvío) |
+| `emailInvitacionUsuario` | nuevo usuario invitado | Enlace para configurar contraseña tras invitación admin |
 
 ## Tipos importantes
 - `DashExpediente.abogado` → `{ nombre: string; initials: string }` (inglés, no `iniciales`)
@@ -88,9 +93,11 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 - `GET+POST+DELETE /api/admin/cms` — editor CMS
 - `GET+PATCH /api/admin/config` — configuración del sistema
 - `GET+POST /api/admin/roles` + `PATCH+DELETE /api/admin/roles/[id]` — gestión de roles
-- `GET+POST /api/admin/usuarios` — lista y creación de usuarios (POST envía welcome email automáticamente)
+- `GET+POST /api/admin/usuarios` — lista y creación de usuarios. POST recibe `{ email, rol, perfil_id? }` (sin password); usa `auth.admin.generateLink('invite')` y envía la invitación vía SendGrid con `emailInvitacionUsuario`. El invitado configura contraseña en `/auth/establecer-password`.
+- `POST /api/auth/resend-confirmation` — genera un link de confirmación con `auth.admin.generateLink('signup')` y lo envía vía SendGrid. Rate-limited a 3 por (IP + email) cada 15 min. Responde `{ ok: true }` aunque el email no exista (anti-enumeración).
 - `GET /api/admin/clientes` — lista todos los clientes registrados por WhatsApp con sus expedientes vinculados vía `cliente_id` FK (admin client, protegido por proxy)
 - `GET /api/admin/minas` — lista todas las minas con cliente asociado (admin client, protegido por proxy)
+- `GET /api/admin/whatsapp/health` — verifica el `WHATSAPP_TOKEN` contra Meta Cloud API sin enviar mensaje. Devuelve `{ ok, phoneId, displayPhoneNumber, verifiedName, isAuthError, error?, errorCode? }`. Status 200 si el token es válido, 401 si está expirado, 500 si la config falta. **Usar como primer diagnóstico cuando el broadcast de las 8 AM no llegue.**
 - `POST /api/auth/refresh` — renueva el `auth-token` usando el `auth-refresh` cookie; limpia cookies si el refresh expiró
 - `GET /api/broadcast` — estado: último broadcast, suscriptores activos, precios más recientes
 - `GET+POST /api/broadcast/run` — disparar broadcast diario (protegido por `CRON_SECRET` header, sin auth cookie). Vercel Cron envía `GET`; `POST` queda para invocación manual con body JSON
@@ -122,7 +129,8 @@ Webhook Twilio que conecta WhatsApp con Claude AI.
   - `transacciones_pendientes` — registros pendientes (`estado`, `mensaje_original`, `respuesta_asistente`, `detalle`)
   - `clientes` — lookup por `telefono_whatsapp`; auto-registro desde conversación
   - `expedientes` — consultado para contexto de fase/hitos del cliente
-- **Cotización por gramos (con decimales)**: regla en el system prompt bajo `CUANDO PREGUNTAN POR EL PRECIO DEL ORO` instruye a María a multiplicar `X gramos × precio_compra_CHT/gramo` cuando el cliente menciona un peso. Acepta `4.5`, `4,5` (coma decimal hondureña) y `medio gramo` (=0.5). Prohibido el fallback "tengo que consultar" si `PRECIOS DE REFERENCIA` ya tiene el precio por gramo.
+- **Respuesta canónica al "precio del día"**: el bloque `CUANDO PREGUNTAN POR EL PRECIO DEL ORO` en `app/api/whatsapp/route.js` obliga a María a responder con 3 viñetas (LBMA + frescura inline, CHT compra al 80%, Tipo de cambio) + línea "El pago es vía Finacoop en lempiras." + `www.mape.legal`. Sin saludos, sin parrafadas. Los números se inyectan ya formateados con coma de miles via el helper `fmt()` (locale `en-US`) — María tiene prohibido recalcular o reformatear.
+- **Cotización por gramos (con decimales)**: misma sección instruye a María a multiplicar `X gramos × precio_compra_CHT/gramo` cuando el cliente menciona un peso. Acepta `4.5`, `4,5` (coma decimal hondureña) y `medio gramo` (=0.5). El formato de respuesta usa el mismo bloque de 3 viñetas + línea "Tus [X] gramos: aproximadamente L X,XXX.XX" + Finacoop + link. Prohibido el fallback "tengo que consultar" si `PRECIOS DE REFERENCIA` ya tiene el precio por gramo.
 - **Broadcast diario 8 AM**: sección `NOTIFICACIÓN DIARIA DE PRECIOS` en el system prompt documenta el formato canónico que envía el cron. Saludo fijo "Estimado Socio MAPE", sin emojis, sin comentarios de mercado, números con formato hondureño (`L 245,000.00`).
 - **Trigger de transacción**: cuando la respuesta incluye `"Listo"` + `"Confirmas"` se inserta en `transacciones_pendientes`
 - **Extracción estructurada**: segunda llamada a Haiku post-respuesta — parsea JSON de la conversación para registrar nombre/municipio/manzanas; strip de bloques markdown antes del parse; variable de error: `clientInsertError` (no `insertError`)
@@ -134,6 +142,8 @@ Webhook Twilio que conecta WhatsApp con Claude AI.
 ## Landing page
 
 **Estado real (auditoría 2026-05-03):** la landing activa es `app/page.tsx` (≈523 líneas, autocontenido, usa clases definidas en `app/globals.css`). Los 15 archivos de `components/landing/*` (`Hero.tsx`, `About.tsx`, `Problem.tsx`, `Solution.tsx`, `Services.tsx`, `Impact.tsx`, `Beneficiarios.tsx`, `Footer.tsx`, `Contacto.tsx`, `News.tsx`, `Programs.tsx`, `Roadmap.tsx`, `ValorSection.tsx`, `WhyNow.tsx`, `PriceWidgets.tsx`) están **huérfanos** — `grep` confirma cero imports en todo el repo. Cualquier cambio de UI debe hacerse en `app/page.tsx`, no en los componentes huérfanos.
+
+**Componente decorativo activo**: `components/decor/TopoBand.tsx` — SVG de líneas topográficas usado como watermark embossed en hero y footer (`app/page.tsx`) y como fondo del login (`app/login/page.tsx`). Variantes `light` / `dark` × posiciones `overlay` (full-bleed) / `band` (48px en top edge). `aria-hidden`, `pointer-events: none`, opacidad 0.06 (light, color `#162033`) / 0.18 (dark, color `#2F5D50`). No interactivo, no animado — quiet nod al territorio hondureño.
 
 ### Imágenes disponibles en `public/images/`
 | Archivo | Notas |
@@ -226,6 +236,15 @@ CRON_SECRET                    # Header Bearer para proteger /api/broadcast/run.
     -H "Content-Type: application/json" \
     -d '{"triggered_by":"test"}'
   ```
+
+### Tolerancia a expiración del `WHATSAPP_TOKEN`
+Los User access tokens de Meta caducan a 60 días; cuando ocurre, el broadcast de las 8 AM falla en silencio salvo por las trazas del cron. Para evitar esa clase de incidentes:
+- **Pre-flight**: `sendDailyBroadcast()` llama `checkWhatsAppTokenHealth()` antes del fan-out. Si Meta responde 401 o `OAuthException` (códigos 102/190/463), aborta el envío, registra `broadcast_log.error_msg` con la causa + el hint de regeneración, y devuelve `aborted_reason: 'whatsapp_auth'`. **No** se itera la lista de suscriptores con un token muerto.
+- **Mid-broadcast abort**: si el token cae a mitad del envío, el primer `WhatsAppApiError.isAuthError === true` interrumpe los lotes restantes. Sin esto un token caducado generaba N×401 en `broadcast_log`.
+- **Errores tipados**: `services/whatsappService.ts` exporta `WhatsAppApiError { status, code, subcode, type, fbtraceId, isAuthError, rawBody }` y `WhatsAppTokenHealth`. Cualquier caller que necesite distinguir auth de transitorios debe `instanceof WhatsAppApiError && e.isAuthError`.
+- **Diagnóstico**: `GET /api/admin/whatsapp/health` (admin-gated) hace una llamada `GET /{phone_id}?fields=display_phone_number,verified_name`. Es la primera comprobación cuando el reporte diario no llegó.
+- **Migración**: `016_broadcast_log_error.sql` agrega `error_msg text` a `broadcast_log`. Hasta que se aplique en Supabase Studio, el insert con `error_msg: null` funciona, pero el campo poblado se guardará silenciosamente como descartado.
+- **Fix recomendado en Meta**: regenerar el `WHATSAPP_TOKEN` como **System User access token** (`Business Manager → Business Settings → System Users → Generate New Token`, scope `whatsapp_business_messaging` + `whatsapp_business_management`, expiración "Never"). Los tokens de la consola de desarrollador caducan en 24h o 60 días — solo el de System User es estable para crons.
 
 ## Modo Admin — María WhatsApp
 Trigger: mensaje contiene `willis yang` + `TENKA-2026` (passphrase en código, línea ~295 de `route.js`).

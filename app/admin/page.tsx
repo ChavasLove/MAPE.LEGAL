@@ -21,7 +21,7 @@ const cards = [
     bg:    '#E6F2EC',
   },
   {
-    href:  '/expedientes',
+    href:  '/dashboard/expedientes',
     Icon:  FileText,
     title: 'Expedientes activos',
     desc:  'Ver y gestionar los expedientes mineros en curso del piloto Iriona 2026.',
