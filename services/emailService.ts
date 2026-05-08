@@ -310,6 +310,50 @@ export function emailConfirmacionCorreo(
   });
 }
 
+/** Password reset link sent when a user requests recovery via /auth/recuperar-password.
+ *  `actionLink` is a Supabase-signed URL from auth.admin.generateLink('recovery'). */
+export function emailResetPassword(
+  correo: string,
+  actionLink: string
+): Promise<void> {
+  return sendEmail({
+    to:      correo,
+    subject: 'Restablecer tu contraseña · MAPE.LEGAL',
+    html: emailShell(`
+      <p style="margin:0 0 20px;color:#162033;font-size:16px">
+        Solicitaste restablecer tu contraseña.
+      </p>
+      <p style="margin:0 0 28px;color:#5E6B7A;font-size:15px;line-height:1.6">
+        Recibimos una solicitud para <strong>${esc(correo)}</strong>.
+        Haz clic en el botón para crear una nueva contraseña. El enlace expira en 1 hora.
+      </p>
+
+      <div style="text-align:center;margin-bottom:28px">
+        <a href="${esc(actionLink)}"
+           style="display:inline-block;background:#1F2A44;color:#ffffff;text-decoration:none;
+                  font-size:15px;font-weight:700;padding:14px 32px;border-radius:8px">
+          Restablecer contraseña →
+        </a>
+      </div>
+
+      <p style="margin:0 0 8px;color:#5E6B7A;font-size:13px">
+        Si el botón no funciona, copia esta dirección en tu navegador:
+      </p>
+      <p style="margin:0 0 28px;color:#5E6B7A;font-size:12px;word-break:break-all">
+        <a href="${esc(actionLink)}" style="color:#3A6EA5">${esc(actionLink)}</a>
+      </p>
+
+      <p style="margin:0 0 16px;color:#A94442;font-size:13px">
+        Si no solicitaste este correo, ignóralo. Tu contraseña no cambiará.
+      </p>
+      <p style="margin:0;color:#A3AAB3;font-size:13px">
+        En caso de dudas, contacta a
+        <a href="mailto:gerencia@mape.legal" style="color:#5E6B7A">gerencia@mape.legal</a>.
+      </p>
+    `),
+  });
+}
+
 /** Invitation sent when an admin creates a user. The recipient sets their own
  *  password via the link — admins never see or transmit plaintext passwords. */
 export function emailInvitacionUsuario(
