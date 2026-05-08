@@ -186,24 +186,28 @@ export async function createDashExpediente(
   input: CreateExpedienteInput
 ): Promise<DashExpediente> {
   // Generate numero_expediente from the highest existing number for the
-  // current year. Using COUNT collided after deletes and raced under
-  // concurrent creates; parsing the latest numero tolerates gaps. The unique
-  // constraint on numero_expediente will still reject any genuine collision.
+  // current year. We pull every numero for the year and take the integer
+  // max in JS rather than relying on `ORDER BY numero_expediente DESC` —
+  // that lexicographic sort treated EXP-YYYY-1000 as smaller than
+  // EXP-YYYY-999 and broke at the 1000th expediente, and any width
+  // mismatch (3-digit vs 4-digit) would similarly mis-rank rows. The
+  // year filter keeps the result set small. Suffix is padded to 4 for
+  // readability; correctness no longer depends on a fixed width.
   const year   = new Date().getFullYear();
   const prefix = `EXP-${year}-`;
 
-  const { data: latest } = await supabase
+  const { data: rows } = await supabase
     .from('expedientes')
     .select('numero_expediente')
-    .like('numero_expediente', `${prefix}%`)
-    .order('numero_expediente', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .like('numero_expediente', `${prefix}%`);
 
-  const lastNum = latest?.numero_expediente
-    ? parseInt(latest.numero_expediente.slice(prefix.length), 10) || 0
-    : 0;
-  const num    = String(lastNum + 1).padStart(3, '0');
+  let lastNum = 0;
+  for (const row of (rows ?? []) as Array<{ numero_expediente: string | null }>) {
+    if (!row.numero_expediente) continue;
+    const n = parseInt(row.numero_expediente.slice(prefix.length), 10);
+    if (Number.isFinite(n) && n > lastNum) lastNum = n;
+  }
+  const num    = String(lastNum + 1).padStart(4, '0');
   const numero = `${prefix}${num}`;
 
   const { data: exp, error: expErr } = await supabase
