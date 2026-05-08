@@ -1,8 +1,8 @@
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { LayoutDashboard, FolderOpen, MessageSquare, Users, Mountain, Settings, LogOut } from 'lucide-react';
+import { getServerAuth, DASHBOARD_ROLES } from '@/lib/serverAuth';
 
 const ROL_LABEL: Record<string, string> = {
   admin:             'Administrador',
@@ -19,19 +19,13 @@ const navItems = [
 ];
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = await cookies();
-
-  const token = cookieStore.get('auth-token')?.value
-    ?? cookieStore.get('admin-token')?.value;
-
-  const role = cookieStore.get('auth-role')?.value
-    ?? (cookieStore.get('admin-token')?.value ? 'admin' : null);
-
-  if (!token || !role || !['admin', 'abogado', 'tecnico_ambiental'].includes(role)) {
+  const auth = await getServerAuth();
+  if (!auth || !DASHBOARD_ROLES.includes(auth.role)) {
     redirect('/login');
   }
 
-  const email = cookieStore.get('user-email')?.value ?? '';
+  const role  = auth.role;
+  const email = auth.user.email ?? '';
 
   return (
     <div className="min-h-screen flex" style={{ background: '#162033' }}>

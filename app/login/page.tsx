@@ -5,10 +5,23 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import TopoBand from '@/components/decor/TopoBand';
 
+// Restricts the post-login redirect to same-origin paths. Without this, an
+// attacker can craft `mape.legal/login?from=https://evil.com` (or
+// `?from=//evil.com`) and the form will navigate the authenticated user
+// to a phishing site after a successful login.
+function safeFrom(value: string | null): string | null {
+  if (!value) return null;
+  if (!value.startsWith('/')) return null;
+  // Block protocol-relative URLs (//host) and back-slash variants that some
+  // browsers normalise into absolute URLs.
+  if (value.startsWith('//') || value.startsWith('/\\')) return null;
+  return value;
+}
+
 function LoginForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
-  const from         = searchParams.get('from') ?? null;
+  const from         = safeFrom(searchParams.get('from'));
   const confirmed    = searchParams.get('confirmed') === '1';
 
   const [email,    setEmail]    = useState('');

@@ -1,8 +1,8 @@
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Users, UserCheck, LayoutDashboard, LogOut, Shield, FileText, Settings, LayoutGrid } from 'lucide-react';
+import { getServerAuth } from '@/lib/serverAuth';
 
 const navItems = [
   { href: '/admin',                label: 'Resumen',        Icon: LayoutDashboard },
@@ -14,19 +14,14 @@ const navItems = [
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = await cookies();
-
-  const token = cookieStore.get('auth-token')?.value
-    ?? cookieStore.get('admin-token')?.value;
-
-  const role = cookieStore.get('auth-role')?.value
-    ?? (cookieStore.get('admin-token')?.value ? 'admin' : null);
-
-  if (!token || role !== 'admin') {
+  // getServerAuth validates the JWT against Supabase Auth and re-derives
+  // the role from user_roles — cookie names alone are not trusted.
+  const auth = await getServerAuth();
+  if (!auth || auth.role !== 'admin') {
     redirect('/login');
   }
 
-  const email = cookieStore.get('user-email')?.value ?? '';
+  const email = auth.user.email ?? '';
 
   return (
     <div className="min-h-screen flex" style={{ background: '#162033' }}>

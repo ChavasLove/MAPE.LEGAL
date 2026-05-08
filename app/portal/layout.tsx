@@ -1,19 +1,16 @@
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Image from 'next/image';
 import { FileText, LogOut } from 'lucide-react';
 import Link from 'next/link';
+import { getServerAuth } from '@/lib/serverAuth';
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('auth-token')?.value;
-  const role  = cookieStore.get('auth-role')?.value;
-
-  if (!token || role !== 'cliente') {
+  const auth = await getServerAuth();
+  if (!auth || auth.role !== 'cliente') {
     redirect('/login');
   }
 
-  const email = cookieStore.get('user-email')?.value ?? '';
+  const email = auth.user.email ?? '';
 
   return (
     <div className="min-h-screen" style={{ background: '#F5F6F7' }}>

@@ -1,5 +1,6 @@
 import { getAdminClient } from '@/services/adminSupabase';
 import { NextResponse } from 'next/server';
+import { requireRole } from '@/lib/serverAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +23,9 @@ type MinaRow = {
 type ClienteSlim = { id: string; nombre: string | null; telefono_whatsapp: string | null };
 
 export async function GET() {
+  const auth = await requireRole('admin');
+  if (auth instanceof NextResponse) return auth;
+
   const admin = getAdminClient();
 
   const { data, error } = await admin
