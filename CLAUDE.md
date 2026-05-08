@@ -107,6 +107,7 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 
 ## Asistente Virtual María (`app/api/whatsapp/route.js`)
 Webhook Twilio que conecta WhatsApp con Claude AI.
+**Reglas operativas canónicas:** ver [`MARIA.md`](./MARIA.md) — el system prompt en `route.js` debe mantenerse sincronizado con ese documento.
 
 - **Modelo**: `claude-haiku-4-5-20251001`
 - **Persona**: María, asistente de CHT — español sencillo, respuestas cortas (≤5 líneas), sin emojis, sin jerga
