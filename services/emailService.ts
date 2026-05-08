@@ -1,5 +1,20 @@
 const SENDGRID_API = 'https://api.sendgrid.com/v3/mail/send';
 
+// Escapes user-controlled strings before they're interpolated into HTML
+// templates. Without this, `<script>` or attribute-breakout via `"` /
+// onerror= in a contact-form submission lands in the gerencia inbox as
+// live HTML. Covers text contexts and most attribute contexts (href,
+// mailto:); escaping `&"<>'` is sufficient for both per the OWASP rules.
+function esc(value: string | number | null | undefined): string {
+  if (value == null) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export interface EmailPayload {
   to: string | string[];
   subject: string;
@@ -94,8 +109,8 @@ export function emailExpedienteAvance(
     to,
     subject: `Expediente ${expId} — Avance a ${faseNueva}`,
     html: `
-      <p>Estimado/a <strong>${nombre}</strong>,</p>
-      <p>Su expediente <strong>${expId}</strong> ha avanzado a la fase <strong>${faseNueva}</strong>.</p>
+      <p>Estimado/a <strong>${esc(nombre)}</strong>,</p>
+      <p>Su expediente <strong>${esc(expId)}</strong> ha avanzado a la fase <strong>${esc(faseNueva)}</strong>.</p>
       <p>Para consultas, responda a este correo o contáctenos por WhatsApp.</p>
       <br>
       <p style="color:#5E6B7A;font-size:13px">— MAPE.LEGAL · Corporación Hondureña Tenka, S.A.</p>
@@ -110,9 +125,9 @@ export function emailDocumentoRechazado(
     to,
     subject: `Documento requerido — ${expId}`,
     html: `
-      <p>Estimado/a <strong>${nombre}</strong>,</p>
-      <p>El documento <strong>${documento}</strong> de su expediente <strong>${expId}</strong> requiere atención.</p>
-      ${motivo ? `<p>Motivo: ${motivo}</p>` : ''}
+      <p>Estimado/a <strong>${esc(nombre)}</strong>,</p>
+      <p>El documento <strong>${esc(documento)}</strong> de su expediente <strong>${esc(expId)}</strong> requiere atención.</p>
+      ${motivo ? `<p>Motivo: ${esc(motivo)}</p>` : ''}
       <p>Por favor envíe una versión corregida o contáctenos para asistencia.</p>
       <br>
       <p style="color:#5E6B7A;font-size:13px">— MAPE.LEGAL · Corporación Hondureña Tenka, S.A.</p>
@@ -128,11 +143,11 @@ export function emailHitoPago(
     to,
     subject: `Hito de pago generado — ${expId}`,
     html: `
-      <p>Estimado/a <strong>${nombre}</strong>,</p>
-      <p>Se ha generado un hito de pago en su expediente <strong>${expId}</strong>.</p>
+      <p>Estimado/a <strong>${esc(nombre)}</strong>,</p>
+      <p>Se ha generado un hito de pago en su expediente <strong>${esc(expId)}</strong>.</p>
       <ul>
-        <li>Monto: <strong>${montoFmt}</strong></li>
-        <li>Evento: ${trigger}</li>
+        <li>Monto: <strong>${esc(montoFmt)}</strong></li>
+        <li>Evento: ${esc(trigger)}</li>
       </ul>
       <p>Por favor coordine el pago con su abogado asignado.</p>
       <br>
@@ -163,7 +178,7 @@ export function emailContactoInterno(
       <p style="margin:0 0 6px;color:#5E6B7A;font-size:12px;text-transform:uppercase;letter-spacing:1px;font-weight:600">
         Nuevo mensaje desde el formulario de contacto
       </p>
-      <h2 style="margin:0 0 24px;color:#162033;font-size:20px">${nombre}</h2>
+      <h2 style="margin:0 0 24px;color:#162033;font-size:20px">${esc(nombre)}</h2>
 
       <table cellpadding="0" cellspacing="0" width="100%"
              style="border:1px solid #E5E7EB;border-radius:8px;overflow:hidden;margin-bottom:24px">
@@ -172,7 +187,7 @@ export function emailContactoInterno(
             Correo
           </td>
           <td style="padding:10px 16px;font-size:14px;color:#162033">
-            <a href="mailto:${correo}" style="color:#1F2A44">${correo}</a>
+            <a href="mailto:${esc(correo)}" style="color:#1F2A44">${esc(correo)}</a>
           </td>
         </tr>
         ${empresa ? `
@@ -181,7 +196,7 @@ export function emailContactoInterno(
             Empresa / Op.
           </td>
           <td style="padding:10px 16px;font-size:14px;color:#162033;border-top:1px solid #E5E7EB">
-            ${empresa}
+            ${esc(empresa)}
           </td>
         </tr>` : ''}
         <tr>
@@ -189,7 +204,7 @@ export function emailContactoInterno(
             Recibido
           </td>
           <td style="padding:10px 16px;font-size:14px;color:#162033;border-top:1px solid #E5E7EB">
-            ${fecha}
+            ${esc(fecha)}
           </td>
         </tr>
       </table>
@@ -198,10 +213,10 @@ export function emailContactoInterno(
         Mensaje
       </p>
       <div style="background:#F5F6F7;border:1px solid #E5E7EB;border-radius:8px;padding:16px 20px;
-                  font-size:14px;color:#162033;line-height:1.6;white-space:pre-wrap">${mensaje}</div>
+                  font-size:14px;color:#162033;line-height:1.6;white-space:pre-wrap">${esc(mensaje)}</div>
 
       <p style="margin:24px 0 0;font-size:13px;color:#A3AAB3">
-        Responde directamente a <a href="mailto:${correo}" style="color:#1F2A44">${correo}</a>
+        Responde directamente a <a href="mailto:${esc(correo)}" style="color:#1F2A44">${esc(correo)}</a>
         para continuar la conversación.
       </p>
     `),
@@ -218,7 +233,7 @@ export function emailContactoAcuse(
     subject: 'Recibimos tu consulta — MAPE.LEGAL',
     html: emailShell(`
       <p style="margin:0 0 20px;color:#162033;font-size:16px">
-        Hola <strong>${nombre}</strong>,
+        Hola <strong>${esc(nombre)}</strong>,
       </p>
       <p style="margin:0 0 16px;color:#5E6B7A;font-size:15px;line-height:1.6">
         Recibimos tu consulta y un miembro de nuestro equipo se comunicará contigo
@@ -268,12 +283,12 @@ export function emailConfirmacionCorreo(
         Confirma tu cuenta para acceder a MAPE.LEGAL.
       </p>
       <p style="margin:0 0 28px;color:#5E6B7A;font-size:15px;line-height:1.6">
-        Recibimos una solicitud de acceso para <strong>${correo}</strong>.
+        Recibimos una solicitud de acceso para <strong>${esc(correo)}</strong>.
         Haz clic en el botón para verificar tu correo. El enlace expira en 24 horas.
       </p>
 
       <div style="text-align:center;margin-bottom:28px">
-        <a href="${actionLink}"
+        <a href="${esc(actionLink)}"
            style="display:inline-block;background:#1F2A44;color:#ffffff;text-decoration:none;
                   font-size:15px;font-weight:700;padding:14px 32px;border-radius:8px">
           Confirmar correo →
@@ -284,7 +299,7 @@ export function emailConfirmacionCorreo(
         Si el botón no funciona, copia esta dirección en tu navegador:
       </p>
       <p style="margin:0 0 28px;color:#5E6B7A;font-size:12px;word-break:break-all">
-        <a href="${actionLink}" style="color:#3A6EA5">${actionLink}</a>
+        <a href="${esc(actionLink)}" style="color:#3A6EA5">${esc(actionLink)}</a>
       </p>
 
       <p style="margin:0;color:#A3AAB3;font-size:13px">
@@ -311,13 +326,13 @@ export function emailInvitacionUsuario(
         Te han invitado a usar MAPE.LEGAL.
       </p>
       <p style="margin:0 0 24px;color:#5E6B7A;font-size:15px;line-height:1.6">
-        Se creó una cuenta para <strong>${correo}</strong> con el perfil de
-        <strong>${rolLabel}</strong>. Configura tu contraseña para iniciar sesión.
+        Se creó una cuenta para <strong>${esc(correo)}</strong> con el perfil de
+        <strong>${esc(rolLabel)}</strong>. Configura tu contraseña para iniciar sesión.
         El enlace expira en 24 horas.
       </p>
 
       <div style="text-align:center;margin-bottom:28px">
-        <a href="${actionLink}"
+        <a href="${esc(actionLink)}"
            style="display:inline-block;background:#1F2A44;color:#ffffff;text-decoration:none;
                   font-size:15px;font-weight:700;padding:14px 32px;border-radius:8px">
           Configurar contraseña →
@@ -328,7 +343,7 @@ export function emailInvitacionUsuario(
         Si el botón no funciona, copia esta dirección en tu navegador:
       </p>
       <p style="margin:0 0 28px;color:#5E6B7A;font-size:12px;word-break:break-all">
-        <a href="${actionLink}" style="color:#3A6EA5">${actionLink}</a>
+        <a href="${esc(actionLink)}" style="color:#3A6EA5">${esc(actionLink)}</a>
       </p>
 
       <p style="margin:0;color:#A3AAB3;font-size:13px">

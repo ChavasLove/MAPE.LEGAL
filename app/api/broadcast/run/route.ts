@@ -21,6 +21,15 @@ async function handle(
     if (auth !== `Bearer ${secret}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+  } else if (process.env.NODE_ENV === 'production') {
+    // A missing CRON_SECRET in production would otherwise expose this
+    // endpoint to anyone — they could trigger broadcasts and burn Meta
+    // API quota. Fail loudly instead of silently allowing access.
+    console.error('[/api/broadcast/run] CRON_SECRET not configured in production');
+    return NextResponse.json(
+      { error: 'CRON_SECRET not configured' },
+      { status: 500 }
+    );
   }
 
   try {
