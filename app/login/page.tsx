@@ -109,9 +109,11 @@ function LoginForm() {
       setError('Inicio de sesión con Google no está configurado.');
       return;
     }
-    // Build the OAuth URL directly. Supabase will redirect to Google, then
-    // back to /api/auth/callback with `?code=` for server-side exchange.
-    const redirectUri = `${siteUrl}/api/auth/callback`;
+    // Supabase returns the session in the URL fragment (`#access_token=...`)
+    // when /authorize is hit without PKCE params, so the destination must be
+    // a client page that can read the fragment. /auth/callback POSTs the
+    // tokens to /api/auth/oauth-session, which sets our cookies.
+    const redirectUri = `${siteUrl}/auth/callback`;
     const scopes      = encodeURIComponent('openid email profile');
     const oauthUrl =
       `${url}/auth/v1/authorize?provider=google` +
