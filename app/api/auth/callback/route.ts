@@ -12,8 +12,17 @@ const ROLE_REDIRECT: Record<string, string> = {
 // Supabase redirects here after Google (or other provider) auth with `?code=`.
 // We exchange the code for a session, set our cookie set, and redirect by role.
 //
+// Reached via two paths:
+//   - Direct: when Supabase is configured to redirect OAuth straight to a
+//     server route (`?code=...` in query)
+//   - Forwarded: from app/auth/callback/page.tsx when the client page detects
+//     a `?code=` (modern code flow) and bounces here so the exchange runs
+//     server-side
+//
 // Note: trigger `on_auth_user_created` (migration 015) auto-creates a
-// `user_roles` row defaulted to `cliente`. We never insert here — we just read.
+// `user_roles` row defaulted to `cliente`. We read first; if the row is
+// missing we self-heal by upserting the default — matches the resilience in
+// /api/auth/oauth-session so the two handlers stay behaviourally identical.
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -37,12 +46,26 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(new URL('/login?error=Configuracion+de+servidor+incompleta', req.url));
     }
 
-    // Exchange code for session
+    // Exchange code for session.
+    //
+    // Note on PKCE: the OAuth flow is initiated in app/login/page.tsx by
+    // hitting /auth/v1/authorize directly (no `code_challenge` param), which
+    // tells Supabase to use the non-PKCE OAuth code flow — the exchange
+    // below works without a verifier. If a future change initiates OAuth via
+    // supabase-js's `signInWithOAuth` (which adds PKCE), the code_verifier
+    // would need to round-trip via cookies (e.g., `@supabase/ssr`) for this
+    // exchange to succeed. The full sessionError is logged below so a PKCE
+    // mismatch surfaces in Vercel logs as `invalid_grant` rather than the
+    // generic redirect message.
     const supabase = createClient(url, anonKey, { auth: { persistSession: false } });
     const { data, error: sessionError } = await supabase.auth.exchangeCodeForSession(code);
 
     if (sessionError || !data.session) {
-      console.error('[auth/callback] Session exchange failed:', sessionError?.message);
+      console.error('[auth/callback] Session exchange failed', {
+        message: sessionError?.message,
+        status:  sessionError?.status,
+        name:    sessionError?.name,
+      });
       return NextResponse.redirect(new URL('/login?error=Sesion+invalida', req.url));
     }
 
@@ -61,19 +84,44 @@ export async function GET(req: NextRequest) {
       .eq('user_id', user.id)
       .single();
 
+    let role: string;
+
     if (roleErr || !roleRow) {
-      // Trigger 015 should always populate this row; if it didn't, fail loud
-      // so an admin can diagnose, rather than silently elevating to a default.
-      console.error('[auth/callback] user_roles lookup failed:', roleErr?.message);
-      return NextResponse.redirect(new URL('/login?error=Sin+rol+asignado', req.url));
+      // Trigger 015 normally populates this row on auth.users INSERT. If it
+      // didn't (grant revoked, RLS regression, manual delete) self-heal with
+      // the default 'cliente' role — same fallback as /api/auth/oauth-session,
+      // so the two callback handlers behave identically. Forensic logging
+      // captures the PostgREST error code for diagnosis.
+      console.error('[auth/callback] user_roles miss', {
+        user_id: user.id,
+        email:   user.email,
+        code:    roleErr?.code,
+        message: roleErr?.message,
+        details: roleErr?.details,
+        hint:    roleErr?.hint,
+      });
+
+      const { error: upsertErr } = await roleClient
+        .from('user_roles')
+        .upsert(
+          { user_id: user.id, rol: 'cliente', activo: true },
+          { onConflict: 'user_id', ignoreDuplicates: true }
+        );
+
+      if (upsertErr) {
+        console.error('[auth/callback] user_roles fallback upsert failed:', upsertErr);
+        return NextResponse.redirect(new URL('/login?error=Sin+rol+asignado', req.url));
+      }
+
+      role = 'cliente';
+    } else {
+      if (!roleRow.activo) {
+        return NextResponse.redirect(new URL('/login?error=Cuenta+inactiva', req.url));
+      }
+      role = roleRow.rol as string;
     }
 
-    if (!roleRow.activo) {
-      return NextResponse.redirect(new URL('/login?error=Cuenta+inactiva', req.url));
-    }
-
-    const role       = roleRow.rol as string;
-    const redirectTo = ROLE_REDIRECT[role] ?? '/dashboard';
+    const redirectTo   = ROLE_REDIRECT[role] ?? '/dashboard';
     const accessMaxAge = data.session.expires_in ?? 3600;
 
     const cookieOpts = {
