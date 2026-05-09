@@ -10,11 +10,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No hay sesión activa' }, { status: 401 });
   }
 
-  const url        = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey    = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url        = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const anonKey    = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!url || !anonKey) {
     return NextResponse.json({ error: 'Configuración incompleta' }, { status: 500 });
+  }
+  // Fail loud (not silent cookie-wipe) when the service role is absent: the
+  // role lookup below MUST bypass RLS, otherwise the anon client returns 0
+  // rows and the legacy fallback wiped all auth cookies on a server config
+  // error — indistinguishable from a real session expiry.
+  if (!serviceKey) {
+    console.error('[refresh] SUPABASE_SERVICE_ROLE_KEY missing — refusing to wipe cookies on config error');
+    return NextResponse.json(
+      { error: 'Configuración de servidor incompleta', code: 'SERVER_CONFIG' },
+      { status: 500 }
+    );
   }
 
   const supabase = createClient(url, anonKey, { auth: { persistSession: false } });
@@ -33,9 +44,9 @@ export async function POST(req: NextRequest) {
   // auth-role cookie. The cookie was set with the same maxAge as the access
   // token, so by the time refresh is called it's usually gone — defaulting to
   // 'cliente' would silently demote admins.
-  const roleClient = serviceKey
-    ? createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } })
-    : supabase;
+  const roleClient = createClient(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
   const { data: roleRow } = await roleClient
     .from('user_roles')
     .select('rol, activo')

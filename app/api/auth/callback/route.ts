@@ -108,11 +108,22 @@ export async function GET(req: NextRequest) {
         hint:    roleErr?.hint,
       });
 
+      // Distinguish PGRST116 (no rows — safe to insert default) from a real
+      // database failure (RLS recursion, permission denied, etc.). Without
+      // this guard, an upsert without ignoreDuplicates could silently demote
+      // an existing admin row to 'cliente' if the SELECT failed for any
+      // reason other than "no rows".
+      if (roleErr && roleErr.code !== 'PGRST116') {
+        return NextResponse.redirect(
+          new URL(`/login?error=${encodeURIComponent(`Error de base de datos (${roleErr.code})`)}`, req.url)
+        );
+      }
+
       const { error: upsertErr } = await roleClient
         .from('user_roles')
         .upsert(
           { user_id: user.id, rol: 'cliente', activo: true },
-          { onConflict: 'user_id', ignoreDuplicates: true }
+          { onConflict: 'user_id' }
         );
 
       if (upsertErr) {

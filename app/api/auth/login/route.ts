@@ -84,19 +84,62 @@ export async function POST(req: NextRequest) {
       .eq('user_id', data.user.id)
       .single();
 
+    let role: string;
+
     if (!roleRow) {
-      // Log the underlying error to help with debugging (e.g., RLS blocking the query)
-      if (roleError) {
-        console.error('[login] user_roles query error:', roleError.code, roleError.message);
+      // Forensic logging — capture full PostgREST error context so a future
+      // miss is diagnosable from Vercel function logs alone (PGRST116 = no
+      // rows, 42501 = permission denied, 42P17 = recursive policy, etc.).
+      console.error('[login] user_roles miss', {
+        user_id: data.user.id,
+        email:   data.user.email,
+        code:    roleError?.code,
+        message: roleError?.message,
+        details: (roleError as { details?: string } | null)?.details,
+        hint:    (roleError as { hint?: string }    | null)?.hint,
+      });
+
+      // Distinguish a real DB failure (RLS recursion, permission denied,
+      // network hiccup) from PGRST116 "no rows found". On a real failure,
+      // surfacing the code helps the operator instead of confusing them with
+      // "Sin rol asignado" which suggests user-level misconfiguration.
+      if (roleError && roleError.code !== 'PGRST116') {
+        return NextResponse.json(
+          {
+            error: `Error de base de datos (${roleError.code}) — contacte al administrador`,
+            code:  roleError.code,
+          },
+          { status: 500 }
+        );
       }
-      return NextResponse.json({ error: 'Sin rol asignado — contacte al administrador' }, { status: 403 });
+
+      // PGRST116 / null row → self-heal with default 'cliente' role. Same
+      // pattern as oauth-session and callback. The PGRST116 guard above
+      // confirms no row exists, so the upsert (without ignoreDuplicates)
+      // can't demote an existing admin to cliente.
+      const { error: upsertErr } = await roleClient
+        .from('user_roles')
+        .upsert(
+          { user_id: data.user.id, rol: 'cliente', activo: true },
+          { onConflict: 'user_id' }
+        );
+
+      if (upsertErr) {
+        console.error('[login] user_roles fallback upsert failed:', upsertErr);
+        return NextResponse.json(
+          { error: 'Sin rol asignado — contacte al administrador' },
+          { status: 403 }
+        );
+      }
+
+      role = 'cliente';
+    } else {
+      if (!roleRow.activo) {
+        return NextResponse.json({ error: 'Cuenta inactiva — contacte al administrador' }, { status: 403 });
+      }
+      role = roleRow.rol as string;
     }
 
-    if (!roleRow.activo) {
-      return NextResponse.json({ error: 'Cuenta inactiva — contacte al administrador' }, { status: 403 });
-    }
-
-    const role       = roleRow.rol as string;
     const redirectTo = ROLE_REDIRECT[role] ?? '/dashboard';
     const maxAge     = data.session.expires_in ?? 3600;
 
