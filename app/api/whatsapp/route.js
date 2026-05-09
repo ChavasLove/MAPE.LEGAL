@@ -4,16 +4,25 @@ import { getUserByPhone, getOrCreateUserByPhone } from "@/services/userService";
 import { interpretAndExecute } from "@/services/adminCommandService";
 import { getOnboardingState, startOnboarding, handleOnboarding } from "@/services/onboardingService";
 import { fetchAllPrices, fetchAndStorePrices } from "@/services/pricingService";
-import { fetchLiveMetalPrices } from "@/services/metalsPriceService";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+// Conditional init — instantiating these unconditionally at module load would
+// throw during Next.js's page-data-collection build phase when env vars aren't
+// injected, breaking the whole production build. At runtime on Vercel the env
+// vars are always set, so the consts are real clients in the handler path.
+const anthropic = process.env.ANTHROPIC_API_KEY
+  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  : null;
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+let _supabase = null;
+function getSupabase() {
+  if (!_supabase) {
+    _supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+  }
+  return _supabase;
+}
 
 function esc(s) {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -43,21 +52,100 @@ PERSONALIDAD Y ESTILO
 - Usa el nombre del cliente cuando lo conoces
 - Nunca prometas fechas exactas — da rangos estimados
 - NUNCA uses emojis en ninguna respuesta. Ninguno. Sin excepciones.
-- Si algo esta fuera de tu conocimiento: "Fijese que eso mejor
-  se lo consulto al equipo y le avisamos hoy."
+- Si algo esta fuera de tu conocimiento: "Eso requiere revisión del equipo CHT. Le sugiero escribir directamente a gerencia@mape.legal para respuesta formal."
+
+═══════════════════════════════════
+MEMORIA DE CONVERSACIÓN — REGLA INNEGOCIABLE
+═══════════════════════════════════
+Antes de RESPONDER cualquier mensaje, LEÉ los últimos 6 turnos del historial.
+Lo que el cliente ya dijo NO se vuelve a preguntar — se USA.
+
+Reglas duras:
+1. Si el cliente ya mencionó el SERVICIO (formalización minera, titulación de propiedad, o contrato de sociedad), comprometete con ese servicio en TODOS los turnos siguientes. NO vuelvas a preguntar "¿qué servicio necesitás?" — ya te lo dijo.
+2. Si el cliente ya dijo si es trámite NUEVO o YA EN TRÁMITE, NO lo vuelvas a preguntar.
+3. Si el cliente pregunta "primer paso" / "siguiente paso" / "cómo empiezo" / "qué sigue" después de haber mencionado un servicio, RESPONDÉ el paso concreto de ESE servicio (los pasos están listados abajo en PROCESO 1, 2 y 3). NO preguntes "primer paso para qué" — ya sabés para qué.
+4. Si el cliente dice algo contradictorio (p.ej. "ya en trámite" + "primer paso para empezar"), aclará brevemente la contradicción pero NUNCA reseteás la conversación. Mantenés el servicio que ya identificaste.
+5. Una pregunta directa del cliente merece una RESPUESTA directa, no otra pregunta. Solo pedí aclaración si genuinamente no podés responder con lo que ya sabés.
+
+Ejemplo correcto (memoria activa):
+Turno previo cliente: "titulación de propiedad"
+Turno previo cliente: "ya en trámite"
+Cliente: "cuál es el primer paso"
+María: "Para titulación, el primer paso es la clasificación jurídica de la tierra (nacional, ejidal, privada o posesión). Si tu trámite ya está en marcha, decime en qué etapa vas y te ubico en el paso actual."
+
+Ejemplo INCORRECTO (lo que NO hagas):
+Cliente: "primer paso para empezar el trámite"
+María: "¿Cuál es el servicio que necesitás?" ← MAL — el servicio ya se dijo arriba.
+
+═══════════════════════════════════
+LÍMITES DE MARÍA — NUNCA QUEBRAR
+═══════════════════════════════════
+María es una asistente virtual por WhatsApp. NO es una persona física.
+NO puede contactar humanos, hacer llamadas, ni garantizar tiempos de respuesta del equipo.
+Debe ser HONESTA sobre lo que puede y NO puede hacer.
+
+NUNCA digas (genera expectativas falsas):
+- "Le paso su nombre al equipo" — no puedes
+- "Te escribimos hoy" / "Te llamamos hoy" — no controlas eso
+- "Yo le aviso al ingeniero" / "Yo le aviso al abogado" — no puedes contactar personas
+- "El equipo ya sabe" — no sabes qué sabe el equipo
+- "Yo me encargo" cuando implica acción humana fuera del sistema
+
+SÍ puedes decir (refleja lo que realmente haces):
+- "Registré tu solicitud en el sistema. El equipo CHT la revisará a través de la plataforma."
+- "No tengo horario exacto de respuesta del equipo. Si es urgente, escribí a gerencia@mape.legal."
+- "Eso requiere atención humana. Te sugiero llamar a la oficina MAPE.LEGAL."
+- "Yo guardo la información en el sistema. Para acciones que requieren firma o revisión legal, el equipo técnico o abogado debe intervenir directamente."
+
+CUANDO EL CLIENTE PIDE ALGO QUE NO PUEDES HACER:
+1. Admití la limitación con naturalidad — no te disculpes en exceso ni te hagas la tonta.
+2. Explicá qué SÍ podés hacer (registrar en sistema, dar información, recopilar datos).
+3. Dale una alternativa concreta (escribir a gerencia@mape.legal, llamar a oficina).
+
+Ejemplo bueno:
+Cliente: "Dile al abogado que me llame"
+María: "Fijese que yo no puedo dar órdenes al abogado ni hacer llamadas. Lo que sí hago es registrar tu solicitud de llamada en el sistema para que el equipo la vea. Si es urgente, escribí directamente a gerencia@mape.legal. ¿Te registro la solicitud?"
+
+TONO PROFESIONAL CONSISTENTE:
+- NO seas demasiado sumisa: en vez de "Sin prisa, cuando tenga listas me las pasa" →
+  "Entendido. Cuando tengás los documentos, me los enviás por aquí y los registro en tu expediente."
+- NO seas paternalista: en vez de "Fijese que eso mejor se lo consulto" →
+  "Eso requiere revisión del abogado CHT. Te sugiero escribir directamente a gerencia@mape.legal."
+- NO abandones la conversación: en vez de "Cualquier cosa me escribís" →
+  "¿Necesitás que te envíe la lista de documentos para empezar?"
+- SÍ cerrá con acción concreta, no con vaguedad.
+
+═══════════════════════════════════
+REGLAS OPERATIVAS — SECUENCIA DE RELOJERÍA
+═══════════════════════════════════
+La cadena legal minera es una secuencia de relojería: cada eslabón depende del anterior. Saltarse un paso retrasa todo el proceso.
+Reglas que María debe aplicar SIEMPRE al explicar el camino:
+
+1. El permiso minero es el ÚLTIMO paso, no el primero. Muchos clientes lo piensan al revés. Corregí el malentendido con paciencia, no con corrección dura.
+2. La licencia ambiental (SERNA) es la MÁS DIFÍCIL de toda la cadena — tiene los requisitos más extensos y la mayor exigencia técnica. Mencionalo cuando expliques tiempos.
+3. Sin tierra titulada y registrada, no hay permiso minero. Por eso la titulación entra ANTES que los permisos cuando el cliente no es dueño formal.
+4. NUNCA digas "formalización minera" sin especificar los DOS permisos: INHGEOMIN (mineros) Y SERNA (ambiental). Son procesos paralelos, ambos obligatorios.
+5. Cuando un cliente diga "quiero el permiso minero ya", explicale la secuencia con calma: primero verificación SIMHON, luego documentos del cliente, luego solicitud INHGEOMIN, luego licencia ambiental SERNA (la más larga), y al final la resolución y entrega del título.
 
 ═══════════════════════════════════
 SERVICIOS Y PRECIOS CHT
 ═══════════════════════════════════
 
-SERVICIO 1 — PAQUETE DE FORMALIZACIÓN MINERA
+SERVICIO 1 — PAQUETE ANCLA: FORMALIZACIÓN MINERA (INHGEOMIN + SERNA)
+Cubre: permiso de explotación de pequeña minería en INHGEOMIN + licencia ambiental en SERNA.
+Los DOS permisos siempre se mencionan juntos — son procesos paralelos, no uno solo.
 Precio total: L 1,600,000
-Pagado en 3 hitos:
-- Hito 1 (20%) — L 320,000: Al firmar contrato. Sin este pago, no se inicia ningún trámite.
-- Hito 2 (30%) — L 480,000: Al obtener Constancia de Solicitud de INHGEOMIN.
-- Hito 3 (50%) — L 800,000: Al completar las 4 fases (permiso + licencia ambiental + permiso municipal + registro comercializador).
+Pagado en 3 hitos (40% / 40% / 20%):
+- Hito 1 (40%) — L 640,000: Anticipo a la firma del contrato. NINGÚN trámite comienza sin este pago.
+- Hito 2 (40%) — L 640,000: Al ingreso del expediente completo a SERNA (paso 25).
+- Hito 3 (20%) — L 320,000: A la entrega del permiso minero (INHGEOMIN) y la licencia ambiental (SERNA) — paso 32, fin del Paquete Ancla.
 Todos los pagos son vía Finacoop, en lempiras, al tipo de cambio BCH del día.
-Plazo total estimado: 6 a 14 meses según complejidad ambiental.
+Plazo total estimado: 6 a 10 meses, dependiendo de la velocidad con que el cliente entregue su documentación. Categoría ambiental 4 puede extenderse hasta 14 meses.
+NOTA: Fase 4 (Permiso Municipal + Registro Comercializador) NO está incluida en el Paquete Ancla — es servicio adicional cotizado por separado cuando el cliente quiera comercializar oro legalmente.
+
+SERVICIO NO OFRECIDO — CONSTITUCIÓN DE EMPRESA
+La constitución de empresa NO es servicio CHT. Si el cliente la solicita, derivalo a abogado externo.
+NUNCA prometas constituir empresas como parte de los servicios de CHT.
 
 SERVICIO 2 — TITULACIÓN DE PROPIEDAD
 Precio base: L 60,000 (cubre hasta 2 manzanas)
@@ -77,6 +165,17 @@ El pago se realiza a través de Finacoop.
 Requisito: el minero debe tener permiso vigente o en trámite y estar registrado en CHT.
 
 ═══════════════════════════════════
+BENEFICIOS FORMALES PARA CLIENTES CHT
+═══════════════════════════════════
+Mencionalos cuando el cliente avance en el proceso o pregunte por ventajas concretas de formalizarse:
+
+1. Cuenta bancaria de minería en Finacoop, denominada en lempiras — bancarización formal del minero, paso clave para salir de la informalidad.
+2. Depósito automático del pago por oro a esa cuenta el mismo día de la transacción — sin intermediarios, sin atrasos.
+
+CONDICIÓN NO NEGOCIABLE: el depósito automático REQUIERE Certificado de Origen legal vigente. Sin certificado, no hay pago.
+Presentá esta condición como mecanismo de PROTECCIÓN y trazabilidad del cliente — nunca como restricción punitiva. Es lo que da valor jurídico al oro extraído y protege al minero ante autoridades.
+
+═══════════════════════════════════
 PROCESO 1 — FORMALIZACIÓN MINERA (4 Fases)
 ═══════════════════════════════════
 
@@ -84,7 +183,7 @@ FASE 0 — ONBOARDING (Pasos 1-6)
 Paso 1: Verificación de que el área no esté bajo otro derecho minero (SIMHON/INHGEOMIN)
 Paso 2: Evaluación de situación de tierra (titular, arrendatario con título, arrendatario sin título)
 Paso 3: Firma del contrato de consultoría CHT
-Paso 4: Cobro Hito 1 — L 320,000. NINGÚN trámite comienza sin este pago confirmado.
+Paso 4: Cobro Hito 1 — L 640,000 (40% anticipo). NINGÚN trámite comienza sin este pago confirmado.
 Paso 5: Apertura del expediente en el sistema mape.legal
 Paso 6: Visita de campo inicial — coordinadas UTM, fotos georeferenciadas, categoría ambiental
 
@@ -95,7 +194,7 @@ Paso 9: Presentación en INHGEOMIN — número de expediente oficial
 Paso 10: Publicación en La Gaceta y diario nacional — plazo máximo 5 días para presentar
 Paso 11: Período de oposición — 15 días hábiles
 Paso 12: Constancia de Solicitud INHGEOMIN — habilitante para SERNA
-Paso 13: Cobro Hito 2 — L 480,000
+Paso 13: Preparación de documentación SERNA (Hito 2 ya NO se cobra aquí — el cobro se trasladó al ingreso del expediente a SERNA, paso 25)
 
 FASE 2 — LICENCIA AMBIENTAL SERNA/SLAS-2 (Pasos 14-27)
 16 requisitos que deben presentarse COMPLETOS — SERNA no revisa expedientes incompletos.
@@ -105,7 +204,7 @@ Paso 15: Herramienta técnica ambiental (10-15 días Cat 1-3; 30-60 días Cat 4)
 Paso 19: Garantía bancaria — EXCLUSIVO CLIENTE (Bancos: Atlántida, BAC, Ficohsa, Banpaís)
 Paso 20: Pago al Fondo Rotatorio DECA en BANADESA — CLIENTE paga directamente
 Paso 24: Pago T.G.R. 1 — EXCLUSIVO CLIENTE — máximo 10 días desde que SERNA confirma
-Paso 25: Presentación expediente completo a SERNA
+Paso 25: Presentación expediente completo a SERNA — Cobro Hito 2 (L 640,000, 40%)
 Paso 27: Obtención Licencia Ambiental
 
 FASE 3 — RESOLUCIÓN Y TÍTULO INHGEOMIN (Pasos 28-32)
@@ -113,13 +212,14 @@ Paso 28: Presentación de licencia ambiental a INHGEOMIN
 Paso 29: Seguimiento en unidades técnicas (30-60 días proceso interno)
 Paso 30: Resolución de Otorgamiento
 Paso 31: Inscripción en Registro Minero
-Paso 32: Entrega del Título de Permiso al cliente
+Paso 32: Entrega del Título de Permiso (INHGEOMIN) y Licencia Ambiental (SERNA) al cliente — Cobro Hito 3 (L 320,000, 20%) — FIN DEL PAQUETE ANCLA
 
-FASE 4 — PERMISO MUNICIPAL Y COMERCIALIZADOR (Pasos 33-38)
+FASE 4 — PERMISO MUNICIPAL Y COMERCIALIZADOR (Pasos 33-38) — SERVICIO ADICIONAL FUERA DEL PAQUETE ANCLA
+Esta fase NO está incluida en los L 1,600,000 del Paquete Ancla. Se cotiza por separado y se ofrece al cliente cuando ya tiene el permiso minero y la licencia ambiental, y quiere comercializar oro legalmente.
 Paso 33-34: Permiso de operación — Alcaldía de Iriona (15-30 días)
 Paso 35: Registro de Comercializador INHGEOMIN — SIN ESTE REGISTRO EL MINERO NO PUEDE VENDER ORO LEGALMENTE
 Paso 36: Verificación Índice de Legalidad (5 componentes en verde)
-Paso 37: Cobro Hito 3 — L 800,000
+Paso 37: Pago de honorarios del servicio adicional (cotización separada — no es Hito 3 del Paquete Ancla)
 Paso 38: Cierre del expediente y entrega de documentos completos al cliente
 
 ═══════════════════════════════════
@@ -161,6 +261,18 @@ CHT ASESORA pero NO puede ejecutar estos pasos por el cliente:
 - Presencia personal en notaría para el contrato de sociedad
 
 ═══════════════════════════════════
+CONTACTO INSTITUCIONAL CHT
+═══════════════════════════════════
+Cuando el cliente pida hablar con una persona, derive consultas legales o necesite atención humana, ofrécele estos canales:
+- Correo: gerencia@mape.legal (canal preferido para consultas formales y respuesta documentada)
+- WhatsApp directo: +504 9737 3139 (urgencias)
+- Oficina: Local Nexcrea — Condominios Metrópolis, Torre 1, Nivel 18, Boulevard Suyapa, Tegucigalpa, Francisco Morazán
+
+Reglas de uso:
+- NUNCA prometas que alguien va a contactar al cliente. Ofrecé estos canales como acción que el CLIENTE toma.
+- Si la consulta excede tu alcance, derivá explícitamente: "Eso lo ve el equipo legal. Escribí a gerencia@mape.legal o al WhatsApp +504 9737 3139."
+
+═══════════════════════════════════
 FECHAS CRÍTICAS — NUNCA NEGOCIABLES
 ═══════════════════════════════════
 - Publicación en periódico: presentar a INHGEOMIN/SERNA en máximo 5 días hábiles
@@ -177,11 +289,44 @@ Pregunta primero qué servicio necesita (formalización, titulación o contrato)
 Luego da el precio exacto con el desglose de pagos.
 Menciona que todos los pagos son vía Finacoop.
 
-CUANDO PREGUNTAN POR EL PRECIO DEL ORO (compra CHT):
-Si tienes datos en el bloque PRECIOS DE REFERENCIA, responde con exactitud:
-"El precio de referencia LBMA hoy es [precio LBMA]. CHT compra a [precio_compra_CHT]/gramo (80% del LBMA), pagado via Finacoop en lempiras."
-Si no hay datos en ese bloque: "El precio de compra cambia a diario — ahorita le consulto al equipo y le confirmo hoy mismo."
-NUNCA inventes precios. Solo usa los datos del bloque PRECIOS DE REFERENCIA.
+CUANDO PREGUNTAN POR EL PRECIO DEL ORO (precio del día / precio hoy / precio diario / cuánto pagan):
+Si tienes datos en el bloque PRECIOS DE REFERENCIA, responde EXACTAMENTE con este formato (viñetas, sin saludo, sin parrafada):
+
+- LBMA: [oroLBMA] ([frescuraLabel])
+- CHT compra al 80% precio internacional de bolsa: [oroCompra] por gramo
+- Tipo de cambio: [tipo_cambio]
+
+El pago es vía Finacoop en lempiras.
+
+www.mape.legal
+
+Reglas:
+- Usa los valores TAL CUAL del bloque PRECIOS DE REFERENCIA — no recalcules ni reformatees números.
+- Si no hay [frescuraLabel] disponible, omite los paréntesis (no escribas "()" vacío).
+- NUNCA inventes precios. Si el bloque dice "no disponible": "El precio de compra cambia a diario — ahorita le consulto al equipo y le confirmo hoy mismo."
+
+SI EL CLIENTE MENCIONA UN PESO ESPECIFICO EN GRAMOS:
+Multiplica los gramos por el precio de compra CHT por gramo (del bloque
+PRECIOS DE REFERENCIA). Acepta decimales — "4.5 gramos", "2,75 gramos",
+"medio gramo" (0.5) son TODOS validos. Nunca digas "tengo que consultar"
+si ya tienes el precio por gramo en PRECIOS DE REFERENCIA.
+
+Formato de respuesta:
+"Listo [nombre]. Con [X] gramos de oro al precio de hoy:
+
+- LBMA: [oroLBMA] ([frescuraLabel])
+- CHT compra al 80% precio internacional de bolsa: [oroCompra] por gramo
+- Tipo de cambio: [tipo_cambio]
+- Tus [X] gramos: aproximadamente L [X * precio_por_gramo, 2 decimales con coma de miles]
+
+El pago es vía Finacoop en lempiras.
+
+www.mape.legal"
+
+Reglas estrictas:
+- Si X es decimal (4.5, 2.75, 0.5), usalo tal cual — no redondees.
+- Coma decimal hondureña ("4,5") equivale a punto ("4.5") — interpreta igual.
+- Si NO hay precio en PRECIOS DE REFERENCIA: "El precio cambia a diario, ahorita le consulto al equipo y le confirmo hoy mismo."
 
 CUANDO PREGUNTAN "¿YA TIENES MIS DATOS?" O "¿ESTOY REGISTRADO?":
 Revisa el campo "Perfil completo" en CONTEXTO DEL MINERO ACTIVO.
@@ -197,7 +342,7 @@ Recopila UNO por UNO:
 2. Municipio y zona (si no está en su perfil, no lo pidas de nuevo si ya lo tienes)
 3. Manzanas estimadas del área
 Cuando tengas los 3 datos, responde EXACTAMENTE con este patron:
-"Listo [nombre], registré tu solicitud de [tipo_de_servicio]. El equipo te confirma los detalles en 24 horas."
+"Listo [nombre], registré tu solicitud de [tipo_de_servicio] en el sistema. El equipo CHT la revisará. Si es urgente, escribí a gerencia@mape.legal."
 No agregues nada más a esa respuesta.
 
 CUANDO QUIEREN INICIAR UN TRÁMITE:
@@ -207,7 +352,7 @@ Recopila UNO por UNO:
 3. Situación de su tierra (¿es dueño, arrienda tierra con título, arrienda sin título?)
 4. ¿Ya tiene algún permiso en proceso?
 5. Número de manzanas aproximado
-Cuando tengas todos, di: "Perfecto [nombre], con esa información el equipo CHT puede preparar tu evaluación inicial. ¿Quieres que te contactemos hoy mismo?"
+Cuando tengas todos, di: "Perfecto [nombre], registré tus datos en el sistema. Para que el equipo CHT prepare tu evaluación inicial, ellos revisan las solicitudes en la plataforma. Si es urgente, escribí a gerencia@mape.legal."
 
 CUANDO REPORTAN UNA TRANSACCIÓN DE ORO:
 Recopila UNO por UNO:
@@ -229,13 +374,55 @@ CUANDO EL CLIENTE NO TIENE DOCUMENTOS:
 Explica con calma qué necesita conseguir y por qué.
 Ofrece conectarlos con el equipo para asesoría personalizada.
 
-CIERRES NATURALES HONDUREÑOS:
-- "Dale pues, ahorita le aviso al equipo."
-- "Vaya pues, con mucho gusto le ayudamos."
+CIERRES NATURALES HONDUREÑOS (sin sobre-prometer):
+- "Dale pues, registré tu solicitud en el sistema."
+- "Vaya pues, con mucho gusto te ayudo con la información."
 - "Fijese que si, eso si lo podemos hacer."
-- "No se preocupe, el equipo le llama hoy."
-- "Dale, cualquier cosa me escribe."
+- "Para que el equipo te llame, escribí a gerencia@mape.legal — yo no puedo coordinar llamadas."
 - "Con todo gusto, para eso estamos."
+
+NUNCA cierres con frases que prometan acción humana que no controlás:
+- NO: "Dale pues, ahorita le aviso al equipo." (no podés avisarle a nadie)
+- NO: "No se preocupe, el equipo le llama hoy." (no controlás eso)
+- NO: "Le paso su nombre al ingeniero." (no podés)
+
+═══════════════════════════════════
+NOTIFICACIÓN DIARIA DE PRECIOS (Broadcast de las 8 AM)
+═══════════════════════════════════
+
+Formato OBLIGATORIO — nunca cambies la estructura:
+
+Estimado Socio MAPE
+
+El precio de oro el dia de hoy es:
+- LBMA: $[PRECIO_ORO_USD] USD/oz
+- En Lempiras: L [PRECIO_ORO_LPS] por onza (aprox.)
+
+Tasa de cambio referencia: L [TC] por USD
+
+Precio de compra oro calculado en Lempiras:
+- MAPE LEGAL compra al 80% LBMA
+- L [PRECIO_COMPRA_LPS] por onza estimado
+
+Precios de referencia al [FECHA] — [HORA] Honduras
+Fuentes: [goldapi.io](http://goldapi.io) + BCH referencial
+
+Ver detalles: [www.mape.legal](http://www.mape.legal)
+
+Dale pues, cualquier consulta me escribis.
+
+REGLAS DEL BROADCAST:
+- Usar SIEMPRE "Estimado Socio MAPE" como saludo. Sin nombre personal.
+- Números con formato hondureño: L 245,000.00 (comas de miles, punto decimal).
+- Fecha: "lunes 5 de mayo de 2026" (formato largo en español).
+- Hora: "08:15 AM" (Hora Centroamérica, UTC-6).
+- NUNCA uses emojis.
+- NUNCA agregues comentarios del mercado ni predicciones.
+- NUNCA inventes precios si falla la API — di: "Fijese que hoy no pude traer el precio exacto. Te lo envio en cuanto lo tengamos."
+- El precio de compra es 80% del LBMA. Usar TC del dia.
+- Mostrar SIEMPRE ambos: USD y LPS.
+- El timestamp es la hora exacta en que se armó el mensaje.
+- Link fijo al final: [www.mape.legal](http://www.mape.legal) (no http, sin prefijo).
 
 ═══════════════════════════════════
 MARCO LEGAL — REGLAMENTO MINERÍA HONDURAS
@@ -304,12 +491,51 @@ SANCIONES RÁPIDAS (referencia interna, no recitar completo al cliente):
 ═══════════════════════════════════
 LO QUE MARÍA NUNCA HACE
 ═══════════════════════════════════
-- Inventar fechas exactas de aprobación
-- Garantizar resultados sin contrato firmado
-- Ejecutar trámites que son obligación del cliente
-- Inventar precios si no hay datos en el bloque PRECIOS DE REFERENCIA — si no hay datos, di que el equipo confirma hoy
-- Compartir información de otros clientes
-- Comprometerse con trámites en áreas protegidas, territorios indígenas o con derechos mineros previos`;
+- Inventar fechas exactas de aprobación. Da rangos estimados, nunca días concretos.
+- Garantizar resultados sin contrato firmado.
+- Decir que un permiso "está asegurado" antes de su emisión formal.
+- Ejecutar trámites que son obligación del cliente.
+- Inventar precios si no hay datos en el bloque PRECIOS DE REFERENCIA — si no hay datos, di que el equipo confirma hoy.
+- Cotizar servicios o precios distintos a los registrados en este prompt. Las tarifas son las que están aquí.
+- Decir "formalización minera" sin especificar los DOS permisos (INHGEOMIN + SERNA). Siempre menciona ambos.
+- Ofrecer constitución de empresas como servicio CHT — NO lo es. Derivá a abogado externo.
+- Saltarse la captura de información del cliente (nombre, municipio, situación de tierra).
+- Asumir que el cliente conoce la terminología regulatoria. Explicá con palabras simples.
+- Hacer sentir al cliente avergonzado por su situación informal previa. Validá sin juzgar.
+- Compartir información de otros clientes.
+- Comprometerse con trámites en áreas protegidas, territorios indígenas o con derechos mineros previos.
+
+═══════════════════════════════════
+LO QUE MARÍA SIEMPRE HACE
+═══════════════════════════════════
+- Es paciente, didáctica y respetuosa. Tono profesional, nunca paternalista.
+- Distingue explícitamente INHGEOMIN (permiso minero) de SERNA (licencia ambiental) cada vez que menciona la formalización.
+- Captura primero el nombre del cliente, luego los demás datos.
+- Valida la situación del cliente sin emitir juicios sobre su informalidad histórica.
+- Explica la secuencia de relojería cuando es relevante para corregir expectativas.
+- Transmite respaldo institucional sin sobreprometer.
+- Registra cada conversación en la tabla conversaciones_whatsapp (memoria automática del sistema).
+- Registra transacciones de oro pendientes en transacciones_pendientes.
+- Ofrece derivar al cliente con un asesor humano de CHT cuando la consulta exceda su alcance — gerencia@mape.legal o WhatsApp +504 9737 3139.
+
+═══════════════════════════════════
+FRASE ANCLA — SÍNTESIS DEL VALOR CHT
+═══════════════════════════════════
+Cuando un cliente pregunte qué hace CHT, podés usar esta síntesis (adaptala al contexto, no la cites textual cada vez):
+
+"CHT acompaña a los mineros artesanales hondureños a legalizar sus operaciones. Gestionamos en paralelo el permiso de explotación de pequeña minería en INHGEOMIN y la licencia ambiental en SERNA, con respaldo directo de las autoridades competentes. El proceso completo toma entre 6 y 10 meses, dependiendo de la velocidad con que usted entregue su documentación."
+
+═══════════════════════════════════
+MANUAL OPERATIVO 2026 — BASE DE DATOS
+═══════════════════════════════════
+Cuando alguien pregunte por un paso específico ("¿qué dice el paso 7?",
+"¿quién es responsable del paso 14?", "¿qué documentos necesito en el paso 19?"),
+el sistema puede inyectar un bloque REFERENCIA MANUAL OPERATIVO con datos exactos
+de la base de datos. Si ese bloque aparece en esta sesión, úsalo como fuente primaria:
+cita el número de paso, el responsable y el plazo con exactitud.
+Si el bloque NO aparece (pregunta fuera de los pasos cargados), responde con la
+información general que ya tienes arriba — nunca inventes detalles específicos
+de documentos, plazos o entregables que no estén en ese bloque.`;
 
 function buildExpedienteContext(exps) {
   const FASE_NOMBRES = [
@@ -337,7 +563,97 @@ Cuando el cliente pregunte por el avance de su trámite, usa esta información. 
   }).join('\n');
 }
 
-export const dynamic = 'force-dynamic';
+// ─── Manual Operativo 2026 lookup ─────────────────────────────────────────────
+// Triggers when the user asks about a specific paso, the Manual Operativo,
+// or who is responsible for a step. Uses the existing service-role client.
+
+const MANUAL_TRIGGERS = /\bpaso\s+\d+\b|primer\s+paso|siguiente\s+paso|pr[oó]ximo\s+paso|qu[eé]\s+(paso\s+)?sigue|c[oó]mo\s+(empiezo|empezar|inicio|iniciar)|por\s+d[oó]nde\s+(empiezo|empezar|inicio|iniciar)|manual\s+operativo|qu[eé]\s+dice\s+el\s+paso|qui[eé]n\s+es\s+responsable|rol\s+del\s+paso|responsable\s+del\s+paso|encargado\s+del\s+paso/i;
+
+const FIRST_STEP_TRIGGERS  = /primer\s+paso|c[oó]mo\s+(empiezo|empezar|inicio|iniciar)|por\s+d[oó]nde\s+(empiezo|empezar|inicio|iniciar)/i;
+
+// Detect which of the three CHT processes the conversation is about, so we can
+// scope the documentos_referencia query (the table now stores all three:
+// formalizacion 1-38, titulacion 1-9, sociedad 1-7).
+function detectProceso(haystack) {
+  if (/sociedad\s+minera|contrato\s+de\s+sociedad|due\s+diligence/i.test(haystack)) return 'sociedad';
+  if (/titulaci[oó]n|titular(?!.*minero)|propiedad|topograf[ií]a|registro\s+de\s+la\s+propiedad/i.test(haystack)) return 'titulacion';
+  if (/formalizaci[oó]n|inhgeomin|serna|hito\s*[123]|dupai|gaceta|comercializador/i.test(haystack)) return 'formalizacion';
+  return null; // unknown → caller decides default
+}
+
+async function buildManualContext(message, supabaseClient, recentHistory = '') {
+  if (!MANUAL_TRIGGERS.test(message)) return '';
+
+  try {
+    const haystack = `${message}\n${recentHistory}`;
+    // Default to formalización when no service was mentioned — it's the most
+    // common path and the original behaviour of this lookup.
+    const proceso = detectProceso(haystack) ?? 'formalizacion';
+
+    const stepMatch = /\bpaso\s+(\d+)\b/i.exec(message);
+    let stepNum     = stepMatch ? parseInt(stepMatch[1], 10) : null;
+
+    // "primer paso" / "cómo empiezo" → paso 1 of the detected proceso
+    if (!stepNum && FIRST_STEP_TRIGGERS.test(message)) stepNum = 1;
+
+    // Sanitise keyword: strip PostgREST/ILIKE special chars, cap at 40 chars
+    const keyword = message.replace(/[%_\\]/g, '').slice(0, 40).trim();
+
+    let query = supabaseClient
+      .from('documentos_referencia')
+      .select('proceso, paso_numero, titulo_paso, rol, acciones, documentos, plazo, deliverable, advertencias')
+      .eq('proceso', proceso);
+
+    query = stepNum
+      ? query.or(`paso_numero.eq.${stepNum},titulo_paso.ilike.%${keyword}%`)
+      : query.ilike('titulo_paso', `%${keyword}%`);
+
+    const { data, error } = await query.limit(1).single();
+    if (error || !data) return '';
+
+    const procesoLabel = {
+      formalizacion: 'Formalización Minera',
+      titulacion:    'Titulación de Propiedad',
+      sociedad:      'Contrato de Sociedad Minera',
+    }[data.proceso] ?? data.proceso;
+
+    return `\n\nREFERENCIA MANUAL OPERATIVO — ${procesoLabel}, Paso ${data.paso_numero}: ${data.titulo_paso}
+- Responsable: ${data.rol ?? 'no especificado'}
+- Acciones: ${data.acciones ?? '—'}
+- Documentos requeridos: ${data.documentos ?? '—'}
+- Plazo: ${data.plazo ?? '—'}
+- Entregable: ${data.deliverable ?? '—'}
+- Advertencias: ${data.advertencias ?? '—'}
+Usa esta información para responder con precisión. No inventes datos fuera de este bloque.`;
+  } catch {
+    return ''; // silent failure — never block María's response
+  }
+}
+
+// ─── RAG: knowledge retrieval from maria_knowledge ────────────────────────────
+// Calls the search_maria_knowledge_fts RPC (Postgres full-text search) to pull
+// the top 3 most relevant chunks for the user's question. Returns a single
+// concatenated string of "[category] title: content" blocks, or null when
+// nothing matches or the RPC fails. Non-blocking by design.
+//
+// TODO: When embeddings are generated in maria_knowledge.embedding,
+// switch to match_maria_knowledge() for semantic similarity search.
+// For now, full-text search (FTS) works well for keyword-heavy mining queries.
+async function retrieveKnowledge(supabaseClient, userMessage) {
+  try {
+    const { data: chunks, error } = await supabaseClient.rpc('search_maria_knowledge_fts', {
+      query_text: userMessage,
+      match_count: 3,
+    });
+    if (error || !chunks?.length) return null;
+    return chunks.map(c => `[${c.category}] ${c.title}: ${c.content}`).join('\n\n');
+  } catch (e) {
+    console.error('RAG retrieve error:', e);
+    return null;
+  }
+}
+
+
 
 export async function POST(request) {
   try {
@@ -389,26 +705,38 @@ Notas: ${exp.notas || 'Sin notas'}`
       const last1h = new Date(now - 60 * 60 * 1000).toISOString();
       const last24h = new Date(now - 24 * 60 * 60 * 1000).toISOString();
       const last7d = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const today = now.toISOString().slice(0, 10);
 
       const [
-        { data: activeHour },
-        { data: active24h },
-        { data: active7d },
-        { count: totalMessages },
-        { data: allClientes },
-        { data: expedientes },
-        { data: transacciones },
-        { data: hitos },
+        activeHourRes,
+        active24hRes,
+        active7dRes,
+        totalMessagesRes,
+        allClientesRes,
+        expedientesRes,
+        transaccionesRes,
+        hitosRes,
+        precioRes,
       ] = await Promise.all([
-        supabase.from('conversaciones_whatsapp').select('numero_whatsapp, created_at').gte('created_at', last1h),
-        supabase.from('conversaciones_whatsapp').select('numero_whatsapp, role, created_at').gte('created_at', last24h),
-        supabase.from('conversaciones_whatsapp').select('numero_whatsapp').gte('created_at', last7d),
-        supabase.from('conversaciones_whatsapp').select('*', { count: 'exact', head: true }),
-        supabase.from('clientes').select('nombre, municipio, situacion_tierra, tipo_mineral, fecha_registro, telefono_whatsapp').order('created_at', { ascending: false }),
-        supabase.from('expedientes').select('estado, tipo, inicio').order('inicio', { ascending: false }),
-        supabase.from('transacciones_pendientes').select('estado, created_at, mensaje_original').order('created_at', { ascending: false }),
-        supabase.from('hitos').select('estado, monto, trigger_evento').order('created_at', { ascending: false }),
+        getSupabase().from('conversaciones_whatsapp').select('numero_whatsapp, created_at').gte('created_at', last1h),
+        getSupabase().from('conversaciones_whatsapp').select('numero_whatsapp, role, created_at').gte('created_at', last24h),
+        getSupabase().from('conversaciones_whatsapp').select('numero_whatsapp').gte('created_at', last7d),
+        getSupabase().from('conversaciones_whatsapp').select('*', { count: 'exact', head: true }),
+        getSupabase().from('clientes').select('nombre, municipio, situacion_tierra, tipo_mineral, fecha_registro, telefono_whatsapp').order('created_at', { ascending: false }),
+        getSupabase().from('expedientes').select('estado, tipo, inicio').order('inicio', { ascending: false }),
+        getSupabase().from('transacciones_pendientes').select('estado, created_at, mensaje_original').order('created_at', { ascending: false }),
+        getSupabase().from('hitos').select('estado, monto, trigger_evento').order('created_at', { ascending: false }),
       ]);
+
+      const activeHour = activeHourRes.data;
+      const active24h = active24hRes.data;
+      const active7d = active7dRes.data;
+      const totalMessages = totalMessagesRes.count;
+      const allClientes = allClientesRes.data;
+      const expedientes = expedientesRes.data;
+      const transacciones = transaccionesRes.data;
+      const hitos = hitosRes.data;
+      const precioLatest = precioRes.data;
 
       const activeHourNumbers = new Set(activeHour?.map(r => r.numero_whatsapp) || []);
       const active24hNumbers = new Set(active24h?.map(r => r.numero_whatsapp) || []);
@@ -446,9 +774,45 @@ Notas: ${exp.notas || 'Sin notas'}`
       const totalCobrado = hitosConfirmados.reduce((sum, h) => sum + (parseFloat(h.monto) || 0), 0);
       const totalPendiente = hitosPendientes.reduce((sum, h) => sum + (parseFloat(h.monto) || 0), 0);
 
+      // Section builders that distinguish "no data" from "query error"
+      const expedientesSection = expedientesRes.error
+        ? `Error leyendo expedientes: ${expedientesRes.error.message}`
+        : totalExpedientes === 0
+          ? 'Total expedientes: 0\n→ No hay expedientes registrados. Sistema operativo, esperando piloto Iriona o registros nuevos.'
+          : `Total expedientes: ${totalExpedientes}\n\nPor estado:\n${Object.entries(expByEstado).map(([k, v]) => `- ${k}: ${v}`).join('\n')}\n\nPor servicio:\n${Object.entries(expByServicio).map(([k, v]) => `- ${k}: ${v}`).join('\n')}`;
+
+      const transaccionesSection = transaccionesRes.error
+        ? `Error leyendo transacciones: ${transaccionesRes.error.message}`
+        : (transacciones?.length ?? 0) === 0
+          ? 'Pendientes de revision: 0\n→ Sin transacciones registradas.'
+          : `Pendientes de revision: ${pendingTx.length}\nUltimas transacciones:\n${recentTx.map(t => `- ${t.created_at?.slice(0, 10)}: ${t.estado}`).join('\n')}`;
+
+      const hitosSection = hitosRes.error
+        ? `Error leyendo hitos: ${hitosRes.error.message}`
+        : (hitos?.length ?? 0) === 0
+          ? 'Total cobrado confirmado: L 0\nHitos pendientes de cobro: 0\n→ Sin hitos registrados.'
+          : `Total cobrado confirmado: L ${totalCobrado.toLocaleString('es-HN')}\nHitos pendientes de cobro: ${hitosPendientes.length}\nMonto pendiente total: L ${totalPendiente.toLocaleString('es-HN')}`;
+
+      // Price freshness section
+      let preciosSection;
+      if (precioRes.error || !precioLatest) {
+        preciosSection = `Sin precio registrado.\nVerificar API de precios o cron de broadcast.`;
+      } else {
+        const isToday = precioLatest.fecha === today;
+        const fetchedAtStr = precioLatest.fetched_at
+          ? new Date(precioLatest.fetched_at).toLocaleString('es-HN', { timeZone: 'America/Tegucigalpa' })
+          : 'fecha de obtención desconocida';
+        preciosSection =
+`${isToday ? 'PRECIO ORO HOY' : `ULTIMO REGISTRO (${precioLatest.fecha})`}
+LBMA: $${precioLatest.oro ?? 'N/D'} USD/oz
+Tasa: L ${precioLatest.usd_hnl ?? 'N/D'}/USD
+Fuente: ${precioLatest.fuente ?? 'N/D'}
+Obtenido: ${fetchedAtStr}${!isToday ? '\n⚠️ ALERTA: Precio no actualizado hoy. Revisar cron de broadcast.' : ''}`;
+      }
+
       const report1 =
 `CHT EXECUTIVE REPORT
-${now.toLocaleDateString('es-HN')} ${now.toLocaleTimeString('es-HN')}
+${now.toLocaleString('es-HN', { timeZone: 'America/Tegucigalpa' })}
 ━━━━━━━━━━━━━━━━━━━━
 MARIA / WHATSAPP
 Conversaciones activas ahora: ${activeHourNumbers.size}
@@ -458,38 +822,26 @@ Mensajes recibidos hoy: ${userMessages24h}
 Total mensajes historico: ${totalMessages || 0}
 ━━━━━━━━━━━━━━━━━━━━
 CLIENTES REGISTRADOS
-Total: ${totalClientes}
-Recientes:
-${recentClientes.map(c => `- ${c.nombre} (${c.municipio || 'sin municipio'})`).join('\n') || '- Sin clientes aun'}
+${allClientesRes.error ? `Error: ${allClientesRes.error.message}` : `Total: ${totalClientes}`}
+${totalClientes > 0 ? `Recientes:\n${recentClientes.map(c => `- ${c.nombre} (${c.municipio || 'sin municipio'})`).join('\n')}` : '→ Sin clientes registrados todavia.'}
 
-Por municipio:
-${Object.entries(byMunicipio).map(([k, v]) => `- ${k}: ${v}`).join('\n') || '- Sin datos'}
-
-Por situacion de tierra:
-${Object.entries(bySituacion).map(([k, v]) => `- ${k}: ${v}`).join('\n') || '- Sin datos'}`;
+${totalClientes > 0 ? `Por municipio:\n${Object.entries(byMunicipio).map(([k, v]) => `- ${k}: ${v}`).join('\n')}\n\nPor situacion de tierra:\n${Object.entries(bySituacion).map(([k, v]) => `- ${k}: ${v}`).join('\n')}` : ''}`;
 
       const report2 =
 `━━━━━━━━━━━━━━━━━━━━
 EXPEDIENTES ACTIVOS
-Total expedientes: ${totalExpedientes}
-
-Por estado:
-${Object.entries(expByEstado).map(([k, v]) => `- ${k}: ${v}`).join('\n') || '- Sin expedientes'}
-
-Por servicio:
-${Object.entries(expByServicio).map(([k, v]) => `- ${k}: ${v}`).join('\n') || '- Sin datos'}
+${expedientesSection}
 ━━━━━━━━━━━━━━━━━━━━
 TRANSACCIONES DE ORO
-Pendientes de revision: ${pendingTx.length}
-Ultimas transacciones:
-${recentTx.map(t => `- ${t.created_at?.slice(0, 10)}: ${t.estado}`).join('\n') || '- Sin transacciones'}`;
+${transaccionesSection}
+━━━━━━━━━━━━━━━━━━━━
+PRECIOS
+${preciosSection}`;
 
       const report3 =
 `━━━━━━━━━━━━━━━━━━━━
 FACTURACION Y PAGOS
-Total cobrado confirmado: L ${totalCobrado.toLocaleString('es-HN')}
-Hitos pendientes de cobro: ${hitosPendientes.length}
-Monto pendiente total: L ${totalPendiente.toLocaleString('es-HN')}
+${hitosSection}
 ━━━━━━━━━━━━━━━━━━━━
 REGULACIONES
 INHGEOMIN: Operativo. Ventanilla presencial Tegucigalpa.
@@ -523,7 +875,7 @@ Comandos disponibles:
       .select("role, content")
       .eq("numero_whatsapp", fromNumber)
       .order("created_at", { ascending: true })
-      .limit(20);
+      .limit(40);
 
     const conversationHistory = history || [];
     console.log('History found:', conversationHistory.length, 'messages');
@@ -562,22 +914,28 @@ Comandos disponibles:
     try {
       const { data: cached } = await supabase
         .from('precios_diarios')
-        .select('oro, plata, usd_hnl, fecha')
+        .select('oro, plata, usd_hnl, fecha, fetched_at, fuente')
         .eq('fecha', today)
         .single();
       if (cached?.oro) {
         preciosHoy = cached;
-        console.log('Precios from cache:', `oro=${cached.oro}`);
+        console.log('Precios from cache:', `oro=${cached.oro} fetched_at=${cached.fetched_at}`);
       }
     } catch { /* table may not exist or be empty — fall through to live fetch */ }
 
     if (!preciosHoy) {
-      // Use the same proven 2-call approach as /api/prices (PriceWidgets landing page)
       try {
-        const live = await fetchLiveMetalPrices();
-        if (live.gold) {
-          preciosHoy = { oro: live.gold, plata: live.silver, usd_hnl: live.hnlPerUsd, fecha: today };
-          console.log('Precios fetched live:', `oro=${live.gold} usd_hnl=${live.hnlPerUsd}`);
+        const live = await fetchAllPrices();
+        if (live.oro) {
+          preciosHoy = {
+            oro: live.oro,
+            plata: live.plata,
+            usd_hnl: live.usd_hnl,
+            fecha: today,
+            fetched_at: live.fetched_at,
+            fuente: live.fuente,
+          };
+          console.log('Precios fetched live:', `oro=${live.oro} usd_hnl=${live.usd_hnl} fuente=${live.fuente}`);
           // Best-effort DB cache write — non-fatal
           fetchAndStorePrices().catch(e => console.log('Price DB cache failed (non-fatal):', e.message));
         }
@@ -586,20 +944,45 @@ Comandos disponibles:
       }
     }
 
-    const oroLBMA   = preciosHoy?.oro    != null ? `$${Number(preciosHoy.oro).toFixed(2)} USD/oz troy`   : null;
+    const fmt = (n, d = 2) => Number(n).toLocaleString('en-US', {
+      minimumFractionDigits: d,
+      maximumFractionDigits: d,
+    });
+    const oroLBMA   = preciosHoy?.oro    != null ? `$${fmt(preciosHoy.oro)} USD/oz troy`   : null;
     const oroCompra = (preciosHoy?.oro != null && preciosHoy?.usd_hnl != null)
-      ? `L ${(preciosHoy.oro * 0.80 * preciosHoy.usd_hnl / 31.1035).toFixed(2)}/gramo`
+      ? `L ${fmt(preciosHoy.oro * 0.80 * preciosHoy.usd_hnl / 31.1035)}/gramo`
       : null;
-    const plataLBMA = preciosHoy?.plata  != null ? `$${Number(preciosHoy.plata).toFixed(2)} USD/oz troy` : null;
+    const plataLBMA = preciosHoy?.plata  != null ? `$${fmt(preciosHoy.plata)} USD/oz troy` : null;
 
+    // Freshness label for the price block
+    let frescuraLabel = '';
+    if (preciosHoy?.fetched_at) {
+      try {
+        const fetchedDate = new Date(preciosHoy.fetched_at);
+        const horaHN = fetchedDate.toLocaleTimeString('es-HN', {
+          timeZone: 'America/Tegucigalpa',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        });
+        const fechaFetched = fetchedDate.toISOString().slice(0, 10);
+        frescuraLabel = fechaFetched === today
+          ? `actualizado hoy ${horaHN}`
+          : `último registro ${fechaFetched} ${horaHN}`;
+      } catch { frescuraLabel = ''; }
+    }
+
+    const tipoCambio = preciosHoy?.usd_hnl != null ? `L ${fmt(preciosHoy.usd_hnl)}/USD` : null;
     const priceContext = preciosHoy
-      ? `\n\nPRECIOS DE REFERENCIA (${preciosHoy.fecha ?? 'hoy'}):
+      ? `\n\nPRECIOS DE REFERENCIA (${preciosHoy.fecha ?? 'hoy'}${frescuraLabel ? ` — ${frescuraLabel}` : ''}):
 - Oro LBMA: ${oroLBMA ?? 'no disponible'}
 - Precio de compra CHT (80% LBMA): ${oroCompra ?? 'el equipo confirma hoy'}
 - Plata LBMA: ${plataLBMA ?? 'no disponible'}
-- Tipo de cambio: ${preciosHoy.usd_hnl != null ? `L ${preciosHoy.usd_hnl}/USD` : 'no disponible'}
-Cuando el cliente pregunte por precios del oro, usa estos valores. Aclara que CHT paga al 80% del precio LBMA del dia, en lempiras al tipo de cambio BCH.`
-      : `\n\nPRECIOS DE REFERENCIA: No hay datos de precios cargados hoy. Si el cliente pregunta por precio de compra del oro, di: "El precio cambia a diario — ahorita le consulto al equipo y le confirmo hoy mismo."`;
+- Tipo de cambio: ${tipoCambio ?? 'no disponible'}
+- Frescura: ${frescuraLabel || 'no disponible'}
+${preciosHoy.fuente ? `- Fuente: ${preciosHoy.fuente}` : ''}
+El formato canónico de respuesta para precio del día está en CUANDO PREGUNTAN POR EL PRECIO DEL ORO — síguelo al pie de la letra (3 viñetas + Finacoop + www.mape.legal). No agregues una línea extra de frescura al final: ya va inline con LBMA.`
+      : `\n\nPRECIOS DE REFERENCIA: No hay datos de precios cargados hoy. Si el cliente pregunta por precio de compra del oro, di: "Hoy no tengo el precio cargado en el sistema. Para precio actualizado escribí a gerencia@mape.legal."`;
 
     // --- Query expedientes linked to this client ---
     let expedienteContext = '';
@@ -621,7 +1004,7 @@ Cuando el cliente pregunte por precios del oro, usa estos valores. Aclara que CH
       if (exps?.length) {
         expedienteContext = buildExpedienteContext(exps);
       } else {
-        expedienteContext = `\nEXPEDIENTE: Este cliente no tiene expediente activo todavía. Si pregunta por su trámite, explícale el proceso de Fase 0 y el Hito 1 de L 320,000 para iniciarlo.`;
+        expedienteContext = `\nEXPEDIENTE: Este cliente no tiene expediente activo todavía. Si pregunta por su trámite, explícale el proceso de Fase 0 y el Hito 1 de L 640,000 (40% anticipo del Paquete Ancla L 1,600,000) para iniciarlo.`;
       }
     }
 
@@ -657,7 +1040,7 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
     if (isAdmin && broadcastUser) {
       const cmdReply = await interpretAndExecute(broadcastUser, incomingMessage);
       if (cmdReply !== null) {
-        await supabase.from("conversaciones_whatsapp").insert([
+        await getSupabase().from("conversaciones_whatsapp").insert([
           { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
           { numero_whatsapp: fromNumber, role: "assistant", content: cmdReply },
         ]);
@@ -672,37 +1055,47 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
     // Wrapped in try/catch so a missing onboarding_states table or any DB error
     // gracefully falls through to the normal María flow instead of erroring.
     if (!isAdmin) {
-      try {
-        const onboardingState = await getOnboardingState(cleanNumber);
-        if (!cliente && onboardingState === null) {
-          const firstQ = await startOnboarding(cleanNumber);
-          await supabase.from("conversaciones_whatsapp").insert([
-            { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
-            { numero_whatsapp: fromNumber, role: "assistant", content: firstQ },
-          ]);
-          return new Response(
-            `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(firstQ)}</Message></Response>`,
-            { status: 200, headers: { "Content-Type": "text/xml" } }
-          );
-        }
-        if (onboardingState && onboardingState.estado !== 'COMPLETE') {
-          const reply = await handleOnboarding(cleanNumber, incomingMessage);
-          await supabase.from("conversaciones_whatsapp").insert([
-            { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
-            { numero_whatsapp: fromNumber, role: "assistant", content: reply },
-          ]);
-          return new Response(
-            `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(reply)}</Message></Response>`,
-            { status: 200, headers: { "Content-Type": "text/xml" } }
-          );
-        }
-      } catch (onboardingErr) {
-        console.log('Onboarding unavailable, falling through to María:', onboardingErr.message);
-        // Fall through to normal María flow
+      const onboardingState = await getOnboardingState(cleanNumber);
+      if (!cliente && onboardingState === null) {
+        const firstQ = await startOnboarding(cleanNumber);
+        await getSupabase().from("conversaciones_whatsapp").insert([
+          { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
+          { numero_whatsapp: fromNumber, role: "assistant", content: firstQ },
+        ]);
+        return new Response(
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(firstQ)}</Message></Response>`,
+          { status: 200, headers: { "Content-Type": "text/xml" } }
+        );
+      }
+      if (onboardingState && onboardingState.estado !== 'COMPLETE') {
+        const reply = await handleOnboarding(cleanNumber, incomingMessage);
+        await getSupabase().from("conversaciones_whatsapp").insert([
+          { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
+          { numero_whatsapp: fromNumber, role: "assistant", content: reply },
+        ]);
+        return new Response(
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(reply)}</Message></Response>`,
+          { status: 200, headers: { "Content-Type": "text/xml" } }
+        );
       }
     }
 
-    const dynamicPrompt = CHT_SYSTEM_PROMPT + priceContext + clienteContext + expedienteContext + (isNewConversation
+    // --- Manual Operativo 2026 lookup (keyword-triggered, non-blocking) ---
+    // Pass the last 6 turns so buildManualContext can tell which service the
+    // client has been discussing (formalización vs titulación vs sociedad).
+    const recentHistoryText = conversationHistory
+      .slice(-6)
+      .map(m => `${m.role}: ${m.content}`)
+      .join('\n');
+    const manualContext = await buildManualContext(incomingMessage, supabase, recentHistoryText);
+
+    // --- RAG: retrieve top-3 relevant chunks from maria_knowledge (FTS) ---
+    const knowledgeContext = await retrieveKnowledge(supabase, incomingMessage);
+    const ragBlock = knowledgeContext
+      ? `\n\nCONTEXTO DEL SISTEMA (información relevante para esta consulta):\n${knowledgeContext}\n\nUsa esta información para responder precisamente. Si no puedes responder con esta información, di que consultarás con el equipo técnico.`
+      : '';
+
+    const dynamicPrompt = CHT_SYSTEM_PROMPT + priceContext + clienteContext + expedienteContext + manualContext + ragBlock + (isNewConversation
       ? ''
       : `
 
@@ -737,7 +1130,7 @@ Responde DIRECTAMENTE a lo que acaba de decir el usuario.`);
       getOrCreateUserByPhone(cleanNumber, cliente?.nombre ?? undefined).catch(() => {});
     }
 
-    const { error: insertError } = await supabase.from("conversaciones_whatsapp").insert([
+    const { error: insertError } = await getSupabase().from("conversaciones_whatsapp").insert([
       { numero_whatsapp: fromNumber, role: "user", content: incomingMessage },
       { numero_whatsapp: fromNumber, role: "assistant", content: assistantReply },
     ]);
@@ -796,7 +1189,7 @@ Accion requerida: Llamar o escribir al cliente hoy.`;
     if (!cliente && assistantReply.includes('te voy a registrar')) {
       const nombreDetectado = incomingMessage.trim();
       if (nombreDetectado.length > 3 && nombreDetectado.length < 60) {
-        await supabase.from('clientes').insert([{
+        await getSupabase().from('clientes').insert([{
           nombre: nombreDetectado,
           telefono_whatsapp: cleanNumber,
           municipio: 'Iriona, Colón',
@@ -876,7 +1269,7 @@ Si algún dato no está claramente mencionado, deja null.`
     }
 
     if (assistantReply.includes("Listo") && assistantReply.includes("Confirmas")) {
-      await supabase.from("transacciones_pendientes").insert([{
+      await getSupabase().from("transacciones_pendientes").insert([{
         numero_whatsapp: fromNumber,
         mensaje_original: incomingMessage,
         respuesta_asistente: assistantReply,
@@ -887,8 +1280,7 @@ Si algún dato no está claramente mencionado, deja null.`
     // --- Detect new expediente intake pattern ---
     if (
       assistantReply.includes("Listo") &&
-      assistantReply.includes("registré tu solicitud de") &&
-      assistantReply.includes("El equipo te confirma los detalles en 24 horas")
+      assistantReply.includes("registré tu solicitud de")
     ) {
       const tipoMatch = assistantReply.match(/registré tu solicitud de ([^.]+)\./i);
       const tipoServicio = tipoMatch ? tipoMatch[1].trim() : 'servicio no especificado';

@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/services/adminSupabase';
+import { requireRole } from '@/lib/serverAuth';
 
 export async function GET() {
+  const auth = await requireRole('admin');
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const admin = getAdminClient();
     const { data, error } = await admin
@@ -18,6 +22,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const auth = await requireRole('admin');
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { nombre, descripcion, permisos } = await req.json();
     if (!nombre) {

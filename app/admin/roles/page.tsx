@@ -34,6 +34,7 @@ export default function RolesPage() {
     finally { setLoading(false); }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   async function handleCreate(e: React.FormEvent) {
@@ -81,12 +82,12 @@ export default function RolesPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white">Roles y permisos</h1>
-          <p className="text-sm font-sans mt-0.5" style={{ color: '#A3AAB3' }}>
+          <p className="text-sm font-sans mt-0.5" style={{ color: '#A3A8AB' }}>
             Gestión de roles del sistema y sus permisos de acceso
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={load} className="p-2 rounded-lg hover:bg-white/10 transition-colors cursor-pointer" style={{ color: '#A3AAB3' }}>
+          <button onClick={load} className="p-2 rounded-lg hover:bg-white/10 transition-colors cursor-pointer" style={{ color: '#A3A8AB' }}>
             <RefreshCw size={18} strokeWidth={1.5} />
           </button>
           <button
@@ -101,12 +102,12 @@ export default function RolesPage() {
       </div>
 
       {showForm && (
-        <div className="rounded-xl border p-6 mb-6" style={{ background: '#1F2A44', borderColor: 'rgba(94,107,122,0.3)' }}>
+        <div className="rounded-xl border p-6 mb-6" style={{ background: '#1F2A38', borderColor: 'rgba(94,107,123,0.3)' }}>
           <h2 className="text-base font-semibold text-white mb-4 font-sans">Crear nuevo rol</h2>
           <form onSubmit={handleCreate} className="space-y-4">
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-1 font-sans" style={{ color: '#A3AAB3' }}>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-1 font-sans" style={{ color: '#A3A8AB' }}>
                   Nombre del rol (identificador)
                 </label>
                 <input
@@ -115,11 +116,11 @@ export default function RolesPage() {
                   required
                   placeholder="ej: supervisor_campo"
                   className="w-full px-3 py-2 rounded-lg text-sm font-sans outline-none"
-                  style={{ background: '#162033', border: '1px solid rgba(94,107,122,0.4)', color: 'white' }}
+                  style={{ background: '#1F2A38', border: '1px solid rgba(94,107,123,0.4)', color: 'white' }}
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-1 font-sans" style={{ color: '#A3AAB3' }}>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-1 font-sans" style={{ color: '#A3A8AB' }}>
                   Descripción
                 </label>
                 <input
@@ -127,12 +128,12 @@ export default function RolesPage() {
                   onChange={e => setDescripcion(e.target.value)}
                   placeholder="ej: Supervisor de campo MAPE"
                   className="w-full px-3 py-2 rounded-lg text-sm font-sans outline-none"
-                  style={{ background: '#162033', border: '1px solid rgba(94,107,122,0.4)', color: 'white' }}
+                  style={{ background: '#1F2A38', border: '1px solid rgba(94,107,123,0.4)', color: 'white' }}
                 />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider mb-1 font-sans" style={{ color: '#A3AAB3' }}>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-1 font-sans" style={{ color: '#A3A8AB' }}>
                 Permisos (separados por coma)
               </label>
               <input
@@ -140,7 +141,7 @@ export default function RolesPage() {
                 onChange={e => setPermisos(e.target.value)}
                 placeholder="dashboard:read, expedientes:read"
                 className="w-full px-3 py-2 rounded-lg text-sm font-sans outline-none"
-                style={{ background: '#162033', border: '1px solid rgba(94,107,122,0.4)', color: 'white' }}
+                style={{ background: '#1F2A38', border: '1px solid rgba(94,107,123,0.4)', color: 'white' }}
               />
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {SYSTEM_PERMISOS.map(p => (
@@ -149,7 +150,7 @@ export default function RolesPage() {
                     type="button"
                     onClick={() => setPermisos(prev => prev ? `${prev}, ${p}` : p)}
                     className="px-2 py-0.5 rounded text-xs font-sans cursor-pointer hover:bg-white/10 transition-colors"
-                    style={{ background: 'rgba(94,107,122,0.2)', color: '#A3AAB3' }}
+                    style={{ background: 'rgba(94,107,123,0.2)', color: '#A3A8AB' }}
                   >
                     + {p}
                   </button>
@@ -157,7 +158,7 @@ export default function RolesPage() {
               </div>
             </div>
             {formError && (
-              <p className="text-sm font-sans px-3 py-2 rounded-lg" style={{ color: '#A94442', background: '#F8E5E4' }}>
+              <p className="text-sm font-sans px-3 py-2 rounded-lg" style={{ color: '#B23A3A', background: '#EFD7D5' }}>
                 {formError}
               </p>
             )}
@@ -174,7 +175,7 @@ export default function RolesPage() {
                 type="button"
                 onClick={() => setShowForm(false)}
                 className="px-5 py-2 rounded-lg text-sm font-medium font-sans hover:bg-white/10 transition-colors cursor-pointer"
-                style={{ color: '#A3AAB3' }}
+                style={{ color: '#A3A8AB' }}
               >
                 Cancelar
               </button>
@@ -185,14 +186,14 @@ export default function RolesPage() {
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {loading ? (
-          <p className="col-span-3 text-sm font-sans py-8 text-center" style={{ color: '#A3AAB3' }}>Cargando roles...</p>
+          <p className="col-span-3 text-sm font-sans py-8 text-center" style={{ color: '#A3A8AB' }}>Cargando roles...</p>
         ) : roles.map(rol => (
           <div
             key={rol.id}
             className="rounded-xl border p-5 flex flex-col gap-3"
             style={{
-              background:  '#1F2A44',
-              borderColor: 'rgba(94,107,122,0.3)',
+              background:  '#1F2A38',
+              borderColor: 'rgba(94,107,123,0.3)',
               opacity:     rol.activo ? 1 : 0.55,
             }}
           >
@@ -200,14 +201,14 @@ export default function RolesPage() {
               <div className="flex items-center gap-3">
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: rol.es_sistema ? '#DBEAFE' : '#E6F2EC' }}
+                  style={{ background: rol.es_sistema ? '#D6E2F0' : '#E0EDE3' }}
                 >
-                  <Shield size={18} strokeWidth={1.5} style={{ color: rol.es_sistema ? '#3A6EA5' : '#2F5D50' }} />
+                  <Shield size={18} strokeWidth={1.5} style={{ color: rol.es_sistema ? '#2A6BA8' : '#2F5D50' }} />
                 </div>
                 <div>
                   <div className="text-white font-semibold text-sm font-sans">{rol.nombre}</div>
                   {rol.es_sistema && (
-                    <span className="text-xs font-sans" style={{ color: '#5E6B7A' }}>Rol del sistema</span>
+                    <span className="text-xs font-sans" style={{ color: '#5E6B7B' }}>Rol del sistema</span>
                   )}
                 </div>
               </div>
@@ -215,7 +216,7 @@ export default function RolesPage() {
                 <button
                   onClick={() => toggleActivo(rol)}
                   className="p-1.5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
-                  style={{ color: rol.activo ? '#3E7C59' : '#A3AAB3' }}
+                  style={{ color: rol.activo ? '#2A8E50' : '#A3A8AB' }}
                   title={rol.activo ? 'Desactivar' : 'Activar'}
                 >
                   <Trash2 size={15} strokeWidth={1.5} />
@@ -224,7 +225,7 @@ export default function RolesPage() {
             </div>
 
             {rol.descripcion && (
-              <p className="text-xs font-sans" style={{ color: '#A3AAB3' }}>{rol.descripcion}</p>
+              <p className="text-xs font-sans" style={{ color: '#A3A8AB' }}>{rol.descripcion}</p>
             )}
 
             <div className="flex flex-wrap gap-1.5">
@@ -232,7 +233,7 @@ export default function RolesPage() {
                 <span
                   key={p}
                   className="px-2 py-0.5 rounded text-xs font-sans"
-                  style={{ background: 'rgba(94,107,122,0.2)', color: '#A3AAB3' }}
+                  style={{ background: 'rgba(94,107,123,0.2)', color: '#A3A8AB' }}
                 >
                   {p}
                 </span>
@@ -242,8 +243,8 @@ export default function RolesPage() {
         ))}
       </div>
 
-      <p className="text-xs font-sans mt-6" style={{ color: '#5E6B7A' }}>
-        Los roles del sistema no pueden eliminarse. Los roles personalizados pueden asignarse a usuarios desde la sección <strong style={{ color: '#A3AAB3' }}>Usuarios</strong>.
+      <p className="text-xs font-sans mt-6" style={{ color: '#5E6B7B' }}>
+        Los roles del sistema no pueden eliminarse. Los roles personalizados pueden asignarse a usuarios desde la sección <strong style={{ color: '#A3A8AB' }}>Usuarios</strong>.
       </p>
     </div>
   );

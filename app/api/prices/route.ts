@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchLiveMetalPrices } from '@/services/metalsPriceService';
+import { fetchAllPrices } from '@/services/pricingService';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +15,9 @@ function computeDelta(current: number, previous: number) {
 
 export async function GET() {
   try {
-    const { gold, silver, hnlPerUsd } = await fetchLiveMetalPrices();
+    const precios = await fetchAllPrices();
+    const gold = precios.oro;
+    const silver = precios.plata;
 
     const goldDelta   = gold   !== null && prev.gold   ? computeDelta(gold,   prev.gold)   : { change: 0, changePercent: 0 };
     const silverDelta = silver !== null && prev.silver ? computeDelta(silver, prev.silver) : { change: 0, changePercent: 0 };
@@ -24,11 +26,14 @@ export async function GET() {
     if (silver !== null) prev.silver = silver;
 
     return NextResponse.json({
-      gold:   { price: gold,   ...goldDelta },
-      silver: { price: silver, ...silverDelta },
-      hnlPerUsd,
+      gold:   { price: gold,   ...goldDelta, source: precios.fuente },
+      silver: { price: silver, ...silverDelta, source: precios.fuente },
+      hnlPerUsd: precios.usd_hnl,
+      fetchedAt: precios.fetched_at,
     });
-  } catch {
-    return NextResponse.json({ error: 'fetch_failed' }, { status: 502 });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error('[GET /api/prices]', msg);
+    return NextResponse.json({ error: 'fetch_failed', message: msg }, { status: 502 });
   }
 }

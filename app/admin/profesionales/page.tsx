@@ -24,9 +24,9 @@ const ROL_LABELS: Record<Rol, string> = {
 };
 
 const ROL_COLORS: Record<Rol, { bg: string; text: string }> = {
-  abogado:           { bg: '#DBEAFE', text: '#3A6EA5' },
-  tecnico_ambiental: { bg: '#E6F2EC', text: '#2F5D50' },
-  admin:             { bg: '#F8E5E4', text: '#A94442' },
+  abogado:           { bg: '#D6E2F0', text: '#2A6BA8' },
+  tecnico_ambiental: { bg: '#E0EDE3', text: '#2F5D50' },
+  admin:             { bg: '#EFD7D5', text: '#B23A3A' },
 };
 
 const EMPTY_FORM = {
@@ -58,6 +58,7 @@ export default function ProfesionalesPage() {
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   function openCreate() {
@@ -124,14 +125,14 @@ export default function ProfesionalesPage() {
 
   const field = (key: keyof typeof form, label: string, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
     <div>
-      <label className="block text-xs font-semibold uppercase tracking-wider mb-1 font-sans" style={{ color: '#A3AAB3' }}>
+      <label className="block text-xs font-semibold uppercase tracking-wider mb-1 font-sans" style={{ color: '#A3A8AB' }}>
         {label}
       </label>
       <input
         value={form[key]}
         onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
         className="w-full px-3 py-2 rounded-lg text-sm font-sans outline-none"
-        style={{ background: '#162033', border: '1px solid rgba(94,107,122,0.4)', color: 'white' }}
+        style={{ background: '#1F2A38', border: '1px solid rgba(94,107,123,0.4)', color: 'white' }}
         {...props}
       />
     </div>
@@ -143,7 +144,7 @@ export default function ProfesionalesPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white">Perfiles profesionales</h1>
-          <p className="text-sm font-sans mt-0.5" style={{ color: '#A3AAB3' }}>
+          <p className="text-sm font-sans mt-0.5" style={{ color: '#A3A8AB' }}>
             Abogados y técnicos ambientales asignados a expedientes
           </p>
         </div>
@@ -151,7 +152,7 @@ export default function ProfesionalesPage() {
           <button
             onClick={load}
             className="p-2 rounded-lg transition-colors hover:bg-white/10 cursor-pointer"
-            style={{ color: '#A3AAB3' }}
+            style={{ color: '#A3A8AB' }}
             title="Recargar"
           >
             <RefreshCw size={18} strokeWidth={1.5} />
@@ -159,7 +160,7 @@ export default function ProfesionalesPage() {
           <button
             onClick={openCreate}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold font-sans text-white transition-colors cursor-pointer"
-            style={{ background: '#1F2A44', border: '1px solid rgba(94,107,122,0.4)' }}
+            style={{ background: '#1F2A38', border: '1px solid rgba(94,107,123,0.4)' }}
           >
             <Plus size={16} strokeWidth={2} />
             Nuevo perfil
@@ -169,7 +170,7 @@ export default function ProfesionalesPage() {
 
       {/* Form */}
       {showForm && (
-        <div className="rounded-xl border p-6 mb-6" style={{ background: '#1F2A44', borderColor: 'rgba(94,107,122,0.3)' }}>
+        <div className="rounded-xl border p-6 mb-6" style={{ background: '#1F2A38', borderColor: 'rgba(94,107,123,0.3)' }}>
           <h2 className="text-base font-semibold text-white mb-4 font-sans">
             {editing ? 'Editar perfil' : 'Nuevo perfil profesional'}
           </h2>
@@ -178,14 +179,14 @@ export default function ProfesionalesPage() {
               {field('nombre',    'Nombre completo',  { required: true, placeholder: 'Abg. Ana Rodríguez' })}
               {field('iniciales', 'Iniciales',        { required: true, placeholder: 'AR', maxLength: 4 })}
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-1 font-sans" style={{ color: '#A3AAB3' }}>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-1 font-sans" style={{ color: '#A3A8AB' }}>
                   Rol
                 </label>
                 <select
                   value={form.rol}
                   onChange={e => setForm(f => ({ ...f, rol: e.target.value as Rol }))}
                   className="w-full px-3 py-2 rounded-lg text-sm font-sans outline-none"
-                  style={{ background: '#162033', border: '1px solid rgba(94,107,122,0.4)', color: 'white' }}
+                  style={{ background: '#1F2A38', border: '1px solid rgba(94,107,123,0.4)', color: 'white' }}
                 >
                   <option value="abogado">Abogado</option>
                   <option value="tecnico_ambiental">Técnico ambiental</option>
@@ -200,7 +201,7 @@ export default function ProfesionalesPage() {
             </div>
 
             {formError && (
-              <div className="text-sm font-sans px-3 py-2 rounded-lg" style={{ color: '#A94442', background: '#F8E5E4' }}>
+              <div className="text-sm font-sans px-3 py-2 rounded-lg" style={{ color: '#B23A3A', background: '#EFD7D5' }}>
                 {formError}
               </div>
             )}
@@ -218,7 +219,7 @@ export default function ProfesionalesPage() {
                 type="button"
                 onClick={() => { setShowForm(false); setEditing(null); }}
                 className="px-5 py-2 rounded-lg text-sm font-medium font-sans transition-colors hover:bg-white/10 cursor-pointer"
-                style={{ color: '#A3AAB3' }}
+                style={{ color: '#A3A8AB' }}
               >
                 Cancelar
               </button>
@@ -229,29 +230,29 @@ export default function ProfesionalesPage() {
 
       {/* Error */}
       {error && (
-        <div className="rounded-xl px-4 py-3 mb-6 text-sm font-sans" style={{ background: '#F8E5E4', color: '#A94442' }}>
+        <div className="rounded-xl px-4 py-3 mb-6 text-sm font-sans" style={{ background: '#EFD7D5', color: '#B23A3A' }}>
           {error}
         </div>
       )}
 
       {/* Cards grid */}
       {loading ? (
-        <p className="text-sm font-sans py-8 text-center" style={{ color: '#A3AAB3' }}>Cargando perfiles...</p>
+        <p className="text-sm font-sans py-8 text-center" style={{ color: '#A3A8AB' }}>Cargando perfiles...</p>
       ) : perfiles.length === 0 ? (
-        <p className="text-sm font-sans py-8 text-center" style={{ color: '#A3AAB3' }}>
+        <p className="text-sm font-sans py-8 text-center" style={{ color: '#A3A8AB' }}>
           No hay perfiles registrados. Crea el primero.
         </p>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {perfiles.map(p => {
-            const badge = ROL_COLORS[p.rol] ?? { bg: '#F5F6F7', text: '#5E6B7A' };
+            const badge = ROL_COLORS[p.rol] ?? { bg: '#FAF9F5', text: '#5E6B7B' };
             return (
               <div
                 key={p.id}
                 className="rounded-xl border p-5 flex flex-col gap-3"
                 style={{
-                  background:   '#1F2A44',
-                  borderColor:  'rgba(94,107,122,0.3)',
+                  background:   '#1F2A38',
+                  borderColor:  'rgba(94,107,123,0.3)',
                   opacity:      p.activo ? 1 : 0.55,
                 }}
               >
@@ -278,7 +279,7 @@ export default function ProfesionalesPage() {
                   <button
                     onClick={() => openEdit(p)}
                     className="p-1.5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer shrink-0"
-                    style={{ color: '#A3AAB3' }}
+                    style={{ color: '#A3A8AB' }}
                     title="Editar"
                   >
                     <Pencil size={15} strokeWidth={1.5} />
@@ -286,7 +287,7 @@ export default function ProfesionalesPage() {
                 </div>
 
                 {/* Details */}
-                <div className="space-y-1 text-xs font-sans" style={{ color: '#A3AAB3' }}>
+                <div className="space-y-1 text-xs font-sans" style={{ color: '#A3A8AB' }}>
                   {p.especialidad && <div>{p.especialidad}</div>}
                   {p.email       && <div>{p.email}</div>}
                   {p.telefono    && <div>{p.telefono}</div>}
@@ -296,7 +297,7 @@ export default function ProfesionalesPage() {
                 <button
                   onClick={() => toggleActivo(p)}
                   className="flex items-center gap-1.5 text-xs font-semibold font-sans transition-colors cursor-pointer mt-auto"
-                  style={{ color: p.activo ? '#3E7C59' : '#A3AAB3' }}
+                  style={{ color: p.activo ? '#2A8E50' : '#A3A8AB' }}
                 >
                   {p.activo
                     ? <><Check size={13} strokeWidth={2} /> Activo</>
@@ -308,7 +309,7 @@ export default function ProfesionalesPage() {
         </div>
       )}
 
-      <p className="text-xs font-sans mt-6" style={{ color: '#5E6B7A' }}>
+      <p className="text-xs font-sans mt-6" style={{ color: '#5E6B7B' }}>
         Los perfiles activos aparecen disponibles para asignación en nuevos expedientes.
         Desactivar un perfil no afecta los expedientes existentes.
       </p>

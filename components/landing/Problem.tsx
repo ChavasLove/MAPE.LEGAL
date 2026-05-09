@@ -63,7 +63,7 @@ export function Problem() {
           {problems.map(({ icon, title, desc }) => (
             <div
               key={title}
-              className="flex gap-5 p-7 bg-white border border-[#E5E7EB] rounded-xl hover:border-forest-800/30 hover:shadow-sm transition-all"
+              className="flex gap-5 p-7 bg-white border border-[#E2E0D8] rounded-xl hover:border-forest-800/30 hover:shadow-sm transition-all"
             >
               <div className="shrink-0 w-11 h-11 bg-badge-danger-bg text-action-red rounded-xl flex items-center justify-center">
                 {icon}

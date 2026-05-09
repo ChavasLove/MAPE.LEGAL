@@ -69,7 +69,7 @@ export function About() {
           {/* Right — pillars */}
           <div className="grid sm:grid-cols-2 gap-5">
             {pillars.map(({ title, desc }) => (
-              <div key={title} className="p-6 bg-primary-50 rounded-xl border border-[#E5E7EB]">
+              <div key={title} className="p-6 bg-primary-50 rounded-xl border border-[#E2E0D8]">
                 <div className="w-2 h-2 rounded-full bg-forest-800 mb-3" />
                 <h3 className="font-bold text-primary-900 mb-2 font-sans">{title}</h3>
                 <p className="text-primary-500 text-sm leading-relaxed font-sans">{desc}</p>
@@ -80,7 +80,7 @@ export function About() {
         </div>
 
         {/* Standards strip */}
-        <div className="mt-20 pt-12 border-t border-[#E5E7EB]">
+        <div className="mt-20 pt-12 border-t border-[#E2E0D8]">
           <p className="text-center text-primary-300 text-xs uppercase tracking-widest font-semibold mb-8 font-sans">
             Marco normativo y estándares aplicados
           </p>

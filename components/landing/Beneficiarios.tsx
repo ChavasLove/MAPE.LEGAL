@@ -19,8 +19,8 @@ const groups = [
       'Precio sobre referencia LBMA',
       'Protección legal permanente',
     ],
-    color:     '#3A6EA5',
-    badgeBg:   '#DBEAFE',
+    color:     '#2A6BA8',
+    badgeBg:   '#D6E2F0',
   },
   {
     icon: (
@@ -38,8 +38,8 @@ const groups = [
       'Régimen de permanencia protegido',
       'Valorización del activo territorial',
     ],
-    color:     '#3E7C59',
-    badgeBg:   '#E6F2EC',
+    color:     '#2A8E50',
+    badgeBg:   '#E0EDE3',
   },
   {
     icon: (
@@ -59,8 +59,8 @@ const groups = [
       'Trazabilidad georreferenciada',
       'Informes de auditoría disponibles',
     ],
-    color:     '#C49A4A',
-    badgeBg:   '#F5EBDD',
+    color:     '#C58B2C',
+    badgeBg:   '#F4E9D6',
   },
 ];
 
@@ -89,7 +89,7 @@ export function Beneficiarios() {
             <div
               key={title}
               className="bg-white rounded-xl border p-7 flex flex-col"
-              style={{ borderColor: '#E5E7EB' }}
+              style={{ borderColor: '#E2E0D8' }}
             >
               {/* Icon badge */}
               <div
@@ -102,7 +102,7 @@ export function Beneficiarios() {
               <h3 className="text-xl font-bold text-primary-900 mb-2 font-sans">{title}</h3>
               <p className="text-primary-500 text-sm leading-relaxed mb-6 font-sans flex-shrink-0">{desc}</p>
 
-              <ul className="space-y-2.5 border-t border-[#E5E7EB] pt-5 flex-1">
+              <ul className="space-y-2.5 border-t border-[#E2E0D8] pt-5 flex-1">
                 {benefits.map(b => (
                   <li key={b} className="flex items-start gap-2.5 text-sm font-sans text-primary-500">
                     <svg width="15" height="15" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0" style={{ color }}>

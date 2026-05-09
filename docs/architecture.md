@@ -164,9 +164,9 @@ proxy.ts (Next.js 16 middleware replacement)
 
 ## Frontend Design System
 - Font: **Inter** (Google Fonts, loaded via `next/font/google`)
-- Color tokens in `globals.css` `:root`: `--blue`, `--blue-dk`, `--blue-lt`, `--green`, `--amber`, `--t1/t2/t3`, `--bg`, `--bg2`, `--bg3`, `--border`
+- Color tokens in `globals.css` `:root` (MAPE LEGAL Color Manual v1.0): `--ink`, `--ink-2`, `--slate`, `--slate-lt`, `--plum`, `--moss`, `--moss-2`, `--earth`, `--sand`, `--concrete`, `--green`, `--amber`, `--red`, `--blue`, `--bg`, `--bg-soft`, `--t1/t2/t3`, `--border`, `--border-2`. See README §0 / DESIGN.md for canonical hex.
 - Language toggle: React `useState<'es'|'en'>` + `localStorage` persistence; no CSS body-class trick
-- Reference design: institutional style (white + `#1a56db` blue), inspired by Honduran government portal aesthetics
+- Reference design: editorial-institutional ("tinta, piedra, musgo") — ink primary, moss secondary CTA, sand on dark, paper background `#FAF9F5`. No bright Tailwind blues.
 
 ## Design Principles
 - Modular architecture
