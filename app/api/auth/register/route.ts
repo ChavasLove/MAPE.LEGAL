@@ -64,6 +64,20 @@ export async function POST(req: NextRequest) {
       if (msg.includes('already') || msg.includes('registered') || msg.includes('exists')) {
         return NextResponse.json({ error: 'El correo ya está registrado' }, { status: 409 });
       }
+      // Supabase returns "Database error saving new user" when the
+      // on_auth_user_created trigger (migration 015) fails — typically because
+      // migration 017_fix_user_roles_recursion.sql wasn't applied to the
+      // production database, so the recursive RLS policy on user_roles trips
+      // 42P17 inside the trigger and rolls back the auth.users INSERT. This
+      // is a server-side configuration error, not a user input problem;
+      // surface it with a distinct code so it lights up in error monitors.
+      if (msg.includes('database error') || msg.includes('saving new user')) {
+        console.error('[register] trigger failure — likely migration 017_fix_user_roles_recursion.sql not applied to production Supabase. Original error:', linkErr.message);
+        return NextResponse.json(
+          { error: 'No se pudo crear la cuenta. El equipo ya fue notificado.', code: 'TRIGGER_FAILURE' },
+          { status: 500 }
+        );
+      }
       console.error('[register] generateLink failed:', linkErr.message);
       return NextResponse.json({ error: 'Error al crear la cuenta' }, { status: 400 });
     }

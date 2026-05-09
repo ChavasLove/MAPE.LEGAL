@@ -30,8 +30,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Require the service-role key in addition to url+anonKey: the role
+    // lookup below MUST bypass RLS, otherwise the anon client returns 0
+    // rows (auth.uid() is null without a session) and the route surfaces
+    // "Sin rol asignado" — indistinguishable from a real role miss.
     const env = checkAuthEnv();
-    if (!env.ok) {
+    if (!env.ok || env.serviceKey !== 'ok') {
       logAuthEnvFailure('login', env);
       return NextResponse.json(
         { error: 'Configuración de servidor incompleta', code: 'SERVER_CONFIG' },
@@ -40,9 +44,7 @@ export async function POST(req: NextRequest) {
     }
     const url        = process.env.NEXT_PUBLIC_SUPABASE_URL!.trim();
     const anonKey    = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!.trim();
-    const serviceKey = env.serviceKey === 'ok'
-      ? process.env.SUPABASE_SERVICE_ROLE_KEY!.trim()
-      : undefined;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!.trim();
 
     // Authenticate with anon client (validates credentials via Supabase Auth)
     const supabase = createClient(url, anonKey, { auth: { persistSession: false } });
@@ -68,12 +70,13 @@ export async function POST(req: NextRequest) {
     // Fetch role using service role client to bypass RLS — this is safe because:
     // 1. We have already authenticated the user above
     // 2. This code runs server-side only (API route)
-    // Using anon client here can silently return null if the JWT session context
-    // isn't fully propagated (especially with persistSession: false), causing
-    // valid users to see "Sin rol asignado" even when a role exists.
-    const roleClient = serviceKey
-      ? createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } })
-      : supabase; // fallback to anon client if service key not configured
+    // The anon client cannot be used here: with persistSession: false there
+    // is no JWT session context, so auth.uid() is null in RLS and the
+    // "Users can read own role" policy never matches. The env-var guard
+    // above ensures serviceKey is always present at this point.
+    const roleClient = createClient(url, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
     const { data: roleRow, error: roleError } = await roleClient
       .from('user_roles')

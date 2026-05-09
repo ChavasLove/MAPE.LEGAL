@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
+import { checkAuthEnv, logAuthEnvFailure } from '@/lib/authEnv';
 
 // Single source of truth for "is the caller logged in and what role do they have".
 // The auth-role cookie is treated as a hint for proxy.ts only — never trusted by
@@ -39,15 +40,26 @@ function roleLookupClient(): SupabaseClient | null {
 //   - no token cookie is present
 //   - JWT is missing/expired/malformed/signature-invalid (Supabase rejects)
 //   - user_roles row is missing or activo=false
-//   - required env vars are missing
+//   - required env vars are missing (logs to stderr first)
 //
 // Service-role client is used for the role lookup so RLS cannot silently hide
-// the row when the access-token JWT context is not propagated.
+// the row when the access-token JWT context is not propagated. If the
+// service-role key is missing/placeholder we log loudly and return null —
+// callers (layouts, requireRole) treat that as "not authenticated" and
+// redirect to /login, which is safer than silently falling back to the anon
+// client (which would return 0 rows and the same null outcome but without
+// a footprint in Vercel logs).
 export async function getServerAuth(): Promise<AuthContext | null> {
   const store = await cookies();
   const token = store.get('auth-token')?.value
     ?? store.get('admin-token')?.value;
   if (!token) return null;
+
+  const env = checkAuthEnv();
+  if (!env.ok || env.serviceKey !== 'ok') {
+    logAuthEnvFailure('serverAuth', env);
+    return null;
+  }
 
   const validator = validatorClient();
   if (!validator) return null;
@@ -55,7 +67,8 @@ export async function getServerAuth(): Promise<AuthContext | null> {
   const { data: { user }, error } = await validator.auth.getUser(token);
   if (error || !user) return null;
 
-  const roleClient = roleLookupClient() ?? validator;
+  const roleClient = roleLookupClient();
+  if (!roleClient) return null;
   const { data: roleRow } = await roleClient
     .from('user_roles')
     .select('rol, activo')
