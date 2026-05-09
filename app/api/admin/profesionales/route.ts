@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/services/adminSupabase';
+import { requireRole } from '@/lib/serverAuth';
 
 // GET /api/admin/profesionales — list all profiles
 export async function GET() {
+  const auth = await requireRole('admin');
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const admin = getAdminClient();
     const { data, error } = await admin
@@ -20,6 +24,9 @@ export async function GET() {
 
 // POST /api/admin/profesionales — create a new profile
 export async function POST(req: Request) {
+  const auth = await requireRole('admin');
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const body = await req.json();
     const { nombre, iniciales, rol, especialidad, email, telefono } = body;

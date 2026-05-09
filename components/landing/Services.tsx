@@ -44,7 +44,7 @@ const services = [
 
 const CheckIcon = () => (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="shrink-0 mt-0.5">
-    <path d="M3 8l3.5 3.5L13 4" stroke="#C49A4A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M3 8l3.5 3.5L13 4" stroke="#C58B2C" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
@@ -128,7 +128,7 @@ export function Services() {
               <a
                 href="#valor"
                 className="inline-flex items-center justify-center gap-2 font-semibold font-sans px-7 py-3 rounded-lg border transition-colors text-sm"
-                style={{ borderColor: 'rgba(94,107,122,0.4)', color: '#A3AAB3' }}
+                style={{ borderColor: 'rgba(94,107,123,0.4)', color: '#A3A8AB' }}
               >
                 Ver comparación sin / con CHT →
               </a>

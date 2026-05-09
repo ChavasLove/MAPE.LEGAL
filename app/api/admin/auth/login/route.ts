@@ -23,6 +23,10 @@ export async function POST(req: Request) {
       );
     }
 
+    // env.ok now requires url + anonKey + serviceKey (see lib/authEnv.ts).
+    // The role lookup below MUST bypass RLS, so the service-role key is
+    // mandatory — falling back to the anon client returns 0 rows silently
+    // and surfaces "Acceso denegado" indistinguishable from a real role miss.
     const env = checkAuthEnv();
     if (!env.ok) {
       logAuthEnvFailure('admin-login', env);
@@ -31,12 +35,9 @@ export async function POST(req: Request) {
         { status: 500 }
       );
     }
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!.trim();
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!.trim();
-
-    const serviceKey = env.serviceKey === 'ok'
-      ? process.env.SUPABASE_SERVICE_ROLE_KEY!.trim()
-      : undefined;
+    const url        = process.env.NEXT_PUBLIC_SUPABASE_URL!.trim();
+    const key        = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!.trim();
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!.trim();
 
     const supabase = createClient(url, key, { auth: { persistSession: false } });
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -45,12 +46,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Credenciales incorrectas' }, { status: 401 });
     }
 
-    // Verify the user has admin role using service role client to bypass RLS.
-    // Anon client with persistSession:false can silently return null from user_roles
-    // even when a row exists, because the JWT session context may not be propagated.
-    const roleClient = serviceKey
-      ? createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } })
-      : supabase;
+    // Service-role client for the role lookup. Anon client with
+    // persistSession:false has no JWT session context here, so RLS would
+    // evaluate auth.uid() = null and the SELECT would return 0 rows.
+    const roleClient = createClient(url, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
     const { data: roleRow } = await roleClient
       .from('user_roles')

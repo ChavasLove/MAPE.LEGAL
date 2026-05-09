@@ -46,7 +46,7 @@ export function Programs() {
               className={`relative rounded-xl p-8 flex flex-col ${
                 highlight
                   ? 'bg-forest-800 text-white shadow-sm'
-                  : 'bg-white border border-[#E5E7EB]'
+                  : 'bg-white border border-[#E2E0D8]'
               }`}
             >
               {highlight && (

@@ -10,7 +10,7 @@ type Props = {
 }
 
 export default function TopoBand({ variant, position = 'overlay', className }: Props) {
-  const color = variant === 'dark' ? '#2F5D50' : '#162033'
+  const color = variant === 'dark' ? '#2F5D50' : '#1F2A38'
   const opacity = variant === 'dark' ? 0.18 : 0.06
   const isBand = position === 'band'
 

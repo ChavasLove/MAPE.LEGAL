@@ -1,8 +1,8 @@
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { LayoutDashboard, FolderOpen, MessageSquare, Users, Mountain, Settings, LogOut } from 'lucide-react';
+import { getServerAuth, DASHBOARD_ROLES } from '@/lib/serverAuth';
 
 const ROL_LABEL: Record<string, string> = {
   admin:             'Administrador',
@@ -19,30 +19,24 @@ const navItems = [
 ];
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = await cookies();
-
-  const token = cookieStore.get('auth-token')?.value
-    ?? cookieStore.get('admin-token')?.value;
-
-  const role = cookieStore.get('auth-role')?.value
-    ?? (cookieStore.get('admin-token')?.value ? 'admin' : null);
-
-  if (!token || !role || !['admin', 'abogado', 'tecnico_ambiental'].includes(role)) {
+  const auth = await getServerAuth();
+  if (!auth || !DASHBOARD_ROLES.includes(auth.role)) {
     redirect('/login');
   }
 
-  const email = cookieStore.get('user-email')?.value ?? '';
+  const role  = auth.role;
+  const email = auth.user.email ?? '';
 
   return (
-    <div className="min-h-screen flex" style={{ background: '#162033' }}>
+    <div className="min-h-screen flex" style={{ background: '#1F2A38' }}>
 
       {/* Sidebar */}
       <aside
         className="w-64 shrink-0 flex flex-col border-r"
-        style={{ background: '#1F2A44', borderColor: 'rgba(94,107,122,0.3)' }}
+        style={{ background: '#1F2A38', borderColor: 'rgba(94,107,123,0.3)' }}
       >
         {/* Logo */}
-        <div className="flex items-center gap-3 px-6 py-5 border-b" style={{ borderColor: 'rgba(94,107,122,0.3)' }}>
+        <div className="flex items-center gap-3 px-6 py-5 border-b" style={{ borderColor: 'rgba(94,107,123,0.3)' }}>
           <Image
             src="/images/MAPE LEGAL LOGO 1.JPG"
             alt="MAPE.LEGAL"
@@ -52,7 +46,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           />
           <div>
             <div className="text-white font-bold text-sm font-sans">MAPE.LEGAL</div>
-            <div className="text-xs font-sans" style={{ color: '#A3AAB3' }}>Dashboard</div>
+            <div className="text-xs font-sans" style={{ color: '#A3A8AB' }}>Dashboard</div>
           </div>
         </div>
 
@@ -63,7 +57,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
               key={href}
               href={href}
               className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium font-sans transition-colors hover:bg-white/10"
-              style={{ color: '#A3AAB3' }}
+              style={{ color: '#A3A8AB' }}
             >
               <Icon size={18} strokeWidth={1.5} />
               {label}
@@ -72,11 +66,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
           {role === 'admin' && (
             <>
-              <div className="my-3 border-t" style={{ borderColor: 'rgba(94,107,122,0.2)' }} />
+              <div className="my-3 border-t" style={{ borderColor: 'rgba(94,107,123,0.2)' }} />
               <Link
                 href="/admin"
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium font-sans transition-colors hover:bg-white/10"
-                style={{ color: '#A3AAB3' }}
+                style={{ color: '#A3A8AB' }}
               >
                 <Settings size={18} strokeWidth={1.5} />
                 Panel admin
@@ -86,10 +80,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </nav>
 
         {/* User + logout */}
-        <div className="p-4 border-t" style={{ borderColor: 'rgba(94,107,122,0.3)' }}>
+        <div className="p-4 border-t" style={{ borderColor: 'rgba(94,107,123,0.3)' }}>
           <div className="px-3 py-2 mb-1">
             <div className="text-xs font-semibold text-white font-sans truncate">{email || 'Usuario'}</div>
-            <div className="text-xs font-sans mt-0.5" style={{ color: '#A3AAB3' }}>
+            <div className="text-xs font-sans mt-0.5" style={{ color: '#A3A8AB' }}>
               {ROL_LABEL[role] ?? role}
             </div>
           </div>
@@ -97,7 +91,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <button
               type="submit"
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium font-sans transition-colors hover:bg-white/10 cursor-pointer"
-              style={{ color: '#A3AAB3' }}
+              style={{ color: '#A3A8AB' }}
             >
               <LogOut size={18} strokeWidth={1.5} />
               Cerrar sesión

@@ -1,7 +1,11 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getAdminClient } from '@/services/adminSupabase';
+import { requireRole } from '@/lib/serverAuth';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireRole('admin');
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { id } = await params;
     const body = await req.json();
@@ -30,6 +34,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireRole('admin');
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { id } = await params;
     const admin = getAdminClient();

@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getAllConfig, setConfigs } from '@/services/configService';
+import { requireRole } from '@/lib/serverAuth';
 
 export async function GET() {
+  const auth = await requireRole('admin');
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const data = await getAllConfig();
     return NextResponse.json(data);
@@ -12,6 +16,9 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
+  const auth = await requireRole('admin');
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const updates = await req.json();
     if (typeof updates !== 'object' || Array.isArray(updates)) {

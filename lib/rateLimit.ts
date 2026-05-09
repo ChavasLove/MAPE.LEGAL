@@ -4,8 +4,10 @@
 //   - Per-process state — on Vercel serverless each invocation may hit a fresh
 //     instance, so an attacker can sidestep limits by hitting cold starts. This
 //     is a defence-in-depth layer, not a Cloudflare/Redis substitute.
-//   - Map grows unbounded if every request uses a unique key. We sweep expired
-//     entries on every check, which is O(n) — fine for login-volume traffic.
+//   - Map is capped at MAX_BUCKETS to bound memory and per-call sweep cost.
+//     During an attack with rotating keys, the cap evicts the bucket whose
+//     window resets soonest first — that bucket is closest to being a no-op
+//     anyway, so dropping it loses the least useful state.
 
 interface Bucket {
   count: number;
@@ -13,6 +15,7 @@ interface Bucket {
 }
 
 const buckets = new Map<string, Bucket>();
+const MAX_BUCKETS = 10_000;
 
 export interface RateLimitResult {
   ok: boolean;
@@ -34,6 +37,7 @@ export function checkRateLimit(
 
   const existing = buckets.get(key);
   if (!existing || existing.resetAt <= now) {
+    if (buckets.size >= MAX_BUCKETS) evictSoonest();
     buckets.set(key, { count: 1, resetAt: now + windowMs });
     return { ok: true, remaining: limit - 1, retryAfterSec: 0 };
   }
@@ -50,8 +54,34 @@ export function checkRateLimit(
   return { ok: true, remaining: limit - existing.count, retryAfterSec: 0 };
 }
 
+function evictSoonest(): void {
+  let soonestKey: string | null = null;
+  let soonestAt = Infinity;
+  for (const [k, b] of buckets) {
+    if (b.resetAt < soonestAt) {
+      soonestAt = b.resetAt;
+      soonestKey = k;
+    }
+  }
+  if (soonestKey !== null) buckets.delete(soonestKey);
+}
+
+// Resolves the originating client IP. Header preference matters because
+// `x-forwarded-for` is set directly by the client and can be forged to bypass
+// per-IP rate limits. On Vercel, `x-real-ip` and `x-vercel-forwarded-for` are
+// set by the edge after rewriting any client-supplied values, so they're
+// trustworthy. Falls back to the leftmost x-forwarded-for entry only when no
+// trusted proxy header is available — better than collapsing every anonymous
+// caller into a single 'unknown' bucket.
 export function clientIpFrom(req: Request): string {
+  const real = req.headers.get('x-real-ip');
+  if (real?.trim()) return real.trim();
+
+  const vercel = req.headers.get('x-vercel-forwarded-for');
+  if (vercel) return vercel.split(',')[0].trim();
+
   const fwd = req.headers.get('x-forwarded-for');
   if (fwd) return fwd.split(',')[0].trim();
-  return req.headers.get('x-real-ip') ?? 'unknown';
+
+  return 'unknown';
 }

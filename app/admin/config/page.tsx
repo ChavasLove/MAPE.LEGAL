@@ -33,6 +33,7 @@ export default function ConfigPage() {
     finally { setLoading(false); }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   async function handleSave(e: React.FormEvent) {
@@ -80,42 +81,42 @@ export default function ConfigPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white">Configuración del sistema</h1>
-          <p className="text-sm font-sans mt-0.5" style={{ color: '#A3AAB3' }}>
+          <p className="text-sm font-sans mt-0.5" style={{ color: '#A3A8AB' }}>
             Claves API, parámetros de integración y ajustes globales
           </p>
         </div>
-        <button onClick={load} className="p-2 rounded-lg hover:bg-white/10 cursor-pointer" style={{ color: '#A3AAB3' }}>
+        <button onClick={load} className="p-2 rounded-lg hover:bg-white/10 cursor-pointer" style={{ color: '#A3A8AB' }}>
           <RefreshCw size={18} strokeWidth={1.5} />
         </button>
       </div>
 
       {loading ? (
-        <p className="text-sm font-sans py-8 text-center" style={{ color: '#A3AAB3' }}>Cargando configuración...</p>
+        <p className="text-sm font-sans py-8 text-center" style={{ color: '#A3A8AB' }}>Cargando configuración...</p>
       ) : (
         <form onSubmit={handleSave} className="space-y-6">
           {Object.entries(groups).map(([prefix, entries]) => (
             <div
               key={prefix}
               className="rounded-xl border overflow-hidden"
-              style={{ borderColor: 'rgba(94,107,122,0.3)' }}
+              style={{ borderColor: 'rgba(94,107,123,0.3)' }}
             >
-              <div className="px-5 py-3 border-b" style={{ background: '#1F2A44', borderColor: 'rgba(94,107,122,0.3)' }}>
+              <div className="px-5 py-3 border-b" style={{ background: '#1F2A38', borderColor: 'rgba(94,107,123,0.3)' }}>
                 <h2 className="text-sm font-semibold text-white font-sans">
                   {SECTION_LABELS[prefix] ?? prefix}
                 </h2>
               </div>
-              <div className="divide-y" style={{ background: '#162033', borderColor: 'rgba(94,107,122,0.2)' }}>
+              <div className="divide-y" style={{ background: '#1F2A38', borderColor: 'rgba(94,107,123,0.2)' }}>
                 {entries.map(c => {
                   const isSecret = c.tipo === 'secreto';
                   const show     = showKeys.has(c.clave);
                   return (
-                    <div key={c.clave} className="px-5 py-4 grid sm:grid-cols-2 gap-4 items-start" style={{ borderColor: 'rgba(94,107,122,0.2)' }}>
+                    <div key={c.clave} className="px-5 py-4 grid sm:grid-cols-2 gap-4 items-start" style={{ borderColor: 'rgba(94,107,123,0.2)' }}>
                       <div>
-                        <div className="text-xs font-semibold uppercase tracking-wider font-sans mb-0.5" style={{ color: '#A3AAB3' }}>
+                        <div className="text-xs font-semibold uppercase tracking-wider font-sans mb-0.5" style={{ color: '#A3A8AB' }}>
                           {c.clave}
                         </div>
                         {c.descripcion && (
-                          <div className="text-xs font-sans" style={{ color: '#5E6B7A' }}>{c.descripcion}</div>
+                          <div className="text-xs font-sans" style={{ color: '#5E6B7B' }}>{c.descripcion}</div>
                         )}
                       </div>
                       <div className="relative">
@@ -125,14 +126,14 @@ export default function ConfigPage() {
                           onChange={e => setValues(v => ({ ...v, [c.clave]: e.target.value }))}
                           placeholder={isSecret ? '••••••••••••••••' : 'Sin valor'}
                           className="w-full px-3 py-2 rounded-lg text-sm font-sans outline-none pr-9"
-                          style={{ background: '#1F2A44', border: '1px solid rgba(94,107,122,0.4)', color: 'white' }}
+                          style={{ background: '#1F2A38', border: '1px solid rgba(94,107,123,0.4)', color: 'white' }}
                         />
                         {isSecret && (
                           <button
                             type="button"
                             onClick={() => toggleShowKey(c.clave)}
                             className="absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer"
-                            style={{ color: '#A3AAB3' }}
+                            style={{ color: '#A3A8AB' }}
                           >
                             {show ? <EyeOff size={15} strokeWidth={1.5} /> : <Eye size={15} strokeWidth={1.5} />}
                           </button>
@@ -150,20 +151,20 @@ export default function ConfigPage() {
               type="submit"
               disabled={saving}
               className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold font-sans text-white disabled:opacity-60 cursor-pointer"
-              style={{ background: '#1F2A44' }}
+              style={{ background: '#1F2A38' }}
             >
               <Save size={16} strokeWidth={2} />
               {saving ? 'Guardando...' : 'Guardar configuración'}
             </button>
             {saved && (
-              <span className="text-sm font-sans" style={{ color: '#3E7C59' }}>
+              <span className="text-sm font-sans" style={{ color: '#2A8E50' }}>
                 ✓ Guardado correctamente
               </span>
             )}
           </div>
 
-          <p className="text-xs font-sans" style={{ color: '#5E6B7A' }}>
-            Las claves de tipo <strong style={{ color: '#A3AAB3' }}>secreto</strong> se almacenan en la base de datos y están disponibles para el servidor. Para producción, prefiere usar variables de entorno de Vercel (.env) para las claves API principales.
+          <p className="text-xs font-sans" style={{ color: '#5E6B7B' }}>
+            Las claves de tipo <strong style={{ color: '#A3A8AB' }}>secreto</strong> se almacenan en la base de datos y están disponibles para el servidor. Para producción, prefiere usar variables de entorno de Vercel (.env) para las claves API principales.
           </p>
         </form>
       )}

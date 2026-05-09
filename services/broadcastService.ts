@@ -131,6 +131,7 @@ export async function sendDailyBroadcast(options: {
       roles_destino: roles ?? ['minero', 'comprador', 'tecnico', 'admin'],
       triggered_by: triggeredBy,
       error_msg: detail.slice(0, 1000),
+      aborted_reason: reason,
     });
 
     return {
@@ -163,10 +164,15 @@ export async function sendDailyBroadcast(options: {
           await sendWhatsAppText(user.telefono, mensaje);
           enviados++;
         } catch (e) {
-          // If the token died mid-broadcast (rare but possible), abort the
-          // remaining batches instead of generating one error per subscriber.
+          // If the token died mid-broadcast (rare but possible), flag the
+          // abort and skip per-recipient bookkeeping — the failure is a
+          // broadcast-level config problem, not a delivery error for this
+          // subscriber. aborted_reason carries the signal; total_errores
+          // stays reserved for genuine per-recipient failures.
           if (e instanceof WhatsAppApiError && e.isAuthError) {
             authState.aborted = e;
+            console.error('[broadcast] auth error mid-broadcast — aborting remaining batches', e);
+            return;
           }
           console.error(`broadcastService: failed to send to ${user.telefono} —`, e);
           errores++;
@@ -196,6 +202,7 @@ export async function sendDailyBroadcast(options: {
     roles_destino: roles ?? ['minero', 'comprador', 'tecnico', 'admin'],
     triggered_by: triggeredBy,
     error_msg: errorMsg ? errorMsg.slice(0, 1000) : null,
+    aborted_reason: aborted_reason ?? null,
   });
 
   return {

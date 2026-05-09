@@ -12,31 +12,31 @@ import type { DashExpediente, DashHito, DashDoc, DashFase } from '@/services/das
 // ─── Badge helpers ────────────────────────────────────────────────────────────
 
 const ESTADO_EXP: Record<string, { bg: string; text: string; label: string }> = {
-  activo:     { bg: '#E6F2EC', text: '#2F5D50', label: 'Activo'     },
-  alerta:     { bg: '#F5EBDD', text: '#8C6A4A', label: 'Alerta'     },
-  bloqueado:  { bg: '#F8E5E4', text: '#A94442', label: 'Bloqueado'  },
-  nuevo:      { bg: '#DBEAFE', text: '#3A6EA5', label: 'Nuevo'      },
-  completado: { bg: '#E6F2EC', text: '#2F5D50', label: 'Completado' },
+  activo:     { bg: '#E0EDE3', text: '#2F5D50', label: 'Activo'     },
+  alerta:     { bg: '#F4E9D6', text: '#8B6A4A', label: 'Alerta'     },
+  bloqueado:  { bg: '#EFD7D5', text: '#B23A3A', label: 'Bloqueado'  },
+  nuevo:      { bg: '#D6E2F0', text: '#2A6BA8', label: 'Nuevo'      },
+  completado: { bg: '#E0EDE3', text: '#2F5D50', label: 'Completado' },
 };
 
 const DOC_ESTADO: Record<string, { bg: string; text: string; label: string; Icon: typeof CheckCircle2 }> = {
-  verificado: { bg: '#E6F2EC', text: '#2F5D50', label: 'Verificado', Icon: CheckCircle2 },
-  pendiente:  { bg: '#DBEAFE', text: '#3A6EA5', label: 'En revisión', Icon: Clock       },
-  faltante:   { bg: '#F5EBDD', text: '#8C6A4A', label: 'Faltante',   Icon: AlertTriangle},
-  rechazado:  { bg: '#F8E5E4', text: '#A94442', label: 'Rechazado',  Icon: XCircle      },
+  verificado: { bg: '#E0EDE3', text: '#2F5D50', label: 'Verificado', Icon: CheckCircle2 },
+  pendiente:  { bg: '#D6E2F0', text: '#2A6BA8', label: 'En revisión', Icon: Clock       },
+  faltante:   { bg: '#F4E9D6', text: '#8B6A4A', label: 'Faltante',   Icon: AlertTriangle},
+  rechazado:  { bg: '#EFD7D5', text: '#B23A3A', label: 'Rechazado',  Icon: XCircle      },
 };
 
 const HITO_ESTADO: Record<string, { bg: string; text: string; label: string }> = {
-  cobrado:   { bg: '#E6F2EC', text: '#2F5D50', label: 'Cobrado'   },
-  pendiente: { bg: '#DBEAFE', text: '#3A6EA5', label: 'Pendiente' },
-  bloqueado: { bg: '#F5EBDD', text: '#8C6A4A', label: 'Bloqueado' },
+  cobrado:   { bg: '#E0EDE3', text: '#2F5D50', label: 'Cobrado'   },
+  pendiente: { bg: '#D6E2F0', text: '#2A6BA8', label: 'Pendiente' },
+  bloqueado: { bg: '#F4E9D6', text: '#8B6A4A', label: 'Bloqueado' },
 };
 
 const FASE_ESTADO: Record<string, { dot: string; label: string }> = {
-  completada: { dot: '#3E7C59', label: 'Completada' },
-  activa:     { dot: '#C49A4A', label: 'En curso'   },
-  alerta:     { dot: '#A94442', label: 'Alerta'     },
-  pendiente:  { dot: '#5E6B7A', label: 'Pendiente'  },
+  completada: { dot: '#2A8E50', label: 'Completada' },
+  activa:     { dot: '#C58B2C', label: 'En curso'   },
+  alerta:     { dot: '#B23A3A', label: 'Alerta'     },
+  pendiente:  { dot: '#5E6B7B', label: 'Pendiente'  },
 };
 
 type Tab = 'hitos' | 'documentos' | 'fases' | 'legalidad';
@@ -81,16 +81,16 @@ function NotifyModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-md rounded-xl p-6 shadow-xl" style={{ background: '#1F2A44' }}>
+      <div className="w-full max-w-md rounded-xl p-6 shadow-xl" style={{ background: '#1F2A38' }}>
         <h3 className="text-base font-semibold text-white font-sans mb-4">
           Enviar notificación — {exp.id}
         </h3>
 
         {done ? (
           <div className="text-center py-6">
-            <CheckCircle2 size={40} className="mx-auto mb-3" style={{ color: '#3E7C59' }} />
+            <CheckCircle2 size={40} className="mx-auto mb-3" style={{ color: '#2A8E50' }} />
             <p className="text-sm font-sans text-white">Notificación enviada</p>
-            <button onClick={onClose} className="mt-4 px-5 py-2 rounded-lg text-sm font-semibold font-sans text-white cursor-pointer" style={{ background: '#162033' }}>Cerrar</button>
+            <button onClick={onClose} className="mt-4 px-5 py-2 rounded-lg text-sm font-semibold font-sans text-white cursor-pointer" style={{ background: '#1F2A38' }}>Cerrar</button>
           </div>
         ) : (
           <div className="space-y-4">
@@ -101,8 +101,8 @@ function NotifyModal({
                   onClick={() => setTipo(t)}
                   className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold font-sans transition-colors cursor-pointer"
                   style={tipo === t
-                    ? { background: '#162033', color: 'white', border: '1px solid rgba(94,107,122,0.6)' }
-                    : { background: 'transparent', color: '#A3AAB3', border: '1px solid rgba(94,107,122,0.3)' }}
+                    ? { background: '#1F2A38', color: 'white', border: '1px solid rgba(94,107,123,0.6)' }
+                    : { background: 'transparent', color: '#A3A8AB', border: '1px solid rgba(94,107,123,0.3)' }}
                 >
                   {t === 'email' ? <Mail size={15} strokeWidth={1.5} /> : <MessageSquare size={15} strokeWidth={1.5} />}
                   {t === 'email' ? 'Email' : 'WhatsApp'}
@@ -110,7 +110,7 @@ function NotifyModal({
               ))}
             </div>
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider mb-1 font-sans" style={{ color: '#A3AAB3' }}>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-1 font-sans" style={{ color: '#A3A8AB' }}>
                 {tipo === 'email' ? 'Correo destinatario' : 'Número (con código de país)'}
               </label>
               <input
@@ -118,21 +118,21 @@ function NotifyModal({
                 onChange={e => setTo(e.target.value)}
                 placeholder={tipo === 'email' ? 'cliente@email.com' : '50499990000'}
                 className="w-full px-3 py-2 rounded-lg text-sm font-sans outline-none"
-                style={{ background: '#162033', border: '1px solid rgba(94,107,122,0.4)', color: 'white' }}
+                style={{ background: '#1F2A38', border: '1px solid rgba(94,107,123,0.4)', color: 'white' }}
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider mb-1 font-sans" style={{ color: '#A3AAB3' }}>Mensaje</label>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-1 font-sans" style={{ color: '#A3A8AB' }}>Mensaje</label>
               <textarea
                 value={mensaje}
                 onChange={e => setMensaje(e.target.value)}
                 rows={4}
                 className="w-full px-3 py-2 rounded-lg text-sm font-sans outline-none resize-none"
-                style={{ background: '#162033', border: '1px solid rgba(94,107,122,0.4)', color: 'white' }}
+                style={{ background: '#1F2A38', border: '1px solid rgba(94,107,123,0.4)', color: 'white' }}
                 placeholder={`Estimado cliente, su expediente ${exp.id}...`}
               />
             </div>
-            {err && <p className="text-xs font-sans px-3 py-2 rounded-lg" style={{ color: '#A94442', background: '#F8E5E4' }}>{err}</p>}
+            {err && <p className="text-xs font-sans px-3 py-2 rounded-lg" style={{ color: '#B23A3A', background: '#EFD7D5' }}>{err}</p>}
             <div className="flex gap-3">
               <button
                 onClick={send}
@@ -145,7 +145,7 @@ function NotifyModal({
               <button
                 onClick={onClose}
                 className="px-4 py-2.5 rounded-lg text-sm font-medium font-sans hover:bg-white/10 transition-colors cursor-pointer"
-                style={{ color: '#A3AAB3' }}
+                style={{ color: '#A3A8AB' }}
               >
                 Cancelar
               </button>
@@ -179,6 +179,7 @@ export default function ExpedienteDetailPage() {
     finally { setLoading(false); }
   }, [id]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   async function handleAdvance() {
@@ -202,14 +203,14 @@ export default function ExpedienteDetailPage() {
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
-      <span className="text-sm font-sans" style={{ color: '#A3AAB3' }}>Cargando expediente...</span>
+      <span className="text-sm font-sans" style={{ color: '#A3A8AB' }}>Cargando expediente...</span>
     </div>
   );
 
   if (!exp) return (
     <div className="flex flex-col items-center justify-center h-64 gap-4">
-      <p className="text-sm font-sans" style={{ color: '#A3AAB3' }}>Expediente no encontrado.</p>
-      <Link href="/dashboard/expedientes" className="text-sm font-semibold font-sans hover:underline" style={{ color: '#3A6EA5' }}>
+      <p className="text-sm font-sans" style={{ color: '#A3A8AB' }}>Expediente no encontrado.</p>
+      <Link href="/dashboard/expedientes" className="text-sm font-semibold font-sans hover:underline" style={{ color: '#2A6BA8' }}>
         ← Volver a expedientes
       </Link>
     </div>
@@ -232,7 +233,7 @@ export default function ExpedienteDetailPage() {
         <Link
           href="/dashboard/expedientes"
           className="inline-flex items-center gap-1.5 text-sm font-sans mb-4 hover:underline"
-          style={{ color: '#A3AAB3' }}
+          style={{ color: '#A3A8AB' }}
         >
           <ArrowLeft size={15} strokeWidth={1.5} />
           Expedientes
@@ -249,10 +250,10 @@ export default function ExpedienteDetailPage() {
                 {estatusBadge.label}
               </span>
             </div>
-            <p className="text-base font-sans" style={{ color: '#A3AAB3' }}>
+            <p className="text-base font-sans" style={{ color: '#A3A8AB' }}>
               {exp.cliente} · {exp.tipo} · {exp.municipio}
             </p>
-            <p className="text-xs font-sans mt-1" style={{ color: '#5E6B7A' }}>
+            <p className="text-xs font-sans mt-1" style={{ color: '#5E6B7B' }}>
               Inicio: {exp.inicio} · Cierre estimado: {exp.cierreEst}
             </p>
           </div>
@@ -261,7 +262,7 @@ export default function ExpedienteDetailPage() {
             <button
               onClick={() => setShowNotify(true)}
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold font-sans border transition-colors cursor-pointer"
-              style={{ borderColor: 'rgba(94,107,122,0.4)', color: '#A3AAB3', background: 'transparent' }}
+              style={{ borderColor: 'rgba(94,107,123,0.4)', color: '#A3A8AB', background: 'transparent' }}
             >
               <Mail size={15} strokeWidth={1.5} />
               Notificar
@@ -281,29 +282,29 @@ export default function ExpedienteDetailPage() {
 
       {/* Assignee + legalidad summary */}
       <div className="grid sm:grid-cols-3 gap-4 mb-6">
-        <div className="rounded-xl border p-4" style={{ background: '#1F2A44', borderColor: 'rgba(94,107,122,0.3)' }}>
-          <p className="text-xs font-semibold uppercase tracking-wider font-sans mb-2" style={{ color: '#A3AAB3' }}>Abogado CHT</p>
+        <div className="rounded-xl border p-4" style={{ background: '#1F2A38', borderColor: 'rgba(94,107,123,0.3)' }}>
+          <p className="text-xs font-semibold uppercase tracking-wider font-sans mb-2" style={{ color: '#A3A8AB' }}>Abogado CHT</p>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold font-sans" style={{ background: '#DBEAFE', color: '#3A6EA5' }}>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold font-sans" style={{ background: '#D6E2F0', color: '#2A6BA8' }}>
               {exp.abogado.initials}
             </div>
             <span className="text-sm text-white font-sans">{exp.abogado.nombre}</span>
           </div>
         </div>
-        <div className="rounded-xl border p-4" style={{ background: '#1F2A44', borderColor: 'rgba(94,107,122,0.3)' }}>
-          <p className="text-xs font-semibold uppercase tracking-wider font-sans mb-2" style={{ color: '#A3AAB3' }}>Técnico Ambiental</p>
+        <div className="rounded-xl border p-4" style={{ background: '#1F2A38', borderColor: 'rgba(94,107,123,0.3)' }}>
+          <p className="text-xs font-semibold uppercase tracking-wider font-sans mb-2" style={{ color: '#A3A8AB' }}>Técnico Ambiental</p>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold font-sans" style={{ background: '#E6F2EC', color: '#2F5D50' }}>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold font-sans" style={{ background: '#E0EDE3', color: '#2F5D50' }}>
               {exp.psa.initials}
             </div>
             <span className="text-sm text-white font-sans">{exp.psa.nombre}</span>
           </div>
         </div>
-        <div className="rounded-xl border p-4" style={{ background: '#1F2A44', borderColor: 'rgba(94,107,122,0.3)' }}>
-          <p className="text-xs font-semibold uppercase tracking-wider font-sans mb-2" style={{ color: '#A3AAB3' }}>Índice de legalidad</p>
+        <div className="rounded-xl border p-4" style={{ background: '#1F2A38', borderColor: 'rgba(94,107,123,0.3)' }}>
+          <p className="text-xs font-semibold uppercase tracking-wider font-sans mb-2" style={{ color: '#A3A8AB' }}>Índice de legalidad</p>
           <div className="flex items-center gap-3">
-            <div className="flex-1 h-2 rounded-full" style={{ background: 'rgba(94,107,122,0.3)' }}>
-              <div className="h-2 rounded-full transition-all" style={{ width: `${exp.legalidad}%`, background: '#3E7C59' }} />
+            <div className="flex-1 h-2 rounded-full" style={{ background: 'rgba(94,107,123,0.3)' }}>
+              <div className="h-2 rounded-full transition-all" style={{ width: `${exp.legalidad}%`, background: '#2A8E50' }} />
             </div>
             <span className="text-xl font-bold text-white font-sans">{exp.legalidad}%</span>
           </div>
@@ -311,15 +312,15 @@ export default function ExpedienteDetailPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-5 border-b" style={{ borderColor: 'rgba(94,107,122,0.3)' }}>
+      <div className="flex gap-1 mb-5 border-b" style={{ borderColor: 'rgba(94,107,123,0.3)' }}>
         {tabs.map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             className="px-4 py-2.5 text-sm font-medium font-sans transition-colors cursor-pointer -mb-px"
             style={tab === t.key
-              ? { color: 'white', borderBottom: '2px solid #3A6EA5' }
-              : { color: '#A3AAB3', borderBottom: '2px solid transparent' }}
+              ? { color: 'white', borderBottom: '2px solid #2A6BA8' }
+              : { color: '#A3A8AB', borderBottom: '2px solid transparent' }}
           >
             {t.label}
           </button>
@@ -335,7 +336,7 @@ export default function ExpedienteDetailPage() {
               <div
                 key={h.id}
                 className="rounded-xl border p-5 flex flex-wrap items-center gap-4"
-                style={{ background: '#1F2A44', borderColor: 'rgba(94,107,122,0.3)' }}
+                style={{ background: '#1F2A38', borderColor: 'rgba(94,107,123,0.3)' }}
               >
                 <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold font-sans shrink-0"
                   style={{ background: bs.bg, color: bs.text }}>
@@ -343,14 +344,14 @@ export default function ExpedienteDetailPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-semibold text-white font-sans">{h.trigger}</div>
-                  {h.ref && <div className="text-xs font-sans mt-0.5" style={{ color: '#A3AAB3' }}>Ref: {h.ref}</div>}
-                  {h.fecha && <div className="text-xs font-sans" style={{ color: '#A3AAB3' }}>Fecha: {h.fecha}</div>}
+                  {h.ref && <div className="text-xs font-sans mt-0.5" style={{ color: '#A3A8AB' }}>Ref: {h.ref}</div>}
+                  {h.fecha && <div className="text-xs font-sans" style={{ color: '#A3A8AB' }}>Fecha: {h.fecha}</div>}
                 </div>
                 <div className="text-right">
                   <div className="text-lg font-bold text-white font-sans">
                     L. {h.monto.toLocaleString('es-HN')}
                   </div>
-                  <div className="text-xs font-sans" style={{ color: '#A3AAB3' }}>{h.pct}% del total</div>
+                  <div className="text-xs font-sans" style={{ color: '#A3A8AB' }}>{h.pct}% del total</div>
                 </div>
                 <span className="px-2.5 py-1 rounded-full text-xs font-semibold font-sans shrink-0"
                   style={{ background: bs.bg, color: bs.text }}>
@@ -372,12 +373,12 @@ export default function ExpedienteDetailPage() {
               <div
                 key={d.id}
                 className="rounded-xl border p-5 flex flex-wrap items-center gap-4"
-                style={{ background: '#1F2A44', borderColor: 'rgba(94,107,122,0.3)' }}
+                style={{ background: '#1F2A38', borderColor: 'rgba(94,107,123,0.3)' }}
               >
-                <FileText size={20} strokeWidth={1.5} style={{ color: '#A3AAB3' }} className="shrink-0" />
+                <FileText size={20} strokeWidth={1.5} style={{ color: '#A3A8AB' }} className="shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-semibold text-white font-sans">{d.nombre}</div>
-                  <div className="text-xs font-sans mt-0.5" style={{ color: '#A3AAB3' }}>{d.info}</div>
+                  <div className="text-xs font-sans mt-0.5" style={{ color: '#A3A8AB' }}>{d.info}</div>
                 </div>
                 <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold font-sans"
                   style={{ background: ds.bg, color: ds.text }}>
@@ -389,14 +390,14 @@ export default function ExpedienteDetailPage() {
                     <button
                       onClick={() => updateDocEstado(d.id, 'verificado')}
                       className="px-3 py-1.5 rounded-lg text-xs font-semibold font-sans cursor-pointer"
-                      style={{ background: '#E6F2EC', color: '#2F5D50' }}
+                      style={{ background: '#E0EDE3', color: '#2F5D50' }}
                     >
                       Verificar
                     </button>
                     <button
                       onClick={() => updateDocEstado(d.id, 'rechazado')}
                       className="px-3 py-1.5 rounded-lg text-xs font-semibold font-sans cursor-pointer"
-                      style={{ background: '#F8E5E4', color: '#A94442' }}
+                      style={{ background: '#EFD7D5', color: '#B23A3A' }}
                     >
                       Rechazar
                     </button>
@@ -418,7 +419,7 @@ export default function ExpedienteDetailPage() {
               <div
                 key={f.nombre}
                 className="rounded-xl border p-5"
-                style={{ background: '#1F2A44', borderColor: 'rgba(94,107,122,0.3)' }}
+                style={{ background: '#1F2A38', borderColor: 'rgba(94,107,123,0.3)' }}
               >
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
                   <div className="flex items-center gap-3">
@@ -426,7 +427,7 @@ export default function ExpedienteDetailPage() {
                     <div>
                       <div className="text-sm font-semibold text-white font-sans">{f.nombre}</div>
                       {f.responsable && (
-                        <div className="text-xs font-sans mt-0.5" style={{ color: '#A3AAB3' }}>
+                        <div className="text-xs font-sans mt-0.5" style={{ color: '#A3A8AB' }}>
                           Responsable: {f.responsable}
                           {f.vence ? ` · Vence: ${f.vence}` : ''}
                         </div>
@@ -434,10 +435,10 @@ export default function ExpedienteDetailPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="w-32 h-1.5 rounded-full" style={{ background: 'rgba(94,107,122,0.3)' }}>
+                    <div className="w-32 h-1.5 rounded-full" style={{ background: 'rgba(94,107,123,0.3)' }}>
                       <div className="h-1.5 rounded-full" style={{ width: `${pct}%`, background: fs.dot }} />
                     </div>
-                    <span className="text-xs font-sans" style={{ color: '#A3AAB3' }}>
+                    <span className="text-xs font-sans" style={{ color: '#A3A8AB' }}>
                       {f.pasos}/{f.totalPasos}
                     </span>
                   </div>
@@ -445,10 +446,10 @@ export default function ExpedienteDetailPage() {
                 {f.subpasos.length > 0 && (
                   <ul className="space-y-1.5 pl-5">
                     {f.subpasos.map(sp => (
-                      <li key={sp.nombre} className="flex items-center gap-2 text-xs font-sans" style={{ color: '#A3AAB3' }}>
+                      <li key={sp.nombre} className="flex items-center gap-2 text-xs font-sans" style={{ color: '#A3A8AB' }}>
                         <div
                           className="w-1.5 h-1.5 rounded-full shrink-0"
-                          style={{ background: sp.estado === 'completado' ? '#3E7C59' : sp.estado === 'activo' ? '#C49A4A' : '#5E6B7A' }}
+                          style={{ background: sp.estado === 'completado' ? '#2A8E50' : sp.estado === 'activo' ? '#C58B2C' : '#5E6B7B' }}
                         />
                         {sp.nombre}
                       </li>
@@ -467,9 +468,9 @@ export default function ExpedienteDetailPage() {
           {exp.legalidadItems.map(item => {
             const ok = item.estado === 'ok' || item.estado === 'verificado';
             const alert = item.estado === 'alerta';
-            const bg   = ok ? '#E6F2EC' : alert ? '#F5EBDD' : '#1F2A44';
-            const clr  = ok ? '#2F5D50' : alert ? '#8C6A4A' : '#A3AAB3';
-            const brd  = ok ? '#3E7C59' : alert ? '#C49A4A' : 'rgba(94,107,122,0.3)';
+            const bg   = ok ? '#E0EDE3' : alert ? '#F4E9D6' : '#1F2A38';
+            const clr  = ok ? '#2F5D50' : alert ? '#8B6A4A' : '#A3A8AB';
+            const brd  = ok ? '#2A8E50' : alert ? '#C58B2C' : 'rgba(94,107,123,0.3)';
             return (
               <div
                 key={item.nombre}
@@ -478,18 +479,18 @@ export default function ExpedienteDetailPage() {
               >
                 <div
                   className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                  style={{ background: ok ? '#3E7C59' : alert ? '#C49A4A' : 'rgba(94,107,122,0.3)' }}
+                  style={{ background: ok ? '#2A8E50' : alert ? '#C58B2C' : 'rgba(94,107,123,0.3)' }}
                 >
                   {ok ? (
                     <CheckCircle2 size={20} strokeWidth={2} style={{ color: 'white' }} />
                   ) : alert ? (
                     <AlertTriangle size={20} strokeWidth={2} style={{ color: 'white' }} />
                   ) : (
-                    <Clock size={20} strokeWidth={1.5} style={{ color: '#A3AAB3' }} />
+                    <Clock size={20} strokeWidth={1.5} style={{ color: '#A3A8AB' }} />
                   )}
                 </div>
                 <div>
-                  <div className="text-sm font-semibold font-sans" style={{ color: ok || alert ? '#162033' : 'white' }}>
+                  <div className="text-sm font-semibold font-sans" style={{ color: ok || alert ? '#1F2A38' : 'white' }}>
                     {item.nombre}
                   </div>
                   <div className="text-xs font-sans mt-0.5" style={{ color: clr }}>

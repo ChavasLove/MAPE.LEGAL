@@ -16,10 +16,11 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 - Login unificado: `POST /api/auth/login` → cookies httpOnly (`auth-token`, `auth-role`, `auth-refresh`, `user-email`)
 - 4 roles: `admin`, `abogado`, `tecnico_ambiental`, `cliente`
 - Redirección por rol: admin→`/admin`, abogado/tecnico→`/dashboard`, cliente→`/portal`
-- Guard de rutas en `proxy.ts` — siempre mantener sincronia con nuevas rutas protegidas
+- Guard de rutas en `proxy.ts` — siempre mantener sincronia con nuevas rutas protegidas. **Solo verifica presencia de cookies** (filtro de primera línea, runtime edge); la validación real ocurre en layouts y route handlers vía `lib/serverAuth.ts`.
+- **`lib/serverAuth.ts`** — helper centralizado. `getServerAuth()` valida el JWT contra Supabase Auth y re-deriva el rol desde `user_roles` con service-role client; `requireRole(...allowed)` lo envuelve y devuelve `NextResponse 401/403` si no aplica. La cookie `auth-role` es **solo un hint** para `proxy.ts` — nunca se confía como fuente de verdad. Layouts (`app/admin/layout.tsx`, `app/dashboard/layout.tsx`, `app/portal/layout.tsx`) y todas las rutas `/api/admin/*` lo usan.
 - Cookie `admin-token` mantenida por compatibilidad con código heredado
 - `/admin/login` redirige automáticamente a `/login` — no duplicar lógica de auth
-- **Rate limit**: 5 intentos por (IP + email) cada 15 min en `/api/auth/login` y `/api/admin/auth/login` — `lib/rateLimit.ts` (in-memory, defensa adicional sobre Supabase). `/api/auth/resend-confirmation` usa el mismo limiter con 3 intentos por (IP + email) cada 15 min.
+- **Rate limit**: 5 intentos por (IP + email) cada 15 min en `/api/auth/login` y `/api/admin/auth/login` — `lib/rateLimit.ts` (in-memory, defensa adicional sobre Supabase). `/api/auth/resend-confirmation` usa el mismo limiter con 3 intentos por (IP + email) cada 15 min. El map está acotado a `MAX_BUCKETS = 10_000` con eviction del bucket cuyo window resetea más pronto. `clientIpFrom()` prefiere `x-real-ip` / `x-vercel-forwarded-for` sobre el `x-forwarded-for` falsificable por el cliente.
 - **Refresh**: `POST /api/auth/refresh` rota `auth-token` (1h) usando `auth-refresh` (30d) y re-deriva `auth-role` consultando `user_roles` con service-role client (no confía en la cookie expirada). Cliente debe llamar antes de la expiración del access token.
 - **`auth-role` cookie tiene maxAge 30d** (no 1h como el access token) — garantiza que el guard de `proxy.ts` siga teniendo rol disponible entre la expiración del access token y la siguiente llamada a `/refresh`. Se setea en `login` y se re-setea en cada `refresh`.
 - **Confirmación de correo obligatoria**: el login (`app/api/auth/login/route.ts`) rechaza usuarios con `email_confirmed_at = null` retornando `403 { code: 'EMAIL_NOT_CONFIRMED' }`. La página de login renderiza un botón "Reenviar correo" que llama a `POST /api/auth/resend-confirmation` (genera link con `auth.admin.generateLink('signup')` y lo envía vía SendGrid usando `emailConfirmacionCorreo`).
@@ -36,13 +37,18 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 - Supabase (PostgreSQL). Dos clientes:
   - `services/supabase.ts` — cliente anónimo para lecturas públicas y portales de cliente
   - `services/adminSupabase.ts` — cliente service-role para escrituras admin y operaciones privilegiadas
-- Migraciones en `supabase/migrations/` (001–015):
+- Migraciones en `supabase/migrations/` (001–018). **Vercel deploy NO aplica migraciones de Supabase** — cada `.sql` debe correrse manualmente en Supabase Studio → SQL Editor (o `supabase db push`). Mergear el PR solo deja el archivo en el repo:
   - 006: `roles`, `contenido_cms`, `configuracion_sistema`, `notificaciones`
   - 007: `contactos` (formulario de landing)
   - 008: `clientes`, `minas`, `contratos`, `indice_legalidad`, `transacciones_oro`, `conversaciones_whatsapp`, `transacciones_pendientes`
   - 009: Patch — columnas WhatsApp en `clientes` y `transacciones_pendientes`
   - 012: `documentos_referencia` — Manual Operativo 2026, consultado por María en tiempo real
-  - 015: Trigger `on_auth_user_created` sobre `auth.users` que inserta `user_roles(user_id, 'cliente', true)` automáticamente + backfill de usuarios existentes
+  - 013: `precios_diarios.fetched_at` + vista `precios_frescura`
+  - 014: Añade `proceso` a `documentos_referencia` + seed titulación (9 pasos) + sociedad (7 pasos). Incluye un `DO $$ ... $$` que **droppea NOT NULL en cualquier columna no gestionada por la migración** (en producción la tabla tiene columnas fuera del control de migraciones — `documento_nombre`, `categoria` — que rompían los inserts de procesos nuevos)
+  - 015: Trigger `on_auth_user_created` + función `handle_new_auth_user()` (`SECURITY DEFINER`, owner = `postgres`) que inserta `user_roles` con default `cliente` cuando se crea una fila en `auth.users`. Incluye backfill para usuarios creados antes del trigger. **Sin esta migración, signup vía `auth.admin.generateLink('signup')` falla con "Database error saving new user"** — el grant explícito `INSERT on user_roles to supabase_auth_admin` (líneas 30–31) es necesario para que el trigger pueda escribir.
+  - 016: `broadcast_log.error_msg` + `broadcast_log.aborted_reason`
+  - 017: Drop de la policy recursiva `"Admins manage user_roles"` de 005 — era `FOR ALL` con `USING (EXISTS (SELECT 1 FROM user_roles WHERE rol='admin'))`, lo que disparaba `42P17 infinite recursion detected in policy for relation "user_roles"` en cualquier read/write desde un cliente sin BYPASSRLS. Surge tras PR #87 (que destrabó el callback de OAuth y dejó al lookup de rol llegar al SELECT que recursaba).
+  - 018: Restaura el path de INSERT que 017 dejó sin cubrir. Crea la policy `"Allow default cliente role insert"` con `WITH CHECK (rol='cliente' AND activo=true)` — restringida al payload del trigger 015 y del fallback upsert en `oauth-session`/`callback`, así no se abre auto-promoción a admin/abogado/tecnico_ambiental. Ejecuta también un backfill idempotente (`auth.users` que no tienen fila en `user_roles` reciben default `cliente`). Idempotente: usa `DROP POLICY IF EXISTS` antes de `CREATE POLICY` porque PostgreSQL no soporta `CREATE POLICY IF NOT EXISTS`.
 - Tablas del motor de workflow: `fases`, `transiciones_fase`, `expediente_fases`, `pagos`, `documentos`, `registro_auditoria`
 - Tabla `clientes` (piloto core) — columnas clave: `telefono_whatsapp`, `situacion_tierra`, `tipo_mineral`, `fecha_registro`, `nombre`, `municipio`
 - Tabla `documentos_referencia` — columnas clave: `proceso` (`formalizacion` | `titulacion` | `sociedad`), `paso_numero` (int), `titulo_paso`, `rol`, `acciones`, `documentos`, `plazo`, `deliverable`, `advertencias`. Unique compuesto en `(proceso, paso_numero)` — cada proceso tiene su propia numeración (formalización 1-38, titulación 1-9, sociedad 1-7). Poblada con los pasos del Manual Operativo 2026.
@@ -65,11 +71,11 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 ## Servicios
 | Archivo | Propósito |
 |---|---|
-| `services/emailService.ts` | SendGrid REST API — `sendEmail()`, shell HTML de marca, plantillas: avance, rechazo, pago, contacto interno, acuse de contacto, confirmación de correo, invitación de usuario |
+| `services/emailService.ts` | SendGrid REST API — `sendEmail()`, shell HTML de marca, plantillas: avance, rechazo, pago, contacto interno, acuse de contacto, confirmación de correo, invitación de usuario. Helper `esc()` al inicio del módulo escapa `&<>"'` — todas las plantillas lo usan al interpolar campos de usuario o BD para evitar HTML injection (la bandeja de gerencia recibía formularios de contacto crudos sin escape) |
 | `services/whatsappService.ts` | Meta Cloud API v21.0 — texto, templates, webhook parser |
 | `services/cmsService.ts` | Lectura/escritura de `contenido_cms` — anon para leer, admin para escribir |
 | `services/configService.ts` | Lectura/escritura de `configuracion_sistema` — solo admin client |
-| `services/dashboardService.ts` | Datos de expedientes para el dashboard (`DashExpediente`, `DashHito`, `DashDoc`). `createDashExpediente()` genera `numero_expediente` desde `MAX(numero_expediente)` del año (no `COUNT(*)` — colisionaba tras deletes y bajo concurrencia) |
+| `services/dashboardService.ts` | Datos de expedientes para el dashboard (`DashExpediente`, `DashHito`, `DashDoc`). `createDashExpediente()` calcula `numero_expediente` con `Number.parseInt` max en JS sobre todas las filas del año actual (no via `ORDER BY numero_expediente DESC` — el sort lex trataba `EXP-YYYY-1000` como menor que `EXP-YYYY-999` y se rompía al expediente 1000; mezclar 3 dígitos legacy con 4 dígitos nuevos recreaba el bug en la frontera). Padding actual: 4 dígitos. **Cada insert hijo (hitos, documentos, legalidad_items, progress_fases, progress_subpasos) chequea `error` y `throw`** — antes el fallo silencioso devolvía un expediente "creado" con datos faltantes y sin auditoría |
 
 ### Plantillas de email disponibles
 | Función | Destinatario | Evento |
@@ -112,9 +118,11 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 - `GET /api/broadcast/config` — configuración de métricas del reporte diario
 - `PATCH /api/broadcast/config` — cambiar métrica: `{ metric, action, currency?, patch?, updated_by? }`
 - `GET /api/broadcast/prices?days=7` — historial de precios; `?latest=true` para solo el más reciente
+- `GET /api/debug/prices` — diagnóstico de fuentes de precios: testea metals.live, exchangerate-api y Yahoo Finance; muestra env vars set/unset. Solo lectura, sin secretos expuestos.
 
 ## Asistente Virtual María (`app/api/whatsapp/route.js`)
 Webhook Twilio que conecta WhatsApp con Claude AI.
+**Reglas operativas canónicas:** ver [`MARIA.md`](./MARIA.md) — el system prompt en `route.js` debe mantenerse sincronizado con ese documento.
 
 - **Modelo**: `claude-haiku-4-5-20251001`
 - **Persona**: María, asistente de CHT — español sencillo, respuestas cortas (≤5 líneas), sin emojis, sin jerga
@@ -126,19 +134,19 @@ Webhook Twilio que conecta WhatsApp con Claude AI.
 - **Historial**: últimos 40 mensajes de `conversaciones_whatsapp` por número de WhatsApp (suficiente para sostener conversaciones multi-día sin truncar contexto importante)
 - **Lookup de cliente**: busca en tabla `clientes` por `telefono_whatsapp` (strip de `whatsapp:` prefix) — si existe, inyecta nombre/municipio/tierra en el prompt; si no, instruye registro natural
 - **Contexto de expediente**: tras el lookup de cliente, consulta `expedientes` por `cliente_id = cliente.id` (fallback: `cliente ILIKE nombre`). Inyecta en el prompt: `numero_expediente`, fase actual, paso actual, estado, cierre estimado, hitos pendientes. Si no hay expediente: instruye a María a explicar Fase 0 e Hito 1. Helper: `buildExpedienteContext(exps)` en `route.js`.
-- **Prompt dinámico**: base + contexto de cliente + contexto de expediente + **manualContext** + (si conversación en curso) bloque `CONTEXTO CRÍTICO` que prohíbe re-saludos
-- **Manual Operativo 2026**: cuando el mensaje menciona "paso N", "primer paso", "siguiente paso", "cómo empiezo", "manual operativo", "quién es responsable" o similares, `buildManualContext(message, supabase, recentHistory)` consulta `documentos_referencia` y añade un bloque `REFERENCIA MANUAL OPERATIVO` al system prompt. Detección regex, no LLM. `detectProceso()` mira el mensaje + últimos 6 turnos para elegir `formalizacion` / `titulacion` / `sociedad` y filtra el query por `proceso`; defaultea a `formalizacion` si no hay señal. "primer paso" sin número se traduce a `paso_numero=1` del proceso detectado. Falla silenciosa: si la tabla está vacía o la query falla, `manualContext = ''` y el flujo no se interrumpe.
-
-- **Memoria de conversación**: el system prompt incluye un bloque `MEMORIA DE CONVERSACIÓN — REGLA INNEGOCIABLE` que prohíbe re-preguntar datos ya dichos en los últimos 6 turnos (servicio, nuevo-vs-en-trámite, etc.) y obliga a responder "primer paso" / "siguiente paso" con el paso concreto del servicio identificado en lugar de pedir aclaración.
+- **Prompt dinámico**: base + `priceContext` + contexto de cliente (con `completenessSummary`) + contexto de expediente + (si conversación en curso) bloque `CONTEXTO CRÍTICO` que prohíbe re-saludos
 - **Dedup**: filtra mensajes assistant consecutivos antes de enviar a Claude
 - **Base de conocimiento legal**: Reglamento Minería Honduras (Acuerdo 042-2013) embebido en el system prompt — números clave, scripts de respuesta rápida, áreas excluidas, sanciones
+- **Precios en tiempo real**: consulta `precios_diarios` del día; si no hay fila, llama `fetchLiveMetalPrices()` de `services/metalsPriceService.ts` (Yahoo Finance COMEX GC=F/SI=F + exchangerate-api.com). El bloque `PRECIOS DE REFERENCIA` se inyecta en el system prompt con precio LBMA, precio de compra CHT (80% LBMA en lempiras) y tipo de cambio BCH.
+- **Perfil completo del cliente**: calcula campos faltantes (nombre, DPI, municipio, situación tierra, tipo mineral) e inyecta `completenessSummary` en el prompt. María responde a "¿ya tienes mis datos?" con los campos faltantes exactos.
+- **REGLA DE MEMORIA**: si el contexto ya tiene un dato, María nunca lo repite ni re-pregunta — lo usa directamente.
+- **Nuevo expediente**: flujo estructurado cuando cliente registrado quiere iniciar un trámite (tipo → municipio → manzanas). Al completar, inserta en `transacciones_pendientes` con `detalle` del servicio.
 - **Tablas Supabase**:
   - `conversaciones_whatsapp` — historial por `numero_whatsapp`, columnas `role`, `content`
   - `transacciones_pendientes` — registros pendientes (`estado`, `mensaje_original`, `respuesta_asistente`, `detalle`)
-  - `clientes` — lookup por `telefono_whatsapp`; auto-registro desde conversación
+  - `clientes` — lookup por `telefono_whatsapp`; campos: `id, nombre, situacion_tierra, municipio, tipo_mineral, dpi, telefono_whatsapp`
   - `expedientes` — consultado para contexto de fase/hitos del cliente
-- **Cotización por gramos (con decimales)**: regla en el system prompt bajo `CUANDO PREGUNTAN POR EL PRECIO DEL ORO` instruye a María a multiplicar `X gramos × precio_compra_CHT/gramo` cuando el cliente menciona un peso. Acepta `4.5`, `4,5` (coma decimal hondureña) y `medio gramo` (=0.5). Prohibido el fallback "tengo que consultar" si `PRECIOS DE REFERENCIA` ya tiene el precio por gramo.
-- **Broadcast diario 8 AM**: sección `NOTIFICACIÓN DIARIA DE PRECIOS` en el system prompt documenta el formato canónico que envía el cron. Saludo fijo "Estimado Socio MAPE", sin emojis, sin comentarios de mercado, números con formato hondureño (`L 245,000.00`).
+  - `precios_diarios` — caché de precios del día (oro, plata, usd_hnl, fecha)
 - **Trigger de transacción**: cuando la respuesta incluye `"Listo"` + `"Confirmas"` se inserta en `transacciones_pendientes`
 - **Extracción estructurada**: segunda llamada a Haiku post-respuesta — parsea JSON de la conversación para registrar nombre/municipio/manzanas; strip de bloques markdown antes del parse; variable de error: `clientInsertError` (no `insertError`)
 - **Columnas correctas en queries** (errores comunes a evitar):
@@ -149,6 +157,8 @@ Webhook Twilio que conecta WhatsApp con Claude AI.
 ## Landing page
 
 **Estado real (auditoría 2026-05-03):** la landing activa es `app/page.tsx` (≈523 líneas, autocontenido, usa clases definidas en `app/globals.css`). Los 15 archivos de `components/landing/*` (`Hero.tsx`, `About.tsx`, `Problem.tsx`, `Solution.tsx`, `Services.tsx`, `Impact.tsx`, `Beneficiarios.tsx`, `Footer.tsx`, `Contacto.tsx`, `News.tsx`, `Programs.tsx`, `Roadmap.tsx`, `ValorSection.tsx`, `WhyNow.tsx`, `PriceWidgets.tsx`) están **huérfanos** — `grep` confirma cero imports en todo el repo. Cualquier cambio de UI debe hacerse en `app/page.tsx`, no en los componentes huérfanos.
+
+**Componente decorativo activo**: `components/decor/TopoBand.tsx` — SVG de líneas topográficas usado como watermark embossed en hero y footer (`app/page.tsx`) y como fondo del login (`app/login/page.tsx`). Variantes `light` / `dark` × posiciones `overlay` (full-bleed) / `band` (48px en top edge). `aria-hidden`, `pointer-events: none`, opacidad 0.06 (light, color `--ink` `#1F2A38`) / 0.18 (dark, color `--moss` `#2F5D50`). No interactivo, no animado — quiet nod al territorio hondureño.
 
 ### Imágenes disponibles en `public/images/`
 | Archivo | Notas |
@@ -184,10 +194,11 @@ node scripts/seed-super-admin.mjs
 Requiere env vars. Es idempotente — re-ejecutable sin efectos secundarios.
 
 ## Estilo / UI
-- Tailwind v4 con `@theme inline` en `globals.css` — **no usar** `tailwind.config.js`
-- Colores siempre con `style={{ color: '...' }}` inline usando los tokens de DESIGN.md
-- No usar clases genéricas de Tailwind (`green-*`, `gray-*`, `slate-*`) — solo los hex del sistema de diseño
-- Fuentes: `font-sans` para Inter (UI). **Estado real:** Playfair Display **no** está cargada (ni en `app/layout.tsx` ni vía `@font-face` en `globals.css`). Los `<h1–h4>` caen al fallback `Georgia, serif`. Pendiente: cargar `Playfair_Display` desde `next/font/google` para cumplir DESIGN.md §2.
+- **MAPE LEGAL Color Manual v1.0** es la fuente de verdad — ver [`README.md`](./README.md) §0 y [`DESIGN.md`](./DESIGN.md). Tokens canónicos viven en `app/globals.css` `:root`.
+- Tailwind v4 con `@theme inline` en `globals.css` — **no usar** `tailwind.config.js`.
+- Colores siempre con `style={{ color: 'var(--ink)' }}` inline o vía clases definidas en `globals.css` que ya consumen los tokens.
+- No usar clases genéricas de Tailwind (`green-*`, `gray-*`, `slate-*`, `primary-950`, `forest-800`, etc.) — solo `var(--ink)` / `var(--moss)` / `var(--sand)` / etc.
+- Fuentes cargadas en `app/layout.tsx` vía `next/font/google`: **Inter** (`--font-inter`), **Playfair Display** (`--font-playfair`), **JetBrains Mono** (`--font-jetbrains`). `<h1>`–`<h6>` heredan Playfair desde `globals.css`. Peso máximo: 700.
 
 ## Landing page — responsividad móvil
 Convenciones aplicables a `app/page.tsx` (los componentes en `components/landing/` están huérfanos — ver sección "Landing page" arriba):
@@ -224,16 +235,19 @@ CRON_SECRET                    # Header Bearer para proteger /api/broadcast/run.
 
 ## Sistema de Broadcast Diario (`jobs/`, `services/broadcastService.ts`)
 
+> **Estado operativo (2026-05-05):** el broadcast diario está **pausado en producción** hasta que la cuenta de Meta Business complete la verificación. Sin verificación, Meta Cloud API solo entrega a los números agregados como **test recipients** en Developer Console → WhatsApp → API Setup (cap ~5 números). Cualquier suscriptor en `usuarios_broadcast` fuera de esa lista recibe error 131030 ("Recipient phone number not in allowed list"). El código está completo y listo: cuando la verificación se apruebe (Business Manager → Security Center → Start Verification, ~2-5 días con utility bill / RTN), basta con poblar `usuarios_broadcast` y dejar el cron correr. **No re-arquitecturar a Twilio en el interim**: el sandbox de Twilio requiere que cada número envíe `join <keyword>` primero y la sesión expira a las 24h sin actividad — es peor para un broadcast diario que la ventana de test recipients de Meta.
+
 - **Tablas**: `usuarios_broadcast`, `daily_report_config`, `precios_diarios`, `broadcast_log`
 - **Roles broadcast**: `minero` (default), `comprador`, `tecnico`, `admin`
 - **Flujo**: cron → `GET /api/broadcast/run` → `runDailyBroadcast()` → fetch precios → store → `generateDailyMessage()` (template fijo) → `sendDailyBroadcast()` → Meta Cloud API → log
 - **Formato de reporte**: template determinístico "Estimado Socio MAPE" — LBMA USD/oz, conversión a LPS, TC, precio de compra al 80% LBMA, fecha+hora Honduras (UTC-6), enlaces a goldapi.io y www.mape.legal. **No llama a Claude** — garantiza consistencia y evita alucinaciones de precio. Fallback automático cuando `precios.oro` es null/0.
 - **Servicios**:
   - `services/userService.ts` — `getOrCreateUserByPhone`, `assignRole`, `getActiveSubscribers`, `listUsers`
-  - `services/pricingService.ts` — `fetchGoldPrice`, `fetchSilverPrice`, `fetchUSDHNL`, `fetchCopperPrice`, `fetchAndStorePrices`
-  - `services/broadcastService.ts` — `generateDailyMessage` (template fijo), `sendDailyBroadcast`, `getLastBroadcastLog`
+  - `services/pricingService.ts` — `fetchGoldPrice`, `fetchSilverPrice`, `fetchUSDHNL`, `fetchCopperPrice`, `fetchAndStorePrices` (usa metals.live como fallback — **bloqueado en Vercel**, solo funciona en local)
+  - `services/metalsPriceService.ts` — `fetchLiveMetalPrices()`: fuente de precios para María. Prioridad: 1) goldapi.io si `GOLDAPI_KEY` está set, 2) Yahoo Finance COMEX futures GC=F/SI=F (no requiere API key, accesible desde Vercel)
+  - `services/broadcastService.ts` — `generateDailyMessage`, `sendDailyBroadcast`, `getLastBroadcastLog`
   - `services/configService.ts` — extendido con `getDailyReportConfig`, `enableMetric`, `disableMetric`, `updateMetricCurrency`, `updateMetricConfig`, `updateAudience`, `updateSchedule`
-- **Cron en producción**: configurado en `vercel.json` — schedule `0 14 * * *` (14:00 UTC = 8:00 AM Honduras, UTC-6 todo el año) → `GET /api/broadcast/run` con `Authorization: Bearer <CRON_SECRET>`. Vercel Cron Jobs envían **GET** (no POST) e inyectan ese header automáticamente cuando `CRON_SECRET` está seteado en las env vars del proyecto. La ruta también acepta `POST` para invocación manual con body JSON (`roles`, `triggered_by`). Si `CRON_SECRET` no está seteado, el endpoint queda abierto (skip de auth).
+- **Cron en producción**: configurado en `vercel.json` — schedule `0 14 * * *` (14:00 UTC = 8:00 AM Honduras, UTC-6 todo el año) → `GET /api/broadcast/run` con `Authorization: Bearer <CRON_SECRET>`. Vercel Cron Jobs envían **GET** (no POST) e inyectan ese header automáticamente cuando `CRON_SECRET` está seteado en las env vars del proyecto. La ruta también acepta `POST` para invocación manual con body JSON (`roles`, `triggered_by`). En `NODE_ENV=production` con `CRON_SECRET` ausente la ruta responde **500 con error de configuración** (antes quedaba abierta y cualquiera podía gatillar el broadcast); en dev/local sigue abierta para ergonomía.
 - **Comando de prueba local**:
   ```bash
   curl -X POST http://localhost:3000/api/broadcast/run \
@@ -244,11 +258,11 @@ CRON_SECRET                    # Header Bearer para proteger /api/broadcast/run.
 
 ### Tolerancia a expiración del `WHATSAPP_TOKEN`
 Los User access tokens de Meta caducan a 60 días; cuando ocurre, el broadcast de las 8 AM falla en silencio salvo por las trazas del cron. Para evitar esa clase de incidentes:
-- **Pre-flight**: `sendDailyBroadcast()` llama `checkWhatsAppTokenHealth()` antes del fan-out. Si Meta responde 401 o `OAuthException` (códigos 102/190/463), aborta el envío, registra `broadcast_log.error_msg` con la causa + el hint de regeneración, y devuelve `aborted_reason: 'whatsapp_auth'`. **No** se itera la lista de suscriptores con un token muerto.
-- **Mid-broadcast abort**: si el token cae a mitad del envío, el primer `WhatsAppApiError.isAuthError === true` interrumpe los lotes restantes. Sin esto un token caducado generaba N×401 en `broadcast_log`.
-- **Errores tipados**: `services/whatsappService.ts` exporta `WhatsAppApiError { status, code, subcode, type, fbtraceId, isAuthError, rawBody }` y `WhatsAppTokenHealth`. Cualquier caller que necesite distinguir auth de transitorios debe `instanceof WhatsAppApiError && e.isAuthError`.
+- **Pre-flight**: `sendDailyBroadcast()` llama `checkWhatsAppTokenHealth()` antes del fan-out. Si Meta responde 401, `OAuthException`, o cualquier `META_FATAL_TOKEN_ERROR_CODES` (10 / 102 / 190 / 200 / 463 — auth expirado **o** scope faltante), aborta el envío, registra `broadcast_log.error_msg` + `broadcast_log.aborted_reason` con la causa + el hint de regeneración, y devuelve `aborted_reason: 'whatsapp_auth'`. **No** se itera la lista de suscriptores con un token muerto.
+- **Mid-broadcast abort**: si el token cae a mitad del envío, el primer `WhatsAppApiError.isAuthError === true` interrumpe los lotes restantes mediante `return` temprano (no incrementa `total_errores` para ese suscriptor — el error es de configuración, no de delivery). Sin esto un token caducado generaba N×401 en `broadcast_log`.
+- **Errores tipados**: `services/whatsappService.ts` exporta `WhatsAppApiError { status, code, subcode, type, fbtraceId, isAuthError, rawBody }` y `WhatsAppTokenHealth`. `isAuthError` cubre tanto expiración como permission-denied — para broadcast ambos requieren regenerar el token. Cualquier caller que necesite distinguir auth de transitorios debe `instanceof WhatsAppApiError && e.isAuthError`.
 - **Diagnóstico**: `GET /api/admin/whatsapp/health` (admin-gated) hace una llamada `GET /{phone_id}?fields=display_phone_number,verified_name`. Es la primera comprobación cuando el reporte diario no llegó.
-- **Migración**: `016_broadcast_log_error.sql` agrega `error_msg text` a `broadcast_log`. Hasta que se aplique en Supabase Studio, el insert con `error_msg: null` funciona, pero el campo poblado se guardará silenciosamente como descartado.
+- **Migración**: `016_broadcast_log_error.sql` agrega `error_msg text` y `aborted_reason text` a `broadcast_log`. `aborted_reason` permite a `getLastBroadcastLog()` distinguir un run abortado por config (`'whatsapp_auth' | 'whatsapp_config'`) de un run completado normal. Hasta que se aplique en Supabase Studio, el insert con esos campos en `null` funciona; los valores poblados se descartan silenciosamente.
 - **Fix recomendado en Meta**: regenerar el `WHATSAPP_TOKEN` como **System User access token** (`Business Manager → Business Settings → System Users → Generate New Token`, scope `whatsapp_business_messaging` + `whatsapp_business_management`, expiración "Never"). Los tokens de la consola de desarrollador caducan en 24h o 60 días — solo el de System User es estable para crons.
 
 ## Modo Admin — María WhatsApp
@@ -314,36 +328,49 @@ Flujo de registro guiado para números nuevos que contactan a María por primera
 - **Idioma**: tuteo — consistente con la personalidad establecida de María
 - **Tabla**: `onboarding_states` — `telefono`, `estado`, `datos jsonb`, timestamps
 
-## Auditoría — deuda técnica conocida (2026-05-03)
+## Auditoría — deuda técnica conocida (2026-05-03, parcialmente resuelta 2026-05-09)
 
 Documentado para evitar trabajo duplicado en futuras sesiones. Ninguno está bloqueando producción.
 
+> **Update 2026-05-09 (`claude/update-ui-colors-wGO7B`):** la sección de paleta + tipografía + audit de `app/page.tsx` / `app/globals.css` / `app/layout.tsx` quedó **resuelta** al adoptar el MAPE LEGAL Color Manual v1.0. Ver README §0 y commit `39875cf`. Los items que se mantienen son los marcados ⚠ abajo; los demás están tachados o eliminados.
+
+### Auth — Google OAuth todavía retorna "Sin rol asignado" en producción (2026-05-09, no resuelto)
+
+PRs aplicados en esta sesión: #87 (callback dual-flow), #88 (drop policy recursiva), #89 (fail-loud + live probe), #90 (INSERT policy + backfill). Migraciones 017 y 018 corridas en Supabase Studio. `/api/debug/auth-config` reporta `ok: true`, todas las env vars `ok`, `probe.status: 'ok'` (service-role lee `user_roles`). La fila de `cachivo@gmail.com` (UID `afce6713-c4d1-4a82-a3e6-84367112d891`) existe en `user_roles` con `rol='admin'`, `activo=true` desde 2026-05-04. Aun así, sign-in con Google sigue redirigiendo a `/login?error=Sin%20rol%20asignado…`.
+
+Hipótesis pendientes (no descartadas, en orden de probabilidad):
+
+1. **`service_role` no tiene `BYPASSRLS` en este proyecto Supabase.** Sin BYPASSRLS, el SELECT `from('user_roles').select('rol, activo').eq('user_id', user.id).single()` evalúa la policy `"Users can read own role"` con `auth.uid() = null` (porque `oauth-session` valida el JWT vía `getUser(token)` pero no llama a `setSession()` en el cliente service-role) → 0 filas → fallback upsert; el upsert hace `INSERT ... ON CONFLICT DO NOTHING`, choca con la fila existente (cachivo ya es admin) y no devuelve nada — pero internamente la implementación de `upsert` en supabase-js puede pedir el row de RETURNING vía SELECT, que con RLS aplicada también retorna 0 → potencialmente devuelve error. Verificar con esta query en Studio:
+   ```sql
+   select rolname, rolbypassrls
+     from pg_roles
+    where rolname in ('postgres','service_role','supabase_auth_admin','authenticated');
+   ```
+   Si `service_role` muestra `rolbypassrls = f`, el fix es una línea: `alter role service_role bypassrls;`.
+
+2. **Logs de Vercel no inspeccionados.** Tras el commit `bf5e3c9` los path de `oauth-session` loggean `[oauth-session] user_roles miss { code, message, details, hint }` (forensic) y `[oauth-session] user_roles fallback upsert failed: <upsertErr>`. La línea exacta del fallo apunta a la causa: `42501` permission denied (sin BYPASSRLS), `PGRST116` no rows found (el SELECT no encontró la fila), o algo más inesperado.
+
+3. **OAuth se está completando pero la fila de cachivo no es legible desde el cliente que `oauth-session` usa.** Si la fila fue creada por una conexión `postgres` directa (Studio SQL Editor) y los grants implícitos de Supabase no incluyen lectura por `service_role` para esa fila, podría fallar — improbable pero no descartado.
+
+4. **El flow no está siquiera reaching `oauth-session`**. Si Supabase está configurado con PKCE forzado y `app/login/page.tsx:handleGoogleLogin` no genera `code_challenge`, el callback server-side `/api/auth/callback` recibe `?code=…` y `exchangeCodeForSession` falla con `invalid_grant`. El error redirect resultante es `"Sesion invalida"`, no `"Sin rol asignado"`, así que esto **no** matchea el síntoma actual — se descarta de momento.
+
+Próximo paso de la siguiente sesión: revisar logs de Vercel del último intento de OAuth + correr query 1.b. Una vez que `service_role | bypassrls = t`, el SELECT debería tener éxito y la fila admin de cachivo lo redirigiría a `/admin`.
+
+Follow-up diferido: auto-promover `@cht.hn` / `@mape.legal` a `abogado` en el callback (hoy todos los Google sign-ins quedan como `cliente` por default del trigger 015 → `/portal`).
+
 ### Landing
-- `components/landing/*` — 15 archivos huérfanos (cero imports). Decidir: revivir o eliminar.
-- `Hero.tsx:34` referencia `LOGO CHT.png` (no existe).
-- `Problem.tsx:83` referencia `Map.png` (no existe).
-- `Footer.tsx:3` — `border-t border-primary-900` sobre `bg-primary-950` queda invisible (`#1F2A44` vs `#162033`).
+- ⚠ `components/landing/*` — 15 archivos huérfanos (cero imports). Hex literales fueron migrados al nuevo sistema en 2026-05-09 pero las clases Tailwind tipo `bg-primary-950` siguen presentes. Decidir: revivir (y mover a tokens) o eliminar.
+- ⚠ `Hero.tsx:34` referencia `LOGO CHT.png` (no existe).
+- ⚠ `Problem.tsx:83` referencia `Map.png` (no existe).
 
 ### `app/page.tsx` (landing activa)
-- Línea ~192-193: hex hardcoded `#057a55` (Tailwind `emerald-700`) en lugar del token DESIGN.md `action-green` `#3E7C59`.
-- Líneas 129, 133, 137, 150 (aprox.): `fontWeight: 800` inline — DESIGN.md §2 cap = 700.
-- Línea 505 (aprox.): teléfono placeholder `+504 9XXX-XXXX` — CLAUDE.md prohíbe contacto personal en landing.
-- Línea 34 (aprox.): nav-logo con `href="#"` — usar `/` o `#top`.
-- Quote section (~464): mezcla comillas curvas `"` y rectas `"`.
-- `Roadmap.tsx:75` y `Problem.tsx:99` linkean a `/dashboard.html` — DESIGN.md §13 prohíbe esa cross-link.
-
-### `app/globals.css`
-- Tokens `--green: #057a55`, `--amber: #92580a` (líneas 8-10) — paletas Tailwind `emerald`/`amber` prohibidas por DESIGN.md.
-- `font-weight: 800` en líneas 59, 76, 129, 133, 137, 150, 203, 211 — exceden cap de 700.
-- `box-shadow` en `.mockup-window` (109), `.float-notif` (131), `.float-notif2` (139), `.progress-card` (183) — exceden `shadow-sm` permitido (DESIGN.md §8).
-- `animation: blink 1.4s` (línea 260) — animación continua prohibida por DESIGN.md §13.
-
-### `app/layout.tsx`
-- No carga Playfair Display — solo Inter. Headings caen a Georgia.
-- No declara `metadataBase`, `openGraph`, `twitter`. Solo `title` + `description`.
+- ⚠ Línea ~507: teléfono placeholder `+504 9XXX-XXXX` — CLAUDE.md prohíbe contacto personal en landing.
+- ⚠ Línea ~35: nav-logo con `href="#"` — usar `/` o `#top`.
+- ⚠ Quote section (~464): mezcla comillas curvas `"` y rectas `"`.
+- ⚠ `Roadmap.tsx:75` y `Problem.tsx:99` (huérfanos) linkean a `/dashboard.html` — DESIGN.md §13 prohíbe esa cross-link.
 
 ### Componentes huérfanos (si se reviven)
-- `components/landing/PriceWidgets.tsx:33` — `${sign}<0.01%` produce `-<0.01%` (signo mal posicionado).
-- `components/landing/Roadmap.tsx:72` — `animate-pulse` viola DESIGN.md §13.
-- `components/landing/WhyNow.tsx:3,8,13,18` — emojis (🌍 ⚖️ 🏭 📊) violan tono de marca.
-- `components/landing/ValorSection.tsx:99` — hex `#1A1018` no documentado en DESIGN.md.
+- ⚠ `components/landing/PriceWidgets.tsx:33` — `${sign}<0.01%` produce `-<0.01%` (signo mal posicionado).
+- ⚠ `components/landing/Roadmap.tsx:72` — `animate-pulse` viola DESIGN.md §13.
+- ⚠ `components/landing/WhyNow.tsx:3,8,13,18` — emojis (🌍 ⚖️ 🏭 📊) violan tono de marca.
+- ⚠ `components/landing/ValorSection.tsx:99` — hex `#1A1018` no documentado en DESIGN.md.

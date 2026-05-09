@@ -4,7 +4,7 @@
 2026-05-03
 
 ## Current Module
-Landing page — auditoría completa. La landing activa (`app/page.tsx`) está en producción. Los componentes en `components/landing/*` son código huérfano (cero imports). Ver "Auditoría 2026-05-03" abajo y CLAUDE.md → "Auditoría — deuda técnica conocida".
+Deployment fix — build passes cleanly on 41 routes; all ESLint errors resolved
 
 ---
 
@@ -61,15 +61,32 @@ Landing page — auditoría completa. La landing activa (`app/page.tsx`) está e
 
 ---
 
-### Bug fixes (2026-05-02)
-- `services/supabase.ts` — `@typescript-eslint/no-unsafe-function-type` fixed: `Function` → explicit `(...args: unknown[]) => unknown`
-- `components/landing/Impact.tsx` — `react/no-unescaped-entities` fixed: raw `"` → `&ldquo;` / `&rdquo;`
-- `components/landing/PriceWidgets.tsx` — `react-hooks/set-state-in-effect` resolved: `fetchPrices` restructured so all setState calls follow awaits; eslint-disable comment documents the async-safe exception
-- `components/landing/Hero.tsx`, `Problem.tsx`, `Impact.tsx`, `About.tsx` — `<img>` → `<Image>` from `next/image` (LCP optimization, automatic sizing)
+### Bug fixes — session 1 (2026-05-02)
+- `services/supabase.ts` — `@typescript-eslint/no-unsafe-function-type` fixed
+- `components/landing/Impact.tsx` — unescaped HTML entities fixed
+- `components/landing/PriceWidgets.tsx` — `react-hooks/set-state-in-effect` resolved; fetchPrices restructured
+- `Hero.tsx`, `Problem.tsx`, `Impact.tsx`, `About.tsx` — `<img>` → `<Image>` from next/image
 
----
+### Deployment fix — session 2 (2026-05-02)
+Root causes of 3 failed Vercel deployments (PR #36 merge + follow-up commits):
 
-## Known Issues / Limitations
+**TypeScript error — `PriceWidgets.tsx`:** merged code introduced `MetalData`
+interface `{price, change, changePercent}` but `fetchPrices` was setting
+`gold`/`silver` as bare numbers. Fixed type cast and `setPrices` to use
+`EMPTY_METAL` fallback.
+
+**Runtime crash — `app/api/whatsapp/route.js`:** `createClient()` called at
+module evaluation time ("supabaseUrl is required" during static page collection).
+Replaced with lazy getter pattern matching `services/adminSupabase.ts`.
+
+**ESLint cleanup (0 errors):**
+- `Hero.tsx`: removed stale `PriceWidgets` import (component rebuilt without it)
+- `app/api/admin/clientes/route.ts`: `let` → `const`
+- `app/page.tsx` + 9 admin/dashboard pages: `eslint-disable-next-line` for
+  `react-hooks/set-state-in-effect` (async fetch pattern; setState only after awaits)
+- `package-lock.json`: package name updated temp-app → mape-legal
+
+**Build result:** ✓ Compiled, TypeScript clean, 41 routes, 0 ESLint errors.
 
 ---
 
@@ -90,11 +107,12 @@ Resumen ejecutivo (detalle completo en CLAUDE.md → "Auditoría — deuda técn
 - `app/layout.tsx` — sin Playfair Display, sin metadata SEO (`metadataBase`, `openGraph`, `twitter`).
 
 ### Violaciones de DESIGN.md
-- `app/globals.css` — tokens `--green: #057a55`, `--amber: #92580a` (paletas Tailwind prohibidas).
-- `font-weight: 800` en globals.css y page.tsx — DESIGN.md §2 cap = 700.
-- `box-shadow` excediendo `shadow-sm` en `.mockup-window`, `.float-notif*`, `.progress-card`.
-- `animation: blink` continua en globals.css — prohibida por DESIGN.md §13.
-- `Footer.tsx:3` — borde invisible (primary-900 sobre primary-950).
+Resueltas en `claude/update-ui-colors-wGO7B` (2026-05-09) al adoptar el MAPE LEGAL Color Manual v1.0:
+- ✅ `app/globals.css` — tokens migrados al sistema canónico (`--ink`, `--moss`, `--green: #2A8E50`, `--amber: #C58B2C`).
+- ✅ `font-weight` capado a 700 en `globals.css` y `app/page.tsx`.
+- ✅ `box-shadow` reducido a `0 2px 6px rgba(31,42,56,0.05)` (shadow-sm) en mockup, float-notif, progress-card.
+- ✅ `animation: blink` removida.
+- ⚠ `components/landing/Footer.tsx` sigue huérfano — el borde invisible no afecta producción.
 
 ### Nits
 - `app/page.tsx` — placeholder `+504 9XXX-XXXX`, `href="#"` en logo, mezcla de comillas.

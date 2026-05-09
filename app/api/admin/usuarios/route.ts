@@ -1,9 +1,13 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getAdminClient } from '@/services/adminSupabase';
 import { emailInvitacionUsuario } from '@/services/emailService';
+import { requireRole } from '@/lib/serverAuth';
 
 // GET /api/admin/usuarios — list all auth users with their roles
 export async function GET() {
+  const auth = await requireRole('admin');
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const admin = getAdminClient();
 
@@ -41,6 +45,9 @@ export async function GET() {
 // SendGrid email with a Supabase-signed link; they set their own password on
 // `/auth/establecer-password`. Admins never type or transmit plaintext passwords.
 export async function POST(req: NextRequest) {
+  const auth = await requireRole('admin');
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { email, rol, perfil_id } = await req.json();
 

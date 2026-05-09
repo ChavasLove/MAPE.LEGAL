@@ -186,24 +186,28 @@ export async function createDashExpediente(
   input: CreateExpedienteInput
 ): Promise<DashExpediente> {
   // Generate numero_expediente from the highest existing number for the
-  // current year. Using COUNT collided after deletes and raced under
-  // concurrent creates; parsing the latest numero tolerates gaps. The unique
-  // constraint on numero_expediente will still reject any genuine collision.
+  // current year. We pull every numero for the year and take the integer
+  // max in JS rather than relying on `ORDER BY numero_expediente DESC` —
+  // that lexicographic sort treated EXP-YYYY-1000 as smaller than
+  // EXP-YYYY-999 and broke at the 1000th expediente, and any width
+  // mismatch (3-digit vs 4-digit) would similarly mis-rank rows. The
+  // year filter keeps the result set small. Suffix is padded to 4 for
+  // readability; correctness no longer depends on a fixed width.
   const year   = new Date().getFullYear();
   const prefix = `EXP-${year}-`;
 
-  const { data: latest } = await supabase
+  const { data: rows } = await supabase
     .from('expedientes')
     .select('numero_expediente')
-    .like('numero_expediente', `${prefix}%`)
-    .order('numero_expediente', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .like('numero_expediente', `${prefix}%`);
 
-  const lastNum = latest?.numero_expediente
-    ? parseInt(latest.numero_expediente.slice(prefix.length), 10) || 0
-    : 0;
-  const num    = String(lastNum + 1).padStart(3, '0');
+  let lastNum = 0;
+  for (const row of (rows ?? []) as Array<{ numero_expediente: string | null }>) {
+    if (!row.numero_expediente) continue;
+    const n = parseInt(row.numero_expediente.slice(prefix.length), 10);
+    if (Number.isFinite(n) && n > lastNum) lastNum = n;
+  }
+  const num    = String(lastNum + 1).padStart(4, '0');
   const numero = `${prefix}${num}`;
 
   const { data: exp, error: expErr } = await supabase
@@ -232,29 +236,35 @@ export async function createDashExpediente(
 
   const eid = exp.id;
 
-  // Default hitos, documentos, legalidad_items, progress_fases
-  await supabase.from('hitos').insert([
+  // Default hitos, documentos, legalidad_items, progress_fases.
+  // Each insert is checked: a silent failure here used to return a "successful"
+  // expediente that the dashboard then rendered with missing milestones,
+  // documents, or progress phases, with no audit trail of what went wrong.
+  const { error: hitosErr } = await supabase.from('hitos').insert([
     { expediente_id: eid, numero: 1, monto: 320000, porcentaje: 30, trigger_evento: 'Firma del contrato',           estado: 'pendiente' },
     { expediente_id: eid, numero: 2, monto: 480000, porcentaje: 40, trigger_evento: 'Constancia INHGEOMIN emitida', estado: 'bloqueado' },
     { expediente_id: eid, numero: 3, monto: 800000, porcentaje: 30, trigger_evento: 'Lic. ambiental + permiso',     estado: 'bloqueado' },
   ]);
+  if (hitosErr) throw hitosErr;
 
-  await supabase.from('documentos').insert([
+  const { error: docsErr } = await supabase.from('documentos').insert([
     { expediente_id: eid, nombre: 'RTN autenticado',           estado: 'faltante', info: 'Pendiente del cliente' },
     { expediente_id: eid, nombre: 'Documento de identidad (DPI)', estado: 'faltante', info: 'Pendiente del cliente' },
     { expediente_id: eid, nombre: 'Escritura del terreno',     estado: 'faltante', info: 'Pendiente del cliente' },
     { expediente_id: eid, nombre: 'Garantía bancaria',         estado: 'faltante', info: 'Pendiente del cliente' },
   ]);
+  if (docsErr) throw docsErr;
 
-  await supabase.from('legalidad_items').insert([
+  const { error: legErr } = await supabase.from('legalidad_items').insert([
     { expediente_id: eid, nombre: 'Tierra',    estado: 'pendiente', orden: 1 },
     { expediente_id: eid, nombre: 'INHGEO',    estado: 'pendiente', orden: 2 },
     { expediente_id: eid, nombre: 'Ambiental', estado: 'pendiente', orden: 3 },
     { expediente_id: eid, nombre: 'Municipal', estado: 'pendiente', orden: 4 },
     { expediente_id: eid, nombre: 'Registro',  estado: 'pendiente', orden: 5 },
   ]);
+  if (legErr) throw legErr;
 
-  const { data: pf } = await supabase.from('progress_fases').insert({
+  const { data: pf, error: pfErr } = await supabase.from('progress_fases').insert({
     expediente_id:    eid,
     nombre:           'Fase 0 · Onboarding',
     estado:           'activa',
@@ -264,15 +274,15 @@ export async function createDashExpediente(
     fecha_vencimiento: null,
     orden:            0,
   }).select('id').single();
+  if (pfErr || !pf) throw pfErr ?? new Error('Failed to create progress_fase');
 
-  if (pf) {
-    await supabase.from('progress_subpasos').insert({
-      progress_fase_id: pf.id,
-      nombre: 'Paso 1 · Consulta SIMHON/INHGEOMIN',
-      estado: 'activo',
-      orden: 1,
-    });
-  }
+  const { error: subErr } = await supabase.from('progress_subpasos').insert({
+    progress_fase_id: pf.id,
+    nombre: 'Paso 1 · Consulta SIMHON/INHGEOMIN',
+    estado: 'activo',
+    orden: 1,
+  });
+  if (subErr) throw subErr;
 
   const result = await getDashExpedienteById(numero);
   if (!result) throw new Error('Created expediente not found');

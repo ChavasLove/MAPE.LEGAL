@@ -44,7 +44,7 @@ export function News() {
           {articles.map(({ tag, date, title, excerpt }) => (
             <article
               key={title}
-              className="group flex flex-col border border-[#E5E7EB] rounded-xl overflow-hidden hover:shadow-sm transition-shadow"
+              className="group flex flex-col border border-[#E2E0D8] rounded-xl overflow-hidden hover:shadow-sm transition-shadow"
             >
               {/* Color bar */}
               <div className="h-1.5 bg-forest-800" />

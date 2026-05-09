@@ -38,7 +38,7 @@ export function Contacto() {
   }
 
   const inputCls = "w-full px-4 py-3 rounded-lg border text-sm font-sans outline-none focus:ring-2 focus:ring-primary-950/30 transition bg-white text-primary-900 placeholder:text-primary-300";
-  const inputStyle = { borderColor: '#E5E7EB' };
+  const inputStyle = { borderColor: '#E2E0D8' };
 
   return (
     <section className="py-24 bg-primary-900" id="contacto">
@@ -68,7 +68,7 @@ export function Contacto() {
                 'Sin costo por la evaluación preliminar',
               ].map(point => (
                 <li key={point} className="flex items-start gap-3 text-primary-300 font-sans text-sm">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3E7C59" strokeWidth="2" strokeLinecap="round" className="mt-0.5 shrink-0">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2A8E50" strokeWidth="2" strokeLinecap="round" className="mt-0.5 shrink-0">
                     <polyline points="20 6 9 17 4 12"/>
                   </svg>
                   {point}
@@ -88,11 +88,11 @@ export function Contacto() {
           </div>
 
           {/* Right — Form */}
-          <div className="bg-primary-50 rounded-xl border border-[#E5E7EB] p-5 sm:p-8">
+          <div className="bg-primary-50 rounded-xl border border-[#E2E0D8] p-5 sm:p-8">
             {estado === 'success' ? (
               <div className="text-center py-8">
                 <div className="w-16 h-16 rounded-full bg-badge-success-bg flex items-center justify-center mx-auto mb-5">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3E7C59" strokeWidth="2" strokeLinecap="round">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2A8E50" strokeWidth="2" strokeLinecap="round">
                     <polyline points="20 6 9 17 4 12"/>
                   </svg>
                 </div>
@@ -164,7 +164,7 @@ export function Contacto() {
                 </div>
 
                 {estado === 'error' && (
-                  <p className="text-sm font-sans px-4 py-3 rounded-lg" style={{ color: '#A94442', background: '#F8E5E4' }}>
+                  <p className="text-sm font-sans px-4 py-3 rounded-lg" style={{ color: '#B23A3A', background: '#EFD7D5' }}>
                     {errorMsg}
                   </p>
                 )}
@@ -173,7 +173,7 @@ export function Contacto() {
                   type="submit"
                   disabled={estado === 'sending'}
                   className="w-full py-4 rounded-lg text-white text-base font-bold font-sans transition-colors disabled:opacity-60 cursor-pointer"
-                  style={{ background: '#1F2A44' }}
+                  style={{ background: '#1F2A38' }}
                 >
                   {estado === 'sending' ? 'Enviando…' : 'Iniciar mi formalización'}
                 </button>

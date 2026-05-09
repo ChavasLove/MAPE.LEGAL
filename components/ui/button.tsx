@@ -6,13 +6,13 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className = '', variant = 'default', size = 'default', ...props }, ref) => {
+  ({ className = '', variant = 'default', size = 'default', style, ...props }, ref) => {
     const base = 'inline-flex items-center justify-center font-semibold font-sans transition-colors focus-visible:outline-none disabled:opacity-50 disabled:pointer-events-none cursor-pointer';
 
-    const variants = {
-      default: 'bg-primary-950 text-white hover:bg-primary-900',
-      outline: 'border border-primary-950 text-primary-950 hover:bg-primary-950/5 bg-transparent',
-      ghost:   'text-primary-950 hover:bg-primary-950/5 bg-transparent',
+    const variantStyles: Record<string, React.CSSProperties> = {
+      default: { background: 'var(--ink)', color: '#fff' },
+      outline: { background: 'transparent', color: 'var(--ink)', border: '1px solid var(--ink)' },
+      ghost:   { background: 'transparent', color: 'var(--ink)' },
     };
 
     const sizes = {
@@ -24,7 +24,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         ref={ref}
-        className={`${base} ${variants[variant]} ${sizes[size]} ${className}`}
+        className={`${base} ${sizes[size]} ${className}`}
+        style={{ ...variantStyles[variant], ...style }}
         {...props}
       />
     );

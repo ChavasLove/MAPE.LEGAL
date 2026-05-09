@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { checkWhatsAppTokenHealth } from '@/services/whatsappService';
+import { requireRole } from '@/lib/serverAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,8 +9,12 @@ export const dynamic = 'force-dynamic';
 // Use this to diagnose 8 AM broadcast failures: an expired token returns
 // { ok: false, isAuthError: true } and the env var must be regenerated.
 //
-// Protected by proxy.ts admin gate. No CRON_SECRET required (admin cookie path).
+// Admin-gated at the route level (defence in depth — does not rely on the
+// proxy alone, which only checks cookie presence).
 export async function GET() {
+  const auth = await requireRole('admin');
+  if (auth instanceof NextResponse) return auth;
+
   const health = await checkWhatsAppTokenHealth();
   const status = health.ok ? 200 : (health.isAuthError ? 401 : 500);
   return NextResponse.json(health, { status });
