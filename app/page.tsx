@@ -128,15 +128,15 @@ export default function LandingPage() {
                 <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'5px'}}>
                   <div style={{background:'#fff',border:'1px solid var(--border)',borderRadius:'4px',padding:'7px',borderTop:'2px solid var(--blue)'}}>
                     <div className="skel" style={{height:'6px',width:'60%',marginBottom:'3px'}}/>
-                    <div style={{fontSize:'14px',fontWeight:800,color:'var(--blue)'}}>20%</div>
+                    <div style={{fontSize:'14px',fontWeight:700,color:'var(--blue)'}}>20%</div>
                   </div>
                   <div style={{background:'#fff',border:'1px solid var(--border)',borderRadius:'4px',padding:'7px',borderTop:'2px solid var(--green)'}}>
                     <div className="skel" style={{height:'6px',width:'60%',marginBottom:'3px'}}/>
-                    <div style={{fontSize:'14px',fontWeight:800,color:'var(--green)'}}>L 320k</div>
+                    <div style={{fontSize:'14px',fontWeight:700,color:'var(--green)'}}>L 320k</div>
                   </div>
                   <div style={{background:'#fff',border:'1px solid var(--border)',borderRadius:'4px',padding:'7px',borderTop:'2px solid var(--amber)'}}>
                     <div className="skel" style={{height:'6px',width:'60%',marginBottom:'3px'}}/>
-                    <div style={{fontSize:'14px',fontWeight:800,color:'var(--amber)'}}>F1/P9</div>
+                    <div style={{fontSize:'14px',fontWeight:700,color:'var(--amber)'}}>F1/P9</div>
                   </div>
                 </div>
                 <div style={{background:'#fff',border:'1px solid var(--border)',borderRadius:'4px',padding:'8px',display:'flex',flexDirection:'column',gap:'6px'}}>
@@ -191,8 +191,8 @@ export default function LandingPage() {
           <div className="float-notif">
             <div className="float-icon">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <circle cx="8" cy="8" r="7" stroke="#057a55" strokeWidth="1.5"/>
-                <path d="M5 8l2 2 4-4" stroke="#057a55" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="8" cy="8" r="7" stroke="#2A8E50" strokeWidth="1.5"/>
+                <path d="M5 8l2 2 4-4" stroke="#2A8E50" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
             <div>
@@ -393,7 +393,7 @@ export default function LandingPage() {
                   </div>
                   <div style={{display:'flex',alignItems:'center',gap:'8px',flexShrink:0}}>
                     <span style={{fontSize:'12px',fontWeight:700,color:'var(--t1)'}}>L 320k</span>
-                    <span style={{background:'#dcfce7',color:'#057a55',padding:'1px 8px',borderRadius:'20px',fontSize:'10px',fontWeight:600}}>
+                    <span style={{background:'#E0EDE3',color:'#2A8E50',padding:'1px 8px',borderRadius:'20px',fontSize:'10px',fontWeight:600}}>
                       {t('Cobrado', 'Paid')}
                     </span>
                   </div>
@@ -404,7 +404,7 @@ export default function LandingPage() {
                   </div>
                   <div style={{display:'flex',alignItems:'center',gap:'8px',flexShrink:0}}>
                     <span style={{fontSize:'12px',fontWeight:700,color:'var(--t1)'}}>L 480k</span>
-                    <span style={{background:'#fef3c7',color:'#92580a',padding:'1px 8px',borderRadius:'20px',fontSize:'10px',fontWeight:600}}>
+                    <span style={{background:'#F4E9D6',color:'#C58B2C',padding:'1px 8px',borderRadius:'20px',fontSize:'10px',fontWeight:600}}>
                       {t('Pendiente', 'Pending')}
                     </span>
                   </div>
@@ -415,7 +415,7 @@ export default function LandingPage() {
                   </div>
                   <div style={{display:'flex',alignItems:'center',gap:'8px',flexShrink:0}}>
                     <span style={{fontSize:'12px',fontWeight:700,color:'var(--t1)'}}>L 800k</span>
-                    <span style={{background:'#eef0f4',color:'#9ca3af',padding:'1px 8px',borderRadius:'20px',fontSize:'10px',fontWeight:600,border:'1px solid var(--border)'}}>
+                    <span style={{background:'#F0EDE5',color:'#8E96A2',padding:'1px 8px',borderRadius:'20px',fontSize:'10px',fontWeight:600,border:'1px solid var(--border)'}}>
                       {t('Bloqueado', 'Locked')}
                     </span>
                   </div>
@@ -498,7 +498,7 @@ export default function LandingPage() {
               </button>
             </form>
           ) : (
-            <div style={{marginTop:'16px',background:'#dcfce7',color:'#057a55',padding:'12px 20px',borderRadius:'8px',fontSize:'14px',fontWeight:600,textAlign:'center'}}>
+            <div style={{marginTop:'16px',background:'#E0EDE3',color:'#2A8E50',padding:'12px 20px',borderRadius:'8px',fontSize:'14px',fontWeight:600,textAlign:'center'}}>
               {t('✓ Recibimos tu solicitud. Te contactamos pronto por WhatsApp.', "✓ We received your request. We'll contact you soon via WhatsApp.")}
             </div>
           )}

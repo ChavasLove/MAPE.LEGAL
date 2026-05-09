@@ -27,10 +27,10 @@ interface Mina {
 }
 
 const ESTADO_BADGE: Record<string, { bg: string; text: string; label: string }> = {
-  en_tramite:  { bg: '#F5EBDD', text: '#8C6A4A', label: 'En trámite' },
-  activa:      { bg: '#E6F2EC', text: '#2F5D50', label: 'Activa'     },
-  suspendida:  { bg: '#F8E5E4', text: '#A94442', label: 'Suspendida' },
-  clausurada:  { bg: '#F8E5E4', text: '#A94442', label: 'Clausurada' },
+  en_tramite:  { bg: '#F4E9D6', text: '#8B6A4A', label: 'En trámite' },
+  activa:      { bg: '#E0EDE3', text: '#2F5D50', label: 'Activa'     },
+  suspendida:  { bg: '#EFD7D5', text: '#B23A3A', label: 'Suspendida' },
+  clausurada:  { bg: '#EFD7D5', text: '#B23A3A', label: 'Clausurada' },
 };
 
 const CONCESION_LABEL: Record<string, string> = {
@@ -88,14 +88,14 @@ export default function MinasPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white">Minas</h1>
-          <p className="text-sm font-sans mt-0.5" style={{ color: '#A3AAB3' }}>
+          <p className="text-sm font-sans mt-0.5" style={{ color: '#A3A8AB' }}>
             {loading ? '...' : `${minas.length} registradas · ${activas} activas · ${enTramite} en trámite`}
           </p>
         </div>
         <button
           onClick={load}
           className="p-2 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
-          style={{ color: '#A3AAB3' }}
+          style={{ color: '#A3A8AB' }}
           title="Recargar"
         >
           <RefreshCw size={18} strokeWidth={1.5} />
@@ -104,50 +104,50 @@ export default function MinasPage() {
 
       <div className="mb-5">
         <div className="relative w-72">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#A3AAB3' }} />
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#A3A8AB' }} />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Buscar por nombre, código, cliente..."
             className="pl-9 pr-4 py-2 rounded-lg text-sm font-sans outline-none w-full"
-            style={{ background: '#1F2A44', border: '1px solid rgba(94,107,122,0.3)', color: 'white' }}
+            style={{ background: '#1F2A38', border: '1px solid rgba(94,107,123,0.3)', color: 'white' }}
           />
         </div>
       </div>
 
-      <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'rgba(94,107,122,0.3)' }}>
+      <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'rgba(94,107,123,0.3)' }}>
         <table className="w-full text-sm font-sans">
           <thead>
-            <tr style={{ background: '#1F2A44' }}>
+            <tr style={{ background: '#1F2A38' }}>
               {['Código', 'Nombre', 'Cliente', 'Municipio', 'Coordenadas', 'Área', 'Mineral', 'Concesión', 'Estado'].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: '#A3AAB3' }}>{h}</th>
+                <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: '#A3A8AB' }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={9} className="px-4 py-10 text-center" style={{ color: '#A3AAB3', background: '#162033' }}>
+                <td colSpan={9} className="px-4 py-10 text-center" style={{ color: '#A3A8AB', background: '#1F2A38' }}>
                   Cargando...
                 </td>
               </tr>
             ) : visible.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-4 py-10 text-center" style={{ color: '#A3AAB3', background: '#162033' }}>
+                <td colSpan={9} className="px-4 py-10 text-center" style={{ color: '#A3A8AB', background: '#1F2A38' }}>
                   {search ? 'No hay resultados para esa búsqueda.' : 'Aún no hay minas registradas.'}
                 </td>
               </tr>
             ) : visible.map(m => {
-              const badge = ESTADO_BADGE[m.estado] ?? { bg: '#2A3347', text: '#5E6B7A', label: m.estado };
+              const badge = ESTADO_BADGE[m.estado] ?? { bg: '#2A3347', text: '#5E6B7B', label: m.estado };
               return (
-                <tr key={m.id} style={{ borderTop: '1px solid rgba(94,107,122,0.2)', background: '#162033' }}>
+                <tr key={m.id} style={{ borderTop: '1px solid rgba(94,107,123,0.2)', background: '#1F2A38' }}>
                   <td className="px-4 py-3 font-semibold text-white">{m.codigo ?? '—'}</td>
                   <td className="px-4 py-3 text-white">{m.nombre}</td>
-                  <td className="px-4 py-3" style={{ color: '#A3AAB3' }}>{m.cliente?.nombre ?? '—'}</td>
-                  <td className="px-4 py-3" style={{ color: '#A3AAB3' }}>
+                  <td className="px-4 py-3" style={{ color: '#A3A8AB' }}>{m.cliente?.nombre ?? '—'}</td>
+                  <td className="px-4 py-3" style={{ color: '#A3A8AB' }}>
                     {m.municipio ? `${m.municipio}${m.departamento ? `, ${m.departamento}` : ''}` : '—'}
                   </td>
-                  <td className="px-4 py-3 text-xs" style={{ color: '#A3AAB3' }}>
+                  <td className="px-4 py-3 text-xs" style={{ color: '#A3A8AB' }}>
                     {m.latitud != null && m.longitud != null ? (
                       <span className="inline-flex items-center gap-1">
                         <MapPin size={12} strokeWidth={1.5} />
@@ -155,9 +155,9 @@ export default function MinasPage() {
                       </span>
                     ) : '—'}
                   </td>
-                  <td className="px-4 py-3" style={{ color: '#A3AAB3' }}>{formatArea(m.area_hectareas)}</td>
-                  <td className="px-4 py-3 capitalize" style={{ color: '#A3AAB3' }}>{m.tipo_mineral}</td>
-                  <td className="px-4 py-3" style={{ color: '#A3AAB3' }}>{CONCESION_LABEL[m.tipo_concesion] ?? m.tipo_concesion}</td>
+                  <td className="px-4 py-3" style={{ color: '#A3A8AB' }}>{formatArea(m.area_hectareas)}</td>
+                  <td className="px-4 py-3 capitalize" style={{ color: '#A3A8AB' }}>{m.tipo_mineral}</td>
+                  <td className="px-4 py-3" style={{ color: '#A3A8AB' }}>{CONCESION_LABEL[m.tipo_concesion] ?? m.tipo_concesion}</td>
                   <td className="px-4 py-3">
                     <span className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: badge.bg, color: badge.text }}>
                       {badge.label}
@@ -170,7 +170,7 @@ export default function MinasPage() {
         </table>
       </div>
 
-      <p className="text-xs font-sans mt-3" style={{ color: '#5E6B7A' }}>
+      <p className="text-xs font-sans mt-3" style={{ color: '#5E6B7B' }}>
         Registrado: {visible[0] ? formatDate(visible[0].created_at) : '—'}
       </p>
     </div>
