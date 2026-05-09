@@ -109,10 +109,11 @@ function LoginForm() {
       setError('Inicio de sesión con Google no está configurado.');
       return;
     }
-    // Supabase returns the session in the URL fragment (`#access_token=...`)
-    // when /authorize is hit without PKCE params, so the destination must be
-    // a client page that can read the fragment. /auth/callback POSTs the
-    // tokens to /api/auth/oauth-session, which sets our cookies.
+    // /auth/callback handles both shapes Supabase can return:
+    //   - `?code=...` (authorization code flow — modern default) → forwarded
+    //     to /api/auth/callback for the server-side exchange
+    //   - `#access_token=...` (implicit flow — legacy) → tokens are read
+    //     client-side and posted to /api/auth/oauth-session
     const redirectUri = `${siteUrl}/auth/callback`;
     const scopes      = encodeURIComponent('openid email profile');
     const oauthUrl =

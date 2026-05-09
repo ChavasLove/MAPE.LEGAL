@@ -4,12 +4,21 @@ import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
-// Client-side OAuth callback. Supabase redirects here after Google auth with
-// the session in the URL fragment (`#access_token=...&refresh_token=...`),
-// which is the implicit-flow shape returned when /authorize is hit without
-// PKCE parameters. Servers can't read URL fragments, so this page extracts
-// them client-side and posts them to /api/auth/oauth-session, which validates
-// the JWT, looks up the role, and sets our cookie set.
+// Client-side OAuth callback. Supabase can complete OAuth in two shapes:
+//   1. Authorization code flow — `?code=...` in the query string (modern
+//      default for Supabase projects; required when the project enforces
+//      PKCE). Servers must perform the exchange because doing it client-side
+//      would either expose the service-role key or require a code_verifier
+//      that this page never minted. We forward to /api/auth/callback, which
+//      runs `exchangeCodeForSession` and sets cookies in one redirect.
+//   2. Implicit flow — `#access_token=...&refresh_token=...` in the URL
+//      fragment. Servers can't read fragments, so we extract them here and
+//      POST to /api/auth/oauth-session, which validates the JWT and sets
+//      cookies.
+//
+// Before the dual-flow handling: projects on the code flow landed here with
+// an empty hash and bounced back to /login?error=Sesion+invalida, which is
+// exactly the "accounts created but can't enter dashboard" symptom.
 export const dynamic = 'force-dynamic';
 
 function CallbackHandler() {
@@ -27,6 +36,24 @@ function CallbackHandler() {
         return;
       }
 
+      // ── Authorization code flow ────────────────────────────────────────
+      // Hand off to the server route that exchanges the code for a session
+      // and sets the cookie set. window.location.replace (not router.push)
+      // because the destination is an API route, not a Next page; replace
+      // (not assign) so the callback URL doesn't sit in browser history with
+      // the single-use `code` still attached.
+      const code = searchParams.get('code');
+      if (code && typeof window !== 'undefined') {
+        const next = new URL('/api/auth/callback', window.location.origin);
+        next.searchParams.set('code', code);
+        // Scrub the current entry first so back-button never points at a URL
+        // containing the code (mirrors the implicit-flow scrub at line ~93).
+        window.history.replaceState({}, '', '/auth/callback');
+        window.location.replace(next.toString());
+        return;
+      }
+
+      // ── Implicit flow ──────────────────────────────────────────────────
       const hash = typeof window !== 'undefined' ? window.location.hash : '';
       if (!hash) {
         router.replace('/login?error=Sesion+invalida');
@@ -70,7 +97,18 @@ function CallbackHandler() {
         if (typeof window !== 'undefined') {
           window.history.replaceState({}, '', window.location.pathname);
         }
-        router.push(data.redirectTo ?? '/dashboard');
+        // Defense-in-depth: redirectTo today comes from a server-side allowlist
+        // (ROLE_REDIRECT in /api/auth/oauth-session), so it's already safe. The
+        // guard below ensures a future regression that lets user input flow
+        // into that field can't turn this into an open-redirect.
+        const target =
+          typeof data.redirectTo === 'string'
+            && data.redirectTo.startsWith('/')
+            && !data.redirectTo.startsWith('//')
+            && !data.redirectTo.startsWith('/\\')
+              ? data.redirectTo
+              : '/dashboard';
+        router.push(target);
         router.refresh();
       } catch (err) {
         if (cancelled) return;
