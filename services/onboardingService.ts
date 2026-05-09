@@ -169,14 +169,15 @@ async function finalise(telefono: string, datos: OnboardingDatos): Promise<void>
     .single();
 
   if (existing?.id) {
-    await admin.from('clientes').update({
+    const { error: updateErr } = await admin.from('clientes').update({
       nombre:            datos.nombre_completo  ?? undefined,
       dpi:               datos.numero_identidad ?? undefined,
       municipio:         datos.ubicacion_proyecto ?? undefined,
       updated_at:        new Date().toISOString(),
     }).eq('id', existing.id);
+    if (updateErr) console.error('[onboarding] clientes update failed:', updateErr.message);
   } else {
-    await admin.from('clientes').insert({
+    const { error: insertErr } = await admin.from('clientes').insert({
       nombre:            datos.nombre_completo   ?? 'Sin nombre',
       dpi:               datos.numero_identidad  ?? null,
       municipio:         datos.ubicacion_proyecto ?? 'Iriona, Colon',
@@ -185,6 +186,7 @@ async function finalise(telefono: string, datos: OnboardingDatos): Promise<void>
       situacion_tierra:  'por_definir',
       telefono_whatsapp: telefono,
     });
+    if (insertErr) console.error('[onboarding] clientes insert failed:', insertErr.message);
   }
 
   // 2. Ensure broadcast user exists and has the correct role

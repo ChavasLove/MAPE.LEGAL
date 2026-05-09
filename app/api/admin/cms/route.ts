@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getCmsContent, upsertCmsField, deleteCmsField } from '@/services/cmsService';
+import { requireRole } from '@/lib/serverAuth';
 
 export async function GET() {
+  const auth = await requireRole('admin');
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const data = await getCmsContent();
     return NextResponse.json(data);
@@ -12,6 +16,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const auth = await requireRole('admin');
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { seccion, campo, valor, tipo } = await req.json();
     if (!seccion || !campo) {
@@ -26,6 +33,9 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const auth = await requireRole('admin');
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { seccion, campo } = await req.json();
     if (!seccion || !campo) {

@@ -72,5 +72,5 @@ export async function getCmsSections(): Promise<string[]> {
     .select('seccion')
     .order('seccion');
   if (error) throw error;
-  return [...new Set((data ?? []).map((r: { seccion: string }) => r.seccion))];
+  return Array.from(new Set<string>((data ?? []).map((r: { seccion: string }) => r.seccion)));
 }

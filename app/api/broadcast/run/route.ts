@@ -1,28 +1,68 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { runDailyBroadcast, type DailyBroadcastOptions } from '@/jobs/dailyBroadcast';
+import { validatePriceFreshness } from '@/services/pricingService';
 
-// POST /api/broadcast/run
+export const dynamic = 'force-dynamic';
+
+// /api/broadcast/run
 // Trigger the daily broadcast. Protected by CRON_SECRET header.
-// Cron job example (Vercel): POST this URL with Authorization: Bearer <CRON_SECRET>
-export async function POST(req: NextRequest) {
+//
+// Vercel Cron Jobs send GET requests with `Authorization: Bearer <CRON_SECRET>`
+// when CRON_SECRET is configured as a project env var. POST is kept for manual
+// invocation (curl, admin actions) where a JSON body can supply roles overrides.
+async function handle(
+  req: NextRequest,
+  options: DailyBroadcastOptions,
+  defaultTrigger: string
+) {
   const secret = process.env.CRON_SECRET;
   if (secret) {
     const auth = req.headers.get('authorization');
     if (auth !== `Bearer ${secret}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+  } else if (process.env.NODE_ENV === 'production') {
+    // A missing CRON_SECRET in production would otherwise expose this
+    // endpoint to anyone — they could trigger broadcasts and burn Meta
+    // API quota. Fail loudly instead of silently allowing access.
+    console.error('[/api/broadcast/run] CRON_SECRET not configured in production');
+    return NextResponse.json(
+      { error: 'CRON_SECRET not configured' },
+      { status: 500 }
+    );
   }
 
   try {
-    const body = await req.json().catch(() => ({})) as { roles?: DailyBroadcastOptions['roles']; triggered_by?: string };
     const result = await runDailyBroadcast({
-      triggeredBy: body.triggered_by ?? 'api',
-      roles:       body.roles,
+      triggeredBy: options.triggeredBy ?? defaultTrigger,
+      roles:       options.roles,
     });
-    return NextResponse.json(result);
+
+    const freshness = await validatePriceFreshness(2).catch(() => null);
+    if (freshness && !freshness.isFresh) {
+      console.warn(`[/api/broadcast/run] ${freshness.warning}`);
+    }
+
+    return NextResponse.json({ ...result, price_freshness: freshness });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    console.error('[POST /api/broadcast/run]', msg);
+    console.error('[/api/broadcast/run]', msg);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
+}
+
+export async function GET(req: NextRequest) {
+  return handle(req, {}, 'cron');
+}
+
+export async function POST(req: NextRequest) {
+  const body = await req.json().catch(() => ({})) as {
+    roles?: DailyBroadcastOptions['roles'];
+    triggered_by?: string;
+  };
+  return handle(
+    req,
+    { roles: body.roles, triggeredBy: body.triggered_by },
+    'api'
+  );
 }

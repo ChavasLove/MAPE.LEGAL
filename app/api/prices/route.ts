@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
+import { fetchAllPrices } from '@/services/pricingService';
+
+export const dynamic = 'force-dynamic';
 
 // Module-level state: persists within a server instance, resets on cold start.
-// Adequate for pilot scale; replace with DB persistence if needed.
 const prev = { gold: 0, silver: 0 };
 
 function computeDelta(current: number, previous: number) {
@@ -13,30 +15,9 @@ function computeDelta(current: number, previous: number) {
 
 export async function GET() {
   try {
-    const [metalsRes, fxRes] = await Promise.all([
-      fetch('https://api.metals.live/v1/spot', {
-        headers: { Accept: 'application/json' },
-        next: { revalidate: 60 },
-      }),
-      fetch('https://api.exchangerate-api.com/v4/latest/USD', {
-        headers: { Accept: 'application/json' },
-        next: { revalidate: 3600 },
-      }),
-    ]);
-
-    const metalsData = await metalsRes.json();
-    const fxData = await fxRes.json();
-
-    const find = (key: string): number | null => {
-      if (Array.isArray(metalsData)) {
-        const entry = metalsData.find((m: Record<string, number>) => key in m);
-        return entry?.[key] ?? null;
-      }
-      return metalsData?.[key] ?? null;
-    };
-
-    const gold = find('gold');
-    const silver = find('silver');
+    const precios = await fetchAllPrices();
+    const gold = precios.oro;
+    const silver = precios.plata;
 
     const goldDelta   = gold   !== null && prev.gold   ? computeDelta(gold,   prev.gold)   : { change: 0, changePercent: 0 };
     const silverDelta = silver !== null && prev.silver ? computeDelta(silver, prev.silver) : { change: 0, changePercent: 0 };
@@ -45,11 +26,14 @@ export async function GET() {
     if (silver !== null) prev.silver = silver;
 
     return NextResponse.json({
-      gold:   { price: gold,   ...goldDelta },
-      silver: { price: silver, ...silverDelta },
-      hnlPerUsd: fxData.rates?.HNL ?? null,
+      gold:   { price: gold,   ...goldDelta, source: precios.fuente },
+      silver: { price: silver, ...silverDelta, source: precios.fuente },
+      hnlPerUsd: precios.usd_hnl,
+      fetchedAt: precios.fetched_at,
     });
-  } catch {
-    return NextResponse.json({ error: 'fetch_failed' }, { status: 502 });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error('[GET /api/prices]', msg);
+    return NextResponse.json({ error: 'fetch_failed', message: msg }, { status: 502 });
   }
 }

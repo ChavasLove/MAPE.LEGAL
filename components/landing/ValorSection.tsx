@@ -58,10 +58,10 @@ export function ValorSection() {
             <div
               key={num}
               className="flex flex-col items-center text-center p-5 rounded-xl border"
-              style={{ background: '#162033', borderColor: 'rgba(94,107,122,0.3)' }}
+              style={{ background: '#1F2A38', borderColor: 'rgba(94,107,123,0.3)' }}
             >
               <div className="w-10 h-10 rounded-full bg-action-green/15 flex items-center justify-center mb-3">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3E7C59" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2A8E50" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d={icon} />
                 </svg>
               </div>
@@ -72,15 +72,15 @@ export function ValorSection() {
         </div>
 
         {/* Comparison table */}
-        <div className="rounded-xl overflow-hidden border" style={{ borderColor: 'rgba(94,107,122,0.3)' }}>
+        <div className="rounded-xl overflow-hidden border" style={{ borderColor: 'rgba(94,107,123,0.3)' }}>
           {/* Table header */}
           <div className="grid grid-cols-2">
-            <div className="px-4 sm:px-6 py-3 sm:py-4 text-center" style={{ background: '#F8E5E4' }}>
-              <span className="text-xs sm:text-sm font-bold uppercase tracking-wider font-sans" style={{ color: '#A94442' }}>
+            <div className="px-4 sm:px-6 py-3 sm:py-4 text-center" style={{ background: '#EFD7D5' }}>
+              <span className="text-xs sm:text-sm font-bold uppercase tracking-wider font-sans" style={{ color: '#B23A3A' }}>
                 Sin MAPE.LEGAL
               </span>
             </div>
-            <div className="px-4 sm:px-6 py-3 sm:py-4 text-center" style={{ background: '#E6F2EC' }}>
+            <div className="px-4 sm:px-6 py-3 sm:py-4 text-center" style={{ background: '#E0EDE3' }}>
               <span className="text-xs sm:text-sm font-bold uppercase tracking-wider font-sans" style={{ color: '#2F5D50' }}>
                 Con MAPE.LEGAL
               </span>
@@ -91,24 +91,24 @@ export function ValorSection() {
             <div
               key={i}
               className="flex flex-col sm:grid sm:grid-cols-2"
-              style={{ borderTop: '1px solid rgba(94,107,122,0.2)' }}
+              style={{ borderTop: '1px solid rgba(94,107,123,0.2)' }}
             >
               {/* Sin CHT */}
               <div
                 className="px-4 sm:px-6 py-4 sm:py-5 flex items-start gap-3"
                 style={{ background: '#1A1018' }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A94442" strokeWidth="2" strokeLinecap="round" className="mt-0.5 shrink-0">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B23A3A" strokeWidth="2" strokeLinecap="round" className="mt-0.5 shrink-0">
                   <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                 </svg>
-                <p className="text-xs sm:text-sm font-sans leading-relaxed" style={{ color: '#A3AAB3' }}>{sin}</p>
+                <p className="text-xs sm:text-sm font-sans leading-relaxed" style={{ color: '#A3A8AB' }}>{sin}</p>
               </div>
               {/* Con CHT */}
               <div
                 className="px-4 sm:px-6 py-4 sm:py-5 flex items-start gap-3"
-                style={{ background: '#162033', borderTop: '1px solid rgba(94,107,122,0.15)' }}
+                style={{ background: '#1F2A38', borderTop: '1px solid rgba(94,107,123,0.15)' }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3E7C59" strokeWidth="2" strokeLinecap="round" className="mt-0.5 shrink-0">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2A8E50" strokeWidth="2" strokeLinecap="round" className="mt-0.5 shrink-0">
                   <polyline points="20 6 9 17 4 12"/>
                 </svg>
                 <p className="text-xs sm:text-sm font-sans leading-relaxed" style={{ color: '#D8C3A5' }}>{con}</p>
