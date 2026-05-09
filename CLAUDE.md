@@ -157,7 +157,7 @@ Webhook Twilio que conecta WhatsApp con Claude AI.
 
 **Estado real (auditoría 2026-05-03):** la landing activa es `app/page.tsx` (≈523 líneas, autocontenido, usa clases definidas en `app/globals.css`). Los 15 archivos de `components/landing/*` (`Hero.tsx`, `About.tsx`, `Problem.tsx`, `Solution.tsx`, `Services.tsx`, `Impact.tsx`, `Beneficiarios.tsx`, `Footer.tsx`, `Contacto.tsx`, `News.tsx`, `Programs.tsx`, `Roadmap.tsx`, `ValorSection.tsx`, `WhyNow.tsx`, `PriceWidgets.tsx`) están **huérfanos** — `grep` confirma cero imports en todo el repo. Cualquier cambio de UI debe hacerse en `app/page.tsx`, no en los componentes huérfanos.
 
-**Componente decorativo activo**: `components/decor/TopoBand.tsx` — SVG de líneas topográficas usado como watermark embossed en hero y footer (`app/page.tsx`) y como fondo del login (`app/login/page.tsx`). Variantes `light` / `dark` × posiciones `overlay` (full-bleed) / `band` (48px en top edge). `aria-hidden`, `pointer-events: none`, opacidad 0.06 (light, color `#162033`) / 0.18 (dark, color `#2F5D50`). No interactivo, no animado — quiet nod al territorio hondureño.
+**Componente decorativo activo**: `components/decor/TopoBand.tsx` — SVG de líneas topográficas usado como watermark embossed en hero y footer (`app/page.tsx`) y como fondo del login (`app/login/page.tsx`). Variantes `light` / `dark` × posiciones `overlay` (full-bleed) / `band` (48px en top edge). `aria-hidden`, `pointer-events: none`, opacidad 0.06 (light, color `--ink` `#1F2A38`) / 0.18 (dark, color `--moss` `#2F5D50`). No interactivo, no animado — quiet nod al territorio hondureño.
 
 ### Imágenes disponibles en `public/images/`
 | Archivo | Notas |
@@ -193,10 +193,11 @@ node scripts/seed-super-admin.mjs
 Requiere env vars. Es idempotente — re-ejecutable sin efectos secundarios.
 
 ## Estilo / UI
-- Tailwind v4 con `@theme inline` en `globals.css` — **no usar** `tailwind.config.js`
-- Colores siempre con `style={{ color: '...' }}` inline usando los tokens de DESIGN.md
-- No usar clases genéricas de Tailwind (`green-*`, `gray-*`, `slate-*`) — solo los hex del sistema de diseño
-- Fuentes: `font-sans` para Inter (UI). **Estado real:** Playfair Display **no** está cargada (ni en `app/layout.tsx` ni vía `@font-face` en `globals.css`). Los `<h1–h4>` caen al fallback `Georgia, serif`. Pendiente: cargar `Playfair_Display` desde `next/font/google` para cumplir DESIGN.md §2.
+- **MAPE LEGAL Color Manual v1.0** es la fuente de verdad — ver [`README.md`](./README.md) §0 y [`DESIGN.md`](./DESIGN.md). Tokens canónicos viven en `app/globals.css` `:root`.
+- Tailwind v4 con `@theme inline` en `globals.css` — **no usar** `tailwind.config.js`.
+- Colores siempre con `style={{ color: 'var(--ink)' }}` inline o vía clases definidas en `globals.css` que ya consumen los tokens.
+- No usar clases genéricas de Tailwind (`green-*`, `gray-*`, `slate-*`, `primary-950`, `forest-800`, etc.) — solo `var(--ink)` / `var(--moss)` / `var(--sand)` / etc.
+- Fuentes cargadas en `app/layout.tsx` vía `next/font/google`: **Inter** (`--font-inter`), **Playfair Display** (`--font-playfair`), **JetBrains Mono** (`--font-jetbrains`). `<h1>`–`<h6>` heredan Playfair desde `globals.css`. Peso máximo: 700.
 
 ## Landing page — responsividad móvil
 Convenciones aplicables a `app/page.tsx` (los componentes en `components/landing/` están huérfanos — ver sección "Landing page" arriba):
@@ -325,9 +326,11 @@ Flujo de registro guiado para números nuevos que contactan a María por primera
 - **Idioma**: tuteo — consistente con la personalidad establecida de María
 - **Tabla**: `onboarding_states` — `telefono`, `estado`, `datos jsonb`, timestamps
 
-## Auditoría — deuda técnica conocida (2026-05-03)
+## Auditoría — deuda técnica conocida (2026-05-03, parcialmente resuelta 2026-05-09)
 
 Documentado para evitar trabajo duplicado en futuras sesiones. Ninguno está bloqueando producción.
+
+> **Update 2026-05-09 (`claude/update-ui-colors-wGO7B`):** la sección de paleta + tipografía + audit de `app/page.tsx` / `app/globals.css` / `app/layout.tsx` quedó **resuelta** al adoptar el MAPE LEGAL Color Manual v1.0. Ver README §0 y commit `39875cf`. Los items que se mantienen son los marcados ⚠ abajo; los demás están tachados o eliminados.
 
 ### Auth — Google OAuth todavía retorna "Sin rol asignado" en producción (2026-05-09, no resuelto)
 
@@ -354,31 +357,18 @@ Próximo paso de la siguiente sesión: revisar logs de Vercel del último intent
 Follow-up diferido: auto-promover `@cht.hn` / `@mape.legal` a `abogado` en el callback (hoy todos los Google sign-ins quedan como `cliente` por default del trigger 015 → `/portal`).
 
 ### Landing
-- `components/landing/*` — 15 archivos huérfanos (cero imports). Decidir: revivir o eliminar.
-- `Hero.tsx:34` referencia `LOGO CHT.png` (no existe).
-- `Problem.tsx:83` referencia `Map.png` (no existe).
-- `Footer.tsx:3` — `border-t border-primary-900` sobre `bg-primary-950` queda invisible (`#1F2A44` vs `#162033`).
+- ⚠ `components/landing/*` — 15 archivos huérfanos (cero imports). Hex literales fueron migrados al nuevo sistema en 2026-05-09 pero las clases Tailwind tipo `bg-primary-950` siguen presentes. Decidir: revivir (y mover a tokens) o eliminar.
+- ⚠ `Hero.tsx:34` referencia `LOGO CHT.png` (no existe).
+- ⚠ `Problem.tsx:83` referencia `Map.png` (no existe).
 
 ### `app/page.tsx` (landing activa)
-- Línea ~192-193: hex hardcoded `#057a55` (Tailwind `emerald-700`) en lugar del token DESIGN.md `action-green` `#3E7C59`.
-- Líneas 129, 133, 137, 150 (aprox.): `fontWeight: 800` inline — DESIGN.md §2 cap = 700.
-- Línea 505 (aprox.): teléfono placeholder `+504 9XXX-XXXX` — CLAUDE.md prohíbe contacto personal en landing.
-- Línea 34 (aprox.): nav-logo con `href="#"` — usar `/` o `#top`.
-- Quote section (~464): mezcla comillas curvas `"` y rectas `"`.
-- `Roadmap.tsx:75` y `Problem.tsx:99` linkean a `/dashboard.html` — DESIGN.md §13 prohíbe esa cross-link.
-
-### `app/globals.css`
-- Tokens `--green: #057a55`, `--amber: #92580a` (líneas 8-10) — paletas Tailwind `emerald`/`amber` prohibidas por DESIGN.md.
-- `font-weight: 800` en líneas 59, 76, 129, 133, 137, 150, 203, 211 — exceden cap de 700.
-- `box-shadow` en `.mockup-window` (109), `.float-notif` (131), `.float-notif2` (139), `.progress-card` (183) — exceden `shadow-sm` permitido (DESIGN.md §8).
-- `animation: blink 1.4s` (línea 260) — animación continua prohibida por DESIGN.md §13.
-
-### `app/layout.tsx`
-- No carga Playfair Display — solo Inter. Headings caen a Georgia.
-- No declara `metadataBase`, `openGraph`, `twitter`. Solo `title` + `description`.
+- ⚠ Línea ~507: teléfono placeholder `+504 9XXX-XXXX` — CLAUDE.md prohíbe contacto personal en landing.
+- ⚠ Línea ~35: nav-logo con `href="#"` — usar `/` o `#top`.
+- ⚠ Quote section (~464): mezcla comillas curvas `"` y rectas `"`.
+- ⚠ `Roadmap.tsx:75` y `Problem.tsx:99` (huérfanos) linkean a `/dashboard.html` — DESIGN.md §13 prohíbe esa cross-link.
 
 ### Componentes huérfanos (si se reviven)
-- `components/landing/PriceWidgets.tsx:33` — `${sign}<0.01%` produce `-<0.01%` (signo mal posicionado).
-- `components/landing/Roadmap.tsx:72` — `animate-pulse` viola DESIGN.md §13.
-- `components/landing/WhyNow.tsx:3,8,13,18` — emojis (🌍 ⚖️ 🏭 📊) violan tono de marca.
-- `components/landing/ValorSection.tsx:99` — hex `#1A1018` no documentado en DESIGN.md.
+- ⚠ `components/landing/PriceWidgets.tsx:33` — `${sign}<0.01%` produce `-<0.01%` (signo mal posicionado).
+- ⚠ `components/landing/Roadmap.tsx:72` — `animate-pulse` viola DESIGN.md §13.
+- ⚠ `components/landing/WhyNow.tsx:3,8,13,18` — emojis (🌍 ⚖️ 🏭 📊) violan tono de marca.
+- ⚠ `components/landing/ValorSection.tsx:99` — hex `#1A1018` no documentado en DESIGN.md.

@@ -90,11 +90,12 @@ Resumen ejecutivo (detalle completo en CLAUDE.md → "Auditoría — deuda técn
 - `app/layout.tsx` — sin Playfair Display, sin metadata SEO (`metadataBase`, `openGraph`, `twitter`).
 
 ### Violaciones de DESIGN.md
-- `app/globals.css` — tokens `--green: #057a55`, `--amber: #92580a` (paletas Tailwind prohibidas).
-- `font-weight: 800` en globals.css y page.tsx — DESIGN.md §2 cap = 700.
-- `box-shadow` excediendo `shadow-sm` en `.mockup-window`, `.float-notif*`, `.progress-card`.
-- `animation: blink` continua en globals.css — prohibida por DESIGN.md §13.
-- `Footer.tsx:3` — borde invisible (primary-900 sobre primary-950).
+Resueltas en `claude/update-ui-colors-wGO7B` (2026-05-09) al adoptar el MAPE LEGAL Color Manual v1.0:
+- ✅ `app/globals.css` — tokens migrados al sistema canónico (`--ink`, `--moss`, `--green: #2A8E50`, `--amber: #C58B2C`).
+- ✅ `font-weight` capado a 700 en `globals.css` y `app/page.tsx`.
+- ✅ `box-shadow` reducido a `0 2px 6px rgba(31,42,56,0.05)` (shadow-sm) en mockup, float-notif, progress-card.
+- ✅ `animation: blink` removida.
+- ⚠ `components/landing/Footer.tsx` sigue huérfano — el borde invisible no afecta producción.
 
 ### Nits
 - `app/page.tsx` — placeholder `+504 9XXX-XXXX`, `href="#"` en logo, mezcla de comillas.
