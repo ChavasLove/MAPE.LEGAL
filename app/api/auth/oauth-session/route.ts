@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { checkAuthEnv, logAuthEnvFailure } from '@/lib/authEnv';
 
 const ROLE_REDIRECT: Record<string, string> = {
   admin:             '/admin',
@@ -31,11 +32,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Refresh token requerido' }, { status: 400 });
     }
 
-    const url     = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
-    if (!url || !anonKey) {
-      return NextResponse.json({ error: 'Configuración de servidor incompleta' }, { status: 500 });
+    // Require all three Supabase env vars including the service-role key.
+    // The role lookup MUST run with the service-role client: the validator
+    // (anon) client has no JWT session context here, so RLS evaluates
+    // auth.uid() = null, "Users can read own role" never matches, and the
+    // SELECT silently returns 0 rows — visually identical to a real "no
+    // role" miss. Failing loud surfaces the misconfiguration instead.
+    const env = checkAuthEnv();
+    if (!env.ok || env.serviceKey !== 'ok') {
+      logAuthEnvFailure('oauth-session', env);
+      return NextResponse.json(
+        { error: 'Configuración de servidor incompleta', code: 'SERVER_CONFIG' },
+        { status: 500 }
+      );
     }
+    const url        = process.env.NEXT_PUBLIC_SUPABASE_URL!.trim();
+    const anonKey    = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!.trim();
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!.trim();
 
     // Validate JWT against Supabase Auth.
     const validator = createClient(url, anonKey, { auth: { persistSession: false } });
@@ -46,12 +59,10 @@ export async function POST(req: NextRequest) {
     }
     const user = userRes.user;
 
-    // Look up role with the service-role client to bypass RLS — JWT context
-    // doesn't always propagate when persistSession is off.
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-    const roleClient = serviceKey
-      ? createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } })
-      : validator;
+    // Look up role with the service-role client (bypasses RLS).
+    const roleClient = createClient(url, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
     const { data: roleRow, error: roleErr } = await roleClient
       .from('user_roles')

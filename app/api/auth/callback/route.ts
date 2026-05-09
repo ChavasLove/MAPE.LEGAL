@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { checkAuthEnv, logAuthEnvFailure } from '@/lib/authEnv';
 
 const ROLE_REDIRECT: Record<string, string> = {
   admin:             '/admin',
@@ -40,11 +41,17 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(new URL('/login?error=Codigo+de+autenticacion+faltante', req.url));
     }
 
-    const url     = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
-    if (!url || !anonKey) {
+    // Require all three Supabase env vars including the service-role key.
+    // The role lookup below MUST run with the service-role client; falling
+    // back to the anon client returns "Sin rol asignado" silently because
+    // RLS evaluates auth.uid() = null when no session is set.
+    const env = checkAuthEnv();
+    if (!env.ok || env.serviceKey !== 'ok') {
+      logAuthEnvFailure('auth/callback', env);
       return NextResponse.redirect(new URL('/login?error=Configuracion+de+servidor+incompleta', req.url));
     }
+    const url     = process.env.NEXT_PUBLIC_SUPABASE_URL!.trim();
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!.trim();
 
     // Exchange code for session.
     //
@@ -70,13 +77,13 @@ export async function GET(req: NextRequest) {
     }
 
     const user       = data.session.user;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!.trim();
 
     // Service-role client is used for the role lookup so RLS cannot silently
     // hide the row when the access-token JWT context isn't propagated.
-    const roleClient = serviceKey
-      ? createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } })
-      : supabase;
+    const roleClient = createClient(url, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
     const { data: roleRow, error: roleErr } = await roleClient
       .from('user_roles')
