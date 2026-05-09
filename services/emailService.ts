@@ -63,13 +63,13 @@ function emailShell(content: string): string {
   return `<!DOCTYPE html>
 <html lang="es">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#F5F6F7;font-family:system-ui,sans-serif">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F5F6F7;padding:40px 16px">
+<body style="margin:0;padding:0;background:#FAF9F5;font-family:system-ui,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#FAF9F5;padding:40px 16px">
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%">
         <!-- Header -->
         <tr>
-          <td style="background:#1F2A44;border-radius:12px 12px 0 0;padding:28px 40px">
+          <td style="background:#1F2A38;border-radius:12px 12px 0 0;padding:28px 40px">
             <p style="margin:0;color:#D8C3A5;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:600">
               Corporación Hondureña Tenka
             </p>
@@ -80,16 +80,16 @@ function emailShell(content: string): string {
         </tr>
         <!-- Body -->
         <tr>
-          <td style="background:#ffffff;padding:40px;border-left:1px solid #E5E7EB;border-right:1px solid #E5E7EB">
+          <td style="background:#ffffff;padding:40px;border-left:1px solid #E2E0D8;border-right:1px solid #E2E0D8">
             ${content}
           </td>
         </tr>
         <!-- Footer -->
         <tr>
-          <td style="background:#F5F6F7;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 12px 12px;padding:20px 40px;text-align:center">
-            <p style="margin:0;color:#A3AAB3;font-size:12px">
+          <td style="background:#FAF9F5;border:1px solid #E2E0D8;border-top:none;border-radius:0 0 12px 12px;padding:20px 40px;text-align:center">
+            <p style="margin:0;color:#A3A8AB;font-size:12px">
               MAPE.LEGAL · Corporación Hondureña Tenka, S.A. de C.V.<br>
-              Honduras · <a href="mailto:gerencia@mape.legal" style="color:#A3AAB3">gerencia@mape.legal</a>
+              Honduras · <a href="mailto:gerencia@mape.legal" style="color:#A3A8AB">gerencia@mape.legal</a>
             </p>
           </td>
         </tr>
@@ -113,7 +113,7 @@ export function emailExpedienteAvance(
       <p>Su expediente <strong>${esc(expId)}</strong> ha avanzado a la fase <strong>${esc(faseNueva)}</strong>.</p>
       <p>Para consultas, responda a este correo o contáctenos por WhatsApp.</p>
       <br>
-      <p style="color:#5E6B7A;font-size:13px">— MAPE.LEGAL · Corporación Hondureña Tenka, S.A.</p>
+      <p style="color:#5E6B7B;font-size:13px">— MAPE.LEGAL · Corporación Hondureña Tenka, S.A.</p>
     `,
   });
 }
@@ -130,7 +130,7 @@ export function emailDocumentoRechazado(
       ${motivo ? `<p>Motivo: ${esc(motivo)}</p>` : ''}
       <p>Por favor envíe una versión corregida o contáctenos para asistencia.</p>
       <br>
-      <p style="color:#5E6B7A;font-size:13px">— MAPE.LEGAL · Corporación Hondureña Tenka, S.A.</p>
+      <p style="color:#5E6B7B;font-size:13px">— MAPE.LEGAL · Corporación Hondureña Tenka, S.A.</p>
     `,
   });
 }
@@ -151,7 +151,7 @@ export function emailHitoPago(
       </ul>
       <p>Por favor coordine el pago con su abogado asignado.</p>
       <br>
-      <p style="color:#5E6B7A;font-size:13px">— MAPE.LEGAL · Corporación Hondureña Tenka, S.A.</p>
+      <p style="color:#5E6B7B;font-size:13px">— MAPE.LEGAL · Corporación Hondureña Tenka, S.A.</p>
     `,
   });
 }
@@ -175,48 +175,48 @@ export function emailContactoInterno(
     to:      'gerencia@mape.legal',
     subject: `Nuevo contacto web — ${nombre}`,
     html: emailShell(`
-      <p style="margin:0 0 6px;color:#5E6B7A;font-size:12px;text-transform:uppercase;letter-spacing:1px;font-weight:600">
+      <p style="margin:0 0 6px;color:#5E6B7B;font-size:12px;text-transform:uppercase;letter-spacing:1px;font-weight:600">
         Nuevo mensaje desde el formulario de contacto
       </p>
-      <h2 style="margin:0 0 24px;color:#162033;font-size:20px">${esc(nombre)}</h2>
+      <h2 style="margin:0 0 24px;color:#1F2A38;font-size:20px">${esc(nombre)}</h2>
 
       <table cellpadding="0" cellspacing="0" width="100%"
-             style="border:1px solid #E5E7EB;border-radius:8px;overflow:hidden;margin-bottom:24px">
-        <tr style="background:#F5F6F7">
-          <td style="padding:10px 16px;font-size:12px;color:#5E6B7A;font-weight:600;text-transform:uppercase;letter-spacing:1px;width:140px">
+             style="border:1px solid #E2E0D8;border-radius:8px;overflow:hidden;margin-bottom:24px">
+        <tr style="background:#FAF9F5">
+          <td style="padding:10px 16px;font-size:12px;color:#5E6B7B;font-weight:600;text-transform:uppercase;letter-spacing:1px;width:140px">
             Correo
           </td>
-          <td style="padding:10px 16px;font-size:14px;color:#162033">
-            <a href="mailto:${esc(correo)}" style="color:#1F2A44">${esc(correo)}</a>
+          <td style="padding:10px 16px;font-size:14px;color:#1F2A38">
+            <a href="mailto:${esc(correo)}" style="color:#1F2A38">${esc(correo)}</a>
           </td>
         </tr>
         ${empresa ? `
         <tr>
-          <td style="padding:10px 16px;font-size:12px;color:#5E6B7A;font-weight:600;text-transform:uppercase;letter-spacing:1px;border-top:1px solid #E5E7EB">
+          <td style="padding:10px 16px;font-size:12px;color:#5E6B7B;font-weight:600;text-transform:uppercase;letter-spacing:1px;border-top:1px solid #E2E0D8">
             Empresa / Op.
           </td>
-          <td style="padding:10px 16px;font-size:14px;color:#162033;border-top:1px solid #E5E7EB">
+          <td style="padding:10px 16px;font-size:14px;color:#1F2A38;border-top:1px solid #E2E0D8">
             ${esc(empresa)}
           </td>
         </tr>` : ''}
         <tr>
-          <td style="padding:10px 16px;font-size:12px;color:#5E6B7A;font-weight:600;text-transform:uppercase;letter-spacing:1px;border-top:1px solid #E5E7EB">
+          <td style="padding:10px 16px;font-size:12px;color:#5E6B7B;font-weight:600;text-transform:uppercase;letter-spacing:1px;border-top:1px solid #E2E0D8">
             Recibido
           </td>
-          <td style="padding:10px 16px;font-size:14px;color:#162033;border-top:1px solid #E5E7EB">
+          <td style="padding:10px 16px;font-size:14px;color:#1F2A38;border-top:1px solid #E2E0D8">
             ${esc(fecha)}
           </td>
         </tr>
       </table>
 
-      <p style="margin:0 0 8px;font-size:12px;color:#5E6B7A;font-weight:600;text-transform:uppercase;letter-spacing:1px">
+      <p style="margin:0 0 8px;font-size:12px;color:#5E6B7B;font-weight:600;text-transform:uppercase;letter-spacing:1px">
         Mensaje
       </p>
-      <div style="background:#F5F6F7;border:1px solid #E5E7EB;border-radius:8px;padding:16px 20px;
-                  font-size:14px;color:#162033;line-height:1.6;white-space:pre-wrap">${esc(mensaje)}</div>
+      <div style="background:#FAF9F5;border:1px solid #E2E0D8;border-radius:8px;padding:16px 20px;
+                  font-size:14px;color:#1F2A38;line-height:1.6;white-space:pre-wrap">${esc(mensaje)}</div>
 
-      <p style="margin:24px 0 0;font-size:13px;color:#A3AAB3">
-        Responde directamente a <a href="mailto:${esc(correo)}" style="color:#1F2A44">${esc(correo)}</a>
+      <p style="margin:24px 0 0;font-size:13px;color:#A3A8AB">
+        Responde directamente a <a href="mailto:${esc(correo)}" style="color:#1F2A38">${esc(correo)}</a>
         para continuar la conversación.
       </p>
     `),
@@ -232,28 +232,28 @@ export function emailContactoAcuse(
     to:      correo,
     subject: 'Recibimos tu consulta — MAPE.LEGAL',
     html: emailShell(`
-      <p style="margin:0 0 20px;color:#162033;font-size:16px">
+      <p style="margin:0 0 20px;color:#1F2A38;font-size:16px">
         Hola <strong>${esc(nombre)}</strong>,
       </p>
-      <p style="margin:0 0 16px;color:#5E6B7A;font-size:15px;line-height:1.6">
+      <p style="margin:0 0 16px;color:#5E6B7B;font-size:15px;line-height:1.6">
         Recibimos tu consulta y un miembro de nuestro equipo se comunicará contigo
         en <strong>menos de 48 horas hábiles</strong>.
       </p>
-      <p style="margin:0 0 32px;color:#5E6B7A;font-size:15px;line-height:1.6">
+      <p style="margin:0 0 32px;color:#5E6B7B;font-size:15px;line-height:1.6">
         Si tienes información adicional que quieras compartir antes de nuestra llamada,
         responde directamente a este correo.
       </p>
-      <div style="background:#F0EDE8;border-radius:10px;padding:20px 24px;margin-bottom:24px">
-        <p style="margin:0 0 6px;font-size:12px;color:#8C6A4A;font-weight:700;
+      <div style="background:#F0EDE5;border-radius:10px;padding:20px 24px;margin-bottom:24px">
+        <p style="margin:0 0 6px;font-size:12px;color:#8B6A4A;font-weight:700;
                   text-transform:uppercase;letter-spacing:1px">¿Preguntas urgentes?</p>
-        <p style="margin:0;font-size:14px;color:#162033">
+        <p style="margin:0;font-size:14px;color:#1F2A38">
           Escríbenos directamente a
           <a href="mailto:gerencia@mape.legal" style="color:#2F5D50;font-weight:600">
             gerencia@mape.legal
           </a>
         </p>
       </div>
-      <p style="margin:0;color:#A3AAB3;font-size:13px">
+      <p style="margin:0;color:#A3A8AB;font-size:13px">
         — Equipo MAPE.LEGAL · Corporación Hondureña Tenka
       </p>
     `),
@@ -279,32 +279,32 @@ export function emailConfirmacionCorreo(
     to:      correo,
     subject: 'Confirma tu correo · MAPE.LEGAL',
     html: emailShell(`
-      <p style="margin:0 0 20px;color:#162033;font-size:16px">
+      <p style="margin:0 0 20px;color:#1F2A38;font-size:16px">
         Confirma tu cuenta para acceder a MAPE.LEGAL.
       </p>
-      <p style="margin:0 0 28px;color:#5E6B7A;font-size:15px;line-height:1.6">
+      <p style="margin:0 0 28px;color:#5E6B7B;font-size:15px;line-height:1.6">
         Recibimos una solicitud de acceso para <strong>${esc(correo)}</strong>.
         Haz clic en el botón para verificar tu correo. El enlace expira en 24 horas.
       </p>
 
       <div style="text-align:center;margin-bottom:28px">
         <a href="${esc(actionLink)}"
-           style="display:inline-block;background:#1F2A44;color:#ffffff;text-decoration:none;
+           style="display:inline-block;background:#1F2A38;color:#ffffff;text-decoration:none;
                   font-size:15px;font-weight:700;padding:14px 32px;border-radius:8px">
           Confirmar correo →
         </a>
       </div>
 
-      <p style="margin:0 0 8px;color:#5E6B7A;font-size:13px">
+      <p style="margin:0 0 8px;color:#5E6B7B;font-size:13px">
         Si el botón no funciona, copia esta dirección en tu navegador:
       </p>
-      <p style="margin:0 0 28px;color:#5E6B7A;font-size:12px;word-break:break-all">
-        <a href="${esc(actionLink)}" style="color:#3A6EA5">${esc(actionLink)}</a>
+      <p style="margin:0 0 28px;color:#5E6B7B;font-size:12px;word-break:break-all">
+        <a href="${esc(actionLink)}" style="color:#2A6BA8">${esc(actionLink)}</a>
       </p>
 
-      <p style="margin:0;color:#A3AAB3;font-size:13px">
+      <p style="margin:0;color:#A3A8AB;font-size:13px">
         Si no solicitaste este correo, ignóralo o comunícate con
-        <a href="mailto:gerencia@mape.legal" style="color:#5E6B7A">gerencia@mape.legal</a>.
+        <a href="mailto:gerencia@mape.legal" style="color:#5E6B7B">gerencia@mape.legal</a>.
       </p>
     `),
   });
@@ -320,35 +320,35 @@ export function emailResetPassword(
     to:      correo,
     subject: 'Restablecer tu contraseña · MAPE.LEGAL',
     html: emailShell(`
-      <p style="margin:0 0 20px;color:#162033;font-size:16px">
+      <p style="margin:0 0 20px;color:#1F2A38;font-size:16px">
         Solicitaste restablecer tu contraseña.
       </p>
-      <p style="margin:0 0 28px;color:#5E6B7A;font-size:15px;line-height:1.6">
+      <p style="margin:0 0 28px;color:#5E6B7B;font-size:15px;line-height:1.6">
         Recibimos una solicitud para <strong>${esc(correo)}</strong>.
         Haz clic en el botón para crear una nueva contraseña. El enlace expira en 1 hora.
       </p>
 
       <div style="text-align:center;margin-bottom:28px">
         <a href="${esc(actionLink)}"
-           style="display:inline-block;background:#1F2A44;color:#ffffff;text-decoration:none;
+           style="display:inline-block;background:#1F2A38;color:#ffffff;text-decoration:none;
                   font-size:15px;font-weight:700;padding:14px 32px;border-radius:8px">
           Restablecer contraseña →
         </a>
       </div>
 
-      <p style="margin:0 0 8px;color:#5E6B7A;font-size:13px">
+      <p style="margin:0 0 8px;color:#5E6B7B;font-size:13px">
         Si el botón no funciona, copia esta dirección en tu navegador:
       </p>
-      <p style="margin:0 0 28px;color:#5E6B7A;font-size:12px;word-break:break-all">
-        <a href="${esc(actionLink)}" style="color:#3A6EA5">${esc(actionLink)}</a>
+      <p style="margin:0 0 28px;color:#5E6B7B;font-size:12px;word-break:break-all">
+        <a href="${esc(actionLink)}" style="color:#2A6BA8">${esc(actionLink)}</a>
       </p>
 
-      <p style="margin:0 0 16px;color:#A94442;font-size:13px">
+      <p style="margin:0 0 16px;color:#B23A3A;font-size:13px">
         Si no solicitaste este correo, ignóralo. Tu contraseña no cambiará.
       </p>
-      <p style="margin:0;color:#A3AAB3;font-size:13px">
+      <p style="margin:0;color:#A3A8AB;font-size:13px">
         En caso de dudas, contacta a
-        <a href="mailto:gerencia@mape.legal" style="color:#5E6B7A">gerencia@mape.legal</a>.
+        <a href="mailto:gerencia@mape.legal" style="color:#5E6B7B">gerencia@mape.legal</a>.
       </p>
     `),
   });
@@ -366,10 +366,10 @@ export function emailInvitacionUsuario(
     to:      correo,
     subject: 'Te han invitado a MAPE.LEGAL',
     html: emailShell(`
-      <p style="margin:0 0 20px;color:#162033;font-size:16px">
+      <p style="margin:0 0 20px;color:#1F2A38;font-size:16px">
         Te han invitado a usar MAPE.LEGAL.
       </p>
-      <p style="margin:0 0 24px;color:#5E6B7A;font-size:15px;line-height:1.6">
+      <p style="margin:0 0 24px;color:#5E6B7B;font-size:15px;line-height:1.6">
         Se creó una cuenta para <strong>${esc(correo)}</strong> con el perfil de
         <strong>${esc(rolLabel)}</strong>. Configura tu contraseña para iniciar sesión.
         El enlace expira en 24 horas.
@@ -377,22 +377,22 @@ export function emailInvitacionUsuario(
 
       <div style="text-align:center;margin-bottom:28px">
         <a href="${esc(actionLink)}"
-           style="display:inline-block;background:#1F2A44;color:#ffffff;text-decoration:none;
+           style="display:inline-block;background:#1F2A38;color:#ffffff;text-decoration:none;
                   font-size:15px;font-weight:700;padding:14px 32px;border-radius:8px">
           Configurar contraseña →
         </a>
       </div>
 
-      <p style="margin:0 0 8px;color:#5E6B7A;font-size:13px">
+      <p style="margin:0 0 8px;color:#5E6B7B;font-size:13px">
         Si el botón no funciona, copia esta dirección en tu navegador:
       </p>
-      <p style="margin:0 0 28px;color:#5E6B7A;font-size:12px;word-break:break-all">
-        <a href="${esc(actionLink)}" style="color:#3A6EA5">${esc(actionLink)}</a>
+      <p style="margin:0 0 28px;color:#5E6B7B;font-size:12px;word-break:break-all">
+        <a href="${esc(actionLink)}" style="color:#2A6BA8">${esc(actionLink)}</a>
       </p>
 
-      <p style="margin:0;color:#A3AAB3;font-size:13px">
+      <p style="margin:0;color:#A3A8AB;font-size:13px">
         Si no esperabas este correo, comunícate con
-        <a href="mailto:gerencia@mape.legal" style="color:#5E6B7A">gerencia@mape.legal</a>.
+        <a href="mailto:gerencia@mape.legal" style="color:#5E6B7B">gerencia@mape.legal</a>.
       </p>
     `),
   });

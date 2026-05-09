@@ -122,10 +122,10 @@ function CallbackHandler() {
   }, [router, searchParams]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: '#F5F6F7' }}>
+    <div className="min-h-screen flex items-center justify-center" style={{ background: '#FAF9F5' }}>
       <div className="flex flex-col items-center gap-4">
-        <Loader2 size={32} className="animate-spin" style={{ color: '#1F2A44' }} />
-        <span className="text-sm" style={{ color: '#5E6B7A' }}>Iniciando sesión…</span>
+        <Loader2 size={32} className="animate-spin" style={{ color: '#1F2A38' }} />
+        <span className="text-sm" style={{ color: '#5E6B7B' }}>Iniciando sesión…</span>
       </div>
     </div>
   );
@@ -135,10 +135,10 @@ export default function OAuthCallbackPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center" style={{ background: '#F5F6F7' }}>
+        <div className="min-h-screen flex items-center justify-center" style={{ background: '#FAF9F5' }}>
           <div className="flex flex-col items-center gap-4">
-            <Loader2 size={32} className="animate-spin" style={{ color: '#1F2A44' }} />
-            <span className="text-sm" style={{ color: '#5E6B7A' }}>Cargando…</span>
+            <Loader2 size={32} className="animate-spin" style={{ color: '#1F2A38' }} />
+            <span className="text-sm" style={{ color: '#5E6B7B' }}>Cargando…</span>
           </div>
         </div>
       }

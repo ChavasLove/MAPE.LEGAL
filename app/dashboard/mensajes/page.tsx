@@ -5,17 +5,17 @@ import { RefreshCw, CheckCircle2, XCircle, AlertTriangle, FileText, Image as Ima
 import type { DashMensaje } from '@/services/dashboardService';
 
 const ESTADO_BADGE: Record<string, { bg: string; text: string; label: string }> = {
-  listo:      { bg: '#DBEAFE', text: '#3A6EA5', label: 'Listo para revisar' },
-  procesando: { bg: '#F5EBDD', text: '#8C6A4A', label: 'Procesando'         },
-  ilegible:   { bg: '#F8E5E4', text: '#A94442', label: 'Ilegible'           },
-  verificado: { bg: '#E6F2EC', text: '#2F5D50', label: 'Verificado'         },
-  rechazado:  { bg: '#F8E5E4', text: '#A94442', label: 'Rechazado'          },
+  listo:      { bg: '#D6E2F0', text: '#2A6BA8', label: 'Listo para revisar' },
+  procesando: { bg: '#F4E9D6', text: '#8B6A4A', label: 'Procesando'         },
+  ilegible:   { bg: '#EFD7D5', text: '#B23A3A', label: 'Ilegible'           },
+  verificado: { bg: '#E0EDE3', text: '#2F5D50', label: 'Verificado'         },
+  rechazado:  { bg: '#EFD7D5', text: '#B23A3A', label: 'Rechazado'          },
 };
 
 const CONFIANZA_COLOR: Record<string, string> = {
-  ok:   '#3E7C59',
-  warn: '#C49A4A',
-  err:  '#A94442',
+  ok:   '#2A8E50',
+  warn: '#C58B2C',
+  err:  '#B23A3A',
 };
 
 export default function MensajesPage() {
@@ -52,14 +52,14 @@ export default function MensajesPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white">Mensajes WhatsApp</h1>
-          <p className="text-sm font-sans mt-0.5" style={{ color: '#A3AAB3' }}>
+          <p className="text-sm font-sans mt-0.5" style={{ color: '#A3A8AB' }}>
             Feed de documentos entrantes para verificación
           </p>
         </div>
         <button
           onClick={load}
           className="p-2 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
-          style={{ color: '#A3AAB3' }}
+          style={{ color: '#A3A8AB' }}
           title="Recargar"
         >
           <RefreshCw size={18} strokeWidth={1.5} className={loading ? 'animate-spin' : ''} />
@@ -71,16 +71,16 @@ export default function MensajesPage() {
         {/* Message list */}
         <div
           className="lg:col-span-2 rounded-xl border overflow-hidden flex flex-col"
-          style={{ background: '#1F2A44', borderColor: 'rgba(94,107,122,0.3)' }}
+          style={{ background: '#1F2A38', borderColor: 'rgba(94,107,123,0.3)' }}
         >
-          <div className="px-4 py-3 border-b text-xs font-semibold uppercase tracking-wider font-sans" style={{ color: '#A3AAB3', borderColor: 'rgba(94,107,122,0.3)' }}>
+          <div className="px-4 py-3 border-b text-xs font-semibold uppercase tracking-wider font-sans" style={{ color: '#A3A8AB', borderColor: 'rgba(94,107,123,0.3)' }}>
             {mensajes.length} mensajes
           </div>
           <div className="flex-1 overflow-auto">
             {loading ? (
-              <p className="px-4 py-8 text-center text-sm font-sans" style={{ color: '#A3AAB3' }}>Cargando...</p>
+              <p className="px-4 py-8 text-center text-sm font-sans" style={{ color: '#A3A8AB' }}>Cargando...</p>
             ) : mensajes.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm font-sans" style={{ color: '#A3AAB3' }}>No hay mensajes.</p>
+              <p className="px-4 py-8 text-center text-sm font-sans" style={{ color: '#A3A8AB' }}>No hay mensajes.</p>
             ) : (
               mensajes.map(m => {
                 const badge = ESTADO_BADGE[m.estado] ?? ESTADO_BADGE.listo;
@@ -91,25 +91,25 @@ export default function MensajesPage() {
                     onClick={() => setActive(m.id)}
                     className="w-full text-left px-4 py-4 border-b transition-colors cursor-pointer"
                     style={{
-                      borderColor: 'rgba(94,107,122,0.2)',
-                      background: isSelected ? 'rgba(94,107,122,0.15)' : 'transparent',
+                      borderColor: 'rgba(94,107,123,0.2)',
+                      background: isSelected ? 'rgba(94,107,123,0.15)' : 'transparent',
                     }}
                   >
                     <div className="flex items-start justify-between gap-2 mb-1">
                       <div className="flex items-center gap-2">
                         {m.tipo === 'imagen'
-                          ? <ImageIcon size={14} strokeWidth={1.5} style={{ color: '#A3AAB3' }} />
-                          : <FileText  size={14} strokeWidth={1.5} style={{ color: '#A3AAB3' }} />
+                          ? <ImageIcon size={14} strokeWidth={1.5} style={{ color: '#A3A8AB' }} />
+                          : <FileText  size={14} strokeWidth={1.5} style={{ color: '#A3A8AB' }} />
                         }
                         <span className="text-sm font-semibold text-white font-sans">{m.cliente}</span>
                       </div>
-                      <span className="text-xs font-sans" style={{ color: '#5E6B7A' }}>{m.hora?.slice(11, 16) ?? ''}</span>
+                      <span className="text-xs font-sans" style={{ color: '#5E6B7B' }}>{m.hora?.slice(11, 16) ?? ''}</span>
                     </div>
-                    <div className="text-xs font-sans mb-1.5" style={{ color: '#A3AAB3' }}>
+                    <div className="text-xs font-sans mb-1.5" style={{ color: '#A3A8AB' }}>
                       {m.docTipo || m.archivo}
                     </div>
                     {m.expId && (
-                      <div className="text-xs font-sans mb-1.5" style={{ color: '#5E6B7A' }}>{m.expId}</div>
+                      <div className="text-xs font-sans mb-1.5" style={{ color: '#5E6B7B' }}>{m.expId}</div>
                     )}
                     <span
                       className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold font-sans"
@@ -127,19 +127,19 @@ export default function MensajesPage() {
         {/* Detail panel */}
         <div
           className="lg:col-span-3 rounded-xl border flex flex-col overflow-hidden"
-          style={{ background: '#1F2A44', borderColor: 'rgba(94,107,122,0.3)' }}
+          style={{ background: '#1F2A38', borderColor: 'rgba(94,107,123,0.3)' }}
         >
           {!selectedMsg ? (
             <div className="flex-1 flex items-center justify-center">
-              <p className="text-sm font-sans" style={{ color: '#5E6B7A' }}>Selecciona un mensaje para ver el detalle</p>
+              <p className="text-sm font-sans" style={{ color: '#5E6B7B' }}>Selecciona un mensaje para ver el detalle</p>
             </div>
           ) : (
             <>
               {/* Panel header */}
-              <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: 'rgba(94,107,122,0.3)' }}>
+              <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: 'rgba(94,107,123,0.3)' }}>
                 <div>
                   <div className="text-base font-semibold text-white font-sans">{selectedMsg.cliente}</div>
-                  <div className="text-xs font-sans mt-0.5" style={{ color: '#A3AAB3' }}>
+                  <div className="text-xs font-sans mt-0.5" style={{ color: '#A3A8AB' }}>
                     {selectedMsg.docTipo || selectedMsg.archivo}
                     {selectedMsg.expId ? ` · ${selectedMsg.expId}` : ''}
                   </div>
@@ -150,7 +150,7 @@ export default function MensajesPage() {
                       <button
                         onClick={() => updateEstado(selectedMsg.id, 'verificado')}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold font-sans cursor-pointer"
-                        style={{ background: '#E6F2EC', color: '#2F5D50' }}
+                        style={{ background: '#E0EDE3', color: '#2F5D50' }}
                       >
                         <CheckCircle2 size={13} strokeWidth={2} />
                         Verificar
@@ -158,7 +158,7 @@ export default function MensajesPage() {
                       <button
                         onClick={() => updateEstado(selectedMsg.id, 'rechazado')}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold font-sans cursor-pointer"
-                        style={{ background: '#F8E5E4', color: '#A94442' }}
+                        style={{ background: '#EFD7D5', color: '#B23A3A' }}
                       >
                         <XCircle size={13} strokeWidth={2} />
                         Rechazar
@@ -172,36 +172,36 @@ export default function MensajesPage() {
               <div className="flex-1 overflow-auto p-5">
                 {selectedMsg.campos.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 gap-3">
-                    <FileText size={32} strokeWidth={1} style={{ color: '#5E6B7A' }} />
-                    <p className="text-sm font-sans" style={{ color: '#A3AAB3' }}>
+                    <FileText size={32} strokeWidth={1} style={{ color: '#5E6B7B' }} />
+                    <p className="text-sm font-sans" style={{ color: '#A3A8AB' }}>
                       Sin campos extraídos — adjunto directo
                     </p>
-                    <p className="text-xs font-sans" style={{ color: '#5E6B7A' }}>{selectedMsg.archivo}</p>
+                    <p className="text-xs font-sans" style={{ color: '#5E6B7B' }}>{selectedMsg.archivo}</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <p className="text-xs font-semibold uppercase tracking-wider font-sans mb-4" style={{ color: '#A3AAB3' }}>
+                    <p className="text-xs font-semibold uppercase tracking-wider font-sans mb-4" style={{ color: '#A3A8AB' }}>
                       Datos extraídos por OCR
                     </p>
                     {selectedMsg.campos.map((c, i) => (
                       <div
                         key={i}
                         className="rounded-lg border p-3.5"
-                        style={{ background: '#162033', borderColor: 'rgba(94,107,122,0.3)' }}
+                        style={{ background: '#1F2A38', borderColor: 'rgba(94,107,123,0.3)' }}
                       >
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-semibold uppercase tracking-wider font-sans" style={{ color: '#A3AAB3' }}>
+                          <span className="text-xs font-semibold uppercase tracking-wider font-sans" style={{ color: '#A3A8AB' }}>
                             {c.label}
                           </span>
                           <div
                             className="w-2 h-2 rounded-full"
-                            style={{ background: CONFIANZA_COLOR[c.confianza] ?? '#5E6B7A' }}
+                            style={{ background: CONFIANZA_COLOR[c.confianza] ?? '#5E6B7B' }}
                             title={c.confianza === 'ok' ? 'Alta confianza' : c.confianza === 'warn' ? 'Confianza media' : 'Baja confianza'}
                           />
                         </div>
                         <div className="text-sm text-white font-sans">{c.valor}</div>
                         {c.nota && (
-                          <div className="flex items-center gap-1 mt-1.5 text-xs font-sans" style={{ color: '#C49A4A' }}>
+                          <div className="flex items-center gap-1 mt-1.5 text-xs font-sans" style={{ color: '#C58B2C' }}>
                             <AlertTriangle size={11} strokeWidth={2} />
                             {c.nota}
                           </div>

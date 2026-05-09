@@ -18,11 +18,11 @@ function RecuperarPasswordForm() {
   const [loading, setLoading] = useState(false);
 
   const C = {
-    primary: '#1F2A44', primaryDark: '#162033',
-    text: '#162033', textMuted: '#5E6B7A', textLight: '#A3AAB3',
-    success: '#2F5D50', successBg: '#E6F2EC',
-    error: '#A94442', errorBg: '#F8E5E4',
-    bg: '#F5F6F7', white: '#FFFFFF', border: '#E5E7EB',
+    primary: '#1F2A38', primaryDark: '#1F2A38',
+    text: '#1F2A38', textMuted: '#5E6B7B', textLight: '#A3A8AB',
+    success: '#2F5D50', successBg: '#E0EDE3',
+    error: '#B23A3A', errorBg: '#EFD7D5',
+    bg: '#FAF9F5', white: '#FFFFFF', border: '#E2E0D8',
   };
 
   async function handleSubmit(e: React.FormEvent) {
@@ -139,7 +139,7 @@ function RecuperarPasswordForm() {
                   placeholder="tu@email.com"
                   className="w-full rounded-lg border text-sm outline-none transition-all duration-200"
                   style={{ padding: '10px 12px 10px 40px', borderColor: C.border, color: C.text, background: C.white }}
-                  onFocus={e => { e.currentTarget.style.borderColor = C.primary; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(31,42,68,0.08)'; }}
+                  onFocus={e => { e.currentTarget.style.borderColor = C.primary; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(31,42,56,0.08)'; }}
                   onBlur={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.boxShadow = 'none'; }}
                 />
               </div>
@@ -148,7 +148,7 @@ function RecuperarPasswordForm() {
             {error && (
               <div
                 className="flex items-start gap-2.5 rounded-lg px-3.5 py-3 text-sm"
-                style={{ color: C.error, background: C.errorBg, border: `1px solid rgba(169,68,66,0.12)` }}
+                style={{ color: C.error, background: C.errorBg, border: `1px solid rgba(178,58,58,0.12)` }}
               >
                 <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
                 <span>{error}</span>
@@ -189,10 +189,10 @@ export default function RecuperarPasswordPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center" style={{ background: '#F5F6F7' }}>
+        <div className="min-h-screen flex items-center justify-center" style={{ background: '#FAF9F5' }}>
           <div className="flex flex-col items-center gap-4">
-            <Loader2 size={32} className="animate-spin" style={{ color: '#1F2A44' }} />
-            <span className="text-sm" style={{ color: '#5E6B7A' }}>Cargando…</span>
+            <Loader2 size={32} className="animate-spin" style={{ color: '#1F2A38' }} />
+            <span className="text-sm" style={{ color: '#5E6B7B' }}>Cargando…</span>
           </div>
         </div>
       }

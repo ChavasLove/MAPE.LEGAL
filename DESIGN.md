@@ -1,365 +1,241 @@
-# CHT — Sistema de Diseño · Guía Obligatoria
+# MAPE LEGAL — Color Manual & Design System (Obligatorio)
 
 **Corporación Hondureña Tenka · MAPE.LEGAL**
-Todo código de interfaz debe cumplir este sistema. No improvises colores, fuentes ni componentes fuera de esta guía.
+Source of truth para toda decisión de color, tipografía y componente. La fuente canónica está en [`README.md`](./README.md) (sección *Color Manual v1.0*) y en `app/globals.css`.
+
+> **Hard rule:** No invented hex outside this document or `app/globals.css`. Si un color que necesitas no está aquí, no existe — abre PR para agregarlo.
 
 ---
 
-## 0. Brand DNA (Base No-Visual)
+## 0. Brand DNA
 
-**Eje de posicionamiento:**
-- Legal (precisión, autoridad)
-- Institucional (credibilidad, adyacente al Estado)
-- Natural (territorio, tierra, sostenibilidad)
-- Técnico (rigor de proceso — flujos por fases y puntos de cumplimiento)
+**Eje de posicionamiento:** Legal (precisión) · Institucional (credibilidad) · Natural (territorio) · Técnico (rigor de proceso).
 
-**Principio de diseño:** "Autoridad natural — no naturaleza decorativa."
+**Principio:** *"Tinta, piedra, musgo."* — autoridad natural, no naturaleza decorativa.
 
-**Evitar:**
-- Verdes brillantes
-- Gradientes con apariencia startup
-- Formas orgánicas excesivas
-
-**Preferir:**
-- Tonos minerales
-- Verdes desaturados
-- Neutros tierra
-- Jerarquía tipográfica fuerte
+**Evitar:** verdes brillantes, gradientes startup, formas orgánicas excesivas, gold metallic, neón.
+**Preferir:** tonos minerales, verdes desaturados (musgo), neutros tierra (papel), jerarquía tipográfica fuerte.
 
 ---
 
 ## 1. Paleta de Colores
 
-### 1.1 Primaria (Núcleo de Marca)
+### 1.1 Primaria — tinta + grises
 
-| Token CSS | Clase Tailwind | Hex | Uso |
-|-----------|---------------|-----|-----|
-| `--cht-primary-navy` | `primary-950` | `#1F2A44` | Sidebar, nav, CTAs principales, botones |
-| `--cht-deep-navy` | `primary-900` | `#162033` | Encabezados, texto principal oscuro |
-| `--cht-slate` | `primary-500` | `#5E6B7A` | Texto secundario, bordes |
-| `--cht-light-slate` | `primary-300` | `#A3AAB3` | Placeholders, texto deshabilitado |
-| `--cht-off-white` | `primary-50` | `#F5F6F7` | Fondo de página, superficies neutras |
+| Token | Hex | Uso |
+|---|---|---|
+| `--ink` | `#1F2A38` | Color ancla del sistema. Texto principal, fondo principal sobre oscuros, default de botón primario, sidebar, footer |
+| `--ink-2` | `#3B4A5C` | Hover de superficies/botones que parten de `--ink`. No usar como texto base |
+| `--slate` | `#5E6B7B` | Texto secundario de UI: meta, breadcrumbs, leyendas, eyebrow |
+| `--slate-lt` | `#A3A8AB` | Disabled, hairlines sobre fondos oscuros (footer, hero) |
+| `--plum` | `#5F5F77` | Acento muy ocasional: avatares default, tags neutrales en panel admin |
 
-### 1.2 Natural (Capa Controlada, No Decorativa)
+### 1.2 Naturaleza — territorio
 
-| Token CSS | Clase Tailwind | Hex | Uso |
-|-----------|---------------|-----|-----|
-| `--cht-forest` | `forest-800` | `#2F5D50` | Verde sostenibilidad, CTAs secundarios |
-| `--cht-olive` | `forest-600` | `#6E7F5E` | Acentos tierra / agricultura |
-| `--cht-earth` | `earth-600` | `#8C6A4A` | Acento suelo / territorio |
-| `--cht-sand` | `earth-200` | `#D8C3A5` | Superficies naturales claras, énfasis sobre oscuro |
-| — | `earth-50` | `#F0EDE8` | Fondo crema, secciones alternas |
+| Token | Hex | Uso |
+|---|---|---|
+| `--moss` | `#2F5D50` | Botón WhatsApp, italic em de H1, focus rings, link hover, secondary CTA |
+| `--moss-2` | `#587E5E` | Live dot de notificación, estados activos en steppers, ring de foco |
+| `--earth` | `#8B6A4A` | Numerales grandes en stats strip, separadores cortos del eyebrow, ornamentos |
+| `--sand` | `#D8C3A5` | Único cálido permitido en hero/footer. Itálico de H1, líneas topográficas, divisores sobre ink |
+| `--concrete` | `#F0EDE5` | Fondo de citas, callouts, placeholders. Más cálido que `--bg-soft` |
 
-Usar con moderación → acentos, no base de UI.
+### 1.3 Funcionales — sólo estado, nunca decoración
 
-### 1.3 Funcional (Retroalimentación del Sistema)
+| Token | Hex | Uso |
+|---|---|---|
+| `--green` | `#2A8E50` | Documento verificado, step COMPLETED, hito pagado, ACH confirmado |
+| `--amber` | `#C58B2C` | Step IN_REVIEW, alerta WARN, deadline a 2-5 días, observación pendiente |
+| `--red` | `#B23A3A` | Step REJECTED/BLOCKED, oposición Art. 66, alerta CRITICAL, deadline vencido |
+| `--blue` | `#2A6BA8` | Documento nuevo en bandeja WA, mensaje informativo, tag "actualizado" |
 
-| Token CSS | Clase Tailwind | Hex | Uso |
-|-----------|---------------|-----|-----|
-| `--cht-success` | `action-green` | `#3E7C59` | Aprobado / Completado |
-| `--cht-warning` | `action-gold` | `#C49A4A` | Pendiente / Atención |
-| `--cht-danger` | `action-red` | `#A94442` | Riesgo legal / Rechazado |
-| `--cht-info` | `action-blue` | `#3A6EA5` | Informativo / En revisión |
+> Verde / ámbar / rojo / azul son **señales de estado**. Nada de "tarjetas verdes porque se ven frescas" ni "borde rojo porque resalta". Se rompe la legibilidad del sistema de alertas.
 
-### 1.4 Mapeo Semántico (Dashboard — CRÍTICO)
+### 1.4 Neutros — papel y bordes
 
-Vinculado directamente al sistema operativo:
+| Token | Hex | Uso |
+|---|---|---|
+| `--bg` | `#FFFFFF` | Cards, modals, inputs. **Nunca** fondo de página en producto |
+| `--bg-soft` | `#FAF9F5` | Lienzo principal de la app y landing. El "papel" de MAPE LEGAL |
+| `--t1` | `#1F2A38` | Texto principal, alias de `--ink` para semántica tipográfica |
+| `--t2` | `#4B5563` | Color por defecto de párrafos sobre `--bg-soft` |
+| `--t3` | `#8E96A2` | Texto auxiliar: helpers de input, timestamps, footer copy sobre claro |
+| `--border` | `#E2E0D8` | Hairline 1px de cards, separadores, líneas de tabla. Default total |
+| `--border-2` | `#C9C5B9` | Stronger hairline para feature cards y elementos enfatizados |
 
-| Estado | Color | Clase | Fondo badge | Texto badge |
-|--------|-------|-------|-------------|-------------|
-| Completado | Verde | `action-green` | `badge-success-bg` `#E6F2EC` | `#2F5D50` |
-| Pendiente cliente | Ámbar | `action-gold` | `badge-warning-bg` `#F5EBDD` | `#8C6A4A` |
-| En revisión | Azul | `action-blue` | `badge-info-bg` `#DBEAFE` | `#3A6EA5` |
-| Bloqueado | Rojo | `action-red` | `badge-danger-bg` `#F8E5E4` | `#A94442` |
+### 1.5 Pares texto/fondo aprobados (WCAG)
 
-### Reglas de uso
-- **Nunca** mezcles colores de la paleta natural con grises puros (`slate-*`, `gray-*`) en el mismo componente.
-- El fondo de página en la landing es siempre `primary-50` (`#F5F6F7`) o `earth-50` (`#F0EDE8`), **no** `white` puro.
-- El fondo de página en el dashboard es siempre `primary-900` (`#162033`) o `primary-950` (`#1F2A44`).
-- Los botones primarios de acción usan `primary-950` (`#1F2A44`) — **nunca** `green-600`, `emerald-*` ni colores Tailwind genéricos.
-- Los CTAs vinculados a naturaleza/ambiente usan `forest-800` (`#2F5D50`).
+| FG | BG | Uso |
+|---|---|---|
+| `--ink` | `--bg-soft` | Default body / heading (AAA) |
+| `--t2` | `--bg-soft` | Default body copy (AAA) |
+| `--slate` | `--bg-soft` | Captions, meta (AA) |
+| `--t3` | `--bg-soft` | Helper / hint (large only — LG) |
+| `--ink` | `--bg` | Card title (AAA) |
+| `--moss` | `--bg-soft` | Section title em / link (AAA) |
+| `--earth` | `--bg-soft` | Stat numerals (large — AA) |
+| `--bg` | `--ink` | Hero copy / footer body (AAA) |
+| `--sand` | `--ink` | Hero italic / topo accent (AAA) |
+| `--slate-lt` | `--ink` | Footer meta on dark (AA) |
+| `--bg` | `--moss` | Secondary CTA on moss (AA) |
+| `--green` | `--bg-soft` | OK pill text (AA) |
+| `--amber` | `--bg-soft` | Warn pill text (large — LG) |
+| `--red` | `--bg-soft` | Block / overdue text (AA) |
+| `--blue` | `--bg-soft` | Info text (AA) |
+
+Para tonos derivados (hover, fondo de pill, fondo translúcido) usa `color-mix(in oklch, var(--ink) 80%, white)` — **nunca inventes un nuevo hex**.
 
 ---
 
 ## 2. Tipografía
 
-### Fuentes
+| Rol | Familia | Variable CSS | Pesos |
+|---|---|---|---|
+| Títulos / Display | **Playfair Display** | `--font-display` | Medium 500, SemiBold 600 (default), Bold 700 |
+| Cuerpo / UI | **Inter** | `--font-body` | Regular 400, Medium 500, SemiBold 600, Bold 700 |
+| Mono / Numerales / Eyebrow | **JetBrains Mono** | `--font-mono` | Regular 400, Medium 500 |
 
-| Rol | Familia | Pesos usados | Variable CSS |
-|-----|---------|--------------|-------------|
-| Títulos / Headlines | **Playfair Display** | Bold (700), SemiBold (600), Medium (500) | `--font-playfair` |
-| Cuerpo / UI | **Inter** | Regular (400), Medium (500), SemiBold (600) | `--font-inter` |
+Los tres se cargan en `app/layout.tsx` vía `next/font/google` y exponen las variables CSS arriba.
 
-Fallback de títulos: `Georgia, serif`
-Fallback de cuerpo: `system-ui, sans-serif`
+### Reglas tipográficas
+- `<h1>`–`<h6>` heredan `--font-display` desde `globals.css`.
+- Cuerpo, botones, labels, tablas usan `--font-body` (Inter) — default del `<body>`.
+- Eyebrows en mayúsculas, numerales y código usan `--font-mono`.
+- **Peso máximo: 700.** Nunca `font-weight: 800` o `900`.
+- Italic de H1 va en `var(--moss)` o `var(--sand)` según contraste — nunca un color funcional.
 
-### Escala tipográfica
+### Escala
 
-| Nivel | Fuente | Tamaño / Leading | Peso | Clase |
-|-------|--------|-----------------|------|-------|
-| H1 | Playfair Display | 42px / 52px | Bold | `text-5xl font-bold` |
-| H2 | Playfair Display | 28px / 36px | SemiBold | `text-4xl` |
-| H3 | Playfair Display | 20px / 28px | Medium | `text-xl font-semibold` |
-| Body | Inter | 16px / 24px | Regular | `text-base font-sans` |
-| Small | Inter | 14px / 20px | Regular | `text-sm font-sans` |
-| Caption | Inter | 12px / 16px | Regular | `text-xs font-sans` |
-
-### Reglas
-- Todos los `<h1>`, `<h2>`, `<h3>`, `<h4>` usan **Playfair Display** (aplicado automáticamente en `globals.css`).
-- Todo texto de UI (labels, botones, tablas, badges) usa **Inter** — agrega `font-sans` explícitamente.
-- No uses `font-black` (900) — el peso máximo es Bold (700).
-- Interletrado (`tracking-*`): solo en labels en mayúsculas (`tracking-widest`).
+| Nivel | Tamaño / Leading | Familia | Peso |
+|---|---|---|---|
+| H1 hero | clamp(48px, 6vw, 84px) / 1.02 | Display | 600 |
+| H2 sección | clamp(32px, 3.6vw, 46px) / 1.08 | Display | 600 |
+| H3 grupo | 24px / 1.2 | Display | 600 |
+| Body | 16px / 1.6 | Body | 400 |
+| Small | 14px / 1.5 | Body | 400 |
+| Caption / mono | 12px / 1.4 | Mono | 500 |
+| Eyebrow | 11px / 1.4, letter-spacing 0.18em UPPER | Mono | 600 |
 
 ---
 
 ## 3. Componentes UI
 
 ### Botones
+| Tipo | Background | Color | Border | Radio | Sombra |
+|---|---|---|---|---|---|
+| Primary | `--ink` | `#fff` | none | `8px` | `shadow-sm` máx |
+| Secondary (moss) | `--moss` | `#fff` | none | `8px` | `shadow-sm` máx |
+| Ghost | transparent | `--t2` → `--ink` (hover) | `1px solid --border` | `8px` | none |
+| Text-only | transparent | `--ink` | none | none | underline en hover |
+
+Hover de primary: `color-mix(in oklch, var(--ink) 88%, white)`.
+**Nunca** `rounded-full` ni `rounded-2xl` en botones de acción. **Nunca** `shadow-xl` o `shadow-2xl`.
+
+### Badges / pills (estado)
+
+`rounded-full`, `padding: 8px 14px`, `font-size: 13px`, `font-weight: 600`, `font-family: --font-body`.
+
+| Estado | BG | Texto | Border |
+|---|---|---|---|
+| OK · Verificado | `color-mix(in oklch, var(--green) 14%, white)` | `--green` | `color-mix(in oklch, var(--green) 30%, white)` |
+| En revisión · vence | `color-mix(in oklch, var(--amber) 14%, white)` | `--amber` | `color-mix(in oklch, var(--amber) 30%, white)` |
+| Bloqueante · oposición | `color-mix(in oklch, var(--red) 14%, white)` | `--red` | `color-mix(in oklch, var(--red) 30%, white)` |
+| Nuevo documento WA | `color-mix(in oklch, var(--blue) 14%, white)` | `--blue` | `color-mix(in oklch, var(--blue) 30%, white)` |
+
+### Cards
 
 ```
-Primario   → bg primary-950 (#1F2A44), text white, rounded-lg, px-6 py-3, font-semibold Inter
-Secundario → border primary-950, text primary-950, bg transparent, mismos radios y padding
-Texto      → text primary-950, sin borde ni fondo, underline en hover
+background: var(--bg)
+border:     1px solid var(--border)
+radius:     12px (rounded-xl)
+shadow:     0 2px 6px rgba(31,42,56,0.05)  /* shadow-sm only */
+padding:    24px
 ```
 
-- Radio de borde: `rounded-lg` (8px) — **nunca** `rounded-2xl` ni `rounded-full` en botones de acción.
-- Sombra máxima: `shadow-sm` — **nunca** `shadow-2xl`, `shadow-xl`, `shadow-lg` en botones.
-
-### Badges / Estados de expediente
-
-Todos los badges: `rounded-full`, `px-3 py-1`, `text-xs font-semibold Inter`.
-
-| Estado | Fondo | Texto |
-|--------|-------|-------|
-| Completado | `#E6F2EC` | `#2F5D50` |
-| En revisión | `#DBEAFE` | `#3A6EA5` |
-| Pendiente cliente | `#F5EBDD` | `#8C6A4A` |
-| Bloqueado | `#F8E5E4` | `#A94442` |
-
-### Tarjetas (Cards)
-
-- Fondo: `white`
-- Borde: `1px solid #E5E7EB`
-- Radio: `rounded-xl` (12px)
-- Sombra: `shadow-sm` únicamente
-- Padding interno: `p-6`
+`--border-2` solo para cards de feature destacada y elementos enfatizados.
 
 ### Tablas
 
-- Header: fondo `#1F2A44`, texto `white`, `text-xs font-semibold uppercase tracking-wider`
-- Filas: fondo `white`, borde inferior `#E5E7EB`, hover `#F5F6F7`
-- Texto de celda: `text-sm Inter`, color `#162033`
-
-```css
-table { border-collapse: collapse; }
-th { background: #1F2A44; color: white; }
-td { border-bottom: 1px solid #E1E5EA; }
-```
+| Elemento | Background | Color |
+|---|---|---|
+| `th` | `--ink` | `#fff` (Inter SemiBold uppercase tracking-wider) |
+| `td` | `--bg` | `--t1` |
+| `tr` border-bottom | `--border` | — |
+| `tr:hover` | `--bg-soft` | — |
 
 ---
 
-## 4. Landing Page
+## 4. Reglas — `Sí` y `No`
 
-### Comportamiento de color
+### Sí
+- **`color-mix(in oklch, var(--ink) 80%, white)`** para tonos derivados (hover, fondos translúcidos).
+- **Body en `--t2` sobre `--bg-soft`** como default; headings en `--ink`; eyebrows y captions en `--t3` o `--slate`.
+- **Hairlines siempre `--border`** (`#E2E0D8`, 1px). Solo escala a `--border-2` en feature cards.
+- **`--sand` es el único cálido sobre `--ink`** — reservado para H1 italic, líneas topográficas y separadores en hero/footer. No en CTAs ni bloques de UI.
 
-- Fondo base: `primary-50` (`#F5F6F7`)
-- Secciones alternas: `primary-50` / `earth-50` (`#F0EDE8`)
-
-### Sección Hero
-
-```css
-filter: brightness(0.80) contrast(1.05) saturate(0.82);
-overlay: bg-gradient-to-b from-black/40 via-black/30 to-black/70;
-fallback: bg-gradient-to-br from-primary-950 via-primary-900 to-primary-950;
-```
-
-Tono: documental, no promocional.
-
-### Navegación (nav)
-
-Marca exclusivamente tipográfica — sin logotipo de imagen:
-
-```
-MAPE.LEGAL          ← text-white font-bold text-base tracking-tight
-Corporación Hondureña Tenka  ← text-white/45 text-[10px] tracking-widest uppercase
-```
-
-### Botones CTA
-
-```css
-.primary-button  { background: #1F2A44; color: white; }  /* Institucional */
-.secondary-button { border: 1px solid #1F2A44; color: #1F2A44; }
-/* CTAs de contexto ambiental/territorial usan forest-800 #2F5D50 */
-```
-
-### Layout
-
-- Ancho máximo de contenido: `max-w-6xl` (1152px)
-- Padding horizontal: `px-6` (móvil) / `px-8` (desktop)
-- Espaciado vertical entre secciones: `py-20` o `py-24`
+### No
+- **No funcionales como decoración.** Verde/ámbar/rojo/azul son señales de estado.
+- **No gradientes** salvo el overlay radial del hero. Cards, buttons, badges, fondos: sólidos. Nada glassmorphism, nada neón.
+- **No `#FFFFFF` como fondo de página.** El "papel" es `--bg-soft`. El blanco puro queda para cards, modales e inputs.
+- **No opacidad >0.10 en líneas topográficas claras.** Hero=0.06, footer light=0.05, dark=0.18.
+- **No `font-weight: 800` ni `900`.** Cap = 700.
+- **No `rounded-full` en botones, no `rounded-2xl` en cards.** Botones `rounded-lg` (8px), cards `rounded-xl` (12px).
+- **No `shadow-xl` / `shadow-2xl`** en componentes de página, solo en modales.
+- **No animaciones continuas** (`animate-pulse`, `animate-bounce`, blink) en UI de producción.
+- **No emojis** en componentes UI ni en email templates.
+- **No info de contacto personal en landing.**
 
 ---
 
-## 5. Dashboard (UI Misión Crítica)
+## 5. Landing page
 
-### Tema base
-
-```css
-background: #162033;                   /* primary-900 */
-cards:      #1F2A44;                   /* primary-950 */
-borders:    rgba(94,107,122,0.3);      /* primary-500/30 */
-```
-
-### Tarjetas de estadísticas: `grid-cols-4, gap-6`
-
-### Lógica de color de estado (alineada al flujo operativo)
-
-| Estado | Color | Significado |
-|--------|-------|-------------|
-| Completado | Verde `action-green` | Entregable verificado |
-| Pendiente | Ámbar `action-gold` | En espera |
-| En revisión | Azul `action-blue` | Procesando por autoridad |
-| Bloqueado | Rojo `action-red` | Problema legal |
-
-Vinculado a Fases 0–4 y principio "No avanzar sin expediente completo".
+- Fondo base: `--bg-soft`. Secciones alternas: `--bg-soft` ↔ `--bg`.
+- Hero: ink stats strip, sand H1 italic, TopoBand light overlay opacity 0.06.
+- Footer: ink fondo, sand acento, slate-lt meta, TopoBand dark band 48px opacity 0.18.
+- CTAs primarios: `--ink`. CTAs ambientales: `--moss`.
+- Marca tipográfica en nav (`MAPE LEGAL` en Playfair 600, `Color Manual · v1.0` en JetBrains Mono small caps).
 
 ---
 
-## 6. Iconografía
+## 6. Dashboard (UI misión crítica)
 
-Estilo: **línea fina** (`stroke-width: 1.5`), Lucide o Heroicons Outline. **Nunca** íconos rellenos en UI principal.
-
-Categorías:
-- **Expediente** — documento con esquina doblada
-- **Documento** — papel con líneas
-- **Permiso** — escudo o sello
-- **Ambiente** — hoja o árbol
-- **Topografía** — ondas de contorno
-- **Ubicación** — pin de mapa
-- **Pago** — moneda o billete
-- **Notificación** — campana
-
-Tamaños: `20px` en UI · `24px` en encabezados de sección · `32px` en hero o ilustraciones.
+- Fondo: `--bg-soft` (no `--ink`). El dashboard sigue el mismo "papel" del producto.
+- Sidebar: `--ink` con texto blanco, hover `--ink-2`, item activo `color-mix(in oklch, var(--moss) 8%, white)` con borde-izquierdo `--moss`.
+- Cards de estadística: `--bg`, `border 1px solid --border`, `shadow-sm`. Numeral grande en `--earth`, `--font-display`.
+- Estados de fila: usar las pills de §3 (OK/En revisión/Bloqueado/Nuevo). Nunca colorear filas completas — solo el badge.
 
 ---
 
-## 7. Espaciado
+## 7. Iconografía
 
-```css
---space-xs: 4px;
---space-sm: 8px;
---space-md: 16px;
---space-lg: 24px;
---space-xl: 40px;
-```
-
-### Dashboard interno
-- Sidebar: ancho fijo `256px`, fondo `primary-950`
-- Área de contenido: fondo `primary-50`, padding `p-8`
+Línea fina (`stroke-width: 1.5`). Heroicons Outline o Lucide. Tamaños 20px en UI · 24px en encabezados · 32px en hero. **Nunca** íconos rellenos en UI principal.
 
 ---
 
-## 8. Sombra y Profundidad
+## 8. TopoBand (motivo topográfico)
 
-Mantener mínimo:
+Watermark embossed de líneas de contorno. Implementación canónica: `components/decor/TopoBand.tsx`.
 
-```css
-box-shadow: 0 2px 6px rgba(0,0,0,0.05);  /* shadow-sm */
-```
+| Variant | Color | Opacity por defecto |
+|---|---|---|
+| `light` (sobre claros) | `--ink` (#1F2A38) | 0.06 |
+| `dark` (sobre `--ink`) | `--moss` (#2F5D50) | 0.18 |
 
-- `shadow-sm` únicamente en cards y elementos UI.
-- `shadow-xl` o `shadow-2xl` solo en modales — **nunca** en componentes de página o botones.
-
----
-
-## 9. Fotografía
-
-- **Temáticas válidas**: ríos hondureños, montañas y selva tropical, trabajo de campo con casco, mapas geológicos, documentos legales sobre mesa.
-- **Tratamiento**: desaturado (`saturate(0.82)`), brillo 75–80 %, contraste +5 %.
-- **Prohibido**: imágenes de stock genéricas, personas sin contexto territorial hondureño, minería industrial.
-- Todas las imágenes hero llevan overlay `bg-gradient-to-b from-black/30 via-black/20 to-black/60`.
-
-### 9.1 Motivo topográfico (decoración vectorial)
-
-Líneas de contorno topográficas como watermark embossed — quiet nod al territorio, nunca como contenido.
-
-- **Implementación**: `components/decor/TopoBand.tsx` (no improvisar nuevos SVG).
-- **Variantes**: `light` (color `#162033`, opacidad 0.06) sobre fondos claros · `dark` (color `#2F5D50`, opacidad 0.18) sobre fondos oscuros.
-- **Posiciones**: `overlay` (full-bleed detrás de contenido) · `band` (48px en top edge, p. ej. footer).
-- **Uso aprobado**: hero del landing, footer del landing, fondo del login.
-- **Reglas**: nunca interactivo (`pointer-events: none`, `aria-hidden`), nunca por encima de opacidad 0.2, nunca acompañado de fills coloreados, nunca animado.
+Posiciones: `overlay` (full-bleed detrás de contenido) · `band` (48px en top edge, footer).
+Reglas: `pointer-events: none`, `aria-hidden`, opacidad ≤ 0.20, sin fills coloreados, sin animación.
 
 ---
 
-## 10. Componente de Mapa
+## 9. Tono de voz UI
 
-El mapa territorial usa `Leaflet.js` con las siguientes capas:
-- Puntos rojos: Coordenadas en Consulta
-- Rectángulos beige: Asentamiento Pech o Paya
-- Puntos grises: Municipios
-- Rectángulos de colores: Concesiones activas (verde = activa, amarillo = en trámite)
-
-Leyenda siempre visible en esquina inferior derecha, fondo blanco con `rounded-lg shadow-sm`.
+Español, formal pero accesible. CTAs con verbo de acción: "Iniciar trámite", "Ver expediente", "Subir documento".
+Mensajes de error explicativos — "No se pudo cargar el expediente. Intenta de nuevo."
 
 ---
 
-## 11. Tokens CSS — Referencia de Implementación
+## 10. Implementación
 
-```css
-:root {
-  /* Primary */
-  --cht-primary-navy: #1F2A44;
-  --cht-deep-navy:    #162033;
-  --cht-slate:        #5E6B7A;
-  --cht-light-slate:  #A3AAB3;
-  --cht-off-white:    #F5F6F7;
-
-  /* Nature */
-  --cht-forest: #2F5D50;
-  --cht-olive:  #6E7F5E;
-  --cht-earth:  #8C6A4A;
-  --cht-sand:   #D8C3A5;
-  --cht-cream:  #F0EDE8;
-
-  /* Functional */
-  --cht-success: #3E7C59;
-  --cht-warning: #C49A4A;
-  --cht-danger:  #A94442;
-  --cht-info:    #3A6EA5;
-
-  /* Spacing */
-  --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 16px;
-  --space-lg: 24px;
-  --space-xl: 40px;
-}
-```
-
----
-
-## 12. Tono de Voz UI
-
-- **Español** para toda la interfaz de usuario.
-- Formal pero accesible: no uses jerga legal excesiva en labels de botones.
-- CTAs: verbos de acción directa — "Iniciar trámite", "Ver expediente", "Subir documento", "Agendar consulta".
-- **Nunca** uses anglicismos en la UI: "Dashboard" es la excepción aceptada por convención técnica.
-- Mensajes de error: explicativos — "No se pudo cargar el expediente. Intenta de nuevo." en lugar de códigos HTTP.
-
-Ejemplos:
-- ❌ "Your project is almost ready!"  →  ✅ "Expediente en revisión — SERNA"
-- ❌ "Upload your files"  →  ✅ "Cargar documentos requeridos (Requisito 8/16)"
-
----
-
-## 13. Lo que NO se hace
-
-- No uses `tailwind.config.js` — este proyecto usa Tailwind v4 con `@theme inline` en `globals.css`.
-- No uses `shadow-2xl` ni `shadow-xl` en componentes de UI (solo en modales).
-- No uses `rounded-full` en botones de acción (solo en badges y avatares).
-- No uses colores Tailwind genéricos (`green-*`, `emerald-*`, `gray-*`, `slate-*`, `amber-*`) — usa los tokens de esta guía.
-- No agregues información de contacto personal (nombres, teléfonos, WhatsApp) en la landing page.
-- No toques `public/dashboard.html` desde la landing page — son sistemas separados.
-- No uses `font-black` (peso 900).
-- No uses animaciones complejas (`animate-bounce`, `animate-spin`) en UI de producción.
-- No uses `rounded-2xl` ni `rounded-3xl` en tarjetas o botones — `rounded-xl` para cards, `rounded-lg` para botones.
+- **Source of truth:** `app/globals.css`. Tokens declarados en `:root`.
+- **Tailwind v4:** se usa `@theme inline` en `globals.css` — **no** `tailwind.config.js`.
+- **Stack snippets** (CSS, Tailwind config, Style Dictionary JSON): ver README §Color Manual.
+- **Future work:** cualquier color hardcodeado fuera de `globals.css` es deuda técnica. Si encuentras uno, abre PR para reemplazarlo por el token correspondiente.

@@ -1,10 +1,183 @@
 # MAPE.LEGAL — Plataforma de Formalización Minera
 
 **Versión 1.1 — Piloto Iriona 2026**
-Última actualización: 2 de mayo de 2026
+Última actualización: 9 de mayo de 2026
 Propietario: Corporación Hondureña Tenka, S.A. (CHT)
 Administrador Único: Willis Yang
 Dominio: mape.legal · App privada en Vercel + Supabase
+
+---
+
+## 0. BRAND IDENTITY · COLOR MANUAL v1.0
+
+> **Hard rule:** El color manual de abajo es la **única fuente de verdad** para color y tipografía en MAPE LEGAL. *No invented hex outside this manual* — si un color que necesitas no está aquí, no existe; abre PR para agregarlo.
+>
+> **Future work** (frontend, backend, emails, dashboard, landing, broadcast templates, asistente María) **debe alinearse a esta identidad**. Cualquier hex hardcodeado fuera de `app/globals.css` es deuda técnica y debe reemplazarse por el token correspondiente.
+
+### Principio de marca
+*"Tinta, piedra, musgo."* — autoridad natural, no naturaleza decorativa.
+
+**Eje:** Legal (precisión) · Institucional (credibilidad) · Natural (territorio) · Técnico (rigor de proceso).
+
+### 0.1 Tokens de color
+
+#### Primaria — tinta + grises
+| Token | Hex | Rol | Uso |
+|---|---|---|---|
+| `--ink` | `#1F2A38` | CTA · headings · footer | Color ancla del sistema. Texto principal sobre claros, fondo sobre oscuros, default de botón primario |
+| `--ink-2` | `#3B4A5C` | Hover de ink | Estado hover de superficies/botones que parten de `--ink`. No usar como texto base |
+| `--slate` | `#5E6B7B` | Nav secundaria · captions | Meta, breadcrumbs, leyendas, eyebrow |
+| `--slate-lt` | `#A3A8AB` | Disabled · hairlines on dark | Estado deshabilitado, hairlines sobre footer/hero |
+| `--plum` | `#5F5F77` | Acento raro | Avatares default, tags neutrales en panel admin. Casi nunca |
+
+#### Naturaleza — territorio
+| Token | Hex | Rol | Uso |
+|---|---|---|---|
+| `--moss` | `#2F5D50` | CTA secundaria · titles | Botón WhatsApp, italic em de H1, focus rings, link hover |
+| `--moss-2` | `#587E5E` | Live dot · activo | Dot pulsante de notificación, estados activos en steppers |
+| `--earth` | `#8B6A4A` | Numerales · ornamentos | Numerales grandes en stats strip, separadores cortos del eyebrow |
+| `--sand` | `#D8C3A5` | Hero accent · italic em | Único cálido permitido en hero/footer. Itálico de H1, líneas topográficas |
+| `--concrete` | `#F0EDE5` | Block quote · callout | Fondo de citas, callouts. Más cálido que `--bg-soft` |
+
+#### Funcionales — sólo estado, nunca decoración
+| Token | Hex | Rol | Uso |
+|---|---|---|---|
+| `--green` | `#2A8E50` | OK · verified | Documento verificado, step COMPLETED, hito pagado, ACH confirmado |
+| `--amber` | `#C58B2C` | In review · due soon | Step IN_REVIEW, alerta WARN, deadline a 2-5 días |
+| `--red` | `#B23A3A` | Block · overdue | Step REJECTED/BLOCKED, oposición Art. 66, deadline vencido |
+| `--blue` | `#2A6BA8` | Info · new | Documento nuevo en bandeja WA, mensaje informativo, tag "actualizado" |
+
+> Verde / ámbar / rojo / azul son **señales de estado**. Nada de "tarjetas verdes porque se ven frescas" ni "borde rojo porque resalta".
+
+#### Neutros — papel y bordes
+| Token | Hex | Rol | Uso |
+|---|---|---|---|
+| `--bg` | `#FFFFFF` | Surface · cards · modal | Cards, modals, inputs. **Nunca** fondo de página en producto |
+| `--bg-soft` | `#FAF9F5` | Page background · paper | Lienzo principal de la app y landing. El "papel" de MAPE LEGAL |
+| `--t1` | `#1F2A38` | Body strong · headings | Texto principal, alias de `--ink` |
+| `--t2` | `#4B5563` | Body default | Color por defecto de párrafos sobre `--bg-soft` |
+| `--t3` | `#8E96A2` | Caption · helper | Texto auxiliar: helpers de input, timestamps |
+| `--border` | `#E2E0D8` | Hairline default | Bordes 1px de cards, separadores. Default total |
+| `--border-2` | `#C9C5B9` | Stronger hairline | Cards de feature destacada y elementos enfatizados |
+
+### 0.2 Tipografía
+
+| Rol | Familia | Variable CSS | Pesos |
+|---|---|---|---|
+| Display / Títulos | **Playfair Display** | `--font-display` | 500 / **600** / 700 |
+| UI / Cuerpo | **Inter** | `--font-body` | 400 / 500 / 600 / 700 |
+| Mono / Numerales / Eyebrow | **JetBrains Mono** | `--font-mono` | 400 / 500 |
+
+Cargadas en `app/layout.tsx` vía `next/font/google`. **Peso máximo: 700.**
+
+### 0.3 Pares texto/fondo aprobados (WCAG)
+
+| FG | BG | Uso |
+|---|---|---|
+| `--ink` on `--bg-soft` | AAA — Default body / heading |
+| `--t2` on `--bg-soft` | AAA — Default body copy |
+| `--slate` on `--bg-soft` | AA — Captions, meta |
+| `--moss` on `--bg-soft` | AAA — Section title em / link |
+| `--earth` on `--bg-soft` | AA (large) — Stat numerals |
+| `--bg` on `--ink` | AAA — Hero copy / footer body |
+| `--sand` on `--ink` | AAA — Hero italic / topo accent |
+| `--green` on `--bg-soft` | AA — OK pill text |
+| `--red` on `--bg-soft` | AA — Block / overdue text |
+| `--blue` on `--bg-soft` | AA — Info text |
+| `--amber` on `--bg-soft` | LG — Warn pill text (large only) |
+
+Para tonos derivados usa **`color-mix(in oklch, var(--ink) 80%, white)`** — nunca inventes hex.
+
+### 0.4 Reglas
+
+#### Sí
+- `color-mix(in oklch, …)` para hover, fondos translúcidos, pill backgrounds.
+- Body `--t2` sobre `--bg-soft`. Headings `--ink`. Captions `--t3` o `--slate`.
+- Hairlines `--border` (1px). `--border-2` solo en feature cards.
+- `--sand` solamente sobre `--ink` (hero italic, líneas topográficas).
+
+#### No
+- Funcionales como decoración (verde/ámbar/rojo/azul son **estado**).
+- Gradientes (excepto overlay radial del hero).
+- `#FFFFFF` como fondo de página (usa `--bg-soft`).
+- Opacidad >0.10 en líneas topográficas claras.
+- `font-weight: 800` o `900` (cap = 700).
+- `rounded-full` en botones, `rounded-2xl` en cards.
+- `shadow-xl` / `shadow-2xl` (solo en modales).
+- Animaciones continuas en UI de producción.
+
+### 0.5 Implementación — drop-ins
+
+#### `app/globals.css` (canonical)
+```css
+:root {
+  /* Primaria */
+  --ink:        #1F2A38;
+  --ink-2:      #3B4A5C;
+  --slate:      #5E6B7B;
+  --slate-lt:   #A3A8AB;
+  --plum:       #5F5F77;
+  /* Naturaleza */
+  --moss:       #2F5D50;
+  --moss-2:     #587E5E;
+  --earth:      #8B6A4A;
+  --sand:       #D8C3A5;
+  --concrete:   #F0EDE5;
+  /* Funcionales */
+  --green:      #2A8E50;
+  --amber:      #C58B2C;
+  --red:        #B23A3A;
+  --blue:       #2A6BA8;
+  /* Neutros */
+  --bg:         #FFFFFF;
+  --bg-soft:    #FAF9F5;
+  --t1:         #1F2A38;
+  --t2:         #4B5563;
+  --t3:         #8E96A2;
+  --border:     #E2E0D8;
+  --border-2:   #C9C5B9;
+}
+
+.btn-primary:hover {
+  background: color-mix(in oklch, var(--ink) 88%, white);
+}
+```
+
+#### Style Dictionary JSON (para herramientas de design tokens)
+```json
+{
+  "color": {
+    "ink":      { "value": "#1F2A38", "type": "color" },
+    "ink-2":    { "value": "#3B4A5C", "type": "color" },
+    "slate":    { "value": "#5E6B7B", "type": "color" },
+    "slate-lt": { "value": "#A3A8AB", "type": "color" },
+    "moss":     { "value": "#2F5D50", "type": "color" },
+    "moss-2":   { "value": "#587E5E", "type": "color" },
+    "earth":    { "value": "#8B6A4A", "type": "color" },
+    "sand":     { "value": "#D8C3A5", "type": "color" },
+    "concrete": { "value": "#F0EDE5", "type": "color" },
+    "green":    { "value": "#2A8E50", "type": "color" },
+    "amber":    { "value": "#C58B2C", "type": "color" },
+    "red":      { "value": "#B23A3A", "type": "color" },
+    "blue":     { "value": "#2A6BA8", "type": "color" },
+    "bg":       { "value": "#FFFFFF", "type": "color" },
+    "bg-soft":  { "value": "#FAF9F5", "type": "color" },
+    "t1":       { "value": "#1F2A38", "type": "color" },
+    "t2":       { "value": "#4B5563", "type": "color" },
+    "t3":       { "value": "#8E96A2", "type": "color" },
+    "border":   { "value": "#E2E0D8", "type": "color" },
+    "border-2": { "value": "#C9C5B9", "type": "color" }
+  }
+}
+```
+
+> **Nota:** este proyecto usa Tailwind v4 con `@theme inline` en `globals.css` — **no** `tailwind.config.js`. Si introduces Tailwind config-based en otro repo (mobile, packaging), usa los mismos hex aliasados como `ink`, `moss`, `state.{ok,warn,block,info}`.
+
+### 0.6 Documentos relacionados
+
+- [`DESIGN.md`](./DESIGN.md) — guía completa de componentes UI, escala tipográfica, reglas de uso.
+- [`app/globals.css`](./app/globals.css) — implementación canónica de los tokens.
+- [`components/decor/TopoBand.tsx`](./components/decor/TopoBand.tsx) — motivo topográfico.
 
 ---
 
