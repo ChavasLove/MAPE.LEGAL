@@ -16,8 +16,10 @@ const ROLE_REDIRECT: Record<string, string> = {
 // same cookie set used by /api/auth/login (auth-token, auth-role 30d,
 // auth-refresh 30d, user-email, plus admin-token if role = admin).
 //
-// `user_roles` is created automatically by trigger 015 (default 'cliente'),
-// so we only ever read it here.
+// Trigger 015 inserts `user_roles` rows on auth.users INSERT (default
+// 'cliente'). We read first and fall back to upserting the default if the
+// row is missing, so the OAuth flow doesn't dead-end on a single
+// trigger-related failure.
 export async function POST(req: NextRequest) {
   try {
     const { access_token, refresh_token, expires_in } = await req.json();
@@ -57,15 +59,41 @@ export async function POST(req: NextRequest) {
       .eq('user_id', user.id)
       .single();
 
+    let role: string;
+
     if (roleErr || !roleRow) {
-      console.error('[oauth-session] user_roles lookup failed:', roleErr?.message);
-      return NextResponse.json({ error: 'Sin rol asignado — contacte al administrador' }, { status: 403 });
-    }
-    if (!roleRow.activo) {
-      return NextResponse.json({ error: 'Cuenta inactiva — contacte al administrador' }, { status: 403 });
+      // Forensic logging — capture full PostgREST error context so a future
+      // miss is diagnosable from Vercel function logs alone (PGRST116 = no
+      // rows, 42501 = permission denied, etc.).
+      console.error('[oauth-session] user_roles miss', {
+        user_id: user.id,
+        email:   user.email,
+        code:    roleErr?.code,
+        message: roleErr?.message,
+        details: roleErr?.details,
+        hint:    roleErr?.hint,
+      });
+
+      const { error: upsertErr } = await roleClient
+        .from('user_roles')
+        .upsert(
+          { user_id: user.id, rol: 'cliente', activo: true },
+          { onConflict: 'user_id', ignoreDuplicates: true }
+        );
+
+      if (upsertErr) {
+        console.error('[oauth-session] user_roles fallback upsert failed:', upsertErr);
+        return NextResponse.json({ error: 'Sin rol asignado — contacte al administrador' }, { status: 403 });
+      }
+
+      role = 'cliente';
+    } else {
+      if (!roleRow.activo) {
+        return NextResponse.json({ error: 'Cuenta inactiva — contacte al administrador' }, { status: 403 });
+      }
+      role = roleRow.rol as string;
     }
 
-    const role         = roleRow.rol as string;
     const redirectTo   = ROLE_REDIRECT[role] ?? '/dashboard';
     const accessMaxAge = Number.isFinite(expires_in) && expires_in > 0 ? Number(expires_in) : 3600;
 
