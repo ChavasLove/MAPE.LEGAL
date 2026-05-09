@@ -17,6 +17,11 @@
 -- go through /admin/usuarios with the service-role client, which bypasses
 -- RLS regardless of policies.
 
+-- Idempotent: PostgreSQL has no `CREATE POLICY IF NOT EXISTS`, so drop
+-- first to allow this migration to be re-run safely (e.g. when applied
+-- partially in Supabase Studio and the second statement aborted).
+drop policy if exists "Allow default cliente role insert" on public.user_roles;
+
 create policy "Allow default cliente role insert"
   on public.user_roles for insert
   with check (rol = 'cliente' and activo = true);
