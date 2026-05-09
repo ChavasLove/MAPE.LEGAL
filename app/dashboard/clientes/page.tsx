@@ -62,6 +62,7 @@ export default function ClientesPage() {
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   const q = search.toLowerCase();

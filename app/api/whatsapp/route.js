@@ -13,9 +13,16 @@ const anthropic = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   : null;
 
-const supabase = (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
-  ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
-  : null;
+let _supabase = null;
+function getSupabase() {
+  if (!_supabase) {
+    _supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+  }
+  return _supabase;
+}
 
 function esc(s) {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -711,15 +718,14 @@ Notas: ${exp.notas || 'Sin notas'}`
         hitosRes,
         precioRes,
       ] = await Promise.all([
-        supabase.from('conversaciones_whatsapp').select('numero_whatsapp, created_at').gte('created_at', last1h),
-        supabase.from('conversaciones_whatsapp').select('numero_whatsapp, role, created_at').gte('created_at', last24h),
-        supabase.from('conversaciones_whatsapp').select('numero_whatsapp').gte('created_at', last7d),
-        supabase.from('conversaciones_whatsapp').select('*', { count: 'exact', head: true }),
-        supabase.from('clientes').select('nombre, municipio, situacion_tierra, tipo_mineral, fecha_registro, telefono_whatsapp').order('created_at', { ascending: false }),
-        supabase.from('expedientes').select('estado, tipo, inicio').order('inicio', { ascending: false }),
-        supabase.from('transacciones_pendientes').select('estado, created_at, mensaje_original').order('created_at', { ascending: false }),
-        supabase.from('hitos').select('estado, monto, trigger_evento').order('created_at', { ascending: false }),
-        supabase.from('precios_diarios').select('fecha, oro, usd_hnl, fuente, fetched_at').order('fecha', { ascending: false }).limit(1).maybeSingle(),
+        getSupabase().from('conversaciones_whatsapp').select('numero_whatsapp, created_at').gte('created_at', last1h),
+        getSupabase().from('conversaciones_whatsapp').select('numero_whatsapp, role, created_at').gte('created_at', last24h),
+        getSupabase().from('conversaciones_whatsapp').select('numero_whatsapp').gte('created_at', last7d),
+        getSupabase().from('conversaciones_whatsapp').select('*', { count: 'exact', head: true }),
+        getSupabase().from('clientes').select('nombre, municipio, situacion_tierra, tipo_mineral, fecha_registro, telefono_whatsapp').order('created_at', { ascending: false }),
+        getSupabase().from('expedientes').select('estado, tipo, inicio').order('inicio', { ascending: false }),
+        getSupabase().from('transacciones_pendientes').select('estado, created_at, mensaje_original').order('created_at', { ascending: false }),
+        getSupabase().from('hitos').select('estado, monto, trigger_evento').order('created_at', { ascending: false }),
       ]);
 
       const activeHour = activeHourRes.data;
@@ -1034,7 +1040,7 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
     if (isAdmin && broadcastUser) {
       const cmdReply = await interpretAndExecute(broadcastUser, incomingMessage);
       if (cmdReply !== null) {
-        await supabase.from("conversaciones_whatsapp").insert([
+        await getSupabase().from("conversaciones_whatsapp").insert([
           { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
           { numero_whatsapp: fromNumber, role: "assistant", content: cmdReply },
         ]);
@@ -1049,33 +1055,28 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
     // Wrapped in try/catch so a missing onboarding_states table or any DB error
     // gracefully falls through to the normal María flow instead of erroring.
     if (!isAdmin) {
-      try {
-        const onboardingState = await getOnboardingState(cleanNumber);
-        if (!cliente && onboardingState === null) {
-          const firstQ = await startOnboarding(cleanNumber);
-          await supabase.from("conversaciones_whatsapp").insert([
-            { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
-            { numero_whatsapp: fromNumber, role: "assistant", content: firstQ },
-          ]);
-          return new Response(
-            `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(firstQ)}</Message></Response>`,
-            { status: 200, headers: { "Content-Type": "text/xml" } }
-          );
-        }
-        if (onboardingState && onboardingState.estado !== 'COMPLETE') {
-          const reply = await handleOnboarding(cleanNumber, incomingMessage);
-          await supabase.from("conversaciones_whatsapp").insert([
-            { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
-            { numero_whatsapp: fromNumber, role: "assistant", content: reply },
-          ]);
-          return new Response(
-            `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(reply)}</Message></Response>`,
-            { status: 200, headers: { "Content-Type": "text/xml" } }
-          );
-        }
-      } catch (onboardingErr) {
-        console.log('Onboarding unavailable, falling through to María:', onboardingErr.message);
-        // Fall through to normal María flow
+      const onboardingState = await getOnboardingState(cleanNumber);
+      if (!cliente && onboardingState === null) {
+        const firstQ = await startOnboarding(cleanNumber);
+        await getSupabase().from("conversaciones_whatsapp").insert([
+          { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
+          { numero_whatsapp: fromNumber, role: "assistant", content: firstQ },
+        ]);
+        return new Response(
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(firstQ)}</Message></Response>`,
+          { status: 200, headers: { "Content-Type": "text/xml" } }
+        );
+      }
+      if (onboardingState && onboardingState.estado !== 'COMPLETE') {
+        const reply = await handleOnboarding(cleanNumber, incomingMessage);
+        await getSupabase().from("conversaciones_whatsapp").insert([
+          { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
+          { numero_whatsapp: fromNumber, role: "assistant", content: reply },
+        ]);
+        return new Response(
+          `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(reply)}</Message></Response>`,
+          { status: 200, headers: { "Content-Type": "text/xml" } }
+        );
       }
     }
 
@@ -1129,7 +1130,7 @@ Responde DIRECTAMENTE a lo que acaba de decir el usuario.`);
       getOrCreateUserByPhone(cleanNumber, cliente?.nombre ?? undefined).catch(() => {});
     }
 
-    const { error: insertError } = await supabase.from("conversaciones_whatsapp").insert([
+    const { error: insertError } = await getSupabase().from("conversaciones_whatsapp").insert([
       { numero_whatsapp: fromNumber, role: "user", content: incomingMessage },
       { numero_whatsapp: fromNumber, role: "assistant", content: assistantReply },
     ]);
@@ -1188,7 +1189,7 @@ Accion requerida: Llamar o escribir al cliente hoy.`;
     if (!cliente && assistantReply.includes('te voy a registrar')) {
       const nombreDetectado = incomingMessage.trim();
       if (nombreDetectado.length > 3 && nombreDetectado.length < 60) {
-        await supabase.from('clientes').insert([{
+        await getSupabase().from('clientes').insert([{
           nombre: nombreDetectado,
           telefono_whatsapp: cleanNumber,
           municipio: 'Iriona, Colón',
@@ -1268,7 +1269,7 @@ Si algún dato no está claramente mencionado, deja null.`
     }
 
     if (assistantReply.includes("Listo") && assistantReply.includes("Confirmas")) {
-      await supabase.from("transacciones_pendientes").insert([{
+      await getSupabase().from("transacciones_pendientes").insert([{
         numero_whatsapp: fromNumber,
         mensaje_original: incomingMessage,
         respuesta_asistente: assistantReply,

@@ -43,9 +43,8 @@ export async function GET() {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   // Fetch expedientes linked to each client via cliente_id FK
-  const clientes = (data ?? []) as ClienteRow[];
-  const ids = clientes.map((c: ClienteRow) => c.id);
-  const expedientesByCliente: Record<string, ExpedienteRow[]> = {};
+  const ids = (data ?? []).map(c => c.id);
+  const expedientesByCliente: Record<string, unknown[]> = {};
 
   if (ids.length > 0) {
     const { data: exps } = await admin
