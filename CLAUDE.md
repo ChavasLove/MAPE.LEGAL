@@ -26,12 +26,18 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 - **Logout** (`POST /api/auth/logout` y `POST /api/admin/auth/logout`): llama `auth.admin.signOut(token, 'global')` para revocar el refresh token server-side **antes** de limpiar las 5 cookies (`admin-token`, `auth-token`, `auth-role`, `auth-refresh`, `user-email`) y redirige a `/login`. Sin la revocación server-side un refresh token capturado seguía minteando access tokens hasta 30 días después del logout.
 - **Open-redirect guard en `/login`**: `safeFrom()` rechaza valores de `?from=` que no empiecen con `/` (o que sean `//host` / `/\\…`). Sin esto, `mape.legal/login?from=https://evil.com` redirigía al sitio externo después de login.
 - **Self-demotion guard**: `PATCH/DELETE /api/admin/usuarios/[id]` rechaza modificaciones del propio admin (cambiar `rol` fuera de `admin`, marcar `activo: false`, o borrarse) — evita lockouts del último admin y downgrades vía session-hijack.
+- **Google OAuth — flow dual** (`app/auth/callback/page.tsx`): la página cliente detecta primero `?code=…` (modern authorization-code flow, default en Supabase nuevo) y reenvía vía `window.location.replace` a `/api/auth/callback` (server route con `exchangeCodeForSession`). Si no hay `?code=`, intenta el path implícito leyendo `#access_token=…` del fragment y POSTeando a `/api/auth/oauth-session`. El `?code` se borra del history con `replaceState` antes de reenviar para no dejar el authorization code en la barra de direcciones. La inicialización del flow vive en `app/login/page.tsx:handleGoogleLogin()` — pega directo al `/auth/v1/authorize?provider=google&redirect_to=…` de Supabase sin generar PKCE en el cliente; si Supabase fuerza PKCE en el proyecto, `exchangeCodeForSession` server-side devuelve `invalid_grant` y aparece como tal en los logs (mejor migrar a `signInWithOAuth` con cookie-based verifier vía `@supabase/ssr` solo cuando ese síntoma se confirme en Vercel).
+- **Fail-loud en falta de service-role key**: `oauth-session`, `api/auth/callback`, `api/auth/login` y `lib/serverAuth.ts` antes caían silenciosamente al cliente anon cuando `SUPABASE_SERVICE_ROLE_KEY` faltaba/era placeholder — el cliente anon sin sesión hace `auth.uid() = null` y la policy `"Users can read own role"` nunca matchea, así que el SELECT de role retornaba 0 filas y el usuario veía `"Sin rol asignado"` indistinguible de un row faltante real. Ahora cada uno usa `checkAuthEnv()` y devuelve **500 `code: 'SERVER_CONFIG'`** con `logAuthEnvFailure(scope, env)` en stderr antes de tocar Supabase.
+- **Diagnóstico de auth — `/api/debug/auth-config`**: ruta pública (sin auth) que reporta:
+  - Estado de las 3 env vars (`url`, `anonKey`, `serviceKey`) como `'ok' | 'missing' | 'placeholder'` vía `lib/authEnv.ts:checkAuthEnv()`.
+  - **Live probe**: hace un round-trip con el service-role client contra `public.user_roles`. Devuelve `probe.status` (`'ok' | 'unauthorized' | 'unreachable' | 'skipped'`) + `probe.error` con código PostgREST. Esto distingue "key seteada pero revocada/wrong-project" de "key seteada y funcional", y "policy 42P17 todavía recursando" de "policy ya está fix". Es la primera URL a abrir cuando el flow de auth falla en producción.
+- **`api/auth/register` — error mapping**: `generateLink('signup')` puede devolver "Database error saving new user" cuando el trigger 015 falla por RLS adentro del INSERT a `auth.users`. Ese caso ahora se mapea a **500 `code: 'TRIGGER_FAILURE'`** con un log `[register] trigger failure — likely migration 017_fix_user_roles_recursion.sql not applied to production Supabase. Original error: …`. Las otras ramas: `already/registered/exists` → 409 `"El correo ya está registrado"`; cualquier otro error de Supabase → 400 `"Error al crear la cuenta"` con `[register] generateLink failed:` en stderr.
 
 ## Base de Datos
 - Supabase (PostgreSQL). Dos clientes:
   - `services/supabase.ts` — cliente anónimo para lecturas públicas y portales de cliente
   - `services/adminSupabase.ts` — cliente service-role para escrituras admin y operaciones privilegiadas
-- Migraciones en `supabase/migrations/` (001–014):
+- Migraciones en `supabase/migrations/` (001–018). **Vercel deploy NO aplica migraciones de Supabase** — cada `.sql` debe correrse manualmente en Supabase Studio → SQL Editor (o `supabase db push`). Mergear el PR solo deja el archivo en el repo:
   - 006: `roles`, `contenido_cms`, `configuracion_sistema`, `notificaciones`
   - 007: `contactos` (formulario de landing)
   - 008: `clientes`, `minas`, `contratos`, `indice_legalidad`, `transacciones_oro`, `conversaciones_whatsapp`, `transacciones_pendientes`
@@ -39,6 +45,10 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
   - 012: `documentos_referencia` — Manual Operativo 2026, consultado por María en tiempo real
   - 013: `precios_diarios.fetched_at` + vista `precios_frescura`
   - 014: Añade `proceso` a `documentos_referencia` + seed titulación (9 pasos) + sociedad (7 pasos). Incluye un `DO $$ ... $$` que **droppea NOT NULL en cualquier columna no gestionada por la migración** (en producción la tabla tiene columnas fuera del control de migraciones — `documento_nombre`, `categoria` — que rompían los inserts de procesos nuevos)
+  - 015: Trigger `on_auth_user_created` + función `handle_new_auth_user()` (`SECURITY DEFINER`, owner = `postgres`) que inserta `user_roles` con default `cliente` cuando se crea una fila en `auth.users`. Incluye backfill para usuarios creados antes del trigger. **Sin esta migración, signup vía `auth.admin.generateLink('signup')` falla con "Database error saving new user"** — el grant explícito `INSERT on user_roles to supabase_auth_admin` (líneas 30–31) es necesario para que el trigger pueda escribir.
+  - 016: `broadcast_log.error_msg` + `broadcast_log.aborted_reason`
+  - 017: Drop de la policy recursiva `"Admins manage user_roles"` de 005 — era `FOR ALL` con `USING (EXISTS (SELECT 1 FROM user_roles WHERE rol='admin'))`, lo que disparaba `42P17 infinite recursion detected in policy for relation "user_roles"` en cualquier read/write desde un cliente sin BYPASSRLS. Surge tras PR #87 (que destrabó el callback de OAuth y dejó al lookup de rol llegar al SELECT que recursaba).
+  - 018: Restaura el path de INSERT que 017 dejó sin cubrir. Crea la policy `"Allow default cliente role insert"` con `WITH CHECK (rol='cliente' AND activo=true)` — restringida al payload del trigger 015 y del fallback upsert en `oauth-session`/`callback`, así no se abre auto-promoción a admin/abogado/tecnico_ambiental. Ejecuta también un backfill idempotente (`auth.users` que no tienen fila en `user_roles` reciben default `cliente`). Idempotente: usa `DROP POLICY IF EXISTS` antes de `CREATE POLICY` porque PostgreSQL no soporta `CREATE POLICY IF NOT EXISTS`.
 - Tablas del motor de workflow: `fases`, `transiciones_fase`, `expediente_fases`, `pagos`, `documentos`, `registro_auditoria`
 - Tabla `clientes` (piloto core) — columnas clave: `telefono_whatsapp`, `situacion_tierra`, `tipo_mineral`, `fecha_registro`, `nombre`, `municipio`
 - Tabla `documentos_referencia` — columnas clave: `proceso` (`formalizacion` | `titulacion` | `sociedad`), `paso_numero` (int), `titulo_paso`, `rol`, `acciones`, `documentos`, `plazo`, `deliverable`, `advertencias`. Unique compuesto en `(proceso, paso_numero)` — cada proceso tiene su propia numeración (formalización 1-38, titulación 1-9, sociedad 1-7). Poblada con los pasos del Manual Operativo 2026.
@@ -318,6 +328,30 @@ Flujo de registro guiado para números nuevos que contactan a María por primera
 ## Auditoría — deuda técnica conocida (2026-05-03)
 
 Documentado para evitar trabajo duplicado en futuras sesiones. Ninguno está bloqueando producción.
+
+### Auth — Google OAuth todavía retorna "Sin rol asignado" en producción (2026-05-09, no resuelto)
+
+PRs aplicados en esta sesión: #87 (callback dual-flow), #88 (drop policy recursiva), #89 (fail-loud + live probe), #90 (INSERT policy + backfill). Migraciones 017 y 018 corridas en Supabase Studio. `/api/debug/auth-config` reporta `ok: true`, todas las env vars `ok`, `probe.status: 'ok'` (service-role lee `user_roles`). La fila de `cachivo@gmail.com` (UID `afce6713-c4d1-4a82-a3e6-84367112d891`) existe en `user_roles` con `rol='admin'`, `activo=true` desde 2026-05-04. Aun así, sign-in con Google sigue redirigiendo a `/login?error=Sin%20rol%20asignado…`.
+
+Hipótesis pendientes (no descartadas, en orden de probabilidad):
+
+1. **`service_role` no tiene `BYPASSRLS` en este proyecto Supabase.** Sin BYPASSRLS, el SELECT `from('user_roles').select('rol, activo').eq('user_id', user.id).single()` evalúa la policy `"Users can read own role"` con `auth.uid() = null` (porque `oauth-session` valida el JWT vía `getUser(token)` pero no llama a `setSession()` en el cliente service-role) → 0 filas → fallback upsert; el upsert hace `INSERT ... ON CONFLICT DO NOTHING`, choca con la fila existente (cachivo ya es admin) y no devuelve nada — pero internamente la implementación de `upsert` en supabase-js puede pedir el row de RETURNING vía SELECT, que con RLS aplicada también retorna 0 → potencialmente devuelve error. Verificar con esta query en Studio:
+   ```sql
+   select rolname, rolbypassrls
+     from pg_roles
+    where rolname in ('postgres','service_role','supabase_auth_admin','authenticated');
+   ```
+   Si `service_role` muestra `rolbypassrls = f`, el fix es una línea: `alter role service_role bypassrls;`.
+
+2. **Logs de Vercel no inspeccionados.** Tras el commit `bf5e3c9` los path de `oauth-session` loggean `[oauth-session] user_roles miss { code, message, details, hint }` (forensic) y `[oauth-session] user_roles fallback upsert failed: <upsertErr>`. La línea exacta del fallo apunta a la causa: `42501` permission denied (sin BYPASSRLS), `PGRST116` no rows found (el SELECT no encontró la fila), o algo más inesperado.
+
+3. **OAuth se está completando pero la fila de cachivo no es legible desde el cliente que `oauth-session` usa.** Si la fila fue creada por una conexión `postgres` directa (Studio SQL Editor) y los grants implícitos de Supabase no incluyen lectura por `service_role` para esa fila, podría fallar — improbable pero no descartado.
+
+4. **El flow no está siquiera reaching `oauth-session`**. Si Supabase está configurado con PKCE forzado y `app/login/page.tsx:handleGoogleLogin` no genera `code_challenge`, el callback server-side `/api/auth/callback` recibe `?code=…` y `exchangeCodeForSession` falla con `invalid_grant`. El error redirect resultante es `"Sesion invalida"`, no `"Sin rol asignado"`, así que esto **no** matchea el síntoma actual — se descarta de momento.
+
+Próximo paso de la siguiente sesión: revisar logs de Vercel del último intento de OAuth + correr query 1.b. Una vez que `service_role | bypassrls = t`, el SELECT debería tener éxito y la fila admin de cachivo lo redirigiría a `/admin`.
+
+Follow-up diferido: auto-promover `@cht.hn` / `@mape.legal` a `abogado` en el callback (hoy todos los Google sign-ins quedan como `cliente` por default del trigger 015 → `/portal`).
 
 ### Landing
 - `components/landing/*` — 15 archivos huérfanos (cero imports). Decidir: revivir o eliminar.
