@@ -25,9 +25,20 @@ export default function PortalPage() {
 
   useEffect(() => {
     fetch('/api/expedientes')
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) {
+          // Bounce to /login on session loss instead of stranding the
+          // client on the "Sin expediente activo" empty state.
+          if (r.status === 401) {
+            window.location.href = '/login';
+            return [];
+          }
+          throw new Error(`HTTP ${r.status}`);
+        }
+        return r.json();
+      })
       .then(d => setExpedientes(Array.isArray(d) ? d : []))
-      .catch(() => {})
+      .catch(() => setExpedientes([]))
       .finally(() => setLoading(false));
   }, []);
 

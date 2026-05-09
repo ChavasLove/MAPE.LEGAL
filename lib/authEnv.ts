@@ -11,7 +11,7 @@ export interface AuthEnvCheck {
   url:        EnvStatus;
   anonKey:    EnvStatus;
   serviceKey: EnvStatus;
-  ok:         boolean;     // true only when url + anonKey are 'ok'
+  ok:         boolean;     // true only when url + anonKey + serviceKey are 'ok'
   missing:    string[];    // names of vars not in 'ok' state
 }
 
@@ -35,7 +35,13 @@ export function checkAuthEnv(): AuthEnvCheck {
   if (anonKey    !== 'ok') missing.push(`NEXT_PUBLIC_SUPABASE_ANON_KEY(${anonKey})`);
   if (serviceKey !== 'ok') missing.push(`SUPABASE_SERVICE_ROLE_KEY(${serviceKey})`);
 
-  return { url, anonKey, serviceKey, ok: url === 'ok' && anonKey === 'ok', missing };
+  return {
+    url,
+    anonKey,
+    serviceKey,
+    ok: url === 'ok' && anonKey === 'ok' && serviceKey === 'ok',
+    missing,
+  };
 }
 
 // Logs to stderr (visible in Vercel function logs) so an operator can
