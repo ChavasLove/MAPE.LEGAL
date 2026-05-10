@@ -1055,28 +1055,34 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
     // Wrapped in try/catch so a missing onboarding_states table or any DB error
     // gracefully falls through to the normal María flow instead of erroring.
     if (!isAdmin) {
-      const onboardingState = await getOnboardingState(cleanNumber);
-      if (!cliente && onboardingState === null) {
-        const firstQ = await startOnboarding(cleanNumber);
-        await getSupabase().from("conversaciones_whatsapp").insert([
-          { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
-          { numero_whatsapp: fromNumber, role: "assistant", content: firstQ },
-        ]);
-        return new Response(
-          `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(firstQ)}</Message></Response>`,
-          { status: 200, headers: { "Content-Type": "text/xml" } }
-        );
-      }
-      if (onboardingState && onboardingState.estado !== 'COMPLETE') {
-        const reply = await handleOnboarding(cleanNumber, incomingMessage);
-        await getSupabase().from("conversaciones_whatsapp").insert([
-          { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
-          { numero_whatsapp: fromNumber, role: "assistant", content: reply },
-        ]);
-        return new Response(
-          `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(reply)}</Message></Response>`,
-          { status: 200, headers: { "Content-Type": "text/xml" } }
-        );
+      try {
+        const onboardingState = await getOnboardingState(cleanNumber);
+        if (!cliente && onboardingState === null) {
+          const firstQ = await startOnboarding(cleanNumber);
+          await getSupabase().from("conversaciones_whatsapp").insert([
+            { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
+            { numero_whatsapp: fromNumber, role: "assistant", content: firstQ },
+          ]);
+          return new Response(
+            `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(firstQ)}</Message></Response>`,
+            { status: 200, headers: { "Content-Type": "text/xml" } }
+          );
+        }
+        if (onboardingState && onboardingState.estado !== 'COMPLETE') {
+          const reply = await handleOnboarding(cleanNumber, incomingMessage);
+          await getSupabase().from("conversaciones_whatsapp").insert([
+            { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
+            { numero_whatsapp: fromNumber, role: "assistant", content: reply },
+          ]);
+          return new Response(
+            `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(reply)}</Message></Response>`,
+            { status: 200, headers: { "Content-Type": "text/xml" } }
+          );
+        }
+      } catch (e) {
+        // Most common cause: migration 010 not applied → onboarding_states is missing.
+        // Falls through to the regular María flow so unregistered users still get a reply.
+        console.error('[onboarding] non-fatal — falling through to María flow:', e?.message);
       }
     }
 

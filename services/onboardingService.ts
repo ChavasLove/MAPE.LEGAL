@@ -15,7 +15,13 @@ import Anthropic from '@anthropic-ai/sdk';
 import { getAdminClient } from '@/services/adminSupabase';
 import { getOrCreateUserByPhone, assignRole, type BroadcastRol } from '@/services/userService';
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// Gated init mirrors app/api/whatsapp/route.js: instantiating unconditionally
+// at module load throws "Could not find API key" during Next.js page-data
+// collection when env vars aren't injected, breaking the whole module import
+// (and therefore the route handler).
+const anthropic = process.env.ANTHROPIC_API_KEY
+  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  : null;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -92,6 +98,8 @@ async function extractFields(
   if (roleMap[trimmed]) {
     return { rol: roleMap[trimmed] };
   }
+
+  if (!anthropic) return {};
 
   try {
     const res = await anthropic.messages.create({
