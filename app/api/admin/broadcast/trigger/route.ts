@@ -11,6 +11,12 @@ export const dynamic = 'force-dynamic';
 // from the dashboard without exposing CRON_SECRET. The cron route at
 // /api/broadcast/run remains the production trigger; this is for manual
 // "send now" actions in the admin UI.
+//
+// Fire-and-forget: runDailyBroadcast iterates Meta Cloud API per subscriber
+// sequentially and can take longer than Vercel's function timeout. We kick
+// off the run and return immediately — completion shows up in
+// /api/admin/broadcast/log on the next poll (the UI refreshes the history
+// table every load).
 export async function POST(req: NextRequest) {
   const auth = await requireRole('admin');
   if (auth instanceof NextResponse) return auth;
@@ -21,14 +27,14 @@ export async function POST(req: NextRequest) {
 
   const triggeredBy = `admin:${auth.user.email ?? auth.user.id}`;
 
-  try {
-    const result = await runDailyBroadcast({
-      triggeredBy,
-      roles: body.roles,
+  // Intentionally not awaited. The promise's failure is logged for ops; the
+  // UI sees the failed run in broadcast_log with `error_msg` populated by
+  // sendDailyBroadcast.
+  void runDailyBroadcast({ triggeredBy, roles: body.roles })
+    .catch(err => {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[admin/broadcast/trigger] runDailyBroadcast failed:', msg);
     });
-    return NextResponse.json(result);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ error: msg }, { status: 500 });
-  }
+
+  return NextResponse.json({ ok: true, queued: true, triggered_by: triggeredBy });
 }

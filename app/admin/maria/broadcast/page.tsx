@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   RefreshCw, Send, Plus, Trash2, Power, Clock, AlertTriangle, ShieldCheck,
-  Radio, Users,
 } from 'lucide-react';
 
 type ReportMetric = 'gold' | 'silver' | 'usd_hnl' | 'copper';
@@ -180,9 +179,7 @@ export default function BroadcastPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Error al enviar');
-      setSendResult(
-        `Enviado a ${data.enviados ?? 0} suscriptores · ${data.errores ?? 0} errores`
-      );
+      setSendResult('Broadcast iniciado. El resultado aparecerá en el historial dentro de unos segundos.');
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al enviar broadcast');
@@ -351,7 +348,10 @@ export default function BroadcastPage() {
           </Card>
 
           {/* Horario */}
-          <Card title="Horario" subtitle="Documenta la hora del cron — configurable en vercel.json.">
+          <Card
+            title="Horario"
+            subtitle="Hora documentada del cron diario. La programación real vive en vercel.json — actualiza ese archivo para cambiarla en producción."
+          >
             <div className="flex items-center gap-3">
               <Clock size={18} strokeWidth={1.5} style={{ color: 'var(--slate)' }} />
               <input
@@ -640,5 +640,3 @@ function Pill({ on, label }: { on: boolean; label: string }) {
   );
 }
 
-// Suppress unused-import warning — reserved for future header chip.
-void Radio; void Users;

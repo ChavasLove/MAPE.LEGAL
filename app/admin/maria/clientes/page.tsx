@@ -393,7 +393,7 @@ export default function MariaClientesPage() {
               <button
                 key={f.key}
                 onClick={() => setSourceFilter(f.key)}
-                className="px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors cursor-pointer"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer"
                 style={
                   active
                     ? { background: 'var(--ink)', color: '#fff', borderColor: 'var(--ink)' }
