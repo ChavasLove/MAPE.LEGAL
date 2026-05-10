@@ -10,16 +10,21 @@ const ROL_LABEL: Record<string, string> = {
   tecnico_ambiental: 'Técnico Ambiental',
 };
 
+// Icons are rendered to JSX here (server side) instead of passed as component
+// references — lucide-react components carry `'use client'` and cannot cross
+// the server→client boundary as raw function values inside a prop array.
+const ICON = { size: 18, strokeWidth: 1.5 } as const;
+
 const navItems = [
-  { href: '/dashboard',              label: 'Resumen',      Icon: LayoutDashboard, exact: true },
-  { href: '/dashboard/expedientes',  label: 'Expedientes',  Icon: FolderOpen                  },
-  { href: '/dashboard/mensajes',     label: 'Mensajes WA',  Icon: MessageSquare               },
-  { href: '/dashboard/clientes',     label: 'Clientes WA',  Icon: Users                       },
-  { href: '/dashboard/minas',        label: 'Minas',        Icon: Mountain                    },
+  { href: '/dashboard',              label: 'Resumen',      icon: <LayoutDashboard {...ICON} />, exact: true },
+  { href: '/dashboard/expedientes',  label: 'Expedientes',  icon: <FolderOpen      {...ICON} />              },
+  { href: '/dashboard/mensajes',     label: 'Mensajes WA',  icon: <MessageSquare   {...ICON} />              },
+  { href: '/dashboard/clientes',     label: 'Clientes WA',  icon: <Users           {...ICON} />              },
+  { href: '/dashboard/minas',        label: 'Minas',        icon: <Mountain        {...ICON} />              },
 ];
 
 const adminItems = [
-  { href: '/admin',                  label: 'Panel admin',  Icon: Settings                    },
+  { href: '/admin',                  label: 'Panel admin',  icon: <Settings        {...ICON} />              },
 ];
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {

@@ -4,17 +4,22 @@ import { Users, UserCheck, LayoutDashboard, LogOut, Shield, FileText, Settings, 
 import { getServerAuth } from '@/lib/serverAuth';
 import SidebarNav from '@/components/dashboard/SidebarNav';
 
+// Icons are rendered to JSX here (server side) instead of passed as component
+// references — lucide-react components carry `'use client'` and cannot cross
+// the server→client boundary as raw function values inside a prop array.
+const ICON = { size: 18, strokeWidth: 1.5 } as const;
+
 const navItems = [
-  { href: '/admin',                label: 'Resumen',        Icon: LayoutDashboard, exact: true },
-  { href: '/admin/usuarios',       label: 'Usuarios',       Icon: Users                       },
-  { href: '/admin/profesionales',  label: 'Profesionales',  Icon: UserCheck                   },
-  { href: '/admin/roles',          label: 'Roles',          Icon: Shield                      },
-  { href: '/admin/contenido',      label: 'Contenido',      Icon: FileText                    },
-  { href: '/admin/config',         label: 'Configuración',  Icon: Settings                    },
+  { href: '/admin',                label: 'Resumen',        icon: <LayoutDashboard {...ICON} />, exact: true },
+  { href: '/admin/usuarios',       label: 'Usuarios',       icon: <Users           {...ICON} />              },
+  { href: '/admin/profesionales',  label: 'Profesionales',  icon: <UserCheck       {...ICON} />              },
+  { href: '/admin/roles',          label: 'Roles',          icon: <Shield          {...ICON} />              },
+  { href: '/admin/contenido',      label: 'Contenido',      icon: <FileText        {...ICON} />              },
+  { href: '/admin/config',         label: 'Configuración',  icon: <Settings        {...ICON} />              },
 ];
 
 const dashboardItems = [
-  { href: '/dashboard',            label: 'Ir al Dashboard', Icon: LayoutGrid                 },
+  { href: '/dashboard',            label: 'Ir al Dashboard', icon: <LayoutGrid     {...ICON} />              },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
