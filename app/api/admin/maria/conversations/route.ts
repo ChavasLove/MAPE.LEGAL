@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { requireRole } from '@/lib/serverAuth';
 import { getAdminClient } from '@/services/adminSupabase';
+import { normalizePhone } from '@/lib/maria/normalizePhone';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,8 +73,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ conversations: [] });
   }
 
-  // Strip whatsapp: prefix to match clientes.telefono_whatsapp + onboarding_states.telefono
-  const normalized = phones.map(p => p.replace(/^whatsapp:/i, ''));
+  // Build normalized lookup keys. `clientes.telefono_whatsapp` and
+  // `onboarding_states.telefono` use the stripped form (`+504…`); rows in
+  // `conversaciones_whatsapp` may carry either prefixed or stripped forms.
+  const normalized = phones.map(normalizePhone).filter(Boolean);
 
   const [clientesRes, onboardingRes] = await Promise.all([
     admin
@@ -88,17 +91,19 @@ export async function GET(req: NextRequest) {
 
   const clientesByPhone = new Map<string, ClienteSlim>();
   for (const c of (clientesRes.data ?? []) as ClienteSlim[]) {
-    if (c.telefono_whatsapp) clientesByPhone.set(c.telefono_whatsapp, c);
+    const k = normalizePhone(c.telefono_whatsapp ?? '');
+    if (k) clientesByPhone.set(k, c);
   }
 
   const onboardingByPhone = new Map<string, { estado: string; datos: unknown; updated_at: string }>();
   for (const o of onboardingRes.data ?? []) {
-    onboardingByPhone.set(o.telefono, o);
+    const k = normalizePhone(o.telefono);
+    if (k) onboardingByPhone.set(k, o);
   }
 
   const conversations = Array.from(byPhone.values())
     .map(c => {
-      const norm = c.telefono.replace(/^whatsapp:/i, '');
+      const norm = normalizePhone(c.telefono);
       const cliente = clientesByPhone.get(norm) ?? null;
       const onboarding = onboardingByPhone.get(norm) ?? null;
       return {

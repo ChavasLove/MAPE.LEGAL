@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/serverAuth';
 import { getAdminClient } from '@/services/adminSupabase';
+import { normalizePhone } from '@/lib/maria/normalizePhone';
 
 export const dynamic = 'force-dynamic';
 
@@ -68,19 +69,23 @@ export async function GET() {
     return NextResponse.json({ error: clientesRes.error.message }, { status: 500 });
   }
 
-  // Build last-message-by-phone map
+  // Build last-message-by-phone map. All phones are funneled through
+  // normalizePhone to dedup `whatsapp:+504…` and `+504…` rows for the same
+  // human.
   const lastMessageByPhone = new Map<string, string>();
   for (const m of (convoMetaRes.data ?? []) as ConvoMeta[]) {
-    const norm = m.numero_whatsapp.replace(/^whatsapp:/i, '');
-    if (!lastMessageByPhone.has(norm)) {
+    const norm = normalizePhone(m.numero_whatsapp);
+    if (norm && !lastMessageByPhone.has(norm)) {
       lastMessageByPhone.set(norm, m.created_at);
     }
   }
 
-  // Build onboarding map
+  // Build onboarding map (also normalized — onboarding_states.telefono should
+  // be stripped already, but normalize defensively in case stale rows exist).
   const onboardingByPhone = new Map<string, OnboardingRow>();
   for (const o of (onboardingRes.data ?? []) as OnboardingRow[]) {
-    onboardingByPhone.set(o.telefono, o);
+    const k = normalizePhone(o.telefono);
+    if (k) onboardingByPhone.set(k, o);
   }
 
   // Funnel
@@ -112,8 +117,8 @@ export async function GET() {
 
   // 1. Registered clientes
   for (const c of (clientesRes.data ?? []) as ClienteRow[]) {
-    const phone = c.telefono_whatsapp ?? '';
-    if (phone) seen.add(phone);
+    const phone = normalizePhone(c.telefono_whatsapp ?? '');
+    if (phone) seen.add(phone); // skip empty-phone clientes from dedup set
     const completeness = PROFILE_FIELDS.reduce(
       (n, f) => n + (c[f] ? 1 : 0), 0
     );
@@ -128,8 +133,8 @@ export async function GET() {
       tipo_mineral:      c.tipo_mineral,
       completeness,
       completeness_max:  PROFILE_FIELDS.length,
-      onboarding_estado: onboardingByPhone.get(phone)?.estado ?? null,
-      last_message_at:   lastMessageByPhone.get(phone) ?? null,
+      onboarding_estado: phone ? onboardingByPhone.get(phone)?.estado ?? null : null,
+      last_message_at:   phone ? lastMessageByPhone.get(phone) ?? null : null,
       created_at:        c.created_at,
       updated_at:        c.updated_at,
     });
@@ -137,8 +142,9 @@ export async function GET() {
 
   // 2. Onboarding leads not in clientes
   for (const o of (onboardingRes.data ?? []) as OnboardingRow[]) {
-    if (seen.has(o.telefono)) continue;
-    seen.add(o.telefono);
+    const phone = normalizePhone(o.telefono);
+    if (!phone || seen.has(phone)) continue;
+    seen.add(phone);
     const datos = o.datos ?? {};
     // Datos shape varies by extraction — read defensively.
     const get = (k: string) => {
@@ -161,18 +167,19 @@ export async function GET() {
     rows.push({
       source:            'lead',
       cliente_id:        null,
-      telefono:          o.telefono,
+      telefono:          phone,
       ...partial,
       completeness,
       completeness_max:  PROFILE_FIELDS.length,
       onboarding_estado: o.estado,
-      last_message_at:   lastMessageByPhone.get(o.telefono) ?? null,
+      last_message_at:   lastMessageByPhone.get(phone) ?? null,
       created_at:        null,
       updated_at:        o.updated_at,
     });
   }
 
-  // 3. Visitors (have conversation but no cliente + no onboarding)
+  // 3. Visitors (have conversation but no cliente + no onboarding). The keys
+  // in lastMessageByPhone are already normalized.
   for (const [phone, lastAt] of lastMessageByPhone.entries()) {
     if (seen.has(phone)) continue;
     rows.push({

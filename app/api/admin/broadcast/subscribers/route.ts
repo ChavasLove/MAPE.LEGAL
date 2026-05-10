@@ -52,15 +52,42 @@ export async function POST(req: NextRequest) {
   }
 
   const admin = getAdminClient();
+
+  // Pre-check existence so we don't silently re-enroll an opt-out. If the
+  // row exists we update only `nombre` and `rol` — leaving `activo` and
+  // `suscrito` alone preserves any prior opt-out and is WhatsApp-policy-safe.
+  const { data: existing } = await admin
+    .from('usuarios_broadcast')
+    .select('*')
+    .eq('telefono', telefono)
+    .maybeSingle();
+
+  if (existing) {
+    const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (body.nombre !== undefined) patch.nombre = body.nombre;
+    if (body.rol    !== undefined) patch.rol    = rol;
+    const { data, error } = await admin
+      .from('usuarios_broadcast')
+      .update(patch)
+      .eq('telefono', telefono)
+      .select()
+      .single();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { ok: true, subscriber: data, existed: true, suscrito: data.suscrito },
+      { status: 200 }
+    );
+  }
+
+  // New row: defaults activo+suscrito to true (explicit consent path lives
+  // in the WhatsApp onboarding flow; admin-added rows assume admin already
+  // got consent off-platform).
   const { data, error } = await admin
     .from('usuarios_broadcast')
-    .upsert(
-      { telefono, nombre: body.nombre ?? null, rol, activo: true, suscrito: true },
-      { onConflict: 'telefono' }
-    )
+    .insert({ telefono, nombre: body.nombre ?? null, rol, activo: true, suscrito: true })
     .select()
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true, subscriber: data }, { status: 201 });
+  return NextResponse.json({ ok: true, subscriber: data, existed: false }, { status: 201 });
 }

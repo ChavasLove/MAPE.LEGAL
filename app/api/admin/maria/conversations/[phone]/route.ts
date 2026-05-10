@@ -103,16 +103,37 @@ export async function POST(
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 
-  // Log to conversaciones_whatsapp so María's next call sees the admin reply
-  // in the dedup history. Prefix `[Admin]` makes it visible in the thread UI
-  // and avoids confusing Claude on the next turn (still readable in Spanish).
+  // Log the admin reply so María's next history fetch sees it (avoids
+  // duplicate greetings or contradictions on the next turn).
+  //
+  // Two things are critical here:
+  //   1. `numero_whatsapp` MUST match the canonical storage form Twilio uses
+  //      ('whatsapp:+504…') because route.js queries history with
+  //      `eq('numero_whatsapp', fromNumber)`. Inserting the stripped form
+  //      would orphan the admin row from María's view.
+  //   2. The visible `[Admin · email]` prefix is for the UI thread only.
+  //      route.js strips it from assistant messages before constructing the
+  //      Claude prompt — otherwise Claude would parrot the bracket convention
+  //      and leak the admin's email back to the customer over WhatsApp.
   const admin = getAdminClient();
   const adminEmail = auth.user.email ?? 'admin';
   const tagged = `[Admin · ${adminEmail}] ${content}`;
+
+  // Detect the prefix already in use for this phone (defaults to the
+  // Twilio-style `whatsapp:` prefix when no prior rows exist, since Twilio
+  // is the production webhook).
+  const { data: priorRow } = await admin
+    .from('conversaciones_whatsapp')
+    .select('numero_whatsapp')
+    .in('numero_whatsapp', [normalized, `whatsapp:${normalized}`])
+    .limit(1)
+    .maybeSingle();
+  const storageKey = priorRow?.numero_whatsapp ?? `whatsapp:${normalized}`;
+
   const { error: insertErr } = await admin
     .from('conversaciones_whatsapp')
     .insert({
-      numero_whatsapp: normalized,
+      numero_whatsapp: storageKey,
       role:            'assistant',
       content:         tagged,
     });

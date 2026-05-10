@@ -1104,10 +1104,22 @@ PROHIBIDO saludar de nuevo.
 PROHIBIDO decir "Hola", "Bienvenido", o "Soy María" en este mensaje.
 Responde DIRECTAMENTE a lo que acaba de decir el usuario.`);
 
+    // Strip the admin take-over prefix BEFORE Claude sees it. The admin UI
+    // tags messages it sends from /api/admin/maria/conversations/[phone] with
+    // "[Admin · email] …" so the thread view can render them with an Admin
+    // badge — but that label is NOT meant for Claude. If we sent it through
+    // the model would parrot the bracket convention and could leak the admin
+    // email to the customer over WhatsApp on the next turn.
+    const ADMIN_PREFIX_RE = /^\[Admin · [^\]]+\]\s*/;
+    const sanitizedHistory = conversationHistory.map(msg => {
+      if (msg.role !== 'assistant') return msg;
+      return { ...msg, content: msg.content.replace(ADMIN_PREFIX_RE, '') };
+    });
+
     // Remove duplicate consecutive assistant messages from history
-    const cleanHistory = conversationHistory.filter((msg, i) => {
+    const cleanHistory = sanitizedHistory.filter((msg, i) => {
       if (i === 0) return true;
-      return !(msg.role === 'assistant' && conversationHistory[i-1].role === 'assistant');
+      return !(msg.role === 'assistant' && sanitizedHistory[i-1].role === 'assistant');
     });
 
     cleanHistory.push({

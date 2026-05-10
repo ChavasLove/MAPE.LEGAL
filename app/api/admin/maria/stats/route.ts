@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/serverAuth';
 import { getAdminClient } from '@/services/adminSupabase';
 import { checkWhatsAppTokenHealth } from '@/services/whatsappService';
+import { normalizePhone } from '@/lib/maria/normalizePhone';
 
 export const dynamic = 'force-dynamic';
 
@@ -99,9 +100,13 @@ export async function GET() {
   const leadsInProgress =
     funnel.ASK_NAME + funnel.ASK_ID + funnel.ASK_LOCATION + funnel.ASK_ROLE;
 
-  // Distinct phones today
+  // Distinct phones today. Normalize first — historical rows exist with both
+  // `whatsapp:+504…` and `+504…` forms; without normalization the same phone
+  // counts twice.
   const phonesToday = new Set(
-    (convoTodayPhones.data ?? []).map(r => r.numero_whatsapp)
+    (convoTodayPhones.data ?? [])
+      .map(r => normalizePhone(r.numero_whatsapp))
+      .filter(Boolean)
   );
 
   return NextResponse.json({

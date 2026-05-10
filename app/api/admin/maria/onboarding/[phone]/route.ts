@@ -44,16 +44,45 @@ export async function PATCH(
   }
 
   const admin = getAdminClient();
+
+  // Upsert: if the phone has no onboarding row yet, create one when `estado`
+  // is provided (admins can pin a stuck conversation to a specific state
+  // without forcing the user to restart the flow). Without `estado`, we
+  // can't safely insert a row — surface a 404 with guidance.
+  const { data: existing } = await admin
+    .from('onboarding_states')
+    .select('telefono')
+    .eq('telefono', telefono)
+    .maybeSingle();
+
+  if (!existing) {
+    if (body.estado === undefined) {
+      return NextResponse.json(
+        { error: 'No hay onboarding para ese teléfono. Incluye `estado` para crear el registro.' },
+        { status: 404 }
+      );
+    }
+    const { data, error } = await admin
+      .from('onboarding_states')
+      .insert({
+        telefono,
+        estado: body.estado as OnboardingState,
+        datos:  body.datos ?? {},
+      })
+      .select()
+      .single();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true, onboarding: data, created: true }, { status: 201 });
+  }
+
   const { data, error } = await admin
     .from('onboarding_states')
     .update(patch)
     .eq('telefono', telefono)
     .select()
-    .maybeSingle();
+    .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  if (!data) return NextResponse.json({ error: 'No hay onboarding para ese teléfono' }, { status: 404 });
-
   return NextResponse.json({ ok: true, onboarding: data });
 }
 

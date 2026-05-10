@@ -347,11 +347,54 @@ Flujo de registro guiado para números nuevos que contactan a María por primera
 - **Idioma**: tuteo — consistente con la personalidad establecida de María
 - **Tabla**: `onboarding_states` — `telefono`, `estado`, `datos jsonb`, timestamps
 
+## Master Control Panel — María (`app/admin/maria/**`, 2026-05-10)
+
+Superficie admin completa para operar el asistente virtual desde el navegador. Vive bajo `/admin/maria`, gateada por el chequeo de admin existente en `app/admin/layout.tsx` (no agrega un guard nuevo).
+
+- **`/admin/maria`** — landing del MCP. Tiles KPI (chats hoy, leads en captura, transacciones pendientes, suscriptores activos), funnel onboarding 5 estados, último broadcast (con `aborted_reason` si aplica), último comando admin desde WhatsApp, precios del día, salud del `WHATSAPP_TOKEN`. Polling cada 10 s pausado cuando `document.hidden`.
+- **`/admin/maria/conversaciones`** — list de cada teléfono con el que María chateó: cliente vinculado (si existe), estado de onboarding, último mensaje + tiempo relativo, búsqueda debounced 300 ms. Polling 5 s pausado durante typing.
+- **`/admin/maria/conversaciones/[phone]`** — hilo completo + take-over. UI 2 columnas: chat a la izquierda (bubbles user/María/Admin con colores distintos), panel derecho con cliente + onboarding + transacciones. Composer con `Cmd/Ctrl+Enter` para enviar; auto-scroll solo cuando el usuario está dentro de 80 px del fondo. **El POST envía vía Meta Cloud API y luego inserta en `conversaciones_whatsapp` con `numero_whatsapp` en la forma `whatsapp:+504…`** (la canónica que usa Twilio en `app/api/whatsapp/route.js:876`) — si insertara la forma stripped, María no vería el mensaje en su próxima query de historial. El contenido lleva el prefijo visible `[Admin · email] …` para el thread, pero **`route.js` lo strippea con `ADMIN_PREFIX_RE = /^\[Admin · [^\]]+\]\s*/` antes de armar el `messages` array de Claude** — sin eso Claude parroteaba el bracket convention y filtraba el correo del admin al cliente.
+- **`/admin/maria/clientes`** — vista unificada `cliente | lead | visitor` con score de completeness (5/5 si el cliente tiene `nombre, dpi, municipio, situacion_tierra, tipo_mineral`). Funnel de onboarding visible. Acciones por fila: reiniciar onboarding (DELETE), abrir conversación, ver expedientes.
+- **`/admin/maria/transacciones`** — cola de `transacciones_pendientes`. Filtros por estado. Botones inline `Confirmar`/`Cancelar` que hacen `PATCH /api/admin/maria/transactions/[id]`.
+- **`/admin/maria/broadcast`** — control center del broadcast diario: toggles por métrica (gold/silver/usd_hnl/copper), audiencia por rol (minero/comprador/tecnico/admin), horario documentado (la programación real vive en `vercel.json`), CRUD de suscriptores (`usuarios_broadcast`), historial de envíos (`broadcast_log`) con `aborted_reason`, y botón **Enviar ahora**.
+- **`/admin/maria/auditoria`** — timeline de `admin_actions` (comandos via passphrase WhatsApp). Filtros por `command_type`. Payload jsonb pretty-printed.
+- **`/admin/permisos`** — matriz read-only `rol × permiso` calculada desde `roles.permisos` (con `*` = acceso total). Edición sigue viviendo en `/admin/roles`.
+
+### APIs nuevas (todas `requireRole('admin')`, todas `force-dynamic`)
+
+| Ruta | Método | Propósito |
+|---|---|---|
+| `/api/admin/maria/stats` | GET | KPIs del MCP. Dedupe de teléfonos via `normalizePhone`. |
+| `/api/admin/maria/conversations` | GET | Lista por teléfono con last_message + cliente + onboarding. |
+| `/api/admin/maria/conversations/[phone]` | GET | Hilo + cliente + onboarding + transacciones. |
+| `/api/admin/maria/conversations/[phone]` | POST | Take-over: envía Meta API y loguea con clave `whatsapp:+504…`. |
+| `/api/admin/maria/clientes` | GET | Unión clientes + leads + visitors con completeness. |
+| `/api/admin/maria/onboarding/[phone]` | PATCH | Upsert: inserta si no existe (requiere `estado`); update si existe. |
+| `/api/admin/maria/onboarding/[phone]` | DELETE | Reinicia el onboarding. |
+| `/api/admin/maria/transactions` | GET | Lista filtrable por `estado`. |
+| `/api/admin/maria/transactions/[id]` | PATCH | Confirmar/cancelar transacción. |
+| `/api/admin/maria/audit` | GET | `admin_actions` paginado, filtrable por `command_type`. |
+| `/api/admin/broadcast/config` | GET+PATCH | Versión admin-gated del config existente. Acciones `enable_metric, disable_metric, set_currency, update_metric, set_audience, set_schedule`. |
+| `/api/admin/broadcast/log` | GET | `broadcast_log` paginado. |
+| `/api/admin/broadcast/subscribers` | GET+POST | Lista + add. **POST hace pre-check antes de upsert: si la fila existe solo actualiza `nombre, rol` — nunca toca `activo`/`suscrito`** (evita re-enrollar opt-outs por accidente, requisito WhatsApp policy). |
+| `/api/admin/broadcast/subscribers/[id]` | PATCH+DELETE | Edit/borrar. |
+| `/api/admin/broadcast/trigger` | POST | **Fire-and-forget** wrapper de `runDailyBroadcast`. No `await` — la promesa puede exceder el timeout de Vercel functions con muchos suscriptores. La UI ve el resultado en `broadcast_log` en el siguiente poll. |
+
+### `lib/maria/normalizePhone.ts`
+
+Helper canónico para todas las lookups admin. Strippea prefijos `whatsapp:`/`tel:`/`sms:`, decodifica URL-encoding, deja solo dígitos, y prepende un único `+`. Cualquier ruta admin que mire `conversaciones_whatsapp` debe pasar por esto antes de construir candidatos `[normalized, 'whatsapp:'+normalized]` — los rows en esa tabla viven en ambas formas (Twilio inserta prefijado, Meta inserta stripped).
+
+### Sidebar nav (`app/admin/layout.tsx`)
+
+Dos secciones agrupadas: **admin items** (Resumen · Usuarios · Profesionales · Roles · Permisos · Contenido · Configuración) y **María items** (Panel María · Conversaciones · Clientes y leads · Transacciones · Broadcast · Auditoría) separadas por un eyebrow `MARÍA` en mono small caps. Los items pasan `icon: <Foo {...ICON} />` (JSX pre-renderizado), no `Icon: Foo` — `SidebarNav` es un client component y los component refs de lucide-react no cruzan el boundary RSC server→client.
+
 ## Auditoría — deuda técnica conocida (2026-05-03, parcialmente resuelta 2026-05-09)
 
 Documentado para evitar trabajo duplicado en futuras sesiones. Ninguno está bloqueando producción.
 
 > **Update 2026-05-09 (`claude/update-ui-colors-wGO7B`):** la sección de paleta + tipografía + audit de `app/page.tsx` / `app/globals.css` / `app/layout.tsx` quedó **resuelta** al adoptar el MAPE LEGAL Color Manual v1.0. Ver README §0 y commit `39875cf`. Los items que se mantienen son los marcados ⚠ abajo; los demás están tachados o eliminados.
+
+> **Update 2026-05-10 (`claude/admin-audit-dashboard-NHVaE`):** Master Control Panel para María shipped + revisado por dos agentes (lógica + diseño/código). Findings críticos resueltos en commit `c4057fa` — incluyendo (a) take-over POST loguea con la forma `whatsapp:+504…` que matchea la query de `route.js` para que María vea sus propias respuestas admin, (b) `route.js` strippea el prefijo `[Admin · email]` antes de armar el prompt de Claude para no filtrar correos del admin al cliente, (c) `/api/admin/broadcast/trigger` es fire-and-forget para no exceder timeout de Vercel functions, (d) POST de `/api/admin/broadcast/subscribers` preserva opt-out (no resetea `activo`/`suscrito` en upsert), (e) PATCH de onboarding hace upsert. Ver sección "Master Control Panel — María" arriba.
 
 ### Auth — "Sin rol asignado" (resuelto 2026-05-09 vía RPC SECURITY DEFINER)
 
