@@ -24,12 +24,35 @@ const ROL_LABELS: Record<string, string> = {
   sin_rol:           'Sin rol',
 };
 
-const ROL_COLORS: Record<string, { bg: string; text: string }> = {
-  admin:             { bg: '#EFD7D5', text: '#B23A3A' },
-  abogado:           { bg: '#D6E2F0', text: '#2A6BA8' },
-  tecnico_ambiental: { bg: '#E0EDE3', text: '#2F5D50' },
-  cliente:           { bg: '#F4E9D6', text: '#8B6A4A' },
-  sin_rol:           { bg: '#FAF9F5', text: '#5E6B7B' },
+/**
+ * Status pill palette per DESIGN.md §3 — `color-mix(in oklch, …)` derives
+ * the soft fill / 30% border combo from the base token. We map each role
+ * to a status token (red=admin power, blue=abogado, green=tecnico, earth=cliente,
+ * slate=sin_rol) — these are semantic role markers, not decorative colors.
+ */
+const ROL_TOKEN: Record<string, string> = {
+  admin:             'red',
+  abogado:           'blue',
+  tecnico_ambiental: 'green',
+  cliente:           'earth',
+  sin_rol:           'slate',
+};
+
+function rolBadgeStyle(rol: string): React.CSSProperties {
+  const token = ROL_TOKEN[rol] ?? 'slate';
+  return {
+    background:  `color-mix(in oklch, var(--${token}) 14%, white)`,
+    color:       `var(--${token})`,
+    borderColor: `color-mix(in oklch, var(--${token}) 30%, white)`,
+  };
+}
+
+const SHADOW_SM = '0 2px 6px rgba(31,42,56,0.05)';
+
+const inputStyle: React.CSSProperties = {
+  background:  'var(--bg)',
+  border:      '1px solid var(--border)',
+  color:       'var(--t1)',
 };
 
 export default function UsuariosPage() {
@@ -103,24 +126,24 @@ export default function UsuariosPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Usuarios del sistema</h1>
-          <p className="text-sm font-sans mt-0.5" style={{ color: '#A3A8AB' }}>
+          <h1 className="text-2xl" style={{ color: 'var(--ink)' }}>Usuarios del sistema</h1>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--slate)' }}>
             Cuentas de acceso al dashboard MAPE.LEGAL
           </p>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={load}
-            className="p-2 rounded-lg transition-colors hover:bg-white/10 cursor-pointer"
-            style={{ color: '#A3A8AB' }}
+            className="p-2 rounded-lg transition-colors cursor-pointer"
+            style={{ color: 'var(--slate)', background: 'transparent' }}
             title="Recargar"
           >
             <RefreshCw size={18} strokeWidth={1.5} />
           </button>
           <button
             onClick={() => setShowForm(v => !v)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold font-sans transition-colors cursor-pointer text-white"
-            style={{ background: '#1F2A38', border: '1px solid rgba(94,107,123,0.4)' }}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors cursor-pointer"
+            style={{ background: 'var(--ink)', color: '#fff' }}
           >
             <Plus size={16} strokeWidth={2} />
             Invitar usuario
@@ -130,14 +153,20 @@ export default function UsuariosPage() {
 
       {/* Create form */}
       {showForm && (
-        <div className="rounded-xl border p-6 mb-6" style={{ background: '#1F2A38', borderColor: 'rgba(94,107,123,0.3)' }}>
-          <h2 className="text-base font-semibold text-white mb-1 font-sans">Invitar usuario</h2>
-          <p className="text-xs font-sans mb-4" style={{ color: '#A3A8AB' }}>
+        <div
+          className="rounded-xl border p-6 mb-6"
+          style={{ background: 'var(--bg)', borderColor: 'var(--border)', boxShadow: SHADOW_SM }}
+        >
+          <h2 className="text-base font-semibold mb-1" style={{ color: 'var(--ink)' }}>Invitar usuario</h2>
+          <p className="text-xs mb-4" style={{ color: 'var(--t2)' }}>
             El usuario recibirá un correo con un enlace para configurar su propia contraseña.
           </p>
           <form onSubmit={handleCreate} className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider mb-1 font-sans" style={{ color: '#A3A8AB' }}>
+              <label
+                className="block text-xs font-semibold uppercase tracking-wider mb-1"
+                style={{ color: 'var(--slate)' }}
+              >
                 Correo electrónico
               </label>
               <input
@@ -146,19 +175,22 @@ export default function UsuariosPage() {
                 onChange={e => setNewEmail(e.target.value)}
                 required
                 placeholder="usuario@cht.hn"
-                className="w-full px-3 py-2 rounded-lg text-sm font-sans outline-none"
-                style={{ background: '#1F2A38', border: '1px solid rgba(94,107,123,0.4)', color: 'white' }}
+                className="w-full px-3 py-2 rounded-lg text-sm outline-none focus:border-[color:var(--ink)]"
+                style={inputStyle}
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider mb-1 font-sans" style={{ color: '#A3A8AB' }}>
+              <label
+                className="block text-xs font-semibold uppercase tracking-wider mb-1"
+                style={{ color: 'var(--slate)' }}
+              >
                 Rol
               </label>
               <select
                 value={newRol}
                 onChange={e => setNewRol(e.target.value as Rol)}
-                className="w-full px-3 py-2 rounded-lg text-sm font-sans outline-none"
-                style={{ background: '#1F2A38', border: '1px solid rgba(94,107,123,0.4)', color: 'white' }}
+                className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                style={inputStyle}
               >
                 <option value="cliente">Cliente</option>
                 <option value="abogado">Abogado</option>
@@ -167,7 +199,14 @@ export default function UsuariosPage() {
               </select>
             </div>
             {formError && (
-              <div className="sm:col-span-2 text-sm font-sans px-3 py-2 rounded-lg" style={{ color: '#B23A3A', background: '#EFD7D5' }}>
+              <div
+                className="sm:col-span-2 text-sm px-3 py-2 rounded-lg border"
+                style={{
+                  color:       'var(--red)',
+                  background:  'color-mix(in oklch, var(--red) 14%, white)',
+                  borderColor: 'color-mix(in oklch, var(--red) 30%, white)',
+                }}
+              >
                 {formError}
               </div>
             )}
@@ -175,16 +214,16 @@ export default function UsuariosPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="px-5 py-2 rounded-lg text-sm font-semibold font-sans text-white transition-opacity disabled:opacity-60 cursor-pointer"
-                style={{ background: '#2F5D50' }}
+                className="px-5 py-2 rounded-lg text-sm font-semibold transition-opacity disabled:opacity-60 cursor-pointer"
+                style={{ background: 'var(--moss)', color: '#fff' }}
               >
                 {submitting ? 'Enviando invitación...' : 'Enviar invitación'}
               </button>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="px-5 py-2 rounded-lg text-sm font-medium font-sans transition-colors hover:bg-white/10 cursor-pointer"
-                style={{ color: '#A3A8AB' }}
+                className="px-5 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer border"
+                style={{ color: 'var(--t2)', background: 'transparent', borderColor: 'var(--border)' }}
               >
                 Cancelar
               </button>
@@ -195,18 +234,32 @@ export default function UsuariosPage() {
 
       {/* Error */}
       {error && (
-        <div className="rounded-xl px-4 py-3 mb-6 text-sm font-sans" style={{ background: '#EFD7D5', color: '#B23A3A' }}>
+        <div
+          className="rounded-xl px-4 py-3 mb-6 text-sm border"
+          style={{
+            color:       'var(--red)',
+            background:  'color-mix(in oklch, var(--red) 14%, white)',
+            borderColor: 'color-mix(in oklch, var(--red) 30%, white)',
+          }}
+        >
           {error}
         </div>
       )}
 
       {/* Table */}
-      <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'rgba(94,107,123,0.3)' }}>
-        <table className="w-full text-sm font-sans">
+      <div
+        className="rounded-xl border overflow-hidden"
+        style={{ borderColor: 'var(--border)', background: 'var(--bg)', boxShadow: SHADOW_SM }}
+      >
+        <table className="w-full text-sm">
           <thead>
-            <tr style={{ background: '#1F2A38' }}>
+            <tr style={{ background: 'var(--ink)' }}>
               {['Correo electrónico', 'Rol', 'Perfil asignado', 'Creado', 'Acciones'].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: '#A3A8AB' }}>
+                <th
+                  key={h}
+                  className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider"
+                  style={{ color: '#fff' }}
+                >
                   {h}
                 </th>
               ))}
@@ -215,67 +268,76 @@ export default function UsuariosPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center" style={{ color: '#A3A8AB', background: '#1F2A38' }}>
+                <td
+                  colSpan={5}
+                  className="px-4 py-8 text-center"
+                  style={{ color: 'var(--t2)', background: 'var(--bg)' }}
+                >
                   Cargando usuarios...
                 </td>
               </tr>
             ) : usuarios.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center" style={{ color: '#A3A8AB', background: '#1F2A38' }}>
+                <td
+                  colSpan={5}
+                  className="px-4 py-8 text-center"
+                  style={{ color: 'var(--t2)', background: 'var(--bg)' }}
+                >
                   No hay usuarios registrados. Crea el primero.
                 </td>
               </tr>
             ) : (
-              usuarios.map(u => {
-                const badgeStyle = ROL_COLORS[u.rol] ?? ROL_COLORS.sin_rol;
-                return (
-                  <tr key={u.id} style={{ borderTop: '1px solid rgba(94,107,123,0.2)', background: '#1F2A38' }}>
-                    <td className="px-4 py-3 text-white">{u.email}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className="px-2.5 py-1 rounded-full text-xs font-semibold"
-                        style={{ background: badgeStyle.bg, color: badgeStyle.text }}
+              usuarios.map(u => (
+                <tr
+                  key={u.id}
+                  style={{ borderTop: '1px solid var(--border)', background: 'var(--bg)' }}
+                  className="hover:bg-[color:var(--bg-soft)]"
+                >
+                  <td className="px-4 py-3" style={{ color: 'var(--ink)' }}>{u.email}</td>
+                  <td className="px-4 py-3">
+                    <span
+                      className="px-2.5 py-1 rounded-full text-xs font-semibold border"
+                      style={rolBadgeStyle(u.rol)}
+                    >
+                      {ROL_LABELS[u.rol] ?? u.rol}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3" style={{ color: 'var(--t2)' }}>
+                    {u.perfil ? `${u.perfil.nombre} (${u.perfil.iniciales})` : '—'}
+                  </td>
+                  <td className="px-4 py-3" style={{ color: 'var(--t2)' }}>
+                    {u.created_at ? new Date(u.created_at).toLocaleDateString('es-HN') : '—'}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => toggleActivo(u)}
+                        title={u.activo ? 'Desactivar' : 'Activar'}
+                        className="p-1.5 rounded-lg transition-colors cursor-pointer hover:bg-[color:var(--bg-soft)]"
+                        style={{ color: u.activo ? 'var(--green)' : 'var(--slate)' }}
                       >
-                        {ROL_LABELS[u.rol] ?? u.rol}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3" style={{ color: '#A3A8AB' }}>
-                      {u.perfil ? `${u.perfil.nombre} (${u.perfil.iniciales})` : '—'}
-                    </td>
-                    <td className="px-4 py-3" style={{ color: '#A3A8AB' }}>
-                      {u.created_at ? new Date(u.created_at).toLocaleDateString('es-HN') : '—'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => toggleActivo(u)}
-                          title={u.activo ? 'Desactivar' : 'Activar'}
-                          className="p-1.5 rounded-lg transition-colors hover:bg-white/10 cursor-pointer"
-                          style={{ color: u.activo ? '#2A8E50' : '#A3A8AB' }}
-                        >
-                          {u.activo ? <UserCheck size={16} strokeWidth={1.5} /> : <UserX size={16} strokeWidth={1.5} />}
-                        </button>
-                        <button
-                          onClick={() => handleDelete(u)}
-                          title="Eliminar usuario"
-                          className="p-1.5 rounded-lg transition-colors hover:bg-white/10 cursor-pointer"
-                          style={{ color: '#B23A3A' }}
-                        >
-                          <Trash2 size={16} strokeWidth={1.5} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
+                        {u.activo ? <UserCheck size={16} strokeWidth={1.5} /> : <UserX size={16} strokeWidth={1.5} />}
+                      </button>
+                      <button
+                        onClick={() => handleDelete(u)}
+                        title="Eliminar usuario"
+                        className="p-1.5 rounded-lg transition-colors cursor-pointer hover:bg-[color:var(--bg-soft)]"
+                        style={{ color: 'var(--red)' }}
+                      >
+                        <Trash2 size={16} strokeWidth={1.5} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>
       </div>
 
-      <p className="text-xs font-sans mt-4" style={{ color: '#5E6B7B' }}>
-        Los usuarios con rol <strong>Administrador</strong> tienen acceso completo al panel.
-        Los usuarios con rol <strong>Abogado</strong> o <strong>Técnico ambiental</strong> acceden al dashboard de expedientes.
+      <p className="text-xs mt-4" style={{ color: 'var(--t3)' }}>
+        Los usuarios con rol <strong style={{ color: 'var(--ink)' }}>Administrador</strong> tienen acceso completo al panel.
+        Los usuarios con rol <strong style={{ color: 'var(--ink)' }}>Abogado</strong> o <strong style={{ color: 'var(--ink)' }}>Técnico ambiental</strong> acceden al dashboard de expedientes.
       </p>
     </div>
   );
