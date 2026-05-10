@@ -6,9 +6,7 @@ const DASHBOARD_ROLES = new Set(['admin', 'abogado', 'tecnico_ambiental']);
 function isPublic(pathname: string): boolean {
   return (
     pathname === '/login' ||
-    pathname === '/admin/login' ||       // redirects to /login on the page itself
     pathname.startsWith('/api/auth/') || // unified auth endpoints
-    pathname.startsWith('/api/admin/auth/') || // legacy admin auth
     pathname.startsWith('/api/webhook/') ||    // external webhooks (Meta, etc.)
     pathname === '/api/whatsapp' ||            // Twilio webhook — no cookies from external
     pathname === '/api/broadcast/run' ||       // cron trigger — protected by CRON_SECRET header
@@ -41,12 +39,8 @@ export function proxy(request: NextRequest) {
 
   if (!isProtected) return NextResponse.next();
 
-  // Resolve token and role — support both new unified cookies and legacy admin-token
-  const token = request.cookies.get('auth-token')?.value
-    ?? request.cookies.get('admin-token')?.value;
-
-  const role = request.cookies.get('auth-role')?.value
-    ?? (request.cookies.get('admin-token')?.value ? 'admin' : null);
+  const token = request.cookies.get('auth-token')?.value;
+  const role  = request.cookies.get('auth-role')?.value;
 
   if (!token || !role) {
     const loginUrl = new URL('/login', request.url);

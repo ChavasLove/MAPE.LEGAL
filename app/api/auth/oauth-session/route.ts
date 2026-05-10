@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { checkAuthEnv, logAuthEnvFailure } from '@/lib/authEnv';
+import { lookupUserRole } from '@/lib/userRoleLookup';
 
 const ROLE_REDIRECT: Record<string, string> = {
   admin:             '/admin',
@@ -13,14 +14,14 @@ const ROLE_REDIRECT: Record<string, string> = {
 //
 // The /auth/callback client page extracts access_token + refresh_token from
 // the URL fragment Supabase appends after Google auth (implicit-flow style),
-// and posts them here. We validate the JWT, look up the role, and set the
-// same cookie set used by /api/auth/login (auth-token, auth-role 30d,
-// auth-refresh 30d, user-email, plus admin-token if role = admin).
+// and posts them here. We validate the JWT, look up the role via the
+// SECURITY DEFINER RPC (lib/userRoleLookup.ts), and set the same cookie set
+// used by /api/auth/login (auth-token, auth-role 30d, auth-refresh 30d,
+// user-email).
 //
 // Trigger 015 inserts `user_roles` rows on auth.users INSERT (default
-// 'cliente'). We read first and fall back to upserting the default if the
-// row is missing, so the OAuth flow doesn't dead-end on a single
-// trigger-related failure.
+// 'cliente'). The lookup helper falls back to inserting that default if
+// the row is somehow missing, so the OAuth flow doesn't dead-end.
 export async function POST(req: NextRequest) {
   try {
     const { access_token, refresh_token, expires_in } = await req.json();
@@ -32,14 +33,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Refresh token requerido' }, { status: 400 });
     }
 
-    // Require all three Supabase env vars including the service-role key.
-    // The role lookup MUST run with the service-role client: the validator
-    // (anon) client has no JWT session context here, so RLS evaluates
-    // auth.uid() = null, "Users can read own role" never matches, and the
-    // SELECT silently returns 0 rows — visually identical to a real "no
-    // role" miss. Failing loud surfaces the misconfiguration instead.
     const env = checkAuthEnv();
-    if (!env.ok || env.serviceKey !== 'ok') {
+    if (!env.ok) {
       logAuthEnvFailure('oauth-session', env);
       return NextResponse.json(
         { error: 'Configuración de servidor incompleta', code: 'SERVER_CONFIG' },
@@ -59,66 +54,29 @@ export async function POST(req: NextRequest) {
     }
     const user = userRes.user;
 
-    // Look up role with the service-role client (bypasses RLS).
     const roleClient = createClient(url, serviceKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    const { data: roleRow, error: roleErr } = await roleClient
-      .from('user_roles')
-      .select('rol, activo')
-      .eq('user_id', user.id)
-      .single();
+    const lookup = await lookupUserRole(roleClient, user.id, 'oauth-session');
 
-    let role: string;
-
-    if (roleErr || !roleRow) {
-      // Forensic logging — capture full PostgREST error context so a future
-      // miss is diagnosable from Vercel function logs alone (PGRST116 = no
-      // rows, 42501 = permission denied, etc.).
-      console.error('[oauth-session] user_roles miss', {
-        user_id: user.id,
-        email:   user.email,
-        code:    roleErr?.code,
-        message: roleErr?.message,
-        details: roleErr?.details,
-        hint:    roleErr?.hint,
-      });
-
-      // Distinguish PGRST116 (no rows — safe to insert default) from a real
-      // database failure. Without this guard, an upsert without
-      // ignoreDuplicates could silently demote an existing admin row to
-      // 'cliente' if the SELECT failed for any reason other than "no rows".
-      if (roleErr && roleErr.code !== 'PGRST116') {
+    if (!lookup.ok) {
+      if (lookup.reason === 'inactive') {
+        return NextResponse.json({ error: 'Cuenta inactiva — contacte al administrador' }, { status: 403 });
+      }
+      if (lookup.reason === 'db_error') {
         return NextResponse.json(
           {
-            error: `Error de base de datos (${roleErr.code}) — contacte al administrador`,
-            code:  roleErr.code,
+            error: `Error de base de datos (${lookup.errorCode ?? '?'}) — contacte al administrador`,
+            code:  lookup.errorCode,
           },
           { status: 500 }
         );
       }
-
-      const { error: upsertErr } = await roleClient
-        .from('user_roles')
-        .upsert(
-          { user_id: user.id, rol: 'cliente', activo: true },
-          { onConflict: 'user_id' }
-        );
-
-      if (upsertErr) {
-        console.error('[oauth-session] user_roles fallback upsert failed:', upsertErr);
-        return NextResponse.json({ error: 'Sin rol asignado — contacte al administrador' }, { status: 403 });
-      }
-
-      role = 'cliente';
-    } else {
-      if (!roleRow.activo) {
-        return NextResponse.json({ error: 'Cuenta inactiva — contacte al administrador' }, { status: 403 });
-      }
-      role = roleRow.rol as string;
+      return NextResponse.json({ error: 'Sin rol asignado — contacte al administrador' }, { status: 403 });
     }
 
+    const role         = lookup.role;
     const redirectTo   = ROLE_REDIRECT[role] ?? '/dashboard';
     const accessMaxAge = Number.isFinite(expires_in) && expires_in > 0 ? Number(expires_in) : 3600;
 
@@ -137,10 +95,6 @@ export async function POST(req: NextRequest) {
     res.cookies.set('auth-role',    role, { ...cookieOpts, maxAge: 60 * 60 * 24 * 30 });
     res.cookies.set('auth-refresh', refresh_token, { ...cookieOpts, maxAge: 60 * 60 * 24 * 30 });
     res.cookies.set('user-email',   user.email ?? '', { ...cookieOpts, httpOnly: false });
-
-    if (role === 'admin') {
-      res.cookies.set('admin-token', access_token, cookieOpts);
-    }
 
     return res;
   } catch (err) {
