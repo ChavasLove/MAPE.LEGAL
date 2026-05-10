@@ -1,10 +1,32 @@
 # Current State
 
 ## Last Updated
-2026-05-03
+2026-05-10
 
 ## Current Module
-Deployment fix — build passes cleanly on 41 routes; all ESLint errors resolved
+Phase 2A — Mine Registry CRUD + Índice de Legalidad UI
+
+---
+
+## 2026-05-10 — Phase 2A: minas registry CRUD + Legalidad Index
+
+### Completed
+- POST /api/admin/minas with server-side validation.
+- GET, PATCH /api/admin/minas/[id] (no DELETE — mining records indelible).
+- GET, PATCH /api/admin/indice-legalidad/[mina_id] (5-component upsert).
+- /dashboard/minas list: + Nueva mina modal, row → detail link.
+- /dashboard/minas/[id] tabbed detail (General · Legalidad · Contratos · Transacciones).
+- Edit modal for mine fields. Retirement via estado='clausurada'.
+
+### Closed audit gap
+- minas UI score: 0/10 → estimated 7/10 pending review.
+- 2 of 8 tables-without-UI now have UI (minas, indice_legalidad).
+
+### Still pending
+- Phase 0 stabilization: middleware.ts, race conditions, María webhook.
+- Phase 2B: transacciones_oro CRUD, certificate issuance, PDF.
+- Phase 2C: expediente phase tracking, contratos CRUD.
+- Phase 2D: visual style refactor to Color Manual v1.0 tokens.
 
 ---
 
