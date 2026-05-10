@@ -215,6 +215,8 @@ Requiere env vars. Es idempotente — re-ejecutable sin efectos secundarios.
 - Colores siempre con `style={{ color: 'var(--ink)' }}` inline o vía clases definidas en `globals.css` que ya consumen los tokens.
 - No usar clases genéricas de Tailwind (`green-*`, `gray-*`, `slate-*`, `primary-950`, `forest-800`, etc.) — solo `var(--ink)` / `var(--moss)` / `var(--sand)` / etc.
 - Fuentes cargadas en `app/layout.tsx` vía `next/font/google`: **Inter** (`--font-inter`), **Playfair Display** (`--font-playfair`), **JetBrains Mono** (`--font-jetbrains`). `<h1>`–`<h6>` heredan Playfair desde `globals.css`. Peso máximo: 700.
+- **Sidebar compartido**: `components/dashboard/SidebarNav.tsx` (client island con `usePathname`) lo usan tanto `app/admin/layout.tsx` como `app/dashboard/layout.tsx`. Recibe `items: { href, label, Icon, exact? }[]`; el flag `exact` se aplica a las rutas raíz (`/admin`, `/dashboard`) para que no queden activas en cada subruta. Estado activo per DESIGN.md §6: fondo `color-mix(in oklch, var(--moss) 14%, var(--ink))` + `boxShadow: 'inset 2px 0 0 var(--moss)'` (no genera layout shift) + `aria-current="page"`. Hover: `color-mix(in oklch, var(--slate) 18%, var(--ink))` con texto blanco.
+- **Admin + dashboard tokenizados (2026-05-10)**: ambas superficies migradas al Color Manual v1.0 — fondo de página `var(--bg-soft)`, sidebar `var(--ink)`, cards `var(--bg)` con `var(--border)` 1px, tablas siguen DESIGN.md §3 (header `var(--ink)` blanco, body claro), pills de rol vía `color-mix(... var(--token) 14%, white)`. Cero hex literales en `app/admin/**` ni en `app/dashboard/layout.tsx` — cualquier regression debe fallar el grep `#1F2A38\|#A3A8AB\|rgba(94,107,123` sobre esos paths.
 
 ## Landing page — responsividad móvil
 Convenciones aplicables a `app/page.tsx` (los componentes en `components/landing/` están huérfanos — ver sección "Landing page" arriba):
@@ -379,28 +381,13 @@ Follow-up diferido: auto-promover `@cht.hn` / `@mape.legal` a `abogado` en el ca
 - ✅ Quote section eliminada (era marketing); el hero institucional usa solo comillas curvas en hero/identidad/cumplimiento.
 - ✅ Refs a `/dashboard.html` desaparecen al borrar `Roadmap.tsx` / `Problem.tsx`.
 
-### Carryover Phase 0 (no en scope de Phase 1 / 2A)
-- ⚠ `app/dashboard/minas/page.tsx` (línea ahora ~112 tras Phase 2A) — lint error `react-hooks/set-state-in-effect` (pre-existente). Se conservó al añadir el modal de "Nueva mina" para no expandir el blast radius. Las nuevas effects en `app/dashboard/minas/[id]/page.tsx` usan el patrón IIFE (`(async () => { ... })()`) que el linter sí acepta — es la forma correcta a usar al refactorizar el carryover.
-- ✅ `app/api/admin/clientes/route.ts` — el TS error de Phase 1 (`Cannot find name 'clientes'`) fue resuelto en PR #100. Confirmado en pre-flight de Phase 2A: `npm run build` pasa limpio.
+### Admin + dashboard sidebar — resuelto 2026-05-10 (commit `94b775a`)
+- ✅ `app/admin/layout.tsx` y `app/dashboard/layout.tsx` migradas al Color Manual v1.0: fondo `var(--bg-soft)`, sidebar `var(--ink)` con texto `var(--slate-lt)`.
+- ✅ Sidebar compartido extraído a `components/dashboard/SidebarNav.tsx` (client island con `usePathname`) — antes ambos layouts duplicaban el mismo bloque de `<Link>`s sin estado activo.
+- ✅ Estado activo per DESIGN.md §6: `color-mix(... var(--moss) 14%, var(--ink))` + `inset 2px 0 0 var(--moss)` + `aria-current="page"`. El flag `exact: true` en items de las rutas raíz (`/admin`, `/dashboard`) evita que queden activas en cada subruta.
+- ✅ 6 páginas admin tokenizadas (`(protected)/page.tsx`, `(protected)/usuarios`, `(protected)/profesionales`, `config`, `contenido`, `roles`): cards blancas `var(--bg)` sobre página `var(--bg-soft)`, tablas con header `var(--ink)` + body claro per §3, pills de rol vía `color-mix(... var(--token) 14%, white)` (red=admin, blue=abogado, green=tecnico, earth=cliente, slate=sin_rol).
+- ✅ Quality gates verificados antes del commit: cero hex literales en `app/admin/**` y `app/dashboard/layout.tsx`; cero `rounded-2xl`, `font-extrabold`/`font-black`, `shadow-xl`/`shadow-2xl`; `next build` compila en 5.4s sin errores nuevos.
 
-## Phase 2A — Mine Registry CRUD + Índice de Legalidad (2026-05-10)
-
-Cierra el gap 0/10 de la auditoría sobre la tabla `minas`. Después de Phase 2A, un admin/abogado puede listar, crear, ver el detalle, editar, retirar (`estado='clausurada'`) una mina, y un admin/abogado/tecnico_ambiental puede puntuar los 5 componentes del Índice de Legalidad. **Las API endpoints están documentadas arriba (§ Rutas API principales).**
-
-### Reglas duras
-- **Nunca hard-delete `minas`** — los registros mineros tienen peso legal y son indelebles. Retirement = `PATCH { estado: 'clausurada' }`. Por eso `app/api/admin/minas/[id]/route.ts` no exporta `DELETE`.
-- **`/api/verificar/[numero]` no debe extenderse desde Phase 2A** — la única superficie pública de lectura para certificados sigue siendo la vista `certificados_origen_publicos`. Phase 2A no toca el endpoint público.
-- **Auth con `requireRole`**: lectura = `'admin', 'abogado', 'tecnico_ambiental'`; escritura de minas = `'admin', 'abogado'`; escritura de Índice = misma terna que lectura (para que técnicos ambientales puedan puntuar el componente ambiental).
-
-### Convenciones del Índice de Legalidad
-- 5 componentes fijos en orden canónico: `tierra` → `inhgeomin` → `ambiental` → `municipal` → `registro`. Constraint en BD: `unique(mina_id, componente)` (migración 008).
-- Cada componente puntúa 0–20; el total de los 5 es 0–100.
-- Estados: `pendiente | en_proceso | cumplido | alerta | incumplido`.
-- El GET retorna siempre los 5 componentes; los no persistidos llevan `_persisted: false` y valores default (`pendiente, 0`).
-- El UI colorea el progress bar global del puntaje: ≥80 verde (`--green`), 50–79 ámbar (`--amber`), <50 rojo (`--red`).
-
-### Tabs del detail page
-- **General**: lectura + cliente slim + edit modal (PATCH).
-- **Índice de Legalidad**: scorer con editor por componente.
-- **Contratos**: read-only summary (último 20 por `fecha_firma desc`); CRUD completo en Fase 2C.
-- **Transacciones**: read-only summary (últimas 20 por `fecha desc`) + badge con count de certificados emitidos linkeado a `/verificar`; CRUD completo + emisión de certificados en Fase 2B.
+### Carryover Phase 0 (no en scope de Phase 1)
+- ⚠ `app/dashboard/minas/page.tsx:72` — lint error `react-hooks/set-state-in-effect` (pre-existente).
+- ⚠ `app/api/admin/clientes/route.ts:61` — TS error `Cannot find name 'clientes'` (pre-existente, bloquea `npm run build` type-check). El compile step pasa; solo el type-check falla. Phase 1 no introduce nuevos errores.
