@@ -1,13 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import TopoBand from '@/components/decor/TopoBand'
 
 type Lang = 'es' | 'en'
 
+const SITE_LAST_UPDATED_ISO = '2026-05-10'
+
 export default function LandingPage() {
   const [lang, setLang] = useState<Lang>('es')
-  const [submitted, setSubmitted] = useState(false)
 
   useEffect(() => {
     try {
@@ -24,490 +26,567 @@ export default function LandingPage() {
 
   const t = (es: string, en: string) => lang === 'es' ? es : en
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    setSubmitted(true)
-  }
-
   return (
     <>
       {/* NAV */}
       <nav className="nav">
-        <a href="#" className="nav-logo">
-          <div className="nav-logo-mark">ML</div>
+        <Link href="/" className="nav-logo">
           <span className="nav-logo-text">MAPE LEGAL</span>
-        </a>
+        </Link>
         <div className="nav-links">
-          <a href="#como-funciona" className="nav-link">{t('Cómo funciona', 'How it works')}</a>
-          <a href="#fases" className="nav-link">{t('Fases del proceso', 'Process phases')}</a>
+          <a href="#identidad" className="nav-link">{t('Identidad', 'About')}</a>
+          <a href="#cumplimiento" className="nav-link">{t('Cumplimiento', 'Compliance')}</a>
           <a href="#contacto" className="nav-link">{t('Contacto', 'Contact')}</a>
           <div className="lang-toggle">
             <button className={`lang-btn${lang === 'es' ? ' active' : ''}`} onClick={() => changeLang('es')}>ES</button>
             <button className={`lang-btn${lang === 'en' ? ' active' : ''}`} onClick={() => changeLang('en')}>EN</button>
           </div>
-          <a href="#contacto" className="nav-cta">{t('Solicitar consulta', 'Get a consultation')}</a>
         </div>
       </nav>
 
       {/* HERO */}
-      <section className="hero" style={{ position: 'relative' }}>
+      <section
+        className="hero"
+        style={{
+          position: 'relative',
+          gridTemplateColumns: '1fr',
+          backgroundImage: 'url(/images/RIVER%20AND%20MOUNTAINS.png)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'color-mix(in oklch, var(--bg-soft) 88%, transparent)',
+            pointerEvents: 'none',
+          }}
+        />
         <TopoBand variant="light" position="overlay" />
-        <div className="hero-content" style={{ position: 'relative' }}>
+        <div className="hero-content" style={{ position: 'relative', maxWidth: 820 }}>
           <div className="hero-eyebrow">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.5"/>
-              <path d="M4 7l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            {t('Plataforma de gestión minera', 'Mining legal management platform')}
+            Corporación Hondureña Tenka, S.A.
           </div>
           <h1 className="hero-title">
-            {t('Tu proceso minero,', 'Your mining process,')}
-            <br/><span>{t('siempre visible.', 'always visible.')}</span>
+            {t(
+              'Trazabilidad legal del oro de minería artesanal en Honduras.',
+              'Legal traceability of artisanal gold in Honduras.'
+            )}
           </h1>
-          <p className="hero-sub">
+          <p className="hero-sub" style={{ maxWidth: 680 }}>
             {t(
-              'Gestionamos cada paso de tu concesión o exploración minera con trazabilidad completa, alertas automáticas y comunicación directa por WhatsApp.',
-              'We manage every step of your mining concession or exploration with full traceability, automatic alerts, and direct communication via WhatsApp.'
+              'MAPE LEGAL es la infraestructura de evidencia con la que CHT formaliza unidades mineras artesanales y de pequeña escala bajo la Ley de Minería de Honduras y emite certificados de origen verificables para la cadena de comercialización formal.',
+              "MAPE LEGAL is the evidence infrastructure CHT uses to formalize artisanal and small-scale mining units under Honduras' Mining Law and to issue verifiable certificates of origin for the formal commercialization chain."
             )}
           </p>
-          <div className="hero-actions">
-            <a href="#contacto" className="btn-primary">
-              {t('Iniciar mi expediente', 'Start my file')}
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </a>
-            <a href="#como-funciona" className="btn-ghost">
-              {t('Ver cómo funciona', 'See how it works')}
-            </a>
+        </div>
+      </section>
+
+      {/* IDENTIDAD */}
+      <section
+        id="identidad"
+        style={{
+          background: 'var(--bg-soft)',
+          padding: '80px max(24px, calc((100% - 1100px)/2))',
+          borderBottom: '1px solid var(--border)',
+        }}
+      >
+        <div className="section-label">{t('Identidad', 'About')}</div>
+        <h2 className="section-title">
+          {t('Quiénes somos.', 'Who we are.')}
+        </h2>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+            gap: 64,
+            marginTop: 40,
+            alignItems: 'start',
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <p style={{ fontSize: 16, color: 'var(--t2)', lineHeight: 1.7 }}>
+              {t(
+                'CHT es una empresa hondureña dedicada a la formalización de la minería artesanal y de pequeña escala (MAPE). Operamos como intermediario de certificación y comercialización entre productores artesanales y la refinería Chiopa Industrias, bajo el marco jurídico hondureño y los estándares de debida diligencia de la cadena de oro.',
+                'CHT is a Honduran company dedicated to the formalization of artisanal and small-scale mining (MAPE). We operate as a certification and commercialization intermediary between artisanal producers and the Chiopa Industrias refinery, under the Honduran legal framework and the gold supply chain due-diligence standards.'
+              )}
+            </p>
+            <p style={{ fontSize: 16, color: 'var(--t2)', lineHeight: 1.7 }}>
+              {t(
+                'Nuestro piloto opera en Iriona, departamento de Colón, con una asociación de mineros artesanales que ha completado su consulta libre, previa e informada bajo el Convenio 169 de la OIT. La operación canaliza pagos a través de Finacoop y mantiene cuentas bancarias formales en lempiras para cada productor formalizado.',
+                'Our pilot operates in Iriona, department of Colón, with an artisanal miners association that has completed its free, prior and informed consent under ILO Convention 169. The operation channels payments through Finacoop and maintains formal bank accounts in lempiras for each formalized producer.'
+              )}
+            </p>
+            <p style={{ fontSize: 16, color: 'var(--t2)', lineHeight: 1.7 }}>
+              {t(
+                'Toda la actividad descrita en este sitio está respaldada por expedientes legales, contratos firmados y certificados de origen emitidos por CHT. Las cifras agregadas y los certificados publicados aquí son los únicos canales de divulgación pública de la operación.',
+                'Every activity described on this site is backed by legal files, signed contracts and certificates of origin issued by CHT. The aggregate figures and certificates published here are the only public disclosure channels of the operation.'
+              )}
+            </p>
           </div>
-          <div className="hero-trust">
-            {([
-              t('Alertas en tiempo real', 'Real-time alerts'),
-              t('Actualización por WhatsApp', 'WhatsApp updates'),
-              t('5 fases, 40+ pasos documentados', '5 phases, 40+ documented steps'),
-            ] as string[]).map((text) => (
-              <div key={text} className="hero-trust-item">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.3"/>
-                  <path d="M4 7l2 2 4-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+          <div
+            style={{
+              borderRadius: 12,
+              border: '1px solid var(--border)',
+              overflow: 'hidden',
+              boxShadow: '0 2px 6px rgba(31,42,56,0.05)',
+              background: 'var(--bg)',
+              aspectRatio: '4 / 5',
+              backgroundImage: 'url(/images/Technitians%20Field%20Work.png)',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+            aria-hidden="true"
+          />
+        </div>
+      </section>
+
+      {/* CUMPLIMIENTO */}
+      <section
+        id="cumplimiento"
+        style={{
+          background: 'var(--bg)',
+          padding: '80px max(24px, calc((100% - 1100px)/2))',
+          borderBottom: '1px solid var(--border)',
+        }}
+      >
+        <div className="section-label">{t('Cumplimiento', 'Compliance')}</div>
+        <h2 className="section-title">
+          {t('Marco regulatorio y estándares.', 'Regulatory framework and standards.')}
+        </h2>
+        <p className="section-sub" style={{ maxWidth: 680 }}>
+          {t(
+            'La operación de CHT está enmarcada en cuatro capas de cumplimiento: ley nacional, derecho indígena internacional, debida diligencia de cadena de suministro y registro auditable.',
+            "CHT's operation is framed by four compliance layers: national law, international indigenous rights, supply chain due diligence and auditable record-keeping."
+          )}
+        </p>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+            gap: 24,
+            marginTop: 48,
+          }}
+        >
+          {[
+            {
+              icon: (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                  <path d="M8 8h8M8 12h8M8 16h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                 </svg>
-                {text}
+              ),
+              titleEs: 'Marco jurídico hondureño',
+              titleEn: 'Honduran legal framework',
+              bodyEs: 'Operamos bajo la Ley General de Minería, su Reglamento y el Reglamento Especial para la Minería Artesanal y la Pequeña Minería (Acuerdo 042-2013). Cada expediente sigue las cuatro fases de INHGEOMIN y la licencia ambiental SLAS-2 de SERNA / MiAmbiente+.',
+              bodyEn: 'We operate under the General Mining Law, its Regulations and the Special Regulation for Artisanal and Small-Scale Mining (Agreement 042-2013). Each file follows the four INHGEOMIN phases and the SLAS-2 environmental license issued by SERNA / MiAmbiente+.',
+            },
+            {
+              icon: (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5"/>
+                  <path d="M3.5 12h17M12 3.5c2.5 2.5 4 5.5 4 8.5s-1.5 6-4 8.5M12 3.5c-2.5 2.5-4 5.5-4 8.5s1.5 6 4 8.5" stroke="currentColor" strokeWidth="1.5"/>
+                </svg>
+              ),
+              titleEs: 'Convenio 169 de la OIT',
+              titleEn: 'ILO Convention 169',
+              bodyEs: 'Las comunidades en las que operamos completan la consulta libre, previa e informada antes del inicio del proceso de formalización. La documentación de consulta forma parte del expediente legal de cada unidad minera.',
+              bodyEn: 'The communities where we operate complete free, prior and informed consultation before the formalization process begins. Consultation documentation is part of the legal file of every mining unit.',
+            },
+            {
+              icon: (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 3l8 4v6c0 4.5-3.5 7.5-8 8-4.5-.5-8-3.5-8-8V7l8-4z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+                  <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              ),
+              titleEs: 'Debida diligencia OCDE',
+              titleEn: 'OECD due diligence',
+              bodyEs: 'La emisión de certificados de origen sigue la lógica de la Guía de Debida Diligencia de la OCDE para Cadenas de Suministro Responsables de Minerales en Áreas de Conflicto y de Alto Riesgo. La trazabilidad es por unidad minera, no por lote agregado.',
+              bodyEn: 'The issuance of certificates of origin follows the OECD Due Diligence Guidance for Responsible Supply Chains of Minerals from Conflict-Affected and High-Risk Areas. Traceability is per mining unit, not per aggregate batch.',
+            },
+            {
+              icon: (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M3 7l9-4 9 4-9 4-9-4z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+                  <path d="M3 12l9 4 9-4M3 17l9 4 9-4" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+                </svg>
+              ),
+              titleEs: 'Auditoría y registro',
+              titleEn: 'Audit and record-keeping',
+              bodyEs: 'Toda transacción y emisión de certificado queda registrada en expediente legal, con copia firmada para el productor, copia para CHT y verificación pública del número de certificado. El registro es inmutable y auditable.',
+              bodyEn: 'Every transaction and certificate issuance is recorded in the legal file, with a signed copy for the producer, a copy for CHT and public verification of the certificate number. The record is immutable and auditable.',
+            },
+          ].map((card) => (
+            <div
+              key={card.titleEs}
+              style={{
+                background: 'var(--bg)',
+                border: '1px solid var(--border)',
+                borderRadius: 12,
+                padding: 24,
+                boxShadow: '0 2px 6px rgba(31,42,56,0.05)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
+              }}
+            >
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 8,
+                  background: 'color-mix(in oklch, var(--moss) 12%, white)',
+                  color: 'var(--moss)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {card.icon}
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Dashboard mockup */}
-        <div className="hero-visual">
-          <div className="mockup-window">
-            <div className="mockup-bar">
-              <div className="mockup-bar-dot"/>
-              <div className="mockup-bar-dot"/>
-              <div className="mockup-bar-dot"/>
-              <div className="mockup-bar-title">MAPE LEGAL — Panel</div>
-            </div>
-            <div className="mockup-body">
-              <div className="mockup-sidebar">
-                <div className="mockup-sidebar-item active">
-                  <div className="skel" style={{height:'7px',width:'60%',marginBottom:'4px',background:'var(--blue)',opacity:0.4}}/>
-                  <div className="skel" style={{height:'9px',width:'90%',marginBottom:'3px'}}/>
-                  <div className="skel" style={{height:'6px',width:'70%'}}/>
-                  <div style={{marginTop:'6px'}}><span className="badge-g">Activo</span></div>
-                </div>
-                <div className="mockup-sidebar-item" style={{padding:'8px 10px',borderBottom:'1px solid var(--border)'}}>
-                  <div className="skel" style={{height:'7px',width:'60%',marginBottom:'4px'}}/>
-                  <div className="skel" style={{height:'9px',width:'90%',marginBottom:'3px'}}/>
-                  <div style={{marginTop:'5px'}}><span className="badge-r">Alerta</span></div>
-                </div>
-                <div className="mockup-sidebar-item" style={{padding:'8px 10px',opacity:0.5}}>
-                  <div className="skel" style={{height:'7px',width:'60%',marginBottom:'4px'}}/>
-                  <div className="skel" style={{height:'9px',width:'80%'}}/>
-                </div>
-              </div>
-              <div className="mockup-main">
-                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'5px'}}>
-                  <div style={{background:'#fff',border:'1px solid var(--border)',borderRadius:'4px',padding:'7px',borderTop:'2px solid var(--blue)'}}>
-                    <div className="skel" style={{height:'6px',width:'60%',marginBottom:'3px'}}/>
-                    <div style={{fontSize:'14px',fontWeight:700,color:'var(--blue)'}}>20%</div>
-                  </div>
-                  <div style={{background:'#fff',border:'1px solid var(--border)',borderRadius:'4px',padding:'7px',borderTop:'2px solid var(--green)'}}>
-                    <div className="skel" style={{height:'6px',width:'60%',marginBottom:'3px'}}/>
-                    <div style={{fontSize:'14px',fontWeight:700,color:'var(--green)'}}>L 320k</div>
-                  </div>
-                  <div style={{background:'#fff',border:'1px solid var(--border)',borderRadius:'4px',padding:'7px',borderTop:'2px solid var(--amber)'}}>
-                    <div className="skel" style={{height:'6px',width:'60%',marginBottom:'3px'}}/>
-                    <div style={{fontSize:'14px',fontWeight:700,color:'var(--amber)'}}>F1/P9</div>
-                  </div>
-                </div>
-                <div style={{background:'#fff',border:'1px solid var(--border)',borderRadius:'4px',padding:'8px',display:'flex',flexDirection:'column',gap:'6px'}}>
-                  <div className="skel" style={{height:'6px',width:'40%',marginBottom:'2px'}}/>
-                  <div style={{height:'4px',background:'var(--bg3)',borderRadius:'20px',overflow:'hidden'}}>
-                    <div style={{height:'100%',width:'20%',background:'var(--amber)',borderRadius:'20px'}}/>
-                  </div>
-                  <div style={{height:'4px',background:'var(--bg3)',borderRadius:'20px',overflow:'hidden'}}>
-                    <div style={{height:'100%',width:'100%',background:'var(--green)',borderRadius:'20px'}}/>
-                  </div>
-                  <div style={{height:'4px',background:'var(--bg3)',borderRadius:'20px',overflow:'hidden'}}>
-                    <div style={{height:'100%',width:'0%',background:'var(--border)',borderRadius:'20px'}}/>
-                  </div>
-                </div>
-                <div style={{background:'#fff',border:'1px solid var(--border)',borderRadius:'4px',overflow:'hidden'}}>
-                  <div style={{background:'var(--bg2)',padding:'4px 8px'}}>
-                    <div className="skel" style={{height:'5px',width:'30%'}}/>
-                  </div>
-                  <div style={{padding:'5px 8px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                    <div className="skel" style={{height:'7px',width:'40%'}}/>
-                    <span className="badge-g">Cobrado</span>
-                  </div>
-                  <div style={{padding:'5px 8px',background:'var(--bg2)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                    <div className="skel" style={{height:'7px',width:'40%'}}/>
-                    <span className="badge-a">Pendiente</span>
-                  </div>
-                </div>
-              </div>
-              <div className="mockup-feed">
-                <div className="mockup-feed-head">
-                  <div className="skel" style={{height:'7px',width:'70%',background:'rgba(255,255,255,0.3)'}}/>
-                </div>
-                <div style={{padding:'7px',borderBottom:'1px solid var(--border)'}}>
-                  <div className="skel" style={{height:'5px',width:'60%',marginBottom:'3px'}}/>
-                  <div className="skel" style={{height:'7px',width:'80%',marginBottom:'3px'}}/>
-                  <div style={{display:'flex',alignItems:'center',gap:'4px'}}>
-                    <div style={{width:'5px',height:'5px',background:'var(--green)',borderRadius:'50%'}}/>
-                    <div className="skel" style={{height:'5px',width:'50%'}}/>
-                  </div>
-                </div>
-                <div style={{padding:'7px',background:'var(--bg2)',borderBottom:'1px solid var(--border)'}}>
-                  <div className="skel" style={{height:'5px',width:'60%',marginBottom:'3px'}}/>
-                  <div className="skel" style={{height:'7px',width:'80%',marginBottom:'3px'}}/>
-                  <div style={{display:'flex',alignItems:'center',gap:'4px'}}>
-                    <div style={{width:'5px',height:'5px',background:'var(--amber)',borderRadius:'50%',animation:'blink 1.4s ease-in-out infinite'}}/>
-                    <div className="skel" style={{height:'5px',width:'50%'}}/>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="float-notif">
-            <div className="float-icon">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <circle cx="8" cy="8" r="7" stroke="#2A8E50" strokeWidth="1.5"/>
-                <path d="M5 8l2 2 4-4" stroke="#2A8E50" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <div>
-              <div style={{fontSize:'11px',fontWeight:700,color:'var(--t1)'}}>
-                {t('Documento verificado ✓', 'Document verified ✓')}
-              </div>
-              <div style={{fontSize:'10px',color:'var(--t3)'}}>RTN autenticado · EXP-001</div>
-            </div>
-          </div>
-          <div className="float-notif2">
-            <div className="float-icon2">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <rect x="2" y="3" width="12" height="10" rx="2" stroke="var(--blue)" strokeWidth="1.5"/>
-                <path d="M5 8h6M5 5.5h4" stroke="var(--blue)" strokeWidth="1.2" strokeLinecap="round"/>
-              </svg>
-            </div>
-            <div>
-              <div style={{fontSize:'11px',fontWeight:700,color:'var(--t1)'}}>
-                {t('Hito 2 desbloqueado', 'Milestone 2 unlocked')}
-              </div>
-              <div style={{fontSize:'10px',color:'var(--t3)'}}>L 480,000 · EXP-001</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* STATS */}
-      <div className="stats">
-        <div className="stats-grid">
-          {([
-            { num: '5',    es: 'Fases del proceso minero',            en: 'Mining process phases' },
-            { num: '40+',  es: 'Pasos documentados y automatizados',  en: 'Documented and automated steps' },
-            { num: '100%', es: 'Trazabilidad de tu expediente',       en: 'Full file traceability' },
-            { num: '24h',  es: 'Respuesta y seguimiento continuo',    en: 'Continuous monitoring & response' },
-          ] as const).map(({ num, es, en }) => (
-            <div key={num} className="stat-item">
-              <div className="stat-num">{num}</div>
-              <div className="stat-label">{t(es, en)}</div>
+              <h3
+                style={{
+                  fontFamily: 'var(--font-display)',
+                  fontSize: 18,
+                  fontWeight: 600,
+                  color: 'var(--ink)',
+                  letterSpacing: '-0.01em',
+                }}
+              >
+                {t(card.titleEs, card.titleEn)}
+              </h3>
+              <p style={{ fontSize: 14, color: 'var(--t2)', lineHeight: 1.7 }}>
+                {t(card.bodyEs, card.bodyEn)}
+              </p>
             </div>
           ))}
         </div>
-      </div>
-
-      {/* HOW IT WORKS */}
-      <section className="how" id="como-funciona">
-        <div className="section-label">{t('Cómo funciona', 'How it works')}</div>
-        <h2 className="section-title">
-          {t('De la consulta al permiso,', 'From consultation to permit,')}
-          <br/>
-          {t('sabés exactamente dónde estás.', 'you always know where you stand.')}
-        </h2>
-        <p className="section-sub">
-          {t(
-            'No más incertidumbre ni llamadas sin respuesta. Cada movimiento en tu expediente se refleja en tiempo real y te llega directo al WhatsApp.',
-            'No more uncertainty or unanswered calls. Every move in your file is reflected in real time and sent straight to your WhatsApp.'
-          )}
-        </p>
-        <div className="steps">
-          <div className="step">
-            <div className="step-connector"/>
-            <div className="step-num">1</div>
-            <div className="step-title">{t('Consulta inicial gratuita', 'Free initial consultation')}</div>
-            <div className="step-body">
-              {t(
-                'Analizamos la viabilidad de tu área en SIMHON e INHGEOMIN. Te decimos si hay derechos mineros vigentes antes de iniciar el proceso.',
-                "We analyze your area's viability in SIMHON and INHGEOMIN. We tell you if there are existing mining rights before starting the process."
-              )}
-            </div>
-          </div>
-          <div className="step">
-            <div className="step-connector"/>
-            <div className="step-num">2</div>
-            <div className="step-title">{t('Abrimos tu expediente', 'We open your file')}</div>
-            <div className="step-body">
-              {t(
-                'Firmamos el contrato y asignamos tu equipo: un abogado minero y un PSA certificado. Desde ese momento, cada paso queda documentado.',
-                'We sign the contract and assign your team: a mining lawyer and a certified PSA. From that moment, every step is documented.'
-              )}
-            </div>
-          </div>
-          <div className="step">
-            <div className="step-num">3</div>
-            <div className="step-title">{t('Seguimiento automático', 'Automatic follow-up')}</div>
-            <div className="step-body">
-              {t(
-                'Recibís actualizaciones por WhatsApp en cada hito. Sabés cuándo enviar documentos, cuándo hay plazos críticos y cuándo se activa tu próximo cobro.',
-                'You receive WhatsApp updates at each milestone. You know when to send documents, when there are critical deadlines, and when your next payment is triggered.'
-              )}
-            </div>
-          </div>
-        </div>
       </section>
 
-      {/* TRACEABILITY */}
-      <section className="trace">
-        <div className="section-label">{t('Trazabilidad completa', 'Full traceability')}</div>
+      {/* VERIFICACIÓN */}
+      <section
+        id="verificacion"
+        style={{
+          background: 'var(--bg-soft)',
+          padding: '80px max(24px, calc((100% - 1100px)/2))',
+          borderBottom: '1px solid var(--border)',
+        }}
+      >
+        <div className="section-label">{t('Verificación', 'Verification')}</div>
         <h2 className="section-title">
-          {t('Todo en un solo lugar.', 'Everything in one place.')}
-          <br/>
-          {t('Nada se pierde.', 'Nothing gets lost.')}
+          {t('Certificado de Origen verificable.', 'Verifiable Certificate of Origin.')}
         </h2>
-        <div className="trace-grid">
-          <div className="trace-features">
-            {([
-              {
-                icon: (
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <rect x="3" y="3" width="14" height="14" rx="3" stroke="currentColor" strokeWidth="1.5"/>
-                    <path d="M6 10l2.5 2.5L14 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                ),
-                titleEs: 'Checklist documental en tiempo real',
-                titleEn: 'Real-time document checklist',
-                bodyEs: 'Sabés exactamente qué documentos ya enviaste, cuáles están en revisión y cuáles faltan. Sin sorpresas.',
-                bodyEn: "You know exactly which documents you've sent, which are under review, and which are missing. No surprises.",
-              },
-              {
-                icon: (
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5"/>
-                    <path d="M10 6v4l2.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                  </svg>
-                ),
-                titleEs: 'Alertas de plazo automáticas',
-                titleEn: 'Automatic deadline alerts',
-                bodyEs: '3 días antes de cada vencimiento, tu abogado y vos reciben una alerta. Ningún plazo se vence sin aviso.',
-                bodyEn: '3 days before each deadline, your lawyer and you receive an alert. No deadline passes without notice.',
-              },
-              {
-                icon: (
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path d="M4 10h12M10 4l6 6-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                ),
-                titleEs: 'Hitos de pago transparentes',
-                titleEn: 'Transparent payment milestones',
-                bodyEs: 'Pagás por logros, no por tiempo. Cada hito tiene un trigger claro y documentado que vos podés seguir en tiempo real.',
-                bodyEn: 'You pay for results, not time. Each milestone has a clear, documented trigger that you can follow in real time.',
-              },
-              {
-                icon: (
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path d="M17 8l-7-5-7 5v9a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1V8z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                ),
-                titleEs: 'Comunicación directa por WhatsApp',
-                titleEn: 'Direct WhatsApp communication',
-                bodyEs: 'Sin apps nuevas ni portales complicados. Todo pasa por WhatsApp, que ya usás todos los días.',
-                bodyEn: 'No new apps or complicated portals. Everything happens through WhatsApp, which you already use every day.',
-              },
-            ] as const).map(({ icon, titleEs, titleEn, bodyEs, bodyEn }) => (
-              <div key={titleEs} className="trace-feat">
-                <div className="trace-icon">{icon}</div>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 0.9fr)',
+            gap: 64,
+            marginTop: 40,
+            alignItems: 'center',
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <p style={{ fontSize: 16, color: 'var(--t2)', lineHeight: 1.7 }}>
+              {t(
+                'Cualquier persona puede verificar la validez de un certificado de origen emitido por CHT introduciendo el número de certificado en el portal público. La verificación devuelve la unidad minera de origen, la fecha de emisión, el peso del oro certificado y el estado vigente del certificado. No se publican datos personales del productor ni montos de transacción.',
+                'Anyone can verify the validity of a certificate of origin issued by CHT by entering the certificate number in the public portal. Verification returns the source mining unit, the issue date, the certified gold weight and the current status of the certificate. No personal data of the producer or transaction amounts are published.'
+              )}
+            </p>
+            <Link
+              href="/verificar"
+              style={{
+                color: 'var(--moss)',
+                fontSize: 15,
+                fontWeight: 600,
+                textDecoration: 'none',
+                borderBottom: '1px solid color-mix(in oklch, var(--moss) 35%, white)',
+                paddingBottom: 2,
+                alignSelf: 'flex-start',
+              }}
+            >
+              {t('Verificar un certificado', 'Verify a certificate')} →
+            </Link>
+          </div>
+
+          {/* Illustrative certificate card (visual only, not a real record) */}
+          <div
+            style={{
+              background: 'var(--bg)',
+              border: '1px solid var(--border)',
+              borderRadius: 12,
+              boxShadow: '0 2px 6px rgba(31,42,56,0.05)',
+              overflow: 'hidden',
+            }}
+            aria-hidden="true"
+          >
+            <div
+              style={{
+                background: 'var(--ink)',
+                color: '#fff',
+                padding: '14px 18px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  letterSpacing: '0.14em',
+                  textTransform: 'uppercase',
+                  color: 'rgba(255,255,255,0.7)',
+                }}
+              >
+                {t('Certificado de Origen', 'Certificate of Origin')}
+              </div>
+              <div
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: 'var(--sand)',
+                  letterSpacing: '0.04em',
+                }}
+              >
+                CHT
+              </div>
+            </div>
+            <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <div
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 10,
+                    fontWeight: 600,
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    color: 'var(--t3)',
+                    marginBottom: 4,
+                  }}
+                >
+                  {t('Número', 'Number')}
+                </div>
+                <div
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 16,
+                    fontWeight: 600,
+                    color: 'var(--ink)',
+                  }}
+                >
+                  CO-2026-0001
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 <div>
-                  <div className="trace-feat-title">{t(titleEs, titleEn)}</div>
-                  <div className="trace-feat-body">{t(bodyEs, bodyEn)}</div>
+                  <div
+                    style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 10,
+                      fontWeight: 600,
+                      letterSpacing: '0.14em',
+                      textTransform: 'uppercase',
+                      color: 'var(--t3)',
+                      marginBottom: 4,
+                    }}
+                  >
+                    {t('Unidad minera', 'Mining unit')}
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}>
+                    Iriona — Colón
+                  </div>
+                </div>
+                <div>
+                  <div
+                    style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 10,
+                      fontWeight: 600,
+                      letterSpacing: '0.14em',
+                      textTransform: 'uppercase',
+                      color: 'var(--t3)',
+                      marginBottom: 4,
+                    }}
+                  >
+                    {t('Peso certificado', 'Certified weight')}
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}>
+                    100.000 g
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
-
-          <div className="progress-card">
-            <div className="progress-card-head">
-              <div style={{fontSize:'11px',fontWeight:700,color:'rgba(255,255,255,0.65)',letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:'4px'}}>
-                {t('TU EXPEDIENTE', 'YOUR FILE')}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div>
+                  <div
+                    style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 10,
+                      fontWeight: 600,
+                      letterSpacing: '0.14em',
+                      textTransform: 'uppercase',
+                      color: 'var(--t3)',
+                      marginBottom: 4,
+                    }}
+                  >
+                    {t('Estado', 'Status')}
+                  </div>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      background: 'color-mix(in oklch, var(--green) 14%, white)',
+                      color: 'var(--green)',
+                      border: '1px solid color-mix(in oklch, var(--green) 30%, white)',
+                      padding: '2px 12px',
+                      borderRadius: 999,
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {t('Vigente', 'Valid')}
+                  </span>
+                </div>
+                <div>
+                  <div
+                    style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 10,
+                      fontWeight: 600,
+                      letterSpacing: '0.14em',
+                      textTransform: 'uppercase',
+                      color: 'var(--t3)',
+                      marginBottom: 4,
+                    }}
+                  >
+                    {t('Válido hasta', 'Valid until')}
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 13,
+                      color: 'var(--ink)',
+                    }}
+                  >
+                    2027-05-10
+                  </div>
+                </div>
               </div>
-              <div style={{fontSize:'17px',fontWeight:700,color:'#fff'}}>EXP-2026-001</div>
-              <div style={{fontSize:'12px',color:'rgba(255,255,255,0.75)',marginTop:'2px'}}>
-                {t('Juan Zelaya · Exploración minera · Iriona, Colón', 'Juan Zelaya · Mining exploration · Iriona, Colón')}
-              </div>
-            </div>
-            <div className="progress-card-body">
-              <div>
-                <div style={{fontSize:'10px',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.07em',color:'var(--t3)',marginBottom:'8px'}}>
-                  {t('Índice de legalidad', 'Legality index')}
-                </div>
-                <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:'3px',marginBottom:'8px'}}>
-                  <div style={{textAlign:'center',padding:'5px 2px',border:'1px solid var(--border)',borderTop:'2px solid var(--green)',borderRadius:'3px',fontSize:'9px',color:'var(--green)',fontWeight:700}}>✓ Tierra</div>
-                  <div style={{textAlign:'center',padding:'5px 2px',border:'1px solid var(--border)',borderTop:'2px solid var(--amber)',borderRadius:'3px',fontSize:'9px',color:'var(--amber)',fontWeight:700}}>↻ INHGEO</div>
-                  <div style={{textAlign:'center',padding:'5px 2px',border:'1px solid var(--border)',borderTop:'2px solid var(--border)',borderRadius:'3px',fontSize:'9px',color:'var(--t3)',opacity:0.5}}>Amb.</div>
-                  <div style={{textAlign:'center',padding:'5px 2px',border:'1px solid var(--border)',borderTop:'2px solid var(--border)',borderRadius:'3px',fontSize:'9px',color:'var(--t3)',opacity:0.5}}>Mun.</div>
-                  <div style={{textAlign:'center',padding:'5px 2px',border:'1px solid var(--border)',borderTop:'2px solid var(--border)',borderRadius:'3px',fontSize:'9px',color:'var(--t3)',opacity:0.5}}>Reg.</div>
-                </div>
-                <div style={{display:'flex',gap:'8px',alignItems:'center'}}>
-                  <div className="pbar-wrap" style={{flex:1}}>
-                    <div className="pbar-fill" style={{width:'20%',background:'var(--amber)'}}/>
-                  </div>
-                  <span style={{fontSize:'12px',fontWeight:700,color:'var(--amber)'}}>20%</span>
-                </div>
-              </div>
-              <div>
-                <div style={{fontSize:'10px',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.07em',color:'var(--t3)',marginBottom:'8px'}}>
-                  {t('Hitos de pago', 'Payment milestones')}
-                </div>
-                <div className="hito-row">
-                  <div style={{fontSize:'12px',fontWeight:500,color:'var(--t1)'}}>
-                    {t('Hito 1 · Firma del contrato', 'Milestone 1 · Contract signing')}
-                  </div>
-                  <div style={{display:'flex',alignItems:'center',gap:'8px',flexShrink:0}}>
-                    <span style={{fontSize:'12px',fontWeight:700,color:'var(--t1)'}}>L 320k</span>
-                    <span style={{background:'#E0EDE3',color:'#2A8E50',padding:'1px 8px',borderRadius:'20px',fontSize:'10px',fontWeight:600}}>
-                      {t('Cobrado', 'Paid')}
-                    </span>
-                  </div>
-                </div>
-                <div className="hito-row">
-                  <div style={{fontSize:'12px',fontWeight:500,color:'var(--t1)'}}>
-                    {t('Hito 2 · Constancia INHGEOMIN', 'Milestone 2 · INHGEOMIN certificate')}
-                  </div>
-                  <div style={{display:'flex',alignItems:'center',gap:'8px',flexShrink:0}}>
-                    <span style={{fontSize:'12px',fontWeight:700,color:'var(--t1)'}}>L 480k</span>
-                    <span style={{background:'#F4E9D6',color:'#C58B2C',padding:'1px 8px',borderRadius:'20px',fontSize:'10px',fontWeight:600}}>
-                      {t('Pendiente', 'Pending')}
-                    </span>
-                  </div>
-                </div>
-                <div className="hito-row" style={{opacity:0.45}}>
-                  <div style={{fontSize:'12px',fontWeight:500,color:'var(--t1)'}}>
-                    {t('Hito 3 · Permiso completo', 'Milestone 3 · Full permit')}
-                  </div>
-                  <div style={{display:'flex',alignItems:'center',gap:'8px',flexShrink:0}}>
-                    <span style={{fontSize:'12px',fontWeight:700,color:'var(--t1)'}}>L 800k</span>
-                    <span style={{background:'#F0EDE5',color:'#8E96A2',padding:'1px 8px',borderRadius:'20px',fontSize:'10px',fontWeight:600,border:'1px solid var(--border)'}}>
-                      {t('Bloqueado', 'Locked')}
-                    </span>
-                  </div>
-                </div>
+              <div
+                style={{
+                  borderTop: '1px solid var(--border)',
+                  paddingTop: 10,
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 11,
+                  color: 'var(--t3)',
+                }}
+              >
+                {t('Ejemplo ilustrativo. No representa una transacción real.', 'Illustrative example. Does not represent a real transaction.')}
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* FASES */}
-      <section className="fases" id="fases">
-        <div className="section-label">{t('El proceso completo', 'The complete process')}</div>
-        <h2 className="section-title">{t('5 fases. Cada paso, documentado.', '5 phases. Every step, documented.')}</h2>
-        <p className="section-sub">
-          {t(
-            'El proceso minero en Honduras es complejo. Nosotros lo convertimos en un camino claro con fechas, responsables y alertas automáticas.',
-            'The mining process in Honduras is complex. We turn it into a clear path with dates, owners, and automatic alerts.'
-          )}
-        </p>
-        <div className="fases-grid">
-          {([
-            { numEs: 'Fase 0', numEn: 'Phase 0', nameEs: 'Onboarding',                   nameEn: 'Onboarding',           bodyEs: 'Análisis de viabilidad, recolección de documentos y firma del contrato.',                                         bodyEn: 'Viability analysis, document collection, and contract signing.',                                                stepsEs: '6 pasos',  stepsEn: '6 steps' },
-            { numEs: 'Fase 1', numEn: 'Phase 1', nameEs: 'INHGEOMIN',                     nameEn: 'INHGEOMIN',            bodyEs: 'Trámites ante el Instituto Nacional de Geología y Minas: publicaciones, constancias y resoluciones.',             bodyEn: 'Procedures with the National Geology and Mines Institute: publications, certificates, and resolutions.',        stepsEs: '13 pasos', stepsEn: '13 steps' },
-            { numEs: 'Fase 2', numEn: 'Phase 2', nameEs: 'Ambiental (SERNA)',             nameEn: 'Environmental (SERNA)',bodyEs: 'Licencia ambiental con la Secretaría de Recursos Naturales y Ambiente.',                                         bodyEn: 'Environmental license with the Secretary of Natural Resources and Environment.',                                stepsEs: '8 pasos',  stepsEn: '8 steps' },
-            { numEs: 'Fase 3', numEn: 'Phase 3', nameEs: 'Resolución minera',             nameEn: 'Mining resolution',    bodyEs: 'Obtención del permiso de exploración o explotación y firma del contrato minero definitivo.',                       bodyEn: 'Obtaining the exploration or exploitation permit and signing the final mining contract.',                       stepsEs: '7 pasos',  stepsEn: '7 steps' },
-            { numEs: 'Fase 4', numEn: 'Phase 4', nameEs: 'Municipal + Comercializador',   nameEn: 'Municipal + Trader',   bodyEs: 'Permisos municipales y registro del comercializador autorizado para operar legalmente.',                          bodyEn: 'Municipal permits and registration of the authorized trader to operate legally.',                               stepsEs: '6 pasos',  stepsEn: '6 steps' },
-          ] as const).map(({ numEs, numEn, nameEs, nameEn, bodyEs, bodyEn, stepsEs, stepsEn }) => (
-            <div key={numEs} className="fase-card">
-              <div className="fase-num">{t(numEs, numEn)}</div>
-              <div className="fase-name">{t(nameEs, nameEn)}</div>
-              <div className="fase-body">{t(bodyEs, bodyEn)}</div>
-              <div className="fase-steps">{t(stepsEs, stepsEn)}</div>
+      {/* CONTACTO */}
+      <section
+        id="contacto"
+        style={{
+          background: 'var(--bg)',
+          padding: '80px max(24px, calc((100% - 1100px)/2))',
+          borderBottom: '1px solid var(--border)',
+        }}
+      >
+        <div className="section-label">{t('Contacto', 'Contact')}</div>
+        <h2 className="section-title">
+          {t('Canales formales de contacto institucional.', 'Formal institutional contact channels.')}
+        </h2>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+            gap: 24,
+            marginTop: 40,
+          }}
+        >
+          {[
+            {
+              labelEs: 'WhatsApp institucional',
+              labelEn: 'Institutional WhatsApp',
+              valueLines: ['+504 9737 3139'],
+              hrefValue: 'https://wa.me/50497373139',
+            },
+            {
+              labelEs: 'Correo',
+              labelEn: 'Email',
+              valueLines: ['gerencia@mape.legal'],
+              hrefValue: 'mailto:gerencia@mape.legal',
+            },
+            {
+              labelEs: 'Oficina',
+              labelEn: 'Office',
+              valueLines: [
+                'Local Nexcrea — Condominios Metrópolis',
+                'Torre 1, Nivel 18',
+                'Boulevard Suyapa, Tegucigalpa',
+                'Francisco Morazán, Honduras',
+              ],
+              hrefValue: null,
+            },
+          ].map((block) => (
+            <div
+              key={block.labelEs}
+              style={{
+                background: 'var(--bg)',
+                border: '1px solid var(--border)',
+                borderRadius: 12,
+                padding: 24,
+                boxShadow: '0 2px 6px rgba(31,42,56,0.05)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                  color: 'var(--earth)',
+                }}
+              >
+                {t(block.labelEs, block.labelEn)}
+              </div>
+              <div
+                style={{
+                  fontSize: 16,
+                  color: 'var(--ink)',
+                  lineHeight: 1.6,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2,
+                }}
+              >
+                {block.hrefValue ? (
+                  <a
+                    href={block.hrefValue}
+                    style={{ color: 'var(--ink)', textDecoration: 'none', fontWeight: 500 }}
+                  >
+                    {block.valueLines[0]}
+                  </a>
+                ) : (
+                  block.valueLines.map((line) => (
+                    <span key={line} style={{ fontSize: 14, color: 'var(--t2)' }}>{line}</span>
+                  ))
+                )}
+              </div>
             </div>
           ))}
-        </div>
-      </section>
-
-      {/* QUOTE */}
-      <section className="quote-section">
-        <div className="quote-inner">
-          <div className="quote-text">
-            {t(
-              '"No queremos que te sorprendas con una llamada del abogado.',
-              '"We don\'t want you to be surprised by a call from the lawyer.'
-            )}
-            <br/>
-            <em>
-              {t(
-                'Queremos que ya lo sepás antes de que él llame."',
-                'We want you to already know before they call."'
-              )}
-            </em>
-          </div>
-          <div className="quote-author">Equipo MAPE LEGAL · CHT</div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="cta-section" id="contacto">
-        <div className="cta-inner">
-          <div className="section-label" style={{textAlign:'center'}}>
-            {t('Empezá hoy', 'Start today')}
-          </div>
-          <h2 className="section-title" style={{textAlign:'center'}}>
-            {t('¿Listo para ordenar tu proceso minero?', 'Ready to organize your mining process?')}
-          </h2>
-          <p className="section-sub" style={{textAlign:'center',margin:'14px auto 0'}}>
-            {t(
-              'Dejanos tu número de WhatsApp y te contactamos para una consulta gratuita. Sin compromisos.',
-              "Leave us your WhatsApp number and we'll contact you for a free consultation. No strings attached."
-            )}
-          </p>
-          {!submitted ? (
-            <form className="cta-form" onSubmit={handleSubmit}>
-              <input className="cta-input" type="text" placeholder={t('Tu nombre', 'Your name')} required/>
-              <input className="cta-input" type="tel" placeholder="WhatsApp (+504...)" required/>
-              <button type="submit" className="btn-primary" style={{whiteSpace:'nowrap'}}>
-                {t('Solicitar consulta gratuita →', 'Request free consultation →')}
-              </button>
-            </form>
-          ) : (
-            <div style={{marginTop:'16px',background:'#E0EDE3',color:'#2A8E50',padding:'12px 20px',borderRadius:'8px',fontSize:'14px',fontWeight:600,textAlign:'center'}}>
-              {t('✓ Recibimos tu solicitud. Te contactamos pronto por WhatsApp.', "✓ We received your request. We'll contact you soon via WhatsApp.")}
-            </div>
-          )}
-          <p className="cta-note">
-            {t('También podés escribirnos directamente: ', 'You can also write directly: ')}
-            <strong>+504 9XXX-XXXX</strong>
-            {t(' · Respondemos en menos de 24 horas.', ' · We respond within 24 hours.')}
-          </p>
         </div>
       </section>
 
@@ -515,10 +594,15 @@ export default function LandingPage() {
       <footer style={{ position: 'relative' }}>
         <TopoBand variant="dark" position="band" />
         <div className="logo">MAPE LEGAL</div>
-        <div className="copy">© 2026 CHT. {t('Todos los derechos reservados.', 'All rights reserved.')}</div>
+        <div className="copy">
+          © 2026 Corporación Hondureña Tenka, S.A. — {t('Todos los derechos reservados.', 'All rights reserved.')} {t('Tegucigalpa, Honduras.', 'Tegucigalpa, Honduras.')}
+          <span style={{ display: 'block', marginTop: 4, color: 'rgba(255,255,255,0.45)', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
+            {t('Última actualización del sitio:', 'Site last updated:')} {SITE_LAST_UPDATED_ISO}
+          </span>
+        </div>
         <div className="links">
-          <a href="#como-funciona">{t('Cómo funciona', 'How it works')}</a>
-          <a href="#fases">{t('Fases', 'Phases')}</a>
+          <Link href="/verificar">{t('Verificar certificado', 'Verify certificate')}</Link>
+          <a href="#cumplimiento">{t('Cumplimiento', 'Compliance')}</a>
           <a href="#contacto">{t('Contacto', 'Contact')}</a>
         </div>
       </footer>
