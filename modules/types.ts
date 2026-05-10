@@ -256,7 +256,10 @@ export interface Pago {
 export type AccionAuditoria =
   | 'TRANSICION_FASE'
   | 'PAGO_REGISTRADO'
-  | 'EXPEDIENTE_CREADO';
+  | 'EXPEDIENTE_CREADO'
+  | 'DOCUMENTO_VERIFICADO'
+  | 'DOCUMENTO_RECHAZADO'
+  | 'NOTIFICACION_ENVIADA';
 
 export interface RegistroAuditoria {
   id: string;
@@ -276,6 +279,7 @@ export interface BlockingReason {
 
 export interface NextActionsResult {
   can_advance: boolean;
+  is_final: boolean;
   blocking: BlockingReason[];
   available_transitions: Array<{
     transition_id: string;

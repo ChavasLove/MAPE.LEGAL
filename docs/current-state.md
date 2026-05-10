@@ -1,10 +1,10 @@
 # Current State
 
 ## Last Updated
-2026-04-26
+2026-05-03
 
 ## Current Module
-Design system — CHT brand enforcement complete across all UI
+Deployment fix — build passes cleanly on 41 routes; all ESLint errors resolved
 
 ---
 
@@ -18,75 +18,160 @@ Design system — CHT brand enforcement complete across all UI
 ### Database schema (migrations 001–003)
 - `fases` table with `nombre` and `orden`
 - `transiciones_fase` table — explicit transition graph with `condicion` (JSONB)
-- `expedientes` table with `fase_actual_id` FK (replaces generic `status` column)
-- `pagos` table scoped per fase (`fase_id`, `monto`, `estado`)
-- `expediente_fases` table — full phase history per expediente (`entrada_en`, `salida_en`, `ingresado_por`)
+- `expedientes` table with `fase_actual_id` FK
+- `pagos` table scoped per fase
+- `expediente_fases` table — full phase history
 - `registro_auditoria` table with `user_id` and `accion`
-- Seeded MAPE/CHT fases: INHGEOMIN → Publicación → Oposición → SERNA
-- Seeded transition graph: each edge carries `{"requiere_pago": true}`
+- Seeded fases and transition graph
 
 ### Business logic
-- `validatePaymentForPhase(expedienteId, faseId)` — payment check scoped per fase
-- `logAction(expedienteId, accion, metadata, userId)` — audit trail with actor
-- `advancePhase(expedienteId, userId?, transitionId?)` — executes a transition:
-  reads workflow graph → validates conditions → closes/opens `expediente_fases` rows → logs audit
+- `validatePaymentForPhase`, `logAction`, `advancePhase`
+- Workflow engine: `getAvailableTransitions`, `getBlockingReasons`, `getNextActions`
 
-### Workflow engine (`modules/workflow.ts`)
-- `getAvailableTransitions(faseOrigenId)` — reads `transiciones_fase` graph
-- `getBlockingReasons(expedienteId, faseId, condicion)` — evaluates each condition key; document check stubbed
-- `getNextActions(expedienteId)` — decision engine: returns `{ can_advance, blocking[], available_transitions[] }`
+### Services & API
+- `expedientesService.ts`, `fasesService.ts`
+- `GET/POST /api/expedientes`, `GET /api/expedientes/:id/next-actions`, `POST /api/expedientes/:id/transition`
 
-### Services
-- `expedientesService.ts` — `createExpediente`, `getExpedientes`, `getExpedienteById` (with fase join)
-- `fasesService.ts` — `getFases`, `getFaseById`
+### Design system (2026-04-26)
+- `app/globals.css` — token set definido (algunos tokens `--green`, `--amber` violan DESIGN.md, ver auditoría)
+- `app/layout.tsx` — solo Inter cargada. Playfair Display planificada pero **no** integrada (auditoría 2026-05-03)
+- 15 componentes en `components/landing/` creados pero huérfanos — la landing activa es `app/page.tsx`
+- `DESIGN.md` consolidated as single source of truth
+- `scripts/visual-guide.ts` placeholder created
 
-### API
-- `GET  /api/expedientes` — list all expedientes with joined fase
-- `POST /api/expedientes` — create expediente (body: `{ nombre }`)
-- `GET  /api/expedientes/:id/next-actions` — returns decision result
-- `POST /api/expedientes/:id/transition` — executes advance (body: `{ user_id?, transition_id? }`)
+### Landing page — imagery (2026-04-26)
+- `public/images/` folder created in repository
+- 8 brand images uploaded:
+  `RIVER AND MOUNTAINS.png`, `MAPE LEGAL LOGO 1.JPG`, `Servicios Legales.png`,
+  `Tophographic map.png`, `Services Tophography .png`, `Technitians Field Work.png`,
+  `Artisanal Miner Image 01 .JPG`, `Estudio de Impacto Ambiental.png`
+- **Imágenes referenciadas pero inexistentes (en componentes huérfanos):**
+  - `LOGO CHT.png` (`Hero.tsx:34`) — usar `MAPE LEGAL LOGO 1.JPG`
+  - `Map.png` (`Problem.tsx:83`) — usar `Tophographic map.png`
 
-### Architecture
-- Bilingual naming convention enforced: Spanish for DB + domain, English for code logic
-- Documented in `/docs/architecture.md`
-
-### Design system (CHT brand enforcement — 2026-04-26)
-- `app/globals.css` — Complete overhaul: `--cht-*` CSS variables + Tailwind v4 `@theme` token set
-  - Primary palette: `primary-950` (#1F2A44) through `primary-50` (#F5F6F7)
-  - Natural palette: `forest-800` (#2F5D50), `earth-50` (#F0EDE8), `earth-200` (#D8C3A5), etc.
-  - Functional palette: `action-green`, `action-gold`, `action-red`, `action-blue`
-  - Badge surface tokens: `badge-success-bg`, `badge-warning-bg`, `badge-danger-bg`, `badge-info-bg`
-- `app/layout.tsx` — Fonts replaced: Geist → **Playfair Display** (headings) + **Inter** (UI/body)
-- `app/page.tsx` — Background fixed: `bg-white` → `bg-primary-50`
-- `components/ui/button.tsx` — Primary: `bg-primary-950`, `rounded-lg`, `shadow-sm` max
-- `components/ui/card.tsx` — `bg-white border-[#E5E7EB] rounded-xl shadow-sm`
-- All 11 landing components — purged every generic Tailwind color (`green-*`, `slate-*`, `amber-*`, `emerald-*`)
-  - Alternating section backgrounds: `bg-primary-50` ↔ `bg-earth-50`
-  - `font-black` → `font-bold` everywhere
-  - `rounded-2xl`/`rounded-3xl` → `rounded-xl`/`rounded-lg`
-  - Hero image: `/images/hero-rio-honduras.jpg` with correct filter treatment
-- `DESIGN.md` — Consolidated with new brand DNA, updated all token values, added spacing + shadow rules
-- `scripts/visual-guide.ts` — Empty placeholder for designer visual reference script
+### Landing page — commercial messaging (2026-04-26)
+- All service prices removed from public landing page
+- Programs.tsx: price fields replaced with timeframe estimates (4–6 sem / 8–12 sem)
+- Programs: time guarantee strip added — "Garantizamos el menor tiempo posible"
+- Services.tsx: all L amounts removed, hitos kept as process milestones (no amounts)
+- Footer.tsx: L 320,000 reference replaced with time-commitment language
+- Hero h1 accent updated: "el menor tiempo posible"
+- All primary CTAs changed to "Solicitar cotización privada" (contact by email)
+- Quotation flow: private email request only — `contacto@mape.legal`
 
 ---
 
-## In Progress
-- Nothing active
+### Bug fixes — session 1 (2026-05-02)
+- `services/supabase.ts` — `@typescript-eslint/no-unsafe-function-type` fixed
+- `components/landing/Impact.tsx` — unescaped HTML entities fixed
+- `components/landing/PriceWidgets.tsx` — `react-hooks/set-state-in-effect` resolved; fetchPrices restructured
+- `Hero.tsx`, `Problem.tsx`, `Impact.tsx`, `About.tsx` — `<img>` → `<Image>` from next/image
+
+### Deployment fix — session 2 (2026-05-02)
+Root causes of 3 failed Vercel deployments (PR #36 merge + follow-up commits):
+
+**TypeScript error — `PriceWidgets.tsx`:** merged code introduced `MetalData`
+interface `{price, change, changePercent}` but `fetchPrices` was setting
+`gold`/`silver` as bare numbers. Fixed type cast and `setPrices` to use
+`EMPTY_METAL` fallback.
+
+**Runtime crash — `app/api/whatsapp/route.js`:** `createClient()` called at
+module evaluation time ("supabaseUrl is required" during static page collection).
+Replaced with lazy getter pattern matching `services/adminSupabase.ts`.
+
+**ESLint cleanup (0 errors):**
+- `Hero.tsx`: removed stale `PriceWidgets` import (component rebuilt without it)
+- `app/api/admin/clientes/route.ts`: `let` → `const`
+- `app/page.tsx` + 9 admin/dashboard pages: `eslint-disable-next-line` for
+  `react-hooks/set-state-in-effect` (async fetch pattern; setState only after awaits)
+- `package-lock.json`: package name updated temp-app → mape-legal
+
+**Build result:** ✓ Compiled, TypeScript clean, 41 routes, 0 ESLint errors.
 
 ---
 
 ## Known Issues
-- Document check in `getBlockingReasons` is a stub — always returns `pending` for any `requiere_documentos` condition until the `documentos` table is built
-- No Row Level Security (RLS) policies defined yet
+- `getBlockingReasons` document check is a stub (always returns `pending`)
+- No Row Level Security (RLS) policies defined
 - No user authentication implemented
-- Hero image `/public/images/hero-rio-honduras.jpg` must be placed manually in repo
 
 ---
 
-## Next Step
-- Drop hero image into `public/images/hero-rio-honduras.jpg`
-- Implement `documentos` table and real document check in `getBlockingReasons`
+## Auditoría 2026-05-03 — deuda técnica de la landing
+
+Resumen ejecutivo (detalle completo en CLAUDE.md → "Auditoría — deuda técnica conocida"):
+
+### Crítico
+- `components/landing/*` (15 archivos) — código huérfano, cero imports. Decidir: revivir o eliminar.
+- Imágenes inexistentes referenciadas: `LOGO CHT.png`, `Map.png` (solo en componentes huérfanos).
+- `app/layout.tsx` — sin Playfair Display, sin metadata SEO (`metadataBase`, `openGraph`, `twitter`).
+
+### Violaciones de DESIGN.md
+Resueltas en `claude/update-ui-colors-wGO7B` (2026-05-09) al adoptar el MAPE LEGAL Color Manual v1.0:
+- ✅ `app/globals.css` — tokens migrados al sistema canónico (`--ink`, `--moss`, `--green: #2A8E50`, `--amber: #C58B2C`).
+- ✅ `font-weight` capado a 700 en `globals.css` y `app/page.tsx`.
+- ✅ `box-shadow` reducido a `0 2px 6px rgba(31,42,56,0.05)` (shadow-sm) en mockup, float-notif, progress-card.
+- ✅ `animation: blink` removida.
+- ⚠ `components/landing/Footer.tsx` sigue huérfano — el borde invisible no afecta producción.
+
+### Nits
+- `app/page.tsx` — placeholder `+504 9XXX-XXXX`, `href="#"` en logo, mezcla de comillas.
+- `Roadmap.tsx`/`Problem.tsx` linkean a `/dashboard.html` (DESIGN.md §13 prohíbe cross-link).
+- `WhyNow.tsx` usa emojis (viola tono de marca).
+
+---
+
+## Next Steps
+- Populate `scripts/visual-guide.ts` with interactive token reference
+- Implement `documentos` table and real document check
 - Add RLS policies to all Supabase tables
-- Implement Supabase Auth integration
+- Implement Supabase Auth
 - Add UI for advancing fases and managing pagos
-- Populate `scripts/visual-guide.ts` with interactive token reference for designers
+
+---
+
+## 2026-05-10 — Phase 1 public-surface realignment
+
+### Completed
+- Removed orphan `components/landing/*` (15 files, ~1,668 LOC).
+- Replaced `app/page.tsx` (sales landing) with institutional homepage:
+  Identidad · Cumplimiento · Verificación · Contacto. No client CTAs,
+  no contact form. Spanish default, English mirror via existing `t()`
+  helper.
+- Added Certificate of Origin public verification surface:
+  `/verificar`, `/verificar/[numero]`, `/api/verificar/[numero]`.
+- Migration `020_certificados_origen.sql` (numbered 020 because 010
+  was already taken by `010_admin_commands_onboarding.sql`):
+  `certificados_origen` table, `certificados_origen_publicos` view,
+  RLS policies (admin/abogado write, admin/abogado/tecnico_ambiental
+  read on base table; public reads via view only), demo certificate
+  `CO-2026-0001-DEMO` guarded by a DO block that skips quietly when
+  `minas`/`expedientes` are empty.
+- Enriched canonical SEO metadata in `app/layout.tsx`
+  (title.template, applicationName, authors, keywords, alternates,
+  alternateLocale `en_US`, robots).
+- Replaced placeholder contact data with real institutional channels
+  (WhatsApp +504 9737 3139, gerencia@mape.legal, oficina Nexcrea).
+
+### Schema discrepancy resolved in-flight
+- `public.minas` does **not** have a `permiso_inhgeomin` column; the
+  view exposes `m.codigo` as `mina_codigo` (closest equivalent —
+  e.g. `MINA-2026-001`).
+
+### Carryover from Phase 0 (do-not-touch in Phase 1)
+- `app/dashboard/minas/page.tsx:72` — pre-existing lint error
+  (`react-hooks/set-state-in-effect`); persists.
+- `app/api/admin/clientes/route.ts:61` — pre-existing TypeScript error
+  (`Cannot find name 'clientes'`); blocks `npm run build` type-check.
+  Compile step (`Compiled successfully`) passes; only the type-check
+  step fails. The Phase 1 changes themselves compile and type-check
+  cleanly.
+
+### Still pending (not in scope for Phase 1)
+- Phase 0 stabilization: middleware, cookie-name mismatch, API auth,
+  María webhook bugs, workflow race conditions.
+- Phase 2 pilot core: `minas` UI, transacciones_oro UI, certificate
+  issuance flow that actually populates `certificados_origen` from
+  real transactions.
+- Phases 3 and 4 (national MAPE dashboard, geological map, blog,
+  videos) explicitly deferred until pilot core ships.

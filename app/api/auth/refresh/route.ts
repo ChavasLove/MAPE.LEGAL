@@ -1,0 +1,83 @@
+import { NextResponse, type NextRequest } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { lookupUserRole } from '@/lib/userRoleLookup';
+
+// POST /api/auth/refresh — exchanges the auth-refresh cookie for a new access
+// token and rotates both cookies. Called by client-side hooks ahead of
+// expiry to keep dashboard sessions alive past the 1-hour Supabase JWT TTL.
+export async function POST(req: NextRequest) {
+  const refreshToken = req.cookies.get('auth-refresh')?.value;
+  if (!refreshToken) {
+    return NextResponse.json({ error: 'No hay sesión activa' }, { status: 401 });
+  }
+
+  const url        = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const anonKey    = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!url || !anonKey) {
+    return NextResponse.json({ error: 'Configuración incompleta' }, { status: 500 });
+  }
+  // Fail loud (not silent cookie-wipe) when the service role is absent: the
+  // role lookup MUST be available, otherwise the legacy fallback wiped all
+  // auth cookies on a server config error — indistinguishable from a real
+  // session expiry.
+  if (!serviceKey) {
+    console.error('[refresh] SUPABASE_SERVICE_ROLE_KEY missing — refusing to wipe cookies on config error');
+    return NextResponse.json(
+      { error: 'Configuración de servidor incompleta', code: 'SERVER_CONFIG' },
+      { status: 500 }
+    );
+  }
+
+  const supabase = createClient(url, anonKey, { auth: { persistSession: false } });
+  const { data, error } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
+
+  if (error || !data.session) {
+    // Refresh token expired or revoked — force re-login by clearing cookies
+    const res = NextResponse.json({ error: 'Sesión expirada' }, { status: 401 });
+    for (const name of ['auth-token', 'auth-role', 'auth-refresh', 'user-email']) {
+      res.cookies.set(name, '', { maxAge: 0, path: '/' });
+    }
+    return res;
+  }
+
+  // Re-derive role via the SECURITY DEFINER RPC instead of trusting the
+  // (likely-expired) auth-role cookie. The cookie was set with the same
+  // maxAge as the access token, so by the time refresh is called it's
+  // usually gone — defaulting to 'cliente' would silently demote admins.
+  const roleClient = createClient(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const lookup = await lookupUserRole(roleClient, data.session.user.id, 'refresh');
+
+  if (!lookup.ok) {
+    // Inactive / db_error / fallback_failed all mean "we don't know the
+    // role". Wipe the session and force re-login — safer than guessing.
+    const res = NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
+    for (const name of ['auth-token', 'auth-role', 'auth-refresh', 'user-email']) {
+      res.cookies.set(name, '', { maxAge: 0, path: '/' });
+    }
+    return res;
+  }
+
+  const role    = lookup.role;
+  const maxAge  = data.session.expires_in ?? 3600;
+  const cookieOpts = {
+    httpOnly: true,
+    secure:   process.env.NODE_ENV === 'production',
+    sameSite: 'lax' as const,
+    maxAge,
+    path: '/',
+  };
+
+  const res = NextResponse.json({ ok: true, role, expires_in: maxAge });
+  res.cookies.set('auth-token', data.session.access_token, cookieOpts);
+  // auth-role outlives the access token so the proxy guard still has a role
+  // to read between expiry and the next refresh call.
+  res.cookies.set('auth-role', role, { ...cookieOpts, maxAge: 60 * 60 * 24 * 30 });
+  res.cookies.set('auth-refresh', data.session.refresh_token, {
+    ...cookieOpts,
+    maxAge: 60 * 60 * 24 * 30,
+  });
+  return res;
+}

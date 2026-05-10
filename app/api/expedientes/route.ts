@@ -5,6 +5,8 @@ import {
   type CreateExpedienteInput,
 } from '@/services/dashboardService';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const expedientes = await getDashExpedientes();

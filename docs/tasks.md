@@ -1,7 +1,14 @@
 # Tasks
 
 ## Pending
-- [ ] Drop hero image into `public/images/hero-rio-honduras.jpg`
+- [ ] **Phase 0 — Stabilization (next priority).** Source: `docs/code-analysis-review.md`.
+  Fix `middleware.ts` / `proxy.ts`, cookie-name mismatch in `/api/auth/login`,
+  API route auth, María webhook import errors, workflow race conditions,
+  and the pre-existing build/lint failures in `app/dashboard/minas/page.tsx:72`
+  and `app/api/admin/clientes/route.ts:61` (carryover from Phase 1).
+- [ ] **Phase 2 — Pilot core.** `minas` UI (currently 0/10 score),
+  `transacciones_oro` UI, `contratos` UI, certificate issuance flow that
+  populates `certificados_origen` from real transactions.
 - [ ] Populate `scripts/visual-guide.ts` — interactive token reference for designers
 - [ ] Implement `documentos` table and fill real document check in `getBlockingReasons`
 - [ ] Add Row Level Security (RLS) policies to all Supabase tables
@@ -11,11 +18,39 @@
 - [ ] Add `GET /api/fases` endpoint for frontend fase listing
 - [ ] Add `GET /api/expedientes/:id/fases` to retrieve fase history
 - [ ] Define roles and permissions per fase (e.g. who can advance SERNA)
+- [ ] Place remaining images in appropriate sections:
+  - `Services Tophography .png`
+  - `Tophographic map.png`
+  - `Estudio de Impacto Ambiental.png`
 
 ## In Progress
 - (none)
 
+---
+
 ## Completed
+- [x] Phase 1 — Realineación de superficie pública (2026-05-10)
+  - Landing institucional reemplaza la página de ventas (`app/page.tsx`)
+  - Portal público de Verificación de Certificado de Origen
+    (`/verificar`, `/verificar/[numero]`, `/api/verificar/[numero]`)
+  - Migración `020_certificados_origen.sql` + vista pública
+    `certificados_origen_publicos`
+  - Metadata SEO canónica enriquecida en `app/layout.tsx`
+  - Eliminación de `components/landing/*` (15 archivos huérfanos)
+  - Datos institucionales reales (WhatsApp +504 9737 3139,
+    gerencia@mape.legal, oficina Nexcrea)
+- [x] Vercel deployment fix (2026-05-02)
+  - `PriceWidgets.tsx`: TypeScript error — `MetalData` type mismatch in `fetchPrices` fixed
+  - `app/api/whatsapp/route.js`: runtime crash — lazy Supabase getter replaces module-level `createClient()`
+  - 9 admin/dashboard pages + `app/page.tsx`: `eslint-disable-next-line set-state-in-effect` for async data-fetch pattern
+  - `app/api/admin/clientes/route.ts`: `let` → `const`
+  - `Hero.tsx`: removed stale `PriceWidgets` import
+  - Build: 41 routes, TypeScript clean, 0 ESLint errors
+- [x] ESLint / TypeScript bug fixes (2026-05-02)
+  - `supabase.ts`: `Function` type → explicit `(...args: unknown[]) => unknown`
+  - `Impact.tsx`: unescaped `"` entities → `&ldquo;` / `&rdquo;`
+  - `PriceWidgets.tsx`: setState calls restructured to follow awaits; `set-state-in-effect` disabled with async-safe comment
+  - `Hero.tsx`, `Problem.tsx`, `Impact.tsx`, `About.tsx`: `<img>` → `<Image>` (next/image)
 - [x] Project initial setup
 - [x] Supabase integration
 - [x] Create fases table in database
@@ -30,6 +65,17 @@
   - Fonts: Playfair Display + Inter (replaces Geist)
   - Color tokens: complete `--cht-*` + Tailwind `@theme` system in `globals.css`
   - All generic Tailwind colors purged from 11 landing components + 2 UI primitives
-  - Button, Card, Hero, Problem, Programs, Impact, About, News, Footer, Solution, Services, Roadmap, WhyNow, PriceWidgets — all compliant
   - `DESIGN.md` consolidated as single source of truth
   - `scripts/visual-guide.ts` placeholder created
+- [x] Landing page — imagery applied (2026-04-26)
+  - `public/images/` folder created; 8 client images committed to repo
+  - RIVER AND MOUNTAINS → Hero background
+  - LOGO CHT → Hero nav logo
+  - Map → Problem section callout
+  - Technitians Field Work → Impact callout
+  - Servicios Legales → About left column
+- [x] Landing page — all service prices removed (2026-04-26)
+  - Programs: timeframes replace prices; time guarantee strip added
+  - Services: all L amounts removed
+  - Footer + Hero: price references replaced with time-commitment language
+  - Quotation flow: private request only via contacto@mape.legal

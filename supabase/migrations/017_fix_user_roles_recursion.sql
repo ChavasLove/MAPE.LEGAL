@@ -1,0 +1,22 @@
+-- 017: Drop recursive admin policy on user_roles
+--
+-- Migration 005 created "Admins manage user_roles" as FOR ALL with a USING
+-- clause that queries user_roles itself. Any operation on the table evaluates
+-- the USING, which queries the table, which evaluates the USING again →
+-- Postgres aborts with 42P17 "infinite recursion detected in policy for
+-- relation user_roles".
+--
+-- Symptom in production:
+--   [oauth-session] user_roles miss { code: '42P17',
+--     message: 'infinite recursion detected in policy for relation
+--     "user_roles"' }
+--
+-- The policy was unnecessary: server-side admin writes use the service-role
+-- client (BYPASSRLS), trigger 015's handle_new_auth_user is SECURITY DEFINER
+-- (BYPASSRLS), and end-user reads of their own row are covered by the
+-- separate "Users can read own role" policy. Cross-table EXISTS checks in
+-- migrations 006/008/012 keep working because the user can still see their
+-- own user_roles row through the read-own-role policy, so the EXISTS
+-- resolves to true when their row has rol = 'admin'.
+
+drop policy if exists "Admins manage user_roles" on public.user_roles;
