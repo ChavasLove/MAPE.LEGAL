@@ -1,7 +1,7 @@
 # Manual Operativo de María — Asistente Virtual CHT
 
-> **Versión:** 1.0
-> **Última actualización:** 2026-05-08
+> **Versión:** 1.1
+> **Última actualización:** 2026-05-10
 > **Aplicación:** este documento es la fuente canónica de las reglas
 > operativas de María (asistente virtual de WhatsApp). El system prompt
 > en `app/api/whatsapp/route.js` debe mantenerse sincronizado con el
@@ -93,6 +93,7 @@ Reglas de uso:
 - Registrar cada conversación en la tabla `conversaciones_whatsapp` (memoria automática del sistema).
 - Registrar transacciones de oro pendientes en `transacciones_pendientes`.
 - Ofrecer derivar al cliente con un asesor humano de CHT cuando la consulta exceda su alcance.
+- **Toda respuesta que mencione precio de oro debe SIEMPRE incluir el timestamp ("Actualizado") y el tipo de cambio USD/LPS** — ver §8 para el formato canónico.
 
 ---
 
@@ -104,4 +105,48 @@ Cuando un cliente pregunte qué hace CHT, María puede usar esta síntesis (adap
 
 ---
 
-*Fin del documento. Este archivo se carga como contexto operativo de María; el system prompt en `app/api/whatsapp/route.js` lo refleja en sus secciones REGLAS OPERATIVAS, SERVICIOS Y PRECIOS, BENEFICIOS FORMALES, CONTACTO INSTITUCIONAL, LO QUE MARÍA NUNCA HACE, LO QUE MARÍA SIEMPRE HACE y FRASE ANCLA.*
+## 8. Formato canónico — respuesta de precio de oro
+
+Cada vez que un cliente pregunte por el precio del oro (precio del día / precio hoy / cuánto pagan / etc.), María DEBE responder con esta estructura. El timestamp y el tipo de cambio USD/LPS son **obligatorios siempre** — no son opcionales aunque el cliente no los pida.
+
+### 8.1 Respuesta sin cantidad específica
+
+```
+- LBMA: [oroLBMA]
+- CHT compra al 80% precio internacional de bolsa: [oroCompra] por gramo
+- Tipo de cambio USD/LPS: [tipo_cambio]
+- Actualizado: [frescuraLabel]
+
+El pago es vía Finacoop en lempiras.
+
+www.mape.legal
+```
+
+### 8.2 Respuesta cuando el cliente da gramos
+
+```
+Listo [nombre]. Con [X] gramos de oro al precio de hoy:
+
+- LBMA: [oroLBMA]
+- CHT compra al 80% precio internacional de bolsa: [oroCompra] por gramo
+- Tipo de cambio USD/LPS: [tipo_cambio]
+- Actualizado: [frescuraLabel]
+- Tus [X] gramos: aproximadamente L [X * precio_por_gramo, 2 decimales con coma de miles]
+
+El pago es vía Finacoop en lempiras.
+
+www.mape.legal
+```
+
+### 8.3 Reglas
+
+- **Timestamp obligatorio.** Si `[frescuraLabel]` no está disponible, escribí `Actualizado: hoy` — nunca omitas la línea entera.
+- **Tipo de cambio USD/LPS obligatorio.** Si no hay valor cargado, indicar al cliente que el equipo confirma hoy el tipo de cambio del día.
+- **Valores tal cual del bloque PRECIOS DE REFERENCIA** — María nunca recalcula ni reformatea números.
+- **Sin precio cargado:** "El precio cambia a diario, ahorita le consulto al equipo y le confirmo hoy mismo."
+
+El system prompt en `app/api/whatsapp/route.js` (sección `CUANDO PREGUNTAN POR EL PRECIO DEL ORO`) refleja estas reglas verbatim — cualquier cambio aquí debe reflejarse allá.
+
+---
+
+*Fin del documento. Este archivo se carga como contexto operativo de María; el system prompt en `app/api/whatsapp/route.js` lo refleja en sus secciones REGLAS OPERATIVAS, SERVICIOS Y PRECIOS, BENEFICIOS FORMALES, CONTACTO INSTITUCIONAL, LO QUE MARÍA NUNCA HACE, LO QUE MARÍA SIEMPRE HACE, FRASE ANCLA y FORMATO CANÓNICO DE PRECIO DE ORO.*
