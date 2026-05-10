@@ -1,14 +1,21 @@
 # Tasks
 
 ## Pending
-- [ ] **Phase 0 — Stabilization (next priority).** Source: `docs/code-analysis-review.md`.
+- [ ] **Phase 0 — Stabilization.** Source: `docs/code-analysis-review.md`.
   Fix `middleware.ts` / `proxy.ts`, cookie-name mismatch in `/api/auth/login`,
   API route auth, María webhook import errors, workflow race conditions,
-  and the pre-existing build/lint failures in `app/dashboard/minas/page.tsx:72`
-  and `app/api/admin/clientes/route.ts:61` (carryover from Phase 1).
-- [ ] **Phase 2 — Pilot core.** `minas` UI (currently 0/10 score),
-  `transacciones_oro` UI, `contratos` UI, certificate issuance flow that
-  populates `certificados_origen` from real transactions.
+  and the pre-existing lint warning in `app/dashboard/minas/page.tsx`
+  (`react-hooks/set-state-in-effect`).
+- [ ] **Phase 2B — Transactions + Certificate issuance.** `transacciones_oro`
+  CRUD, certificate issuance flow that creates rows in `certificados_origen`
+  from a transaction, computes `hash_verificacion` (SHA-256 over canonical
+  body), and generates a printable PDF. After 2B merges, real certificates
+  flow into `/verificar/[numero]`.
+- [ ] **Phase 2C — Expediente full tracking.** Phase tracking UI for the
+  four INHGEOMIN phases, `hitos`, `tareas`, document upload tied to phases.
+  Closes the contratos UI gap as well.
+- [ ] **Phase 2D — Visual style refactor.** Migrate dashboard inline styles
+  to Color Manual v1.0 tokens (`--ink`, `--moss`, `--sand`, etc.).
 - [ ] Populate `scripts/visual-guide.ts` — interactive token reference for designers
 - [ ] Implement `documentos` table and fill real document check in `getBlockingReasons`
 - [ ] Add Row Level Security (RLS) policies to all Supabase tables
@@ -29,6 +36,14 @@
 ---
 
 ## Completed
+- [x] Phase 2A — Mine Registry CRUD + Índice de Legalidad UI (2026-05-10)
+  - POST /api/admin/minas (server-side validation)
+  - GET, PATCH /api/admin/minas/[id] (no DELETE — mining records indelible)
+  - GET, PATCH /api/admin/indice-legalidad/[mina_id] (5-component upsert)
+  - /dashboard/minas: + Nueva mina modal, row → detail link
+  - /dashboard/minas/[id]: tabbed detail (General · Legalidad · Contratos · Transacciones)
+  - Edit modal for mine fields, retirement via estado='clausurada'
+  - Closes audit gap: minas UI 0/10 → ~7/10
 - [x] Phase 1 — Realineación de superficie pública (2026-05-10)
   - Landing institucional reemplaza la página de ventas (`app/page.tsx`)
   - Portal público de Verificación de Certificado de Origen
