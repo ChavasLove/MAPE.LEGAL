@@ -210,6 +210,8 @@ Requiere env vars. Es idempotente — re-ejecutable sin efectos secundarios.
 - Colores siempre con `style={{ color: 'var(--ink)' }}` inline o vía clases definidas en `globals.css` que ya consumen los tokens.
 - No usar clases genéricas de Tailwind (`green-*`, `gray-*`, `slate-*`, `primary-950`, `forest-800`, etc.) — solo `var(--ink)` / `var(--moss)` / `var(--sand)` / etc.
 - Fuentes cargadas en `app/layout.tsx` vía `next/font/google`: **Inter** (`--font-inter`), **Playfair Display** (`--font-playfair`), **JetBrains Mono** (`--font-jetbrains`). `<h1>`–`<h6>` heredan Playfair desde `globals.css`. Peso máximo: 700.
+- **Sidebar compartido**: `components/dashboard/SidebarNav.tsx` (client island con `usePathname`) lo usan tanto `app/admin/layout.tsx` como `app/dashboard/layout.tsx`. Recibe `items: { href, label, Icon, exact? }[]`; el flag `exact` se aplica a las rutas raíz (`/admin`, `/dashboard`) para que no queden activas en cada subruta. Estado activo per DESIGN.md §6: fondo `color-mix(in oklch, var(--moss) 14%, var(--ink))` + `boxShadow: 'inset 2px 0 0 var(--moss)'` (no genera layout shift) + `aria-current="page"`. Hover: `color-mix(in oklch, var(--slate) 18%, var(--ink))` con texto blanco.
+- **Admin + dashboard tokenizados (2026-05-10)**: ambas superficies migradas al Color Manual v1.0 — fondo de página `var(--bg-soft)`, sidebar `var(--ink)`, cards `var(--bg)` con `var(--border)` 1px, tablas siguen DESIGN.md §3 (header `var(--ink)` blanco, body claro), pills de rol vía `color-mix(... var(--token) 14%, white)`. Cero hex literales en `app/admin/**` ni en `app/dashboard/layout.tsx` — cualquier regression debe fallar el grep `#1F2A38\|#A3A8AB\|rgba(94,107,123` sobre esos paths.
 
 ## Landing page — responsividad móvil
 Convenciones aplicables a `app/page.tsx` (los componentes en `components/landing/` están huérfanos — ver sección "Landing page" arriba):
@@ -373,6 +375,13 @@ Follow-up diferido: auto-promover `@cht.hn` / `@mape.legal` a `abogado` en el ca
 - ✅ Nav-logo ahora apunta a `/` (Next `Link`).
 - ✅ Quote section eliminada (era marketing); el hero institucional usa solo comillas curvas en hero/identidad/cumplimiento.
 - ✅ Refs a `/dashboard.html` desaparecen al borrar `Roadmap.tsx` / `Problem.tsx`.
+
+### Admin + dashboard sidebar — resuelto 2026-05-10 (commit `94b775a`)
+- ✅ `app/admin/layout.tsx` y `app/dashboard/layout.tsx` migradas al Color Manual v1.0: fondo `var(--bg-soft)`, sidebar `var(--ink)` con texto `var(--slate-lt)`.
+- ✅ Sidebar compartido extraído a `components/dashboard/SidebarNav.tsx` (client island con `usePathname`) — antes ambos layouts duplicaban el mismo bloque de `<Link>`s sin estado activo.
+- ✅ Estado activo per DESIGN.md §6: `color-mix(... var(--moss) 14%, var(--ink))` + `inset 2px 0 0 var(--moss)` + `aria-current="page"`. El flag `exact: true` en items de las rutas raíz (`/admin`, `/dashboard`) evita que queden activas en cada subruta.
+- ✅ 6 páginas admin tokenizadas (`(protected)/page.tsx`, `(protected)/usuarios`, `(protected)/profesionales`, `config`, `contenido`, `roles`): cards blancas `var(--bg)` sobre página `var(--bg-soft)`, tablas con header `var(--ink)` + body claro per §3, pills de rol vía `color-mix(... var(--token) 14%, white)` (red=admin, blue=abogado, green=tecnico, earth=cliente, slate=sin_rol).
+- ✅ Quality gates verificados antes del commit: cero hex literales en `app/admin/**` y `app/dashboard/layout.tsx`; cero `rounded-2xl`, `font-extrabold`/`font-black`, `shadow-xl`/`shadow-2xl`; `next build` compila en 5.4s sin errores nuevos.
 
 ### Carryover Phase 0 (no en scope de Phase 1)
 - ⚠ `app/dashboard/minas/page.tsx:72` — lint error `react-hooks/set-state-in-effect` (pre-existente).
