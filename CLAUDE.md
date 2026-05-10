@@ -111,7 +111,12 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 - `GET+POST /api/admin/usuarios` — lista y creación de usuarios. POST recibe `{ email, rol, perfil_id? }` (sin password); usa `auth.admin.generateLink('invite')` y envía la invitación vía SendGrid con `emailInvitacionUsuario`. El invitado configura contraseña en `/auth/establecer-password`.
 - `POST /api/auth/resend-confirmation` — genera un link de confirmación con `auth.admin.generateLink('signup')` y lo envía vía SendGrid. Rate-limited a 3 por (IP + email) cada 15 min. Responde `{ ok: true }` aunque el email no exista (anti-enumeración).
 - `GET /api/admin/clientes` — lista todos los clientes registrados por WhatsApp con sus expedientes vinculados vía `cliente_id` FK (admin client, protegido por proxy)
-- `GET /api/admin/minas` — lista todas las minas con cliente asociado (admin client, protegido por proxy)
+- `GET /api/admin/minas` — lista todas las minas con cliente asociado. Read: admin/abogado/tecnico_ambiental.
+- `POST /api/admin/minas` — crea mina. Body: `{ nombre*, cliente_id?, codigo?, latitud?, longitud?, municipio?, departamento?, area_hectareas?, tipo_mineral?, tipo_concesion?, estado? }`. Validación server-side de enums + rangos (lat ±90, long ±180, area ≥0). Pre-check de `codigo` único y `cliente_id` existente. 201/400/409. Write: admin/abogado.
+- `GET /api/admin/minas/[id]` — detalle de mina + cliente slim + 5 componentes del Índice de Legalidad + últimos 20 contratos + últimas 20 transacciones + count de certificados. 404 si no existe. Read: admin/abogado/tecnico_ambiental.
+- `PATCH /api/admin/minas/[id]` — actualiza mina con whitelist de campos (`cliente_id, nombre, codigo, latitud, longitud, municipio, departamento, area_hectareas, tipo_mineral, tipo_concesion, estado`). Mapea PG 23505 → 409. **No existe DELETE — los registros mineros son legalmente indelebles; el retiro es `PATCH { estado: 'clausurada' }`**. Write: admin/abogado.
+- `GET /api/admin/indice-legalidad/[mina_id]` — devuelve los 5 componentes del Índice (`tierra, inhgeomin, ambiental, municipal, registro`) con filas sintéticas `pendiente, 0` (`_persisted: false`) para componentes no persistidos + `total` 0–100. Read: admin/abogado/tecnico_ambiental.
+- `PATCH /api/admin/indice-legalidad/[mina_id]` — upsert de un componente vía unique `(mina_id, componente)`. Body: `{ componente, estado?, puntaje? (0–20), notas? }`. Estampa `verificado_por` (auth.user.id) y `verificado_en` (server timestamp). Write: admin/abogado/tecnico_ambiental.
 - `GET /api/admin/whatsapp/health` — verifica el `WHATSAPP_TOKEN` contra Meta Cloud API sin enviar mensaje. Devuelve `{ ok, phoneId, displayPhoneNumber, verifiedName, isAuthError, error?, errorCode? }`. Status 200 si el token es válido, 401 si está expirado, 500 si la config falta. **Usar como primer diagnóstico cuando el broadcast de las 8 AM no llegue.**
 - `GET /api/debug/auth-config` — diagnóstico público (sin auth) que devuelve el estado por-var de `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` (`ok` / `missing` / `placeholder`). No expone valores. **Primer diagnóstico cuando el login devuelve `Configuración de servidor incompleta`** — abrir en navegador, identificar la var rota, fijarla en Vercel → Project → Settings → Environment Variables (Production) y redeployar.
 - `POST /api/auth/refresh` — renueva el `auth-token` usando el `auth-refresh` cookie; limpia cookies si el refresh expiró
@@ -374,6 +379,28 @@ Follow-up diferido: auto-promover `@cht.hn` / `@mape.legal` a `abogado` en el ca
 - ✅ Quote section eliminada (era marketing); el hero institucional usa solo comillas curvas en hero/identidad/cumplimiento.
 - ✅ Refs a `/dashboard.html` desaparecen al borrar `Roadmap.tsx` / `Problem.tsx`.
 
-### Carryover Phase 0 (no en scope de Phase 1)
-- ⚠ `app/dashboard/minas/page.tsx:72` — lint error `react-hooks/set-state-in-effect` (pre-existente).
-- ⚠ `app/api/admin/clientes/route.ts:61` — TS error `Cannot find name 'clientes'` (pre-existente, bloquea `npm run build` type-check). El compile step pasa; solo el type-check falla. Phase 1 no introduce nuevos errores.
+### Carryover Phase 0 (no en scope de Phase 1 / 2A)
+- ⚠ `app/dashboard/minas/page.tsx` (línea ahora ~112 tras Phase 2A) — lint error `react-hooks/set-state-in-effect` (pre-existente). Se conservó al añadir el modal de "Nueva mina" para no expandir el blast radius. Las nuevas effects en `app/dashboard/minas/[id]/page.tsx` usan el patrón IIFE (`(async () => { ... })()`) que el linter sí acepta — es la forma correcta a usar al refactorizar el carryover.
+- ✅ `app/api/admin/clientes/route.ts` — el TS error de Phase 1 (`Cannot find name 'clientes'`) fue resuelto en PR #100. Confirmado en pre-flight de Phase 2A: `npm run build` pasa limpio.
+
+## Phase 2A — Mine Registry CRUD + Índice de Legalidad (2026-05-10)
+
+Cierra el gap 0/10 de la auditoría sobre la tabla `minas`. Después de Phase 2A, un admin/abogado puede listar, crear, ver el detalle, editar, retirar (`estado='clausurada'`) una mina, y un admin/abogado/tecnico_ambiental puede puntuar los 5 componentes del Índice de Legalidad. **Las API endpoints están documentadas arriba (§ Rutas API principales).**
+
+### Reglas duras
+- **Nunca hard-delete `minas`** — los registros mineros tienen peso legal y son indelebles. Retirement = `PATCH { estado: 'clausurada' }`. Por eso `app/api/admin/minas/[id]/route.ts` no exporta `DELETE`.
+- **`/api/verificar/[numero]` no debe extenderse desde Phase 2A** — la única superficie pública de lectura para certificados sigue siendo la vista `certificados_origen_publicos`. Phase 2A no toca el endpoint público.
+- **Auth con `requireRole`**: lectura = `'admin', 'abogado', 'tecnico_ambiental'`; escritura de minas = `'admin', 'abogado'`; escritura de Índice = misma terna que lectura (para que técnicos ambientales puedan puntuar el componente ambiental).
+
+### Convenciones del Índice de Legalidad
+- 5 componentes fijos en orden canónico: `tierra` → `inhgeomin` → `ambiental` → `municipal` → `registro`. Constraint en BD: `unique(mina_id, componente)` (migración 008).
+- Cada componente puntúa 0–20; el total de los 5 es 0–100.
+- Estados: `pendiente | en_proceso | cumplido | alerta | incumplido`.
+- El GET retorna siempre los 5 componentes; los no persistidos llevan `_persisted: false` y valores default (`pendiente, 0`).
+- El UI colorea el progress bar global del puntaje: ≥80 verde (`--green`), 50–79 ámbar (`--amber`), <50 rojo (`--red`).
+
+### Tabs del detail page
+- **General**: lectura + cliente slim + edit modal (PATCH).
+- **Índice de Legalidad**: scorer con editor por componente.
+- **Contratos**: read-only summary (último 20 por `fecha_firma desc`); CRUD completo en Fase 2C.
+- **Transacciones**: read-only summary (últimas 20 por `fecha desc`) + badge con count de certificados emitidos linkeado a `/verificar`; CRUD completo + emisión de certificados en Fase 2B.

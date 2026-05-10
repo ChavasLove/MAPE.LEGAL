@@ -351,7 +351,7 @@ POST /api/expedientes/:id/transition
 
 ---
 
-## 8. ESTADO ACTUAL (2 mayo 2026)
+## 8. ESTADO ACTUAL (10 mayo 2026)
 
 ### Completado
 - [x] Dominio y hosting (Vercel + Supabase)
@@ -378,14 +378,36 @@ POST /api/expedientes/:id/transition
   - Migración 020 + vista pública `certificados_origen_publicos`
   - Metadata SEO canónica enriquecida en `app/layout.tsx`
   - Eliminación de `components/landing/*` (15 archivos huérfanos)
+- [x] Phase 2A — Mine Registry CRUD + Índice de Legalidad UI (2026-05-10)
+  - `POST /api/admin/minas` (creación con validación server-side)
+  - `GET, PATCH /api/admin/minas/[id]` (sin DELETE — registros mineros indelebles)
+  - `GET, PATCH /api/admin/indice-legalidad/[mina_id]` (upsert por componente)
+  - `/dashboard/minas`: modal "+ Nueva mina", row → detail link
+  - `/dashboard/minas/[id]`: tabs General · Legalidad · Contratos · Transacciones
+  - Edit modal para campos de mina; retiro vía `estado='clausurada'`
+  - Cierra el gap de auditoría: `minas` UI 0/10 → ~7/10
 
 ### Pendiente para producción
-- [ ] Aplicar migraciones 007–009 en Supabase producción
+- [ ] Aplicar migraciones 007–009 + 015–020 en Supabase producción (si no se han corrido)
 - [ ] Variables de entorno en Vercel (ver sección 9)
 - [ ] `node scripts/seed-super-admin.mjs` post-deploy
 - [ ] SPF + DKIM para `gerencia@mape.legal` en SendGrid
 - [ ] Webhook Meta Business Portal → `/api/webhook/whatsapp`
 - [ ] Webhook Twilio → `/api/whatsapp`
+
+### Próximas fases en cola
+- **Phase 2B** — Transactions + Certificate issuance: `transacciones_oro` CRUD,
+  flujo de emisión que crea filas en `certificados_origen` con
+  `hash_verificacion` (SHA-256), generación de PDF imprimible. Después de 2B,
+  certificados reales fluyen a `/verificar/[numero]`.
+- **Phase 2C** — Expediente full tracking: UI de fases INHGEOMIN, `hitos`,
+  `tareas`, upload de documentos atado a fases; cierra gap de `contratos` UI.
+- **Phase 0** — Estabilización (recomendado entre 2B y 2C, dado que 2B es el
+  primer paso legalmente consecuente): `middleware.ts`, race conditions del
+  workflow, fix de import errors en webhook María, lint warning carryover en
+  `app/dashboard/minas/page.tsx`.
+- **Phase 2D** — Refactor visual: dashboard inline styles → tokens del
+  Color Manual v1.0.
 
 ---
 

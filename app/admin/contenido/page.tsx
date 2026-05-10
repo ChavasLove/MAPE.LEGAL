@@ -12,6 +12,14 @@ interface CmsField {
 
 const TIPOS = ['texto', 'html', 'url', 'imagen'] as const;
 
+const SHADOW_SM = '0 2px 6px rgba(31,42,56,0.05)';
+
+const inputStyle: React.CSSProperties = {
+  background: 'var(--bg)',
+  border:     '1px solid var(--border)',
+  color:      'var(--t1)',
+};
+
 export default function ContenidoPage() {
   const [fields,    setFields]    = useState<CmsField[]>([]);
   const [loading,   setLoading]   = useState(true);
@@ -105,23 +113,34 @@ export default function ContenidoPage() {
     }
   }
 
+  // Reusable token chip styling for the small "tipo" tag.
+  const tipoChipStyle: React.CSSProperties = {
+    background:  'color-mix(in oklch, var(--slate) 14%, white)',
+    color:       'var(--slate)',
+    borderColor: 'color-mix(in oklch, var(--slate) 30%, white)',
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Contenido de la landing page</h1>
-          <p className="text-sm font-sans mt-0.5" style={{ color: '#A3A8AB' }}>
+          <h1 className="text-2xl" style={{ color: 'var(--ink)' }}>Contenido de la landing page</h1>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--slate)' }}>
             Edita los textos y URLs de cada sección del sitio público
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={load} className="p-2 rounded-lg hover:bg-white/10 cursor-pointer" style={{ color: '#A3A8AB' }}>
+          <button
+            onClick={load}
+            className="p-2 rounded-lg transition-colors cursor-pointer"
+            style={{ color: 'var(--slate)' }}
+          >
             <RefreshCw size={18} strokeWidth={1.5} />
           </button>
           <button
             onClick={() => setShowAdd(v => !v)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold font-sans text-white cursor-pointer"
-            style={{ background: '#2F5D50' }}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer"
+            style={{ background: 'var(--moss)', color: '#fff' }}
           >
             <Plus size={16} strokeWidth={2} />
             Nuevo campo
@@ -130,52 +149,90 @@ export default function ContenidoPage() {
       </div>
 
       {showAdd && (
-        <div className="rounded-xl border p-6 mb-6" style={{ background: '#1F2A38', borderColor: 'rgba(94,107,123,0.3)' }}>
-          <h2 className="text-base font-semibold text-white mb-4 font-sans">Agregar campo CMS</h2>
+        <div
+          className="rounded-xl border p-6 mb-6"
+          style={{ background: 'var(--bg)', borderColor: 'var(--border)', boxShadow: SHADOW_SM }}
+        >
+          <h2 className="text-base font-semibold mb-4" style={{ color: 'var(--ink)' }}>Agregar campo CMS</h2>
           <form onSubmit={handleAdd} className="space-y-4">
             <div className="grid sm:grid-cols-3 gap-4">
               {[['Sección', newSeccion, setNewSeccion, 'hero, nosotros, contacto...'],
                 ['Campo', newCampo, setNewCampo, 'titulo, subtitulo, cta_primario...']].map(([label, val, setter, ph]) => (
                 <div key={label as string}>
-                  <label className="block text-xs font-semibold uppercase tracking-wider mb-1 font-sans" style={{ color: '#A3A8AB' }}>{label as string}</label>
+                  <label
+                    className="block text-xs font-semibold uppercase tracking-wider mb-1"
+                    style={{ color: 'var(--slate)' }}
+                  >
+                    {label as string}
+                  </label>
                   <input
                     value={val as string}
                     onChange={e => (setter as (v: string) => void)(e.target.value)}
                     placeholder={ph as string}
                     required
-                    className="w-full px-3 py-2 rounded-lg text-sm font-sans outline-none"
-                    style={{ background: '#1F2A38', border: '1px solid rgba(94,107,123,0.4)', color: 'white' }}
+                    className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                    style={inputStyle}
                   />
                 </div>
               ))}
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-1 font-sans" style={{ color: '#A3A8AB' }}>Tipo</label>
+                <label
+                  className="block text-xs font-semibold uppercase tracking-wider mb-1"
+                  style={{ color: 'var(--slate)' }}
+                >
+                  Tipo
+                </label>
                 <select
                   value={newTipo}
                   onChange={e => setNewTipo(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg text-sm font-sans outline-none"
-                  style={{ background: '#1F2A38', border: '1px solid rgba(94,107,123,0.4)', color: 'white' }}
+                  className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                  style={inputStyle}
                 >
                   {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider mb-1 font-sans" style={{ color: '#A3A8AB' }}>Valor</label>
+              <label
+                className="block text-xs font-semibold uppercase tracking-wider mb-1"
+                style={{ color: 'var(--slate)' }}
+              >
+                Valor
+              </label>
               <textarea
                 value={newValor}
                 onChange={e => setNewValor(e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 rounded-lg text-sm font-sans outline-none resize-none"
-                style={{ background: '#1F2A38', border: '1px solid rgba(94,107,123,0.4)', color: 'white' }}
+                className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none"
+                style={inputStyle}
               />
             </div>
-            {formError && <p className="text-sm font-sans px-3 py-2 rounded-lg" style={{ color: '#B23A3A', background: '#EFD7D5' }}>{formError}</p>}
+            {formError && (
+              <p
+                className="text-sm px-3 py-2 rounded-lg border"
+                style={{
+                  color:       'var(--red)',
+                  background:  'color-mix(in oklch, var(--red) 14%, white)',
+                  borderColor: 'color-mix(in oklch, var(--red) 30%, white)',
+                }}
+              >
+                {formError}
+              </p>
+            )}
             <div className="flex gap-3">
-              <button type="submit" className="px-5 py-2 rounded-lg text-sm font-semibold font-sans text-white cursor-pointer" style={{ background: '#2F5D50' }}>
+              <button
+                type="submit"
+                className="px-5 py-2 rounded-lg text-sm font-semibold cursor-pointer"
+                style={{ background: 'var(--moss)', color: '#fff' }}
+              >
                 Guardar
               </button>
-              <button type="button" onClick={() => setShowAdd(false)} className="px-5 py-2 rounded-lg text-sm font-medium font-sans hover:bg-white/10 cursor-pointer" style={{ color: '#A3A8AB' }}>
+              <button
+                type="button"
+                onClick={() => setShowAdd(false)}
+                className="px-5 py-2 rounded-lg text-sm font-medium cursor-pointer border"
+                style={{ color: 'var(--t2)', background: 'transparent', borderColor: 'var(--border)' }}
+              >
                 Cancelar
               </button>
             </div>
@@ -184,57 +241,75 @@ export default function ContenidoPage() {
       )}
 
       {loading ? (
-        <p className="text-sm font-sans py-8 text-center" style={{ color: '#A3A8AB' }}>Cargando contenido...</p>
+        <p className="text-sm py-8 text-center" style={{ color: 'var(--t2)' }}>Cargando contenido...</p>
       ) : (
         <div className="space-y-3">
           {sections.map(seccion => {
             const sectionFields = fields.filter(f => f.seccion === seccion);
             const isOpen = expanded.has(seccion);
             return (
-              <div key={seccion} className="rounded-xl border overflow-hidden" style={{ borderColor: 'rgba(94,107,123,0.3)' }}>
+              <div
+                key={seccion}
+                className="rounded-xl border overflow-hidden"
+                style={{ background: 'var(--bg)', borderColor: 'var(--border)', boxShadow: SHADOW_SM }}
+              >
                 <button
                   onClick={() => toggleSection(seccion)}
-                  className="w-full flex items-center justify-between px-5 py-4 text-left cursor-pointer hover:bg-white/5 transition-colors"
-                  style={{ background: '#1F2A38' }}
+                  className="w-full flex items-center justify-between px-5 py-4 text-left cursor-pointer transition-colors hover:bg-[color:var(--bg-soft)]"
+                  style={{ background: 'var(--bg)' }}
                 >
-                  <span className="text-sm font-semibold text-white font-sans capitalize">{seccion}</span>
+                  <span className="text-sm font-semibold capitalize" style={{ color: 'var(--ink)' }}>{seccion}</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-sans" style={{ color: '#5E6B7B' }}>{sectionFields.length} campos</span>
+                    <span className="text-xs" style={{ color: 'var(--t3)' }}>{sectionFields.length} campos</span>
                     {isOpen
-                      ? <ChevronDown size={16} strokeWidth={1.5} style={{ color: '#A3A8AB' }} />
-                      : <ChevronRight size={16} strokeWidth={1.5} style={{ color: '#A3A8AB' }} />
+                      ? <ChevronDown size={16} strokeWidth={1.5} style={{ color: 'var(--slate)' }} />
+                      : <ChevronRight size={16} strokeWidth={1.5} style={{ color: 'var(--slate)' }} />
                     }
                   </div>
                 </button>
 
                 {isOpen && (
-                  <div style={{ background: '#1F2A38' }}>
+                  <div style={{ background: 'var(--bg)' }}>
                     {sectionFields.map(f => {
                       const isEditing = editing?.seccion === f.seccion && editing.campo === f.campo;
                       return (
                         <div
                           key={f.campo}
                           className="px-5 py-4 border-t"
-                          style={{ borderColor: 'rgba(94,107,123,0.2)' }}
+                          style={{ borderColor: 'var(--border)' }}
                         >
                           <div className="flex items-start justify-between gap-3 mb-2">
                             <div>
-                              <span className="text-xs font-semibold uppercase tracking-wider font-sans" style={{ color: '#A3A8AB' }}>{f.campo}</span>
-                              <span className="ml-2 px-1.5 py-0.5 rounded text-xs font-sans" style={{ background: 'rgba(94,107,123,0.2)', color: '#5E6B7B' }}>{f.tipo}</span>
+                              <span
+                                className="text-xs font-semibold uppercase tracking-wider"
+                                style={{ color: 'var(--slate)' }}
+                              >
+                                {f.campo}
+                              </span>
+                              <span
+                                className="ml-2 px-1.5 py-0.5 rounded text-xs border"
+                                style={tipoChipStyle}
+                              >
+                                {f.tipo}
+                              </span>
                             </div>
                             {!isEditing && (
                               <div className="flex gap-1.5 shrink-0">
                                 <button
                                   onClick={() => startEdit(f)}
-                                  className="px-3 py-1 rounded-lg text-xs font-semibold font-sans cursor-pointer"
-                                  style={{ background: '#D6E2F0', color: '#2A6BA8' }}
+                                  className="px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer border"
+                                  style={{
+                                    background:  'color-mix(in oklch, var(--blue) 14%, white)',
+                                    color:       'var(--blue)',
+                                    borderColor: 'color-mix(in oklch, var(--blue) 30%, white)',
+                                  }}
                                 >
                                   Editar
                                 </button>
                                 <button
                                   onClick={() => deleteField(f.seccion, f.campo)}
-                                  className="p-1.5 rounded-lg hover:bg-white/10 cursor-pointer"
-                                  style={{ color: '#B23A3A' }}
+                                  className="p-1.5 rounded-lg cursor-pointer hover:bg-[color:var(--bg-soft)]"
+                                  style={{ color: 'var(--red)' }}
                                 >
                                   <Trash2 size={14} strokeWidth={1.5} />
                                 </button>
@@ -245,12 +320,12 @@ export default function ContenidoPage() {
                           {isEditing ? (
                             <div className="space-y-2">
                               <div className="flex items-center gap-2 mb-1">
-                                <label className="text-xs font-sans" style={{ color: '#A3A8AB' }}>Tipo:</label>
+                                <label className="text-xs" style={{ color: 'var(--slate)' }}>Tipo:</label>
                                 <select
                                   value={editTipo}
                                   onChange={e => setEditTipo(e.target.value)}
-                                  className="px-2 py-1 rounded text-xs font-sans outline-none"
-                                  style={{ background: '#1F2A38', border: '1px solid rgba(94,107,123,0.4)', color: 'white' }}
+                                  className="px-2 py-1 rounded text-xs outline-none"
+                                  style={inputStyle}
                                 >
                                   {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
                                 </select>
@@ -259,30 +334,30 @@ export default function ContenidoPage() {
                                 value={editVal}
                                 onChange={e => setEditVal(e.target.value)}
                                 rows={editTipo === 'html' ? 5 : 2}
-                                className="w-full px-3 py-2 rounded-lg text-sm font-sans outline-none resize-y"
-                                style={{ background: '#1F2A38', border: '1px solid rgba(94,107,123,0.4)', color: 'white' }}
+                                className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-y"
+                                style={inputStyle}
                               />
                               <div className="flex gap-2">
                                 <button
                                   onClick={saveEdit}
                                   disabled={saving}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold font-sans text-white disabled:opacity-60 cursor-pointer"
-                                  style={{ background: '#2F5D50' }}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-60 cursor-pointer"
+                                  style={{ background: 'var(--moss)', color: '#fff' }}
                                 >
                                   <Save size={13} strokeWidth={2} />
                                   {saving ? 'Guardando...' : 'Guardar'}
                                 </button>
                                 <button
                                   onClick={() => setEditing(null)}
-                                  className="px-3 py-1.5 rounded-lg text-xs font-medium font-sans hover:bg-white/10 cursor-pointer"
-                                  style={{ color: '#A3A8AB' }}
+                                  className="px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer border"
+                                  style={{ color: 'var(--t2)', background: 'transparent', borderColor: 'var(--border)' }}
                                 >
                                   Cancelar
                                 </button>
                               </div>
                             </div>
                           ) : (
-                            <p className="text-sm font-sans" style={{ color: f.valor ? 'white' : '#5E6B7B' }}>
+                            <p className="text-sm" style={{ color: f.valor ? 'var(--ink)' : 'var(--t3)' }}>
                               {f.valor || '(sin valor)'}
                             </p>
                           )}

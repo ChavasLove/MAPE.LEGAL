@@ -13,6 +13,14 @@ interface Rol {
   created_at:  string;
 }
 
+const SHADOW_SM = '0 2px 6px rgba(31,42,56,0.05)';
+
+const inputStyle: React.CSSProperties = {
+  background: 'var(--bg)',
+  border:     '1px solid var(--border)',
+  color:      'var(--t1)',
+};
+
 export default function RolesPage() {
   const [roles,      setRoles]      = useState<Rol[]>([]);
   const [loading,    setLoading]    = useState(true);
@@ -77,23 +85,34 @@ export default function RolesPage() {
     'documentos:verify', 'mensajes:verify', 'portal:read', '*',
   ];
 
+  // Permission chip — tonal slate.
+  const permChipStyle: React.CSSProperties = {
+    background:  'color-mix(in oklch, var(--slate) 12%, white)',
+    color:       'var(--slate)',
+    borderColor: 'color-mix(in oklch, var(--slate) 28%, white)',
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Roles y permisos</h1>
-          <p className="text-sm font-sans mt-0.5" style={{ color: '#A3A8AB' }}>
+          <h1 className="text-2xl" style={{ color: 'var(--ink)' }}>Roles y permisos</h1>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--slate)' }}>
             Gestión de roles del sistema y sus permisos de acceso
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={load} className="p-2 rounded-lg hover:bg-white/10 transition-colors cursor-pointer" style={{ color: '#A3A8AB' }}>
+          <button
+            onClick={load}
+            className="p-2 rounded-lg transition-colors cursor-pointer"
+            style={{ color: 'var(--slate)' }}
+          >
             <RefreshCw size={18} strokeWidth={1.5} />
           </button>
           <button
             onClick={() => setShowForm(v => !v)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold font-sans text-white cursor-pointer"
-            style={{ background: '#2F5D50' }}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer"
+            style={{ background: 'var(--moss)', color: '#fff' }}
           >
             <Plus size={16} strokeWidth={2} />
             Nuevo rol
@@ -102,12 +121,18 @@ export default function RolesPage() {
       </div>
 
       {showForm && (
-        <div className="rounded-xl border p-6 mb-6" style={{ background: '#1F2A38', borderColor: 'rgba(94,107,123,0.3)' }}>
-          <h2 className="text-base font-semibold text-white mb-4 font-sans">Crear nuevo rol</h2>
+        <div
+          className="rounded-xl border p-6 mb-6"
+          style={{ background: 'var(--bg)', borderColor: 'var(--border)', boxShadow: SHADOW_SM }}
+        >
+          <h2 className="text-base font-semibold mb-4" style={{ color: 'var(--ink)' }}>Crear nuevo rol</h2>
           <form onSubmit={handleCreate} className="space-y-4">
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-1 font-sans" style={{ color: '#A3A8AB' }}>
+                <label
+                  className="block text-xs font-semibold uppercase tracking-wider mb-1"
+                  style={{ color: 'var(--slate)' }}
+                >
                   Nombre del rol (identificador)
                 </label>
                 <input
@@ -115,33 +140,39 @@ export default function RolesPage() {
                   onChange={e => setNombre(e.target.value.toLowerCase().replace(/\s+/g, '_'))}
                   required
                   placeholder="ej: supervisor_campo"
-                  className="w-full px-3 py-2 rounded-lg text-sm font-sans outline-none"
-                  style={{ background: '#1F2A38', border: '1px solid rgba(94,107,123,0.4)', color: 'white' }}
+                  className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                  style={inputStyle}
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-1 font-sans" style={{ color: '#A3A8AB' }}>
+                <label
+                  className="block text-xs font-semibold uppercase tracking-wider mb-1"
+                  style={{ color: 'var(--slate)' }}
+                >
                   Descripción
                 </label>
                 <input
                   value={descripcion}
                   onChange={e => setDescripcion(e.target.value)}
                   placeholder="ej: Supervisor de campo MAPE"
-                  className="w-full px-3 py-2 rounded-lg text-sm font-sans outline-none"
-                  style={{ background: '#1F2A38', border: '1px solid rgba(94,107,123,0.4)', color: 'white' }}
+                  className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                  style={inputStyle}
                 />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider mb-1 font-sans" style={{ color: '#A3A8AB' }}>
+              <label
+                className="block text-xs font-semibold uppercase tracking-wider mb-1"
+                style={{ color: 'var(--slate)' }}
+              >
                 Permisos (separados por coma)
               </label>
               <input
                 value={permisos}
                 onChange={e => setPermisos(e.target.value)}
                 placeholder="dashboard:read, expedientes:read"
-                className="w-full px-3 py-2 rounded-lg text-sm font-sans outline-none"
-                style={{ background: '#1F2A38', border: '1px solid rgba(94,107,123,0.4)', color: 'white' }}
+                className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                style={inputStyle}
               />
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {SYSTEM_PERMISOS.map(p => (
@@ -149,8 +180,8 @@ export default function RolesPage() {
                     key={p}
                     type="button"
                     onClick={() => setPermisos(prev => prev ? `${prev}, ${p}` : p)}
-                    className="px-2 py-0.5 rounded text-xs font-sans cursor-pointer hover:bg-white/10 transition-colors"
-                    style={{ background: 'rgba(94,107,123,0.2)', color: '#A3A8AB' }}
+                    className="px-2 py-0.5 rounded text-xs cursor-pointer transition-colors border"
+                    style={permChipStyle}
                   >
                     + {p}
                   </button>
@@ -158,7 +189,14 @@ export default function RolesPage() {
               </div>
             </div>
             {formError && (
-              <p className="text-sm font-sans px-3 py-2 rounded-lg" style={{ color: '#B23A3A', background: '#EFD7D5' }}>
+              <p
+                className="text-sm px-3 py-2 rounded-lg border"
+                style={{
+                  color:       'var(--red)',
+                  background:  'color-mix(in oklch, var(--red) 14%, white)',
+                  borderColor: 'color-mix(in oklch, var(--red) 30%, white)',
+                }}
+              >
                 {formError}
               </p>
             )}
@@ -166,16 +204,16 @@ export default function RolesPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="px-5 py-2 rounded-lg text-sm font-semibold font-sans text-white disabled:opacity-60 cursor-pointer"
-                style={{ background: '#2F5D50' }}
+                className="px-5 py-2 rounded-lg text-sm font-semibold disabled:opacity-60 cursor-pointer"
+                style={{ background: 'var(--moss)', color: '#fff' }}
               >
                 {submitting ? 'Creando...' : 'Crear rol'}
               </button>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="px-5 py-2 rounded-lg text-sm font-medium font-sans hover:bg-white/10 transition-colors cursor-pointer"
-                style={{ color: '#A3A8AB' }}
+                className="px-5 py-2 rounded-lg text-sm font-medium cursor-pointer border"
+                style={{ color: 'var(--t2)', background: 'transparent', borderColor: 'var(--border)' }}
               >
                 Cancelar
               </button>
@@ -186,65 +224,74 @@ export default function RolesPage() {
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {loading ? (
-          <p className="col-span-3 text-sm font-sans py-8 text-center" style={{ color: '#A3A8AB' }}>Cargando roles...</p>
-        ) : roles.map(rol => (
-          <div
-            key={rol.id}
-            className="rounded-xl border p-5 flex flex-col gap-3"
-            style={{
-              background:  '#1F2A38',
-              borderColor: 'rgba(94,107,123,0.3)',
-              opacity:     rol.activo ? 1 : 0.55,
-            }}
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: rol.es_sistema ? '#D6E2F0' : '#E0EDE3' }}
-                >
-                  <Shield size={18} strokeWidth={1.5} style={{ color: rol.es_sistema ? '#2A6BA8' : '#2F5D50' }} />
+          <p className="col-span-3 text-sm py-8 text-center" style={{ color: 'var(--t2)' }}>Cargando roles...</p>
+        ) : roles.map(rol => {
+          // System roles get a blue tile, custom ones get a moss/green tile.
+          const tileToken = rol.es_sistema ? 'blue' : 'green';
+          const tileStyle: React.CSSProperties = {
+            background: `color-mix(in oklch, var(--${tileToken}) 12%, white)`,
+            color:      `var(--${tileToken})`,
+          };
+          return (
+            <div
+              key={rol.id}
+              className="rounded-xl border p-5 flex flex-col gap-3"
+              style={{
+                background:  'var(--bg)',
+                borderColor: 'var(--border)',
+                boxShadow:   SHADOW_SM,
+                opacity:     rol.activo ? 1 : 0.55,
+              }}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                    style={tileStyle}
+                  >
+                    <Shield size={18} strokeWidth={1.5} />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-sm" style={{ color: 'var(--ink)' }}>{rol.nombre}</div>
+                    {rol.es_sistema && (
+                      <span className="text-xs" style={{ color: 'var(--t3)' }}>Rol del sistema</span>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <div className="text-white font-semibold text-sm font-sans">{rol.nombre}</div>
-                  {rol.es_sistema && (
-                    <span className="text-xs font-sans" style={{ color: '#5E6B7B' }}>Rol del sistema</span>
-                  )}
-                </div>
+                {!rol.es_sistema && (
+                  <button
+                    onClick={() => toggleActivo(rol)}
+                    className="p-1.5 rounded-lg transition-colors cursor-pointer hover:bg-[color:var(--bg-soft)]"
+                    style={{ color: rol.activo ? 'var(--green)' : 'var(--slate)' }}
+                    title={rol.activo ? 'Desactivar' : 'Activar'}
+                  >
+                    <Trash2 size={15} strokeWidth={1.5} />
+                  </button>
+                )}
               </div>
-              {!rol.es_sistema && (
-                <button
-                  onClick={() => toggleActivo(rol)}
-                  className="p-1.5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
-                  style={{ color: rol.activo ? '#2A8E50' : '#A3A8AB' }}
-                  title={rol.activo ? 'Desactivar' : 'Activar'}
-                >
-                  <Trash2 size={15} strokeWidth={1.5} />
-                </button>
+
+              {rol.descripcion && (
+                <p className="text-xs" style={{ color: 'var(--t2)' }}>{rol.descripcion}</p>
               )}
-            </div>
 
-            {rol.descripcion && (
-              <p className="text-xs font-sans" style={{ color: '#A3A8AB' }}>{rol.descripcion}</p>
-            )}
-
-            <div className="flex flex-wrap gap-1.5">
-              {(Array.isArray(rol.permisos) ? rol.permisos : []).map((p: string) => (
-                <span
-                  key={p}
-                  className="px-2 py-0.5 rounded text-xs font-sans"
-                  style={{ background: 'rgba(94,107,123,0.2)', color: '#A3A8AB' }}
-                >
-                  {p}
-                </span>
-              ))}
+              <div className="flex flex-wrap gap-1.5">
+                {(Array.isArray(rol.permisos) ? rol.permisos : []).map((p: string) => (
+                  <span
+                    key={p}
+                    className="px-2 py-0.5 rounded text-xs border"
+                    style={permChipStyle}
+                  >
+                    {p}
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      <p className="text-xs font-sans mt-6" style={{ color: '#5E6B7B' }}>
-        Los roles del sistema no pueden eliminarse. Los roles personalizados pueden asignarse a usuarios desde la sección <strong style={{ color: '#A3A8AB' }}>Usuarios</strong>.
+      <p className="text-xs mt-6" style={{ color: 'var(--t3)' }}>
+        Los roles del sistema no pueden eliminarse. Los roles personalizados pueden asignarse a usuarios desde la sección <strong style={{ color: 'var(--slate)' }}>Usuarios</strong>.
       </p>
     </div>
   );
