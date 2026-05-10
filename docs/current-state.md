@@ -4,7 +4,10 @@
 2026-05-10
 
 ## Current Module
-PR #94 merged — domain types, 54-step task schema, admin route group, conflict resolution
+Phase 1 — public-surface realignment shipped (PR #102 merged into `main`):
+institutional landing, public Certificate of Origin verification surface
+(`/verificar`, `/verificar/[numero]`, `/api/verificar/[numero]`), migration
+020, canonical SEO metadata.
 
 ---
 
