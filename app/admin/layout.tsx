@@ -1,16 +1,33 @@
 import { redirect } from 'next/navigation';
 import Image from 'next/image';
-import { Users, UserCheck, LayoutDashboard, LogOut, Shield, FileText, Settings, LayoutGrid } from 'lucide-react';
+import {
+  Users, UserCheck, LayoutDashboard, LogOut, Shield, FileText, Settings, LayoutGrid,
+  MessageSquare, UserPlus, Coins, Radio, Terminal, Bot, KeyRound,
+} from 'lucide-react';
 import { getServerAuth } from '@/lib/serverAuth';
 import SidebarNav from '@/components/dashboard/SidebarNav';
 
-const navItems = [
+// Two grouped sections in the sidebar — IAM/CMS at the top (existing surface)
+// and the María master control panel below it. The grouping keeps the daily
+// operational pages (conversations, leads, transactions, broadcast) one click
+// away without burying users/roles/config.
+const adminItems = [
   { href: '/admin',                label: 'Resumen',        Icon: LayoutDashboard, exact: true },
   { href: '/admin/usuarios',       label: 'Usuarios',       Icon: Users                       },
   { href: '/admin/profesionales',  label: 'Profesionales',  Icon: UserCheck                   },
   { href: '/admin/roles',          label: 'Roles',          Icon: Shield                      },
+  { href: '/admin/permisos',       label: 'Permisos',       Icon: KeyRound                    },
   { href: '/admin/contenido',      label: 'Contenido',      Icon: FileText                    },
   { href: '/admin/config',         label: 'Configuración',  Icon: Settings                    },
+];
+
+const mariaItems = [
+  { href: '/admin/maria',                label: 'Panel María',     Icon: Bot, exact: true },
+  { href: '/admin/maria/conversaciones', label: 'Conversaciones',  Icon: MessageSquare    },
+  { href: '/admin/maria/clientes',       label: 'Clientes y leads', Icon: UserPlus        },
+  { href: '/admin/maria/transacciones',  label: 'Transacciones',   Icon: Coins            },
+  { href: '/admin/maria/broadcast',      label: 'Broadcast',       Icon: Radio            },
+  { href: '/admin/maria/auditoria',      label: 'Auditoría',       Icon: Terminal         },
 ];
 
 const dashboardItems = [
@@ -67,8 +84,25 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 space-y-1">
-          <SidebarNav items={navItems} />
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+          <SidebarNav items={adminItems} />
+
+          <div className="my-3 border-t" style={{ borderColor: sidebarHairlineSoft }} />
+
+          <div
+            className="px-3 mt-2 mb-1"
+            style={{
+              color:           'var(--slate-lt)',
+              fontFamily:      'var(--font-mono)',
+              fontSize:        10,
+              letterSpacing:   '0.18em',
+              textTransform:   'uppercase',
+              fontWeight:      600,
+            }}
+          >
+            María
+          </div>
+          <SidebarNav items={mariaItems} />
 
           <div className="my-3 border-t" style={{ borderColor: sidebarHairlineSoft }} />
 

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Users, UserCheck, FileText } from 'lucide-react';
+import { Users, UserCheck, FileText, Bot } from 'lucide-react';
 
 interface AdminCard {
   href:  string;
@@ -8,10 +8,18 @@ interface AdminCard {
   desc:  string;
   cta:   string;
   /** Token name (without `--`) used for the icon tile, icon glyph, and CTA accent. */
-  token: 'blue' | 'green' | 'earth';
+  token: 'blue' | 'green' | 'earth' | 'moss';
 }
 
 const cards: AdminCard[] = [
+  {
+    href:  '/admin/maria',
+    Icon:  Bot,
+    title: 'Panel María',
+    desc:  'Master Control Panel del asistente virtual: conversaciones en vivo, leads, transacciones, broadcast diario y auditoría.',
+    cta:   'Abrir panel María',
+    token: 'moss',
+  },
   {
     href:  '/admin/usuarios',
     Icon:  Users,
@@ -50,7 +58,7 @@ export default function AdminPage() {
         </p>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
         {cards.map(({ href, Icon, title, desc, cta, token }) => {
           const accent = `var(--${token})`;
           const tileBg = `color-mix(in oklch, var(--${token}) 12%, white)`;
