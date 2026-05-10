@@ -4,29 +4,7 @@
 2026-05-10
 
 ## Current Module
-Phase 2A — Mine Registry CRUD + Índice de Legalidad UI
-
----
-
-## 2026-05-10 — Phase 2A: minas registry CRUD + Legalidad Index
-
-### Completed
-- POST /api/admin/minas with server-side validation.
-- GET, PATCH /api/admin/minas/[id] (no DELETE — mining records indelible).
-- GET, PATCH /api/admin/indice-legalidad/[mina_id] (5-component upsert).
-- /dashboard/minas list: + Nueva mina modal, row → detail link.
-- /dashboard/minas/[id] tabbed detail (General · Legalidad · Contratos · Transacciones).
-- Edit modal for mine fields. Retirement via estado='clausurada'.
-
-### Closed audit gap
-- minas UI score: 0/10 → estimated 7/10 pending review.
-- 2 of 8 tables-without-UI now have UI (minas, indice_legalidad).
-
-### Still pending
-- Phase 0 stabilization: middleware.ts, race conditions, María webhook.
-- Phase 2B: transacciones_oro CRUD, certificate issuance, PDF.
-- Phase 2C: expediente phase tracking, contratos CRUD.
-- Phase 2D: visual style refactor to Color Manual v1.0 tokens.
+PR #94 merged — domain types, 54-step task schema, admin route group, conflict resolution
 
 ---
 
@@ -197,3 +175,54 @@ Resueltas en `claude/update-ui-colors-wGO7B` (2026-05-09) al adoptar el MAPE LEG
   real transactions.
 - Phases 3 and 4 (national MAPE dashboard, geological map, blog,
   videos) explicitly deferred until pilot core ships.
+
+---
+
+## 2026-05-10 — PR #94: Domain types, 54-step task schema, admin bug fixes
+
+### Completed
+
+**Migrations (renamed to avoid collision with 006–020 from main):**
+- `021_er_schema_tareas.sql` — new tables unique to the task engine:
+  `asignaciones` (one record per expediente: abogado + PSA assignment),
+  `plantillas_tareas` (step templates), `tareas` (instantiated steps per expediente).
+  Tables already covered by main (clientes, minas, contratos, notificaciones,
+  transacciones_oro) are guarded by `CREATE TABLE IF NOT EXISTS` and skip safely.
+  RLS: `is_cht_staff()` SECURITY DEFINER function + policy loop over all 8 tables.
+- `022_54_steps_template.sql` — seed of 68 task templates:
+  54 formalización steps across 5 fases (0 Onboarding, 1 INHGEOMIN, 2 SERNA,
+  3 Resolución Minera, 4 Municipal+Comercializador), 8 titulación steps,
+  6 sociedad_minera steps. Each row: `proceso`, `fase_numero`, `numero_paso`,
+  `nombre`, `rol_responsable`, `plazo_dias`, `evidencia_requerida`.
+
+**TypeScript domain types (`modules/types.ts`):**
+Full set of domain types mirroring the DB schema (Spanish field names):
+`TipoCliente`, `Cliente`, `CategoriaAmbiental`, `EstadoILO`, `Mina`,
+`Asignacion`, `ProcesoTramite`, `RolResponsable`, `PlantillaTarea`,
+`EstadoTarea`, `Tarea`, `EstadoContrato`, `Contrato`, `TipoNotificacion`,
+`Notificacion`, `EstadoTransaccion`, `TransaccionOro`, `RolProfesional`,
+`PerfilProfesional`, `IndiceComponente`, `IndiceLegalidad`.
+`Expediente` extended with `cliente_id`, `mina_id`, `cliente`, `mina`.
+
+**Admin panel bug fixes:**
+- **Infinite redirect loop** resolved: `/admin/login` used to be nested inside
+  `app/admin/layout.tsx` which redirected to itself when no cookie was present.
+  Fixed by moving protected pages to `app/admin/(protected)/` route group with
+  its own layout; the outer layout is now a minimal pass-through. Moot after
+  merge (main deleted `/admin/login` — auth moved to `/login`).
+- **Logout** was returning JSON to a browser form POST; fixed to redirect to `/login`.
+- **`focusRingColor`** invalid CSS property removed from login inputs.
+- **"Piloto Iriona 2026"** copy removed from admin panel subtitle.
+
+**Merge conflict resolution (PR #94 ↔ main):**
+- Took main's `app/admin/layout.tsx` (uses `getServerAuth()`, redirects to `/login`).
+- Deleted `app/admin/(protected)/layout.tsx` (double-sidebar risk after merge).
+- Accepted main's deletion of `/admin/login/page.tsx` and `/api/admin/auth/logout/route.ts`.
+- README: took main's full brand identity color manual (§0); removed duplicate old sections.
+
+### Carryover — still pending
+- `app/api/admin/clientes/route.ts:61` — pre-existing TS error `Cannot find name 'clientes'`.
+- `app/dashboard/minas/page.tsx:72` — pre-existing lint error.
+- Apply migrations 021 and 022 in Supabase Studio (production).
+- Dashboard task engine UI (`/dashboard/expedientes/[id]`) not yet built.
+- Certificate of Origin PDF generation not yet built.
