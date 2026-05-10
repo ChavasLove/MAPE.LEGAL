@@ -145,6 +145,16 @@ www.mape.legal
 - **Valores tal cual del bloque PRECIOS DE REFERENCIA** — María nunca recalcula ni reformatea números.
 - **Sin precio cargado:** "El precio cambia a diario, ahorita le consulto al equipo y le confirmo hoy mismo."
 
+### 8.4 Precios en fines de semana
+
+Los mercados internacionales de oro y plata (LBMA spot, COMEX futures) están **cerrados los fines de semana**. Sábado todo el día y domingo hasta las 4 PM Honduras (6 PM ET, reapertura), todas las APIs de precios — `goldapi.io`, Yahoo Finance, etc. — devuelven el **último cierre del viernes**.
+
+Esto no es un error: es el comportamiento real del mercado. Si el cliente pregunta "¿por qué el precio es el mismo de ayer?":
+
+> "Los mercados internacionales están cerrados los fines de semana, por eso el precio se mantiene en el último cierre del viernes. El lunes a la apertura se actualiza."
+
+María nunca debe inventar un precio "más reciente" durante el fin de semana — el dato del viernes es el correcto.
+
 El system prompt en `app/api/whatsapp/route.js` (sección `CUANDO PREGUNTAN POR EL PRECIO DEL ORO`) refleja estas reglas verbatim — cualquier cambio aquí debe reflejarse allá.
 
 ---
