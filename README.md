@@ -371,6 +371,13 @@ POST /api/expedientes/:id/transition
 - [x] RLS activo en todas las tablas (005–009)
 - [x] Sistema de diseño CHT en DESIGN.md — tokens en globals.css
 - [x] Landing page completa — 8 componentes, imágenes, Open Graph
+- [x] Phase 1 — Realineación de superficie pública (2026-05-10)
+  - Landing institucional reemplaza la página de ventas
+  - Portal público de Verificación de Certificado de Origen
+    (`/verificar`, `/verificar/[numero]`, `/api/verificar/[numero]`)
+  - Migración 020 + vista pública `certificados_origen_publicos`
+  - Metadata SEO canónica enriquecida en `app/layout.tsx`
+  - Eliminación de `components/landing/*` (15 archivos huérfanos)
 
 ### Pendiente para producción
 - [ ] Aplicar migraciones 007–009 en Supabase producción

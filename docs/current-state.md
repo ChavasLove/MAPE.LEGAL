@@ -127,3 +127,51 @@ Resueltas en `claude/update-ui-colors-wGO7B` (2026-05-09) al adoptar el MAPE LEG
 - Add RLS policies to all Supabase tables
 - Implement Supabase Auth
 - Add UI for advancing fases and managing pagos
+
+---
+
+## 2026-05-10 — Phase 1 public-surface realignment
+
+### Completed
+- Removed orphan `components/landing/*` (15 files, ~1,668 LOC).
+- Replaced `app/page.tsx` (sales landing) with institutional homepage:
+  Identidad · Cumplimiento · Verificación · Contacto. No client CTAs,
+  no contact form. Spanish default, English mirror via existing `t()`
+  helper.
+- Added Certificate of Origin public verification surface:
+  `/verificar`, `/verificar/[numero]`, `/api/verificar/[numero]`.
+- Migration `020_certificados_origen.sql` (numbered 020 because 010
+  was already taken by `010_admin_commands_onboarding.sql`):
+  `certificados_origen` table, `certificados_origen_publicos` view,
+  RLS policies (admin/abogado write, admin/abogado/tecnico_ambiental
+  read on base table; public reads via view only), demo certificate
+  `CO-2026-0001-DEMO` guarded by a DO block that skips quietly when
+  `minas`/`expedientes` are empty.
+- Enriched canonical SEO metadata in `app/layout.tsx`
+  (title.template, applicationName, authors, keywords, alternates,
+  alternateLocale `en_US`, robots).
+- Replaced placeholder contact data with real institutional channels
+  (WhatsApp +504 9737 3139, gerencia@mape.legal, oficina Nexcrea).
+
+### Schema discrepancy resolved in-flight
+- `public.minas` does **not** have a `permiso_inhgeomin` column; the
+  view exposes `m.codigo` as `mina_codigo` (closest equivalent —
+  e.g. `MINA-2026-001`).
+
+### Carryover from Phase 0 (do-not-touch in Phase 1)
+- `app/dashboard/minas/page.tsx:72` — pre-existing lint error
+  (`react-hooks/set-state-in-effect`); persists.
+- `app/api/admin/clientes/route.ts:61` — pre-existing TypeScript error
+  (`Cannot find name 'clientes'`); blocks `npm run build` type-check.
+  Compile step (`Compiled successfully`) passes; only the type-check
+  step fails. The Phase 1 changes themselves compile and type-check
+  cleanly.
+
+### Still pending (not in scope for Phase 1)
+- Phase 0 stabilization: middleware, cookie-name mismatch, API auth,
+  María webhook bugs, workflow race conditions.
+- Phase 2 pilot core: `minas` UI, transacciones_oro UI, certificate
+  issuance flow that actually populates `certificados_origen` from
+  real transactions.
+- Phases 3 and 4 (national MAPE dashboard, geological map, blog,
+  videos) explicitly deferred until pilot core ships.

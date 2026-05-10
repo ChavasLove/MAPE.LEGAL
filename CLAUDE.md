@@ -157,7 +157,9 @@ Webhook Twilio que conecta WhatsApp con Claude AI.
 
 ## Landing page
 
-**Estado real (auditoría 2026-05-03):** la landing activa es `app/page.tsx` (≈523 líneas, autocontenido, usa clases definidas en `app/globals.css`). Los 15 archivos de `components/landing/*` (`Hero.tsx`, `About.tsx`, `Problem.tsx`, `Solution.tsx`, `Services.tsx`, `Impact.tsx`, `Beneficiarios.tsx`, `Footer.tsx`, `Contacto.tsx`, `News.tsx`, `Programs.tsx`, `Roadmap.tsx`, `ValorSection.tsx`, `WhyNow.tsx`, `PriceWidgets.tsx`) están **huérfanos** — `grep` confirma cero imports en todo el repo. Cualquier cambio de UI debe hacerse en `app/page.tsx`, no en los componentes huérfanos.
+**Estado real (Phase 1, 2026-05-10):** la landing activa es `app/page.tsx` (~580 líneas, autocontenido, repositionada como **superficie institucional**, no de ventas). Estructura: Nav · Hero · Identidad (`#identidad`) · Cumplimiento (`#cumplimiento`) · Verificación (`#verificacion`) · Contacto (`#contacto`) · Footer. **No hay formulario de contacto, ni CTAs hacia clientes** — los clientes entran por María (WhatsApp) y relaciones directas. Los datos institucionales son reales: WhatsApp `+504 9737 3139`, correo `gerencia@mape.legal`, oficina Nexcrea (Tegucigalpa). Bilingüe ES/EN vía helper `t(es, en)` y `localStorage('ml_lang')`.
+
+Los 15 archivos de `components/landing/*` fueron **eliminados en Phase 1** (ver commit `chore(landing): remove orphan components/landing/*`). Cualquier cambio de UI ahora va a `app/page.tsx`.
 
 **Componente decorativo activo**: `components/decor/TopoBand.tsx` — SVG de líneas topográficas usado como watermark embossed en hero y footer (`app/page.tsx`) y como fondo del login (`app/login/page.tsx`). Variantes `light` / `dark` × posiciones `overlay` (full-bleed) / `band` (48px en top edge). `aria-hidden`, `pointer-events: none`, opacidad 0.06 (light, color `--ink` `#1F2A38`) / 0.18 (dark, color `--moss` `#2F5D50`). No interactivo, no animado — quiet nod al territorio hondureño.
 
@@ -174,17 +176,24 @@ Webhook Twilio que conecta WhatsApp con Claude AI.
 | `Estudio de Impacto Ambiental.png` | Disponible |
 
 ### Imágenes referenciadas pero **inexistentes** (no agregar nuevos refs)
-- `LOGO CHT.png` — referenciado en `Hero.tsx:34` (huérfano). Usar `MAPE LEGAL LOGO 1.JPG`.
-- `Map.png` — referenciado en `Problem.tsx:83` (huérfano). Usar `Tophographic map.png`.
+- ~~`LOGO CHT.png` — referenciado en `Hero.tsx:34` (huérfano)~~ — resuelto en Phase 1: `Hero.tsx` eliminado.
+- ~~`Map.png` — referenciado en `Problem.tsx:83` (huérfano)~~ — resuelto en Phase 1: `Problem.tsx` eliminado.
+
+## Verificación pública de Certificados de Origen
+
+**Estado (Phase 1, 2026-05-10):** superficie pública de verificación habilitada.
+- **`/verificar`** — entrada con input para número de certificado.
+- **`/verificar/[numero]`** — server component (`force-dynamic`) que hace lookup contra la vista `certificados_origen_publicos` con el cliente Supabase **anon** instanciado dentro de la función (lazy-init, ver §Framework). Renderiza estados `vigente | revocado | expirado | suspendido | no encontrado` con pill de color del Color Manual v1.0.
+- **`GET /api/verificar/[numero]`** — JSON público read-only, mismo lazy-init, `Cache-Control: public, s-maxage=60, stale-while-revalidate=300`. Status 200 con `{found:true, certificado}`, 404 con `{found:false}`, 400 si `numero` está vacío o > 64 chars.
+- **Tabla `certificados_origen`** (migración 020) con RLS — admin/abogado pueden write; admin/abogado/tecnico_ambiental pueden read en la base table; público solo lee la vista `certificados_origen_publicos` (anon + authenticated tienen `select`).
+- **La vista expone**: `numero_certificado`, `fecha_emision`, `peso_oro_g`, `estado`, `valido_hasta`, `hash_verificacion`, `mina_nombre`, `mina_codigo`, `mina_municipio`, `mina_departamento`. **Nunca PII del productor, monto de transacción, ni precio LBMA.**
+- **Schema gotcha**: `public.minas` no tiene `permiso_inhgeomin` — la vista usa `m.codigo` (el campo INHGEOMIN-style, e.g. `MINA-2026-001`) y lo expone como `mina_codigo`.
+- **Migración numerada 020**, no 010 (010 ya estaba tomada por `010_admin_commands_onboarding.sql`).
+- **Demo seed**: `CO-2026-0001-DEMO` insertado por la migración con un `DO $$ ... $$` block que skipea silenciosamente si `minas` o `expedientes` están vacíos en el ambiente.
 
 ## SEO / Open Graph
 
-**Estado real (auditoría 2026-05-03):** `app/layout.tsx` solo declara `title` + `description`. **No** existe `metadataBase`, `openGraph` ni `twitter` — pendiente de implementar. Si se agrega, seguir el patrón documentado abajo.
-
-Patrón objetivo (cuando se implemente):
-- `metadataBase` usa `NEXT_PUBLIC_SITE_URL` (fallback: `https://mape.legal`)
-- `openGraph`: type website, locale `es_HN`, siteName, og:image apuntando a `RIVER AND MOUNTAINS.png`
-- `twitter`: card `summary_large_image`
+**Estado (Phase 1, 2026-05-10):** `app/layout.tsx` declara `metadataBase` (resuelto contra `NEXT_PUBLIC_SITE_URL`, fallback `https://mape.legal`), `title` con `template '%s · MAPE LEGAL'`, `description`, `applicationName`, `authors`, `keywords`, `alternates.canonical`, `openGraph` (locale `es_HN` + `alternateLocale: 'en_US'`, og:image `/images/RIVER AND MOUNTAINS.png` 1200×630), `twitter.summary_large_image`, y `robots` con `googleBot` tuning. Las páginas pueden sobreescribir título y descripción específicos vía `export const metadata`.
 - `app/page.tsx` puede sobreescribir `openGraph` con título y descripción específicos
 
 ## Admin inicial
@@ -348,19 +357,17 @@ Documentado para evitar trabajo duplicado en futuras sesiones. Ninguno está blo
 
 Follow-up diferido: auto-promover `@cht.hn` / `@mape.legal` a `abogado` en el callback (hoy todos los Google sign-ins quedan como `cliente` por default del trigger 015 → `/portal`).
 
-### Landing
-- ⚠ `components/landing/*` — 15 archivos huérfanos (cero imports). Hex literales fueron migrados al nuevo sistema en 2026-05-09 pero las clases Tailwind tipo `bg-primary-950` siguen presentes. Decidir: revivir (y mover a tokens) o eliminar.
-- ⚠ `Hero.tsx:34` referencia `LOGO CHT.png` (no existe).
-- ⚠ `Problem.tsx:83` referencia `Map.png` (no existe).
+### Landing — resuelto en Phase 1 (2026-05-10)
+- ✅ `components/landing/*` (15 archivos) eliminados.
+- ✅ Refs a `LOGO CHT.png` y `Map.png` desaparecen al borrar los huérfanos.
+- ✅ Toda la landing huérfana (incl. emojis en `WhyNow.tsx`, `animate-pulse` en `Roadmap.tsx`, `${sign}<0.01%` en `PriceWidgets.tsx`, hex `#1A1018` en `ValorSection.tsx`) ya no existe en el repo.
 
-### `app/page.tsx` (landing activa)
-- ⚠ Línea ~507: teléfono placeholder `+504 9XXX-XXXX` — CLAUDE.md prohíbe contacto personal en landing.
-- ⚠ Línea ~35: nav-logo con `href="#"` — usar `/` o `#top`.
-- ⚠ Quote section (~464): mezcla comillas curvas `"` y rectas `"`.
-- ⚠ `Roadmap.tsx:75` y `Problem.tsx:99` (huérfanos) linkean a `/dashboard.html` — DESIGN.md §13 prohíbe esa cross-link.
+### `app/page.tsx` (landing activa) — resuelto en Phase 1
+- ✅ Teléfono placeholder `+504 9XXX-XXXX` reemplazado por `+504 9737 3139` real.
+- ✅ Nav-logo ahora apunta a `/` (Next `Link`).
+- ✅ Quote section eliminada (era marketing); el hero institucional usa solo comillas curvas en hero/identidad/cumplimiento.
+- ✅ Refs a `/dashboard.html` desaparecen al borrar `Roadmap.tsx` / `Problem.tsx`.
 
-### Componentes huérfanos (si se reviven)
-- ⚠ `components/landing/PriceWidgets.tsx:33` — `${sign}<0.01%` produce `-<0.01%` (signo mal posicionado).
-- ⚠ `components/landing/Roadmap.tsx:72` — `animate-pulse` viola DESIGN.md §13.
-- ⚠ `components/landing/WhyNow.tsx:3,8,13,18` — emojis (🌍 ⚖️ 🏭 📊) violan tono de marca.
-- ⚠ `components/landing/ValorSection.tsx:99` — hex `#1A1018` no documentado en DESIGN.md.
+### Carryover Phase 0 (no en scope de Phase 1)
+- ⚠ `app/dashboard/minas/page.tsx:72` — lint error `react-hooks/set-state-in-effect` (pre-existente).
+- ⚠ `app/api/admin/clientes/route.ts:61` — TS error `Cannot find name 'clientes'` (pre-existente, bloquea `npm run build` type-check). El compile step pasa; solo el type-check falla. Phase 1 no introduce nuevos errores.
