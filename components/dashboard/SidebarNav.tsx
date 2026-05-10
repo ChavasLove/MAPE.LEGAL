@@ -2,13 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
-import type { LucideIcon } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
 
 export interface SidebarNavItem {
   href:    string;
   label:   string;
-  Icon:    LucideIcon;
+  /** Pre-rendered icon JSX. Must be a JSX element (e.g. `<Users size={18} />`),
+   *  NOT a component reference — passing a raw client-component function
+   *  through the RSC server→client boundary fails serialization. */
+  icon:    ReactNode;
   /** When true, only an exact pathname match counts as active.
    *  Use for root-ish links like /admin or /dashboard so they don't
    *  light up for every nested route. */
@@ -47,7 +49,7 @@ export default function SidebarNav({ items }: SidebarNavProps) {
 
 function NavLink({ item, isActive }: { item: SidebarNavItem; isActive: boolean }) {
   const [hover, setHover] = useState(false);
-  const { href, label, Icon } = item;
+  const { href, label, icon } = item;
 
   const background = isActive
     ? 'color-mix(in oklch, var(--moss) 14%, var(--ink))'
@@ -70,7 +72,7 @@ function NavLink({ item, isActive }: { item: SidebarNavItem; isActive: boolean }
         boxShadow: isActive ? 'inset 2px 0 0 var(--moss)' : undefined,
       }}
     >
-      <Icon size={18} strokeWidth={1.5} />
+      {icon}
       {label}
     </Link>
   );
