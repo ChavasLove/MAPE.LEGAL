@@ -1,7 +1,6 @@
 'use client';
 
 import Image from 'next/image';
-import { PriceWidgets } from './PriceWidgets';
 
 export function Hero() {
   const scrollTo = (id: string) =>

@@ -62,7 +62,7 @@ export function PriceWidgets() {
       return;
     }
     const raw = (await res.json().catch(() => null)) as {
-      gold?: MetalData; silver?: MetalData; hnlPerUsd?: number;
+      gold?: MetalData; silver?: MetalData; hnlPerUsd?: number | null;
     } | null;
     if (!raw) {
       setError('No se pudo actualizar precios');

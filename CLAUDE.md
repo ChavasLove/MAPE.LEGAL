@@ -112,12 +112,14 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 - `GET /api/admin/clientes` — lista todos los clientes registrados por WhatsApp con sus expedientes vinculados vía `cliente_id` FK (admin client, protegido por proxy)
 - `GET /api/admin/minas` — lista todas las minas con cliente asociado (admin client, protegido por proxy)
 - `GET /api/admin/whatsapp/health` — verifica el `WHATSAPP_TOKEN` contra Meta Cloud API sin enviar mensaje. Devuelve `{ ok, phoneId, displayPhoneNumber, verifiedName, isAuthError, error?, errorCode? }`. Status 200 si el token es válido, 401 si está expirado, 500 si la config falta. **Usar como primer diagnóstico cuando el broadcast de las 8 AM no llegue.**
+- `GET /api/debug/auth-config` — diagnóstico público (sin auth) que devuelve el estado por-var de `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` (`ok` / `missing` / `placeholder`). No expone valores. **Primer diagnóstico cuando el login devuelve `Configuración de servidor incompleta`** — abrir en navegador, identificar la var rota, fijarla en Vercel → Project → Settings → Environment Variables (Production) y redeployar.
 - `POST /api/auth/refresh` — renueva el `auth-token` usando el `auth-refresh` cookie; limpia cookies si el refresh expiró
 - `GET /api/broadcast` — estado: último broadcast, suscriptores activos, precios más recientes
 - `GET+POST /api/broadcast/run` — disparar broadcast diario (protegido por `CRON_SECRET` header, sin auth cookie). Vercel Cron envía `GET`; `POST` queda para invocación manual con body JSON
 - `GET /api/broadcast/config` — configuración de métricas del reporte diario
 - `PATCH /api/broadcast/config` — cambiar métrica: `{ metric, action, currency?, patch?, updated_by? }`
 - `GET /api/broadcast/prices?days=7` — historial de precios; `?latest=true` para solo el más reciente
+- `GET /api/debug/prices` — diagnóstico de fuentes de precios: testea metals.live, exchangerate-api y Yahoo Finance; muestra env vars set/unset. Solo lectura, sin secretos expuestos.
 
 ## Asistente Virtual María (`app/api/whatsapp/route.js`)
 Webhook Twilio que conecta WhatsApp con Claude AI.
@@ -133,20 +135,19 @@ Webhook Twilio que conecta WhatsApp con Claude AI.
 - **Historial**: últimos 40 mensajes de `conversaciones_whatsapp` por número de WhatsApp (suficiente para sostener conversaciones multi-día sin truncar contexto importante)
 - **Lookup de cliente**: busca en tabla `clientes` por `telefono_whatsapp` (strip de `whatsapp:` prefix) — si existe, inyecta nombre/municipio/tierra en el prompt; si no, instruye registro natural
 - **Contexto de expediente**: tras el lookup de cliente, consulta `expedientes` por `cliente_id = cliente.id` (fallback: `cliente ILIKE nombre`). Inyecta en el prompt: `numero_expediente`, fase actual, paso actual, estado, cierre estimado, hitos pendientes. Si no hay expediente: instruye a María a explicar Fase 0 e Hito 1. Helper: `buildExpedienteContext(exps)` en `route.js`.
-- **Prompt dinámico**: base + contexto de cliente + contexto de expediente + **manualContext** + (si conversación en curso) bloque `CONTEXTO CRÍTICO` que prohíbe re-saludos
-- **Manual Operativo 2026**: cuando el mensaje menciona "paso N", "primer paso", "siguiente paso", "cómo empiezo", "manual operativo", "quién es responsable" o similares, `buildManualContext(message, supabase, recentHistory)` consulta `documentos_referencia` y añade un bloque `REFERENCIA MANUAL OPERATIVO` al system prompt. Detección regex, no LLM. `detectProceso()` mira el mensaje + últimos 6 turnos para elegir `formalizacion` / `titulacion` / `sociedad` y filtra el query por `proceso`; defaultea a `formalizacion` si no hay señal. "primer paso" sin número se traduce a `paso_numero=1` del proceso detectado. Falla silenciosa: si la tabla está vacía o la query falla, `manualContext = ''` y el flujo no se interrumpe.
-
-- **Memoria de conversación**: el system prompt incluye un bloque `MEMORIA DE CONVERSACIÓN — REGLA INNEGOCIABLE` que prohíbe re-preguntar datos ya dichos en los últimos 6 turnos (servicio, nuevo-vs-en-trámite, etc.) y obliga a responder "primer paso" / "siguiente paso" con el paso concreto del servicio identificado en lugar de pedir aclaración.
+- **Prompt dinámico**: base + `priceContext` + contexto de cliente (con `completenessSummary`) + contexto de expediente + (si conversación en curso) bloque `CONTEXTO CRÍTICO` que prohíbe re-saludos
 - **Dedup**: filtra mensajes assistant consecutivos antes de enviar a Claude
 - **Base de conocimiento legal**: Reglamento Minería Honduras (Acuerdo 042-2013) embebido en el system prompt — números clave, scripts de respuesta rápida, áreas excluidas, sanciones
+- **Precios en tiempo real**: consulta `precios_diarios` del día; si no hay fila, llama `fetchLiveMetalPrices()` de `services/metalsPriceService.ts` (Yahoo Finance COMEX GC=F/SI=F + exchangerate-api.com). El bloque `PRECIOS DE REFERENCIA` se inyecta en el system prompt con precio LBMA, precio de compra CHT (80% LBMA en lempiras) y tipo de cambio BCH.
+- **Perfil completo del cliente**: calcula campos faltantes (nombre, DPI, municipio, situación tierra, tipo mineral) e inyecta `completenessSummary` en el prompt. María responde a "¿ya tienes mis datos?" con los campos faltantes exactos.
+- **REGLA DE MEMORIA**: si el contexto ya tiene un dato, María nunca lo repite ni re-pregunta — lo usa directamente.
+- **Nuevo expediente**: flujo estructurado cuando cliente registrado quiere iniciar un trámite (tipo → municipio → manzanas). Al completar, inserta en `transacciones_pendientes` con `detalle` del servicio.
 - **Tablas Supabase**:
   - `conversaciones_whatsapp` — historial por `numero_whatsapp`, columnas `role`, `content`
   - `transacciones_pendientes` — registros pendientes (`estado`, `mensaje_original`, `respuesta_asistente`, `detalle`)
-  - `clientes` — lookup por `telefono_whatsapp`; auto-registro desde conversación
+  - `clientes` — lookup por `telefono_whatsapp`; campos: `id, nombre, situacion_tierra, municipio, tipo_mineral, dpi, telefono_whatsapp`
   - `expedientes` — consultado para contexto de fase/hitos del cliente
-- **Respuesta canónica al "precio del día"**: el bloque `CUANDO PREGUNTAN POR EL PRECIO DEL ORO` en `app/api/whatsapp/route.js` obliga a María a responder con 3 viñetas (LBMA + frescura inline, CHT compra al 80%, Tipo de cambio) + línea "El pago es vía Finacoop en lempiras." + `www.mape.legal`. Sin saludos, sin parrafadas. Los números se inyectan ya formateados con coma de miles via el helper `fmt()` (locale `en-US`) — María tiene prohibido recalcular o reformatear.
-- **Cotización por gramos (con decimales)**: misma sección instruye a María a multiplicar `X gramos × precio_compra_CHT/gramo` cuando el cliente menciona un peso. Acepta `4.5`, `4,5` (coma decimal hondureña) y `medio gramo` (=0.5). El formato de respuesta usa el mismo bloque de 3 viñetas + línea "Tus [X] gramos: aproximadamente L X,XXX.XX" + Finacoop + link. Prohibido el fallback "tengo que consultar" si `PRECIOS DE REFERENCIA` ya tiene el precio por gramo.
-- **Broadcast diario 8 AM**: sección `NOTIFICACIÓN DIARIA DE PRECIOS` en el system prompt documenta el formato canónico que envía el cron. Saludo fijo "Estimado Socio MAPE", sin emojis, sin comentarios de mercado, números con formato hondureño (`L 245,000.00`).
+  - `precios_diarios` — caché de precios del día (oro, plata, usd_hnl, fecha)
 - **Trigger de transacción**: cuando la respuesta incluye `"Listo"` + `"Confirmas"` se inserta en `transacciones_pendientes`
 - **Extracción estructurada**: segunda llamada a Haiku post-respuesta — parsea JSON de la conversación para registrar nombre/municipio/manzanas; strip de bloques markdown antes del parse; variable de error: `clientInsertError` (no `insertError`)
 - **Columnas correctas en queries** (errores comunes a evitar):
@@ -243,8 +244,9 @@ CRON_SECRET                    # Header Bearer para proteger /api/broadcast/run.
 - **Formato de reporte**: template determinístico "Estimado Socio MAPE" — LBMA USD/oz, conversión a LPS, TC, precio de compra al 80% LBMA, fecha+hora Honduras (UTC-6), enlaces a goldapi.io y www.mape.legal. **No llama a Claude** — garantiza consistencia y evita alucinaciones de precio. Fallback automático cuando `precios.oro` es null/0.
 - **Servicios**:
   - `services/userService.ts` — `getOrCreateUserByPhone`, `assignRole`, `getActiveSubscribers`, `listUsers`
-  - `services/pricingService.ts` — `fetchGoldPrice`, `fetchSilverPrice`, `fetchUSDHNL`, `fetchCopperPrice`, `fetchAndStorePrices`
-  - `services/broadcastService.ts` — `generateDailyMessage` (template fijo), `sendDailyBroadcast`, `getLastBroadcastLog`
+  - `services/pricingService.ts` — `fetchGoldPrice`, `fetchSilverPrice`, `fetchUSDHNL`, `fetchCopperPrice`, `fetchAndStorePrices` (usa metals.live como fallback — **bloqueado en Vercel**, solo funciona en local)
+  - `services/metalsPriceService.ts` — `fetchLiveMetalPrices()`: fuente de precios para María. Prioridad: 1) goldapi.io si `GOLDAPI_KEY` está set, 2) Yahoo Finance COMEX futures GC=F/SI=F (no requiere API key, accesible desde Vercel)
+  - `services/broadcastService.ts` — `generateDailyMessage`, `sendDailyBroadcast`, `getLastBroadcastLog`
   - `services/configService.ts` — extendido con `getDailyReportConfig`, `enableMetric`, `disableMetric`, `updateMetricCurrency`, `updateMetricConfig`, `updateAudience`, `updateSchedule`
 - **Cron en producción**: configurado en `vercel.json` — schedule `0 14 * * *` (14:00 UTC = 8:00 AM Honduras, UTC-6 todo el año) → `GET /api/broadcast/run` con `Authorization: Bearer <CRON_SECRET>`. Vercel Cron Jobs envían **GET** (no POST) e inyectan ese header automáticamente cuando `CRON_SECRET` está seteado en las env vars del proyecto. La ruta también acepta `POST` para invocación manual con body JSON (`roles`, `triggered_by`). En `NODE_ENV=production` con `CRON_SECRET` ausente la ruta responde **500 con error de configuración** (antes quedaba abierta y cualquiera podía gatillar el broadcast); en dev/local sigue abierta para ergonomía.
 - **Comando de prueba local**:

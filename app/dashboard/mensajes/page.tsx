@@ -35,6 +35,7 @@ export default function MensajesPage() {
     finally { setLoading(false); }
   }, [active]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   async function updateEstado(id: string, estado: string) {

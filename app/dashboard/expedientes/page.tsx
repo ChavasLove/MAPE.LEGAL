@@ -50,6 +50,7 @@ export default function ExpedientesPage() {
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   const visible = expedientes.filter(e => {
