@@ -31,7 +31,7 @@ const mariaItems = [
 ];
 
 const dashboardItems = [
-  { href: '/dashboard',            label: 'Ir al Dashboard', Icon: LayoutGrid                 },
+  { href: '/dashboard',            label: 'Ir al Dashboard', icon: <LayoutGrid     {...ICON} />              },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
