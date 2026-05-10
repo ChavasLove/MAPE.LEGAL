@@ -678,7 +678,7 @@ export async function POST(request) {
     // --- ADMIN SUB-COMMANDS (fires before main admin report) ---
     if (incomingMessage.toLowerCase().startsWith('expediente ')) {
       const expNum = incomingMessage.split(' ')[1];
-      const { data: exp } = await supabase
+      const { data: exp } = await getSupabase()
         .from('expedientes')
         .select('*')
         .eq('id', expNum)
@@ -870,7 +870,7 @@ Comandos disponibles:
 
     console.log(`📩 Message from ${fromNumber}: ${incomingMessage}`);
 
-    const { data: history } = await supabase
+    const { data: history } = await getSupabase()
       .from("conversaciones_whatsapp")
       .select("role, content")
       .eq("numero_whatsapp", fromNumber)
@@ -882,7 +882,7 @@ Comandos disponibles:
 
     // --- Look up miner in clientes table ---
     const cleanNumber = fromNumber.replace('whatsapp:', '');
-    const { data: cliente } = await supabase
+    const { data: cliente } = await getSupabase()
       .from('clientes')
       .select('id, nombre, situacion_tierra, municipio, tipo_mineral, dpi, telefono_whatsapp')
       .eq('telefono_whatsapp', cleanNumber)
@@ -912,7 +912,7 @@ Comandos disponibles:
     let preciosHoy = null;
     const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
     try {
-      const { data: cached } = await supabase
+      const { data: cached } = await getSupabase()
         .from('precios_diarios')
         .select('oro, plata, usd_hnl, fecha, fetched_at, fuente')
         .eq('fecha', today)
@@ -989,7 +989,7 @@ El formato canónico de respuesta para precio del día está en CUANDO PREGUNTAN
     if (cliente) {
       // Sanitize nombre: strip PostgREST or() separator chars to prevent filter injection
       const safeNombre = cliente.nombre.replace(/[,()]/g, ' ').trim();
-      const { data: exps } = await supabase
+      const { data: exps } = await getSupabase()
         .from('expedientes')
         .select(`
           numero_expediente, tipo, estado, fase_numero, paso, total_pasos,
@@ -1087,10 +1087,10 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
       .slice(-6)
       .map(m => `${m.role}: ${m.content}`)
       .join('\n');
-    const manualContext = await buildManualContext(incomingMessage, supabase, recentHistoryText);
+    const manualContext = await buildManualContext(incomingMessage, getSupabase(), recentHistoryText);
 
     // --- RAG: retrieve top-3 relevant chunks from maria_knowledge (FTS) ---
-    const knowledgeContext = await retrieveKnowledge(supabase, incomingMessage);
+    const knowledgeContext = await retrieveKnowledge(getSupabase(), incomingMessage);
     const ragBlock = knowledgeContext
       ? `\n\nCONTEXTO DEL SISTEMA (información relevante para esta consulta):\n${knowledgeContext}\n\nUsa esta información para responder precisamente. Si no puedes responder con esta información, di que consultarás con el equipo técnico.`
       : '';
@@ -1234,14 +1234,14 @@ Si algún dato no está claramente mencionado, deja null.`
         console.log('Extracted data:', JSON.stringify(extracted));
 
         if (extracted.nombre && extracted.nombre.length > 3) {
-          const { data: existing } = await supabase
+          const { data: existing } = await getSupabase()
             .from('clientes')
             .select('id')
             .eq('telefono_whatsapp', cleanNumber)
             .single();
 
           if (!existing) {
-            const { error: clientInsertError } = await supabase
+            const { error: clientInsertError } = await getSupabase()
               .from('clientes')
               .insert([{
                 nombre: extracted.nombre,
@@ -1284,7 +1284,7 @@ Si algún dato no está claramente mencionado, deja null.`
     ) {
       const tipoMatch = assistantReply.match(/registré tu solicitud de ([^.]+)\./i);
       const tipoServicio = tipoMatch ? tipoMatch[1].trim() : 'servicio no especificado';
-      await supabase.from("transacciones_pendientes").insert([{
+      await getSupabase().from("transacciones_pendientes").insert([{
         numero_whatsapp: fromNumber,
         mensaje_original: incomingMessage,
         respuesta_asistente: assistantReply,
