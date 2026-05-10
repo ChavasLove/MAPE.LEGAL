@@ -23,26 +23,68 @@ const jetbrains = JetBrains_Mono({
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://mape.legal";
 
+const siteTitle =
+  "MAPE LEGAL — Trazabilidad legal del oro de minería artesanal en Honduras";
+const siteDescription =
+  "Infraestructura de evidencia legal con la que Corporación Hondureña Tenka formaliza unidades mineras artesanales y emite certificados de origen verificables bajo la Ley de Minería de Honduras y la Guía de Debida Diligencia de la OCDE.";
+const ogImage = "/images/RIVER AND MOUNTAINS.png";
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: "MAPE LEGAL — Tu proceso minero, siempre visible",
-  description:
-    "Gestión legal de concesiones y exploraciones mineras con trazabilidad completa, alertas automáticas y comunicación directa por WhatsApp.",
+  title: {
+    default: siteTitle,
+    template: "%s · MAPE LEGAL",
+  },
+  description: siteDescription,
+  applicationName: "MAPE LEGAL",
+  authors: [{ name: "Corporación Hondureña Tenka, S.A." }],
+  keywords: [
+    "MAPE",
+    "minería artesanal",
+    "Honduras",
+    "certificado de origen",
+    "INHGEOMIN",
+    "SERNA",
+    "OCDE debida diligencia",
+    "oro trazable",
+    "Convenio 169 OIT",
+  ],
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     type: "website",
     locale: "es_HN",
+    alternateLocale: "en_US",
+    url: siteUrl,
     siteName: "MAPE LEGAL",
-    title: "MAPE LEGAL — Tu proceso minero, siempre visible",
-    description:
-      "Gestión legal de concesiones y exploraciones mineras con trazabilidad completa, alertas automáticas y comunicación directa por WhatsApp.",
-    images: [{ url: "/images/RIVER AND MOUNTAINS.png", width: 1200, height: 630, alt: "MAPE LEGAL" }],
+    title: siteTitle,
+    description: siteDescription,
+    images: [
+      {
+        url: ogImage,
+        width: 1200,
+        height: 630,
+        alt: "MAPE LEGAL — territorio",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "MAPE LEGAL — Tu proceso minero, siempre visible",
+    title: siteTitle,
     description:
-      "Gestión legal de concesiones y exploraciones mineras con trazabilidad completa, alertas automáticas y comunicación directa por WhatsApp.",
-    images: ["/images/RIVER AND MOUNTAINS.png"],
+      "Infraestructura de evidencia legal de Corporación Hondureña Tenka.",
+    images: [ogImage],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
 };
 

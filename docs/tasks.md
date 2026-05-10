@@ -1,6 +1,14 @@
 # Tasks
 
 ## Pending
+- [ ] **Phase 0 — Stabilization (next priority).** Source: `docs/code-analysis-review.md`.
+  Fix `middleware.ts` / `proxy.ts`, cookie-name mismatch in `/api/auth/login`,
+  API route auth, María webhook import errors, workflow race conditions,
+  and the pre-existing build/lint failures in `app/dashboard/minas/page.tsx:72`
+  and `app/api/admin/clientes/route.ts:61` (carryover from Phase 1).
+- [ ] **Phase 2 — Pilot core.** `minas` UI (currently 0/10 score),
+  `transacciones_oro` UI, `contratos` UI, certificate issuance flow that
+  populates `certificados_origen` from real transactions.
 - [ ] Populate `scripts/visual-guide.ts` — interactive token reference for designers
 - [ ] Implement `documentos` table and fill real document check in `getBlockingReasons`
 - [ ] Add Row Level Security (RLS) policies to all Supabase tables
@@ -21,6 +29,16 @@
 ---
 
 ## Completed
+- [x] Phase 1 — Realineación de superficie pública (2026-05-10)
+  - Landing institucional reemplaza la página de ventas (`app/page.tsx`)
+  - Portal público de Verificación de Certificado de Origen
+    (`/verificar`, `/verificar/[numero]`, `/api/verificar/[numero]`)
+  - Migración `020_certificados_origen.sql` + vista pública
+    `certificados_origen_publicos`
+  - Metadata SEO canónica enriquecida en `app/layout.tsx`
+  - Eliminación de `components/landing/*` (15 archivos huérfanos)
+  - Datos institucionales reales (WhatsApp +504 9737 3139,
+    gerencia@mape.legal, oficina Nexcrea)
 - [x] Vercel deployment fix (2026-05-02)
   - `PriceWidgets.tsx`: TypeScript error — `MetalData` type mismatch in `fetchPrices` fixed
   - `app/api/whatsapp/route.js`: runtime crash — lazy Supabase getter replaces module-level `createClient()`
