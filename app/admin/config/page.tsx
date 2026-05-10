@@ -10,6 +10,14 @@ interface ConfigEntry {
   descripcion: string | null;
 }
 
+const SHADOW_SM = '0 2px 6px rgba(31,42,56,0.05)';
+
+const inputStyle: React.CSSProperties = {
+  background: 'var(--bg)',
+  border:     '1px solid var(--border)',
+  color:      'var(--t1)',
+};
+
 export default function ConfigPage() {
   const [config,   setConfig]   = useState<ConfigEntry[]>([]);
   const [loading,  setLoading]  = useState(true);
@@ -80,43 +88,64 @@ export default function ConfigPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Configuración del sistema</h1>
-          <p className="text-sm font-sans mt-0.5" style={{ color: '#A3A8AB' }}>
+          <h1 className="text-2xl" style={{ color: 'var(--ink)' }}>Configuración del sistema</h1>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--slate)' }}>
             Claves API, parámetros de integración y ajustes globales
           </p>
         </div>
-        <button onClick={load} className="p-2 rounded-lg hover:bg-white/10 cursor-pointer" style={{ color: '#A3A8AB' }}>
+        <button
+          onClick={load}
+          className="p-2 rounded-lg transition-colors cursor-pointer"
+          style={{ color: 'var(--slate)' }}
+        >
           <RefreshCw size={18} strokeWidth={1.5} />
         </button>
       </div>
 
       {loading ? (
-        <p className="text-sm font-sans py-8 text-center" style={{ color: '#A3A8AB' }}>Cargando configuración...</p>
+        <p className="text-sm py-8 text-center" style={{ color: 'var(--t2)' }}>Cargando configuración...</p>
       ) : (
         <form onSubmit={handleSave} className="space-y-6">
           {Object.entries(groups).map(([prefix, entries]) => (
             <div
               key={prefix}
               className="rounded-xl border overflow-hidden"
-              style={{ borderColor: 'rgba(94,107,123,0.3)' }}
+              style={{
+                background:  'var(--bg)',
+                borderColor: 'var(--border)',
+                boxShadow:   SHADOW_SM,
+              }}
             >
-              <div className="px-5 py-3 border-b" style={{ background: '#1F2A38', borderColor: 'rgba(94,107,123,0.3)' }}>
-                <h2 className="text-sm font-semibold text-white font-sans">
+              <div
+                className="px-5 py-3 border-b"
+                style={{ background: 'var(--ink)', borderColor: 'var(--border)' }}
+              >
+                <h2
+                  className="text-sm font-semibold"
+                  style={{ color: '#fff', fontFamily: 'var(--font-body)' }}
+                >
                   {SECTION_LABELS[prefix] ?? prefix}
                 </h2>
               </div>
-              <div className="divide-y" style={{ background: '#1F2A38', borderColor: 'rgba(94,107,123,0.2)' }}>
+              <div className="divide-y" style={{ background: 'var(--bg)' }}>
                 {entries.map(c => {
                   const isSecret = c.tipo === 'secreto';
                   const show     = showKeys.has(c.clave);
                   return (
-                    <div key={c.clave} className="px-5 py-4 grid sm:grid-cols-2 gap-4 items-start" style={{ borderColor: 'rgba(94,107,123,0.2)' }}>
+                    <div
+                      key={c.clave}
+                      className="px-5 py-4 grid sm:grid-cols-2 gap-4 items-start"
+                      style={{ borderColor: 'var(--border)' }}
+                    >
                       <div>
-                        <div className="text-xs font-semibold uppercase tracking-wider font-sans mb-0.5" style={{ color: '#A3A8AB' }}>
+                        <div
+                          className="text-xs font-semibold uppercase tracking-wider mb-0.5"
+                          style={{ color: 'var(--slate)' }}
+                        >
                           {c.clave}
                         </div>
                         {c.descripcion && (
-                          <div className="text-xs font-sans" style={{ color: '#5E6B7B' }}>{c.descripcion}</div>
+                          <div className="text-xs" style={{ color: 'var(--t3)' }}>{c.descripcion}</div>
                         )}
                       </div>
                       <div className="relative">
@@ -125,15 +154,15 @@ export default function ConfigPage() {
                           value={values[c.clave] ?? ''}
                           onChange={e => setValues(v => ({ ...v, [c.clave]: e.target.value }))}
                           placeholder={isSecret ? '••••••••••••••••' : 'Sin valor'}
-                          className="w-full px-3 py-2 rounded-lg text-sm font-sans outline-none pr-9"
-                          style={{ background: '#1F2A38', border: '1px solid rgba(94,107,123,0.4)', color: 'white' }}
+                          className="w-full px-3 py-2 rounded-lg text-sm outline-none pr-9"
+                          style={inputStyle}
                         />
                         {isSecret && (
                           <button
                             type="button"
                             onClick={() => toggleShowKey(c.clave)}
                             className="absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer"
-                            style={{ color: '#A3A8AB' }}
+                            style={{ color: 'var(--slate)' }}
                           >
                             {show ? <EyeOff size={15} strokeWidth={1.5} /> : <Eye size={15} strokeWidth={1.5} />}
                           </button>
@@ -150,21 +179,21 @@ export default function ConfigPage() {
             <button
               type="submit"
               disabled={saving}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold font-sans text-white disabled:opacity-60 cursor-pointer"
-              style={{ background: '#1F2A38' }}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-60 cursor-pointer"
+              style={{ background: 'var(--ink)', color: '#fff' }}
             >
               <Save size={16} strokeWidth={2} />
               {saving ? 'Guardando...' : 'Guardar configuración'}
             </button>
             {saved && (
-              <span className="text-sm font-sans" style={{ color: '#2A8E50' }}>
-                ✓ Guardado correctamente
+              <span className="text-sm" style={{ color: 'var(--green)' }}>
+                Guardado correctamente
               </span>
             )}
           </div>
 
-          <p className="text-xs font-sans" style={{ color: '#5E6B7B' }}>
-            Las claves de tipo <strong style={{ color: '#A3A8AB' }}>secreto</strong> se almacenan en la base de datos y están disponibles para el servidor. Para producción, prefiere usar variables de entorno de Vercel (.env) para las claves API principales.
+          <p className="text-xs" style={{ color: 'var(--t3)' }}>
+            Las claves de tipo <strong style={{ color: 'var(--slate)' }}>secreto</strong> se almacenan en la base de datos y están disponibles para el servidor. Para producción, prefiere usar variables de entorno de Vercel (.env) para las claves API principales.
           </p>
         </form>
       )}
