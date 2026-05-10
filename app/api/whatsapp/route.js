@@ -292,17 +292,23 @@ Menciona que todos los pagos son vía Finacoop.
 CUANDO PREGUNTAN POR EL PRECIO DEL ORO (precio del día / precio hoy / precio diario / cuánto pagan):
 Si tienes datos en el bloque PRECIOS DE REFERENCIA, responde EXACTAMENTE con este formato (viñetas, sin saludo, sin parrafada):
 
-- LBMA: [oroLBMA] ([frescuraLabel])
+- LBMA: [oroLBMA]
 - CHT compra al 80% precio internacional de bolsa: [oroCompra] por gramo
-- Tipo de cambio: [tipo_cambio]
+- Tipo de cambio USD/LPS: [tipo_cambio]
+- Actualizado: [frescuraLabel]
 
 El pago es vía Finacoop en lempiras.
 
 www.mape.legal
 
+REGLA OBLIGATORIA — toda respuesta que mencione precio de oro DEBE incluir SIEMPRE:
+1. La línea "Tipo de cambio USD/LPS" con el valor del bloque PRECIOS DE REFERENCIA.
+2. La línea "Actualizado" con [frescuraLabel] del bloque (timestamp de cuándo se obtuvo el precio).
+Sin esos dos campos la respuesta queda incompleta — agregalos siempre, aunque el cliente no los pida explícitamente.
+
 Reglas:
 - Usa los valores TAL CUAL del bloque PRECIOS DE REFERENCIA — no recalcules ni reformatees números.
-- Si no hay [frescuraLabel] disponible, omite los paréntesis (no escribas "()" vacío).
+- Si [frescuraLabel] no está disponible, escribí "Actualizado: hoy" como mínimo — nunca omitas la línea entera.
 - NUNCA inventes precios. Si el bloque dice "no disponible": "El precio de compra cambia a diario — ahorita le consulto al equipo y le confirmo hoy mismo."
 
 SI EL CLIENTE MENCIONA UN PESO ESPECIFICO EN GRAMOS:
@@ -314,9 +320,10 @@ si ya tienes el precio por gramo en PRECIOS DE REFERENCIA.
 Formato de respuesta:
 "Listo [nombre]. Con [X] gramos de oro al precio de hoy:
 
-- LBMA: [oroLBMA] ([frescuraLabel])
+- LBMA: [oroLBMA]
 - CHT compra al 80% precio internacional de bolsa: [oroCompra] por gramo
-- Tipo de cambio: [tipo_cambio]
+- Tipo de cambio USD/LPS: [tipo_cambio]
+- Actualizado: [frescuraLabel]
 - Tus [X] gramos: aproximadamente L [X * precio_por_gramo, 2 decimales con coma de miles]
 
 El pago es vía Finacoop en lempiras.
@@ -981,7 +988,7 @@ Comandos disponibles:
 - Tipo de cambio: ${tipoCambio ?? 'no disponible'}
 - Frescura: ${frescuraLabel || 'no disponible'}
 ${preciosHoy.fuente ? `- Fuente: ${preciosHoy.fuente}` : ''}
-El formato canónico de respuesta para precio del día está en CUANDO PREGUNTAN POR EL PRECIO DEL ORO — síguelo al pie de la letra (3 viñetas + Finacoop + www.mape.legal). No agregues una línea extra de frescura al final: ya va inline con LBMA.`
+El formato canónico de respuesta para precio del día está en CUANDO PREGUNTAN POR EL PRECIO DEL ORO — síguelo al pie de la letra (4 viñetas: LBMA + CHT compra + Tipo de cambio USD/LPS + Actualizado, luego Finacoop + www.mape.legal). El timestamp ("Actualizado") y el tipo de cambio USD/LPS son OBLIGATORIOS en cada respuesta de precio.`
       : `\n\nPRECIOS DE REFERENCIA: No hay datos de precios cargados hoy. Si el cliente pregunta por precio de compra del oro, di: "Hoy no tengo el precio cargado en el sistema. Para precio actualizado escribí a gerencia@mape.legal."`;
 
     // --- Query expedientes linked to this client ---
