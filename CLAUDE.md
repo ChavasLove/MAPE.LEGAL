@@ -43,6 +43,7 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
   - 007: `contactos` (formulario de landing)
   - 008: `clientes`, `minas`, `contratos`, `indice_legalidad`, `transacciones_oro`, `conversaciones_whatsapp`, `transacciones_pendientes`
   - 009: Patch — columnas WhatsApp en `clientes` y `transacciones_pendientes`
+  - 010: `admin_actions` + `onboarding_states` — backing tables del Admin Command Interpreter y del onboarding state machine. **Sin esta migración aplicada, `startOnboarding()` lanza `Error: Could not find the table 'public.onboarding_states' in the schema cache` y el webhook de María cae al outer catch — todo número no registrado recibe "tuvimos un problema técnico".** Fix de runtime en commit `2aabb8a` envuelve el bloque de onboarding en `try/catch` así Maria degrada limpio cuando la migración no está aplicada (loggea `[onboarding] non-fatal —…` y cae al flujo normal); aplicar 010 en Supabase Studio sigue siendo necesario para que el onboarding guiado funcione.
   - 012: `documentos_referencia` — Manual Operativo 2026, consultado por María en tiempo real
   - 013: `precios_diarios.fetched_at` + vista `precios_frescura`
   - 014: Añade `proceso` a `documentos_referencia` + seed titulación (9 pasos) + sociedad (7 pasos). Incluye un `DO $$ ... $$` que **droppea NOT NULL en cualquier columna no gestionada por la migración** (en producción la tabla tiene columnas fuera del control de migraciones — `documento_nombre`, `categoria` — que rompían los inserts de procesos nuevos)
