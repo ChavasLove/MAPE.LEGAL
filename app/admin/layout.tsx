@@ -1,16 +1,20 @@
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
 import Image from 'next/image';
 import { Users, UserCheck, LayoutDashboard, LogOut, Shield, FileText, Settings, LayoutGrid } from 'lucide-react';
 import { getServerAuth } from '@/lib/serverAuth';
+import SidebarNav from '@/components/dashboard/SidebarNav';
 
 const navItems = [
-  { href: '/admin',                label: 'Resumen',        Icon: LayoutDashboard },
-  { href: '/admin/usuarios',       label: 'Usuarios',       Icon: Users            },
-  { href: '/admin/profesionales',  label: 'Profesionales',  Icon: UserCheck        },
-  { href: '/admin/roles',          label: 'Roles',          Icon: Shield           },
-  { href: '/admin/contenido',      label: 'Contenido',      Icon: FileText         },
-  { href: '/admin/config',         label: 'Configuración',  Icon: Settings         },
+  { href: '/admin',                label: 'Resumen',        Icon: LayoutDashboard, exact: true },
+  { href: '/admin/usuarios',       label: 'Usuarios',       Icon: Users                       },
+  { href: '/admin/profesionales',  label: 'Profesionales',  Icon: UserCheck                   },
+  { href: '/admin/roles',          label: 'Roles',          Icon: Shield                      },
+  { href: '/admin/contenido',      label: 'Contenido',      Icon: FileText                    },
+  { href: '/admin/config',         label: 'Configuración',  Icon: Settings                    },
+];
+
+const dashboardItems = [
+  { href: '/dashboard',            label: 'Ir al Dashboard', Icon: LayoutGrid                 },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -23,15 +27,20 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const email = auth.user.email ?? '';
 
+  // Sidebar dividers stay in slate-lt @ 30% transparent against ink — keeps
+  // the on-dark hairline tonally close to the design's hairline language.
+  const sidebarHairline = 'color-mix(in oklch, var(--slate-lt) 30%, transparent)';
+  const sidebarHairlineSoft = 'color-mix(in oklch, var(--slate-lt) 18%, transparent)';
+
   return (
-    <div className="min-h-screen flex" style={{ background: '#1F2A38' }}>
+    <div className="min-h-screen flex" style={{ background: 'var(--bg-soft)' }}>
       {/* Sidebar */}
       <aside
         className="w-64 shrink-0 flex flex-col border-r"
-        style={{ background: '#1F2A38', borderColor: 'rgba(94,107,123,0.3)' }}
+        style={{ background: 'var(--ink)', borderColor: sidebarHairline }}
       >
         {/* Logo */}
-        <div className="flex items-center gap-3 px-6 py-5 border-b" style={{ borderColor: 'rgba(94,107,123,0.3)' }}>
+        <div className="flex items-center gap-3 px-6 py-5 border-b" style={{ borderColor: sidebarHairline }}>
           <Image
             src="/images/MAPE LEGAL LOGO 1.JPG"
             alt="CHT"
@@ -40,50 +49,45 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             className="h-8 w-auto"
           />
           <div>
-            <div className="text-white font-bold text-sm font-sans">MAPE.LEGAL</div>
-            <div className="text-xs font-sans" style={{ color: '#A3A8AB' }}>Panel de administración</div>
+            <div className="text-sm font-semibold" style={{ color: '#fff' }}>MAPE.LEGAL</div>
+            <div
+              className="mt-0.5"
+              style={{
+                color: 'var(--slate-lt)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 11,
+                letterSpacing: '0.18em',
+                textTransform: 'uppercase',
+                fontWeight: 600,
+              }}
+            >
+              Panel admin
+            </div>
           </div>
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map(({ href, label, Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium font-sans transition-colors hover:bg-white/10"
-              style={{ color: '#A3A8AB' }}
-            >
-              <Icon size={18} strokeWidth={1.5} />
-              {label}
-            </Link>
-          ))}
+          <SidebarNav items={navItems} />
 
-          <div className="my-3 border-t" style={{ borderColor: 'rgba(94,107,123,0.2)' }} />
+          <div className="my-3 border-t" style={{ borderColor: sidebarHairlineSoft }} />
 
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium font-sans transition-colors hover:bg-white/10"
-            style={{ color: '#A3A8AB' }}
-          >
-            <LayoutGrid size={18} strokeWidth={1.5} />
-            Ir al Dashboard
-          </Link>
+          <SidebarNav items={dashboardItems} />
         </nav>
 
         {/* User + Logout */}
-        <div className="p-4 border-t" style={{ borderColor: 'rgba(94,107,123,0.3)' }}>
+        <div className="p-4 border-t" style={{ borderColor: sidebarHairline }}>
           {email && (
             <div className="px-3 py-2 mb-1">
-              <div className="text-xs font-semibold text-white font-sans truncate">{email}</div>
-              <div className="text-xs font-sans mt-0.5" style={{ color: '#A3A8AB' }}>Administrador</div>
+              <div className="text-xs font-semibold truncate" style={{ color: '#fff' }}>{email}</div>
+              <div className="text-xs mt-0.5" style={{ color: 'var(--slate-lt)' }}>Administrador</div>
             </div>
           )}
           <form action="/api/auth/logout" method="POST">
             <button
               type="submit"
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium font-sans transition-colors hover:bg-white/10 cursor-pointer"
-              style={{ color: '#A3A8AB' }}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-white/10 cursor-pointer"
+              style={{ color: 'var(--slate-lt)' }}
             >
               <LogOut size={18} strokeWidth={1.5} />
               Cerrar sesión
