@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import TopoBand from '@/components/decor/TopoBand'
+import TerrainMapSection from '@/components/terrain/TerrainMapSection'
 
 type Lang = 'es' | 'en'
 
@@ -36,6 +37,7 @@ export default function LandingPage() {
         <div className="nav-links">
           <a href="#identidad" className="nav-link">{t('Identidad', 'About')}</a>
           <a href="#cumplimiento" className="nav-link">{t('Cumplimiento', 'Compliance')}</a>
+          <a href="#archivos-mineros" className="nav-link">{t('Archivos', 'Archives')}</a>
           <a href="#contacto" className="nav-link">{t('Contacto', 'Contact')}</a>
           <div className="lang-toggle">
             <button className={`lang-btn${lang === 'es' ? ' active' : ''}`} onClick={() => changeLang('es')}>ES</button>
@@ -489,6 +491,18 @@ export default function LandingPage() {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* ARCHIVOS MINEROS — BIBLIOTECA DE ARCHIVOS MINEROS DE HONDURAS */}
+      <section
+        id="archivos-mineros"
+        style={{
+          background: 'var(--bg)',
+          borderBottom: '1px solid var(--border)',
+          padding: '80px max(24px, calc((100% - 1100px)/2))',
+        }}
+      >
+        <TerrainMapSection lang={lang} t={t} />
       </section>
 
       {/* CONTACTO */}

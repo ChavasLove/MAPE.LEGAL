@@ -308,3 +308,23 @@ footer a:hover { color: var(--sand); }
   .fases-grid { grid-template-columns: 1fr; }
   .nav-links .nav-link { display: none; }
 }
+
+/* ── 3D TERRAIN MAP SECTION ────────────────────────────────────────── */
+.terrain-map-layout { position: relative; }
+
+/* Map popup overrides */
+.mining-popup .maplibregl-popup-content {
+  border-radius: 12px !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 4px 16px rgba(31,42,56,0.12) !important;
+  padding: 12px !important;
+  font-family: var(--font-body) !important;
+}
+.mining-popup .maplibregl-popup-tip {
+  border-top-color: var(--border) !important;
+}
+
+/* Force stats bar to 2 columns on small screens */
+@media (max-width: 600px) {
+  .terrain-stats-bar { grid-template-columns: repeat(2, 1fr) !important; }
+}
