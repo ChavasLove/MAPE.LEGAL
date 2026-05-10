@@ -351,7 +351,7 @@ POST /api/expedientes/:id/transition
 
 ---
 
-## 8. ESTADO ACTUAL (2 mayo 2026)
+## 8. ESTADO ACTUAL (10 mayo 2026)
 
 ### Completado
 - [x] Dominio y hosting (Vercel + Supabase)

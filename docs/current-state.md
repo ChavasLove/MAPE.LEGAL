@@ -1,10 +1,13 @@
 # Current State
 
 ## Last Updated
-2026-05-03
+2026-05-10
 
 ## Current Module
-Deployment fix — build passes cleanly on 41 routes; all ESLint errors resolved
+Phase 1 — public-surface realignment shipped (PR #102 merged into `main`):
+institutional landing, public Certificate of Origin verification surface
+(`/verificar`, `/verificar/[numero]`, `/api/verificar/[numero]`), migration
+020, canonical SEO metadata.
 
 ---
 
