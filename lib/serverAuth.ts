@@ -2,12 +2,14 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 import { checkAuthEnv, logAuthEnvFailure } from '@/lib/authEnv';
+import { lookupUserRole, type Role } from '@/lib/userRoleLookup';
 
 // Single source of truth for "is the caller logged in and what role do they have".
 // The auth-role cookie is treated as a hint for proxy.ts only — never trusted by
-// any server component or API route. Role is always re-derived from user_roles.
+// any server component or API route. Role is always re-derived from user_roles
+// via the SECURITY DEFINER RPC (see lib/userRoleLookup.ts).
 
-export type Role = 'admin' | 'abogado' | 'tecnico_ambiental' | 'cliente';
+export type { Role };
 
 export const DASHBOARD_ROLES: ReadonlyArray<Role> = ['admin', 'abogado', 'tecnico_ambiental'];
 
@@ -39,24 +41,15 @@ function roleLookupClient(): SupabaseClient | null {
 // Returns null when:
 //   - no token cookie is present
 //   - JWT is missing/expired/malformed/signature-invalid (Supabase rejects)
-//   - user_roles row is missing or activo=false
+//   - role lookup fails for any reason (logged via lookupUserRole)
 //   - required env vars are missing (logs to stderr first)
-//
-// Service-role client is used for the role lookup so RLS cannot silently hide
-// the row when the access-token JWT context is not propagated. If the
-// service-role key is missing/placeholder we log loudly and return null —
-// callers (layouts, requireRole) treat that as "not authenticated" and
-// redirect to /login, which is safer than silently falling back to the anon
-// client (which would return 0 rows and the same null outcome but without
-// a footprint in Vercel logs).
 export async function getServerAuth(): Promise<AuthContext | null> {
   const store = await cookies();
-  const token = store.get('auth-token')?.value
-    ?? store.get('admin-token')?.value;
+  const token = store.get('auth-token')?.value;
   if (!token) return null;
 
   const env = checkAuthEnv();
-  if (!env.ok || env.serviceKey !== 'ok') {
+  if (!env.ok) {
     logAuthEnvFailure('serverAuth', env);
     return null;
   }
@@ -69,22 +62,11 @@ export async function getServerAuth(): Promise<AuthContext | null> {
 
   const roleClient = roleLookupClient();
   if (!roleClient) return null;
-  const { data: roleRow } = await roleClient
-    .from('user_roles')
-    .select('rol, activo')
-    .eq('user_id', user.id)
-    .single();
 
-  if (!roleRow || !roleRow.activo) return null;
-  const role = roleRow.rol as Role;
-  if (!isKnownRole(role)) return null;
+  const result = await lookupUserRole(roleClient, user.id, 'serverAuth');
+  if (!result.ok) return null;
 
-  return { user, role, token };
-}
-
-const KNOWN_ROLES = new Set<Role>(['admin', 'abogado', 'tecnico_ambiental', 'cliente']);
-function isKnownRole(value: string): value is Role {
-  return KNOWN_ROLES.has(value as Role);
+  return { user, role: result.role, token };
 }
 
 // Convenience for API route handlers. Returns the auth context when allowed,
