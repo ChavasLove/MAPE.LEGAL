@@ -43,8 +43,9 @@ export async function GET() {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   // Fetch expedientes linked to each client via cliente_id FK
-  const ids = (data ?? []).map(c => c.id);
-  const expedientesByCliente: Record<string, unknown[]> = {};
+  const clientes = (data ?? []) as ClienteRow[];
+  const ids      = clientes.map((c: ClienteRow) => c.id);
+  const expedientesByCliente: Record<string, ExpedienteRow[]> = {};
 
   if (ids.length > 0) {
     const { data: exps } = await admin
@@ -52,7 +53,7 @@ export async function GET() {
       .select('id, numero_expediente, tipo, estado, fase_numero, paso, total_pasos, cierre_estimado, cliente_id')
       .in('cliente_id', ids);
 
-    (exps ?? [] as ExpedienteRow[]).forEach((exp: ExpedienteRow) => {
+    ((exps ?? []) as ExpedienteRow[]).forEach((exp: ExpedienteRow) => {
       if (!expedientesByCliente[exp.cliente_id]) expedientesByCliente[exp.cliente_id] = [];
       expedientesByCliente[exp.cliente_id].push(exp);
     });
