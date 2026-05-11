@@ -228,7 +228,7 @@ Su propósito es generar, almacenar y certificar evidencia legalmente defendible
 
 ---
 
-## 4. ESQUEMA DE BASE DE DATOS (9 migraciones)
+## 4. ESQUEMA DE BASE DE DATOS (23 migraciones)
 
 | Migración | Contenido |
 |---|---|
@@ -241,6 +241,19 @@ Su propósito es generar, almacenar y certificar evidencia legalmente defendible
 | 007 | Contactos del formulario de landing |
 | 008 | Piloto core: clientes, minas, contratos, indice_legalidad, transacciones_oro, conversaciones_whatsapp, transacciones_pendientes |
 | 009 | Patch: columnas WhatsApp en clientes (telefono_whatsapp, situacion_tierra, tipo_mineral, fecha_registro) y transacciones_pendientes (mensaje_original, respuesta_asistente) |
+| 010 | Admin commands + onboarding states (`admin_actions`, `onboarding_states`) |
+| 012 | `documentos_referencia` — Manual Operativo 2026 |
+| 013 | `precios_diarios.fetched_at` + vista `precios_frescura` |
+| 014 | `proceso` en `documentos_referencia` + seed titulación/sociedad |
+| 015 | Trigger `on_auth_user_created` + función `handle_new_auth_user` |
+| 016 | `broadcast_log.error_msg` + `broadcast_log.aborted_reason` |
+| 017 | Drop policy recursiva `"Admins manage user_roles"` |
+| 018 | INSERT policy default-cliente (reemplazada por 019) |
+| 019 | RPC `get_user_role_for_login` (SECURITY DEFINER) + policy self-only |
+| 020 | `certificados_origen` + vista pública `certificados_origen_publicos` |
+| 021 | Esquema ER de tareas (refactor) |
+| 022 | Plantilla de 54 pasos de expediente |
+| **023** | **`concesiones_mineras_registro` + vista pública + RPCs SECURITY DEFINER (`search_concesion_minera`, `concesiones_minera_stats`). 587 filas transcritas del registro INHGEOMIN (3 PDFs).** |
 
 **Tablas principales:**
 
@@ -262,6 +275,7 @@ Su propósito es generar, almacenar y certificar evidencia legalmente defendible
 | `conversaciones_whatsapp` | Historial del bot María por número |
 | `transacciones_pendientes` | Confirmaciones pendientes del bot |
 | `perfiles_profesionales` | Abogados y técnicos ambientales CHT |
+| `concesiones_mineras_registro` | **Registro público INHGEOMIN** — 587 concesiones (125 explotación otorgada + 170 exploración otorgada + 292 en solicitud, mayoría pendientes). Tres `categoria` canónicas; RLS público read, admin write. Vista `concesiones_mineras_publicas` para anon. RPCs `search_concesion_minera` (trigram) + `concesiones_minera_stats` (KPIs) son SECURITY DEFINER → consumibles desde anon-key. Seedea con `node scripts/seed-concesiones-mineras.mjs`. |
 | `user_roles` | Roles de usuarios del sistema (admin/abogado/tecnico/cliente) |
 | `roles` | Catálogo dinámico de roles con permisos JSON |
 | `contenido_cms` | Contenido editable de la landing page |
@@ -285,6 +299,9 @@ Su propósito es generar, almacenar y certificar evidencia legalmente defendible
 | `/admin/contenido` | admin | ✅ Editor CMS |
 | `/admin/config` | admin | ✅ Configuración del sistema |
 | `/admin/profesionales` | admin | ✅ Perfiles profesionales |
+| `/admin/concesiones` | admin | ✅ Registro INHGEOMIN — 587 concesiones (KPIs, filtros, tabla paginada) |
+| `/registro` | Público | ✅ Búsqueda pública en vivo del registro INHGEOMIN |
+| `/verificar/[numero]` | Público | ✅ Verificación de certificados de origen |
 | `/dashboard` | abogado / tecnico / admin | ✅ Dashboard operativo |
 | `/dashboard/expedientes` | abogado / tecnico / admin | ✅ Lista de expedientes |
 | `/dashboard/expedientes/[id]` | abogado / tecnico / admin | ✅ Detalle con 4 tabs |
@@ -307,6 +324,10 @@ Su propósito es generar, almacenar y certificar evidencia legalmente defendible
 | `/api/whatsapp` | GET + POST | Webhook Twilio — asistente María |
 | `/api/admin/cms` | GET / POST / DELETE | Editor CMS |
 | `/api/admin/config` | GET / PATCH | Configuración del sistema |
+| `/api/admin/concesiones` | GET | Lista paginada del registro INHGEOMIN (admin/abogado/tecnico) |
+| `/api/admin/concesiones/stats` | GET | KPIs del registro INHGEOMIN |
+| `/api/admin/concesiones/[id]` | GET / PATCH | Detalle + edición (sin DELETE) |
+| `/api/concesiones/buscar` | GET | **Pública** — RPC `search_concesion_minera` con cache 60s + SWR 5min |
 | `/api/admin/roles` | GET / POST | Gestión de roles |
 | `/api/admin/usuarios` | GET / POST | Gestión de usuarios |
 | `/api/prices` | GET | Precios LBMA en tiempo real |
@@ -351,11 +372,11 @@ POST /api/expedientes/:id/transition
 
 ---
 
-## 8. ESTADO ACTUAL (10 mayo 2026)
+## 8. ESTADO ACTUAL (11 mayo 2026)
 
 ### Completado
 - [x] Dominio y hosting (Vercel + Supabase)
-- [x] Schema completo — 9 migraciones aplicadas en desarrollo
+- [x] Schema completo — 23 migraciones (008 base + 010–023 incrementales)
 - [x] Motor de workflow con chequeo real de documentos e `is_final`
 - [x] Sistema RBAC: 4 roles, cookies httpOnly, guard `proxy.ts`
 - [x] Login unificado con redirección por rol
@@ -386,19 +407,27 @@ POST /api/expedientes/:id/transition
   - `/dashboard/minas/[id]`: tabs General · Legalidad · Contratos · Transacciones
   - Edit modal para campos de mina; retiro vía `estado='clausurada'`
   - Cierra el gap de auditoría: `minas` UI 0/10 → ~7/10
-- [x] Biblioteca Archivos Mineros — 3D map público (2026-05-10/11)
-  - Sección institucional `#archivos-mineros` en la landing — nav "Mapa Minero" / "Mining Map"
-  - MapLibre GL JS v5 con 8 sitios mineros verificados de Honduras (`components/terrain/`)
-  - Tiles: CartoDB Voyager + SRTM hillshade DEM por default; upgrade a MapTiler satellite + 3D extrusion cuando `NEXT_PUBLIC_MAPTILER_KEY` está set
-  - Color Manual v1.0 compliant: cero hex literals; tokens `--amber` / `--blue` / `--plum` / `--t3` / `--red` / `--slate` / `--earth` / `--green`
-  - Bilingüe ES/EN; panel de detalle, leyenda colapsable, stats bar `8 / 2 / 2 / 2`
-  - CTA "Iniciar trámite con CHT" en sitios `active` / `inactive` → WhatsApp a María con mensaje pre-llenado (oculto en `contested` / `historical`)
-  - Lección reutilizable: `pitch: 0` por default — DOM markers visualmente derivan con perspectiva (ver CLAUDE.md §"Biblioteca Archivos Mineros")
+- [x] **Phase 2E — Registro INHGEOMIN público + María RAG (2026-05-11)**
+  - 587 concesiones transcritas de 3 PDFs INHGEOMIN (125 explotación otorgada
+    + 170 exploración otorgada + 292 en solicitud)
+  - Migración 023 con tabla `concesiones_mineras_registro`, vista pública,
+    RPCs `search_concesion_minera` y `concesiones_minera_stats`
+    (SECURITY DEFINER al estilo migración 019)
+  - Admin UI `/admin/concesiones` con KPIs, filtros, paginación
+  - Página pública `/registro` con búsqueda en vivo (debounce 250ms)
+  - Endpoint público `/api/concesiones/buscar` con cache edge 60s + SWR 5min
+  - María integration: `buildConcesionContext()` keyword-triggered,
+    inyecta hasta 5 filas en el system prompt con guardrail explícito de no
+    afirmar aprobación cuando la categoría es `solicitud_pendiente`
+  - Scripts idempotentes: `aggregate-concesiones-jsonl.mjs` (JSONL→JSON merge)
+    + `seed-concesiones-mineras.mjs` (upsert chunked por
+    `(categoria, numero_registro)`)
 
 ### Pendiente para producción
-- [ ] Aplicar migraciones 007–009 + 015–020 en Supabase producción (si no se han corrido)
+- [ ] Aplicar migraciones 007–023 en Supabase producción (si no se han corrido)
 - [ ] Variables de entorno en Vercel (ver sección 9)
 - [ ] `node scripts/seed-super-admin.mjs` post-deploy
+- [ ] `node scripts/seed-concesiones-mineras.mjs` post-deploy (587 filas INHGEOMIN)
 - [ ] SPF + DKIM para `gerencia@mape.legal` en SendGrid
 - [ ] Webhook Meta Business Portal → `/api/webhook/whatsapp`
 - [ ] Webhook Twilio → `/api/whatsapp`
