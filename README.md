@@ -386,6 +386,14 @@ POST /api/expedientes/:id/transition
   - `/dashboard/minas/[id]`: tabs General · Legalidad · Contratos · Transacciones
   - Edit modal para campos de mina; retiro vía `estado='clausurada'`
   - Cierra el gap de auditoría: `minas` UI 0/10 → ~7/10
+- [x] Biblioteca Archivos Mineros — 3D map público (2026-05-10/11)
+  - Sección institucional `#archivos-mineros` en la landing — nav "Mapa Minero" / "Mining Map"
+  - MapLibre GL JS v5 con 8 sitios mineros verificados de Honduras (`components/terrain/`)
+  - Tiles: CartoDB Voyager + SRTM hillshade DEM por default; upgrade a MapTiler satellite + 3D extrusion cuando `NEXT_PUBLIC_MAPTILER_KEY` está set
+  - Color Manual v1.0 compliant: cero hex literals; tokens `--amber` / `--blue` / `--plum` / `--t3` / `--red` / `--slate` / `--earth` / `--green`
+  - Bilingüe ES/EN; panel de detalle, leyenda colapsable, stats bar `8 / 2 / 2 / 2`
+  - CTA "Iniciar trámite con CHT" en sitios `active` / `inactive` → WhatsApp a María con mensaje pre-llenado (oculto en `contested` / `historical`)
+  - Lección reutilizable: `pitch: 0` por default — DOM markers visualmente derivan con perspectiva (ver CLAUDE.md §"Biblioteca Archivos Mineros")
 
 ### Pendiente para producción
 - [ ] Aplicar migraciones 007–009 + 015–020 en Supabase producción (si no se han corrido)
