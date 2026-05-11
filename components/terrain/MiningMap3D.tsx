@@ -210,8 +210,8 @@ export default function MiningMap3D({
       zoom: 6.5,
       minZoom: 5,
       maxZoom: 16,
-      pitch: 45,
-      bearing: -15,
+      pitch: 0,
+      bearing: 0,
       canvasContextAttributes: { antialias: true },
       attributionControl: false,
     });
@@ -309,8 +309,6 @@ export default function MiningMap3D({
     map.current.flyTo({
       center: site.coordinates,
       zoom: 10,
-      pitch: 55,
-      bearing: -20,
       duration: 1500,
       essential: true,
     });
