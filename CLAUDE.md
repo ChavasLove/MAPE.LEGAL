@@ -209,6 +209,65 @@ Los 15 archivos de `components/landing/*` fueron **eliminados en Phase 1** (ver 
 - **Migración numerada 020**, no 010 (010 ya estaba tomada por `010_admin_commands_onboarding.sql`).
 - **Demo seed**: `CO-2026-0001-DEMO` insertado por la migración con un `DO $$ ... $$` block que skipea silenciosamente si `minas` o `expedientes` están vacíos en el ambiente.
 
+## Biblioteca Archivos Mineros (`#archivos-mineros`, 2026-05-10)
+
+Sección institucional bajo el ancla `#archivos-mineros` en la landing (`app/page.tsx`); enlace en el nav como "Mapa Minero" / "Mining Map". Mapa interactivo 3D de 8 sitios mineros verificados de Honduras renderizado con MapLibre GL JS v5 (~220 KB gzipped, WebGL, GPU-accelerated). Framing: cada pin es contexto histórico **y** candidato de formalización dentro del universo donde opera CHT.
+
+**Archivos** (todos `'use client'`):
+- `components/terrain/mining-data.ts` — dataset de 8 sitios + `TYPE_COLORS` / `STATUS_COLORS` / `*_LABELS_*` bound a tokens.
+- `components/terrain/MiningMap3D.tsx` — core del mapa, controles, popups.
+- `components/terrain/SiteInfoPanel.tsx` — panel de detalle + CTA WhatsApp.
+- `components/terrain/MapLegend.tsx` — leyenda colapsable.
+- `components/terrain/TerrainMapSection.tsx` — wrapper de sección + stats bar + responsive overrides.
+
+**Tiles + 3D terrain**:
+- Default: CartoDB Voyager raster + DEM de `demotiles.maplibre.org` (SRTM hillshade). Gratis, sin API key — el mapa funciona out-of-the-box.
+- Upgrade: si `NEXT_PUBLIC_MAPTILER_KEY` está set, `getMapStyle()` retorna `https://api.maptiler.com/maps/hybrid/style.json?key=…` y `setTerrain()` activa extrusión 3D real con `exaggeration: 1.5`. Free tier 100 K req/mo en cloud.maptiler.com.
+
+**Tokens del Color Manual v1.0** (cero hex literals en `components/terrain/`, regla de DESIGN.md):
+
+| Tipo mineral → token | Status → token |
+|---|---|
+| `gold` → `var(--amber)` | `active` → `var(--green)` |
+| `zinc` → `var(--blue)` | `inactive` → `var(--t3)` |
+| `lead` → `var(--plum)` | `contested` → `var(--red)` |
+| `silver` → `var(--t3)` | `historical` → `var(--earth)` |
+| `iron` → `var(--red)` |  |
+| `antimony` → `var(--slate)` |  |
+| `historical` → `var(--earth)` |  |
+
+Las CSS variables `var(--token)` funcionan dentro de inline `style` (el browser las resuelve) y dentro de `color-mix(in oklch, ${token} 14%, white)` para fondos translúcidos de pills/badges. No se importa ningún hex desde el dataset.
+
+**Init crítico — `pitch: 0, bearing: 0`** (`MiningMap3D.tsx:213-214`). Con `pitch > 0`, los DOM markers (`maplibregl.Marker({ anchor: 'center' })`) **están correctamente anclados a sus coordenadas geográficas**, pero la perspectiva los proyecta visualmente alejados de las etiquetas del basemap (que se renderizan en el raster del tile, proyección distinta). A zoom 6.5 con `pitch: 45` el offset visible es de varios pixels — un usuario sin contexto lo lee como "los pines están en el lugar equivocado" (síntoma reportado en commit `f18ab3c`). El fix correcto es default flat; el usuario puede inclinar manualmente con drag-right-click y el knob `visualizePitch` del NavigationControl sigue disponible. **Aplica a cualquier futuro uso de DOM markers en este proyecto — symbol layers (`icon-pitch-alignment: map`) son la única forma de que markers + pitch coexistan sin distorsión.** El `flyTo` al seleccionar un sitio tampoco escala pitch.
+
+**Sin animaciones continuas** (DESIGN.md §4). El script PDF original incluía un `@keyframes mining-pulse` para markers con `status: 'active'`; se eliminó por la regla del manual. El color verde de `STATUS_COLORS.active` ya transmite "activa" sin animación.
+
+**CTA "Iniciar trámite con CHT"** (`SiteInfoPanel.tsx`): cada pin es un cliente potencial. Botón verde-moss al fondo del panel que abre `https://wa.me/50497373139?text=…` con mensaje pre-llenado incluyendo `nameEs`, `department`, `municipality` del sitio. **Gate por `status`**:
+- `active` → mostrar (operación viva, candidato directo a formalización).
+- `inactive` → mostrar (dormido, posible reactivación vía formalización).
+- `contested` → **ocultar** (Guapinol/Los Pinares — sensible políticamente; vías formales, no WhatsApp en frío).
+- `historical` → **ocultar** (corporaciones extintas — sin contraparte).
+
+**Dataset (8 sitios, hardcoded en `mining-data.ts`)**:
+
+| ID | Sitio | Tipo | Status | Departamento |
+|---|---|---|---|---|
+| `san-andres` | Mina San Andrés | gold | active | Copán |
+| `el-mochito` | Mina El Mochito | zinc | active | Santa Bárbara |
+| `clavo-rico` | Clavo Rico / El Corpus | gold | contested | Choluteca |
+| `guapinol` | Guapinol (Los Pinares) | iron | contested | Colón |
+| `rosario` | Rosario (Histórica) | historical | historical | Francisco Morazán |
+| `cobra-oro` | Cobra Oro de Honduras | gold | inactive | Cortés |
+| `el-quetzal` | El Quetzal (Antimonio) | antimony | inactive | Copán |
+| `la-pochota` | La Pochota | silver | historical | Choluteca / Distrito Clavo Rico |
+
+Stats bar derivado (`TerrainMapSection.tsx`): 4 numerales en `var(--font-display)` 28px — total mapeados / activas / controvertidas / históricas. Actualmente lee `8 / 2 / 2 / 2`.
+
+**Future work** (plan operativo en `/root/.claude/plans/yes-proceed-suggestions-are-abundant-rain.md`):
+- **Wire al Supabase `minas` table** vía vista pública `minas_publicas` (mismo patrón que `certificados_origen_publicos` — migración 020 + `app/verificar/[numero]/page.tsx`). Requiere extender `minas` con `descripcion_es`, `descripcion_en`, `desde`, `operador`, `produccion`, `commodities`; nueva vista que strippea `cliente_id`; nueva ruta `app/api/archivos-mineros/route.ts` con lazy-init anon + `Cache-Control: public, s-maxage=300, stale-while-revalidate=900`.
+- **Filtros UI** por mineral y status (multi-select chips arriba del mapa).
+- **Expandir dataset** a 50–100 sitios usando INHGEOMIN bulletin + BCH histórico + Acuerdo 042-2013 annexes. Cada row debe tener fuente citable y GPS verificado. La migración 023 (`concesiones_mineras_registro`) shipped el 2026-05-11 ya carga 587 concesiones INHGEOMIN — evaluar si la archive map debería leer de ahí en vez de mantener un dataset separado.
+
 ## SEO / Open Graph
 
 **Estado (Phase 1, 2026-05-10):** `app/layout.tsx` declara `metadataBase` (resuelto contra `NEXT_PUBLIC_SITE_URL`, fallback `https://mape.legal`), `title` con `template '%s · MAPE LEGAL'`, `description`, `applicationName`, `authors`, `keywords`, `alternates.canonical`, `openGraph` (locale `es_HN` + `alternateLocale: 'en_US'`, og:image `/images/RIVER AND MOUNTAINS.png` 1200×630), `twitter.summary_large_image`, y `robots` con `googleBot` tuning. Las páginas pueden sobreescribir título y descripción específicos vía `export const metadata`.
