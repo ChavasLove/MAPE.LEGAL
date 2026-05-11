@@ -114,9 +114,10 @@ export default function SiteInfoPanel({
           justifyContent: 'space-between',
           padding: '12px 16px 0',
           gap: 8,
+          flexWrap: 'wrap',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           <IconButton
             label={lang === 'es' ? 'Sitio anterior' : 'Previous site'}
             onClick={onPrev}
@@ -134,11 +135,12 @@ export default function SiteInfoPanel({
           {position && (
             <span
               style={{
-                marginLeft: 6,
+                marginLeft: 2,
                 fontFamily: 'var(--font-mono)',
                 fontSize: 11,
                 color: 'var(--slate)',
                 letterSpacing: '0.04em',
+                whiteSpace: 'nowrap',
               }}
             >
               {lang === 'es'
@@ -206,7 +208,7 @@ export default function SiteInfoPanel({
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
             gap: 10,
             marginTop: 4,
           }}

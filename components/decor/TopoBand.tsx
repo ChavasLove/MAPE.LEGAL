@@ -61,7 +61,13 @@ export default function TopoBand({ variant, position = 'overlay', className }: P
           )}
         </g>
         {!isBand && (
-          <g fill="currentColor" opacity="0.35" fontSize="8" fontFamily="ui-monospace, monospace">
+          <g
+            className="topo-band-labels"
+            fill="currentColor"
+            opacity="0.35"
+            fontSize="8"
+            fontFamily="ui-monospace, monospace"
+          >
             <text x="40" y="200">15°56′N</text>
             <text x="780" y="200">85°08′W · IRIONA, COLÓN</text>
             <text x="1480" y="200">200km</text>
