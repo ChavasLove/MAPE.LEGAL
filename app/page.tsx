@@ -37,7 +37,7 @@ export default function LandingPage() {
         <div className="nav-links">
           <a href="#identidad" className="nav-link">{t('Identidad', 'About')}</a>
           <a href="#cumplimiento" className="nav-link">{t('Cumplimiento', 'Compliance')}</a>
-          <a href="#archivos-mineros" className="nav-link">{t('Archivos', 'Archives')}</a>
+          <a href="#archivos-mineros" className="nav-link">{t('Mapa Minero', 'Mining Map')}</a>
           <a href="#contacto" className="nav-link">{t('Contacto', 'Contact')}</a>
           <div className="lang-toggle">
             <button className={`lang-btn${lang === 'es' ? ' active' : ''}`} onClick={() => changeLang('es')}>ES</button>

@@ -67,8 +67,8 @@ export default function TerrainMapSection({ lang, t }: Props) {
         </h2>
         <p className="section-sub" style={{ maxWidth: 680 }}>
           {t(
-            'Registro georreferenciado de las principales unidades mineras del país: operaciones activas, yacimientos históricos y proyectos en disputa. Cada marcador enlaza la ubicación con su contexto operativo, histórico y regulatorio.',
-            "Georeferenced register of the country's principal mining units: active operations, historical deposits, and contested projects. Each marker links a location with its operational, historical, and regulatory context."
+            'Mapa interactivo de la historia minera de Honduras: operaciones artesanales en curso, yacimientos cerrados y proyectos en disputa. Cada sitio forma parte del universo de formalización donde opera CHT — desde el mapeo de unidades hasta la emisión de certificados de origen verificables.',
+            "Interactive map of Honduras' mining history: active artisanal operations, closed deposits, and contested projects. Each site is part of the formalization universe in which CHT operates — from initial unit mapping through verifiable certificate-of-origin issuance."
           )}
         </p>
       </div>

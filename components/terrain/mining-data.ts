@@ -145,11 +145,12 @@ export const MINING_SITES: MiningSite[] = [
     status: 'historical',
     coordinates: [-87.6822, 13.7509],
     department: 'Choluteca',
-    municipality: 'El Corpus area',
+    municipality: 'Distrito Clavo Rico',
     descriptionEs:
-      'Yacimiento histórico de plata en la región de El Corpus. Asociada con el distrito minero de Clavo Rico.',
+      'Yacimiento histórico de plata asociado al distrito minero de Clavo Rico. Explotación de origen colonial documentada en la región de El Corpus; sin operador actual.',
     descriptionEn:
-      'Historical silver deposit in the El Corpus region. Associated with the Clavo Rico mining district.',
+      'Historical silver deposit associated with the Clavo Rico mining district. Colonial-era workings documented in the El Corpus region; no current operator.',
+    since: 'Era colonial',
     commodities: ['Silver', 'Lead'],
   },
 ];

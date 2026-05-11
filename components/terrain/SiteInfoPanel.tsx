@@ -299,6 +299,40 @@ export default function SiteInfoPanel({ site, lang, onClose }: SiteInfoPanelProp
             &deg;W
           </div>
         </div>
+
+        {(site.status === 'active' || site.status === 'inactive') && (
+          <a
+            href={`https://wa.me/50497373139?text=${encodeURIComponent(
+              lang === 'es'
+                ? `Hola María, me interesa explorar formalización para ${site.nameEs} (${site.department} — ${site.municipality}).`
+                : `Hi María, I'd like to explore formalization for ${site.name} (${site.department} — ${site.municipality}).`
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              marginTop: 4,
+              padding: '11px 14px',
+              borderRadius: 8,
+              background: 'var(--moss)',
+              color: 'white',
+              fontFamily: 'var(--font-body)',
+              fontSize: 13,
+              fontWeight: 600,
+              textAlign: 'center',
+              textDecoration: 'none',
+              display: 'block',
+              transition: 'background 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'color-mix(in oklch, var(--moss) 88%, black)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--moss)';
+            }}
+          >
+            {lang === 'es' ? 'Iniciar trámite con CHT' : 'Begin formalization with CHT'}
+          </a>
+        )}
       </div>
     </div>
   );
