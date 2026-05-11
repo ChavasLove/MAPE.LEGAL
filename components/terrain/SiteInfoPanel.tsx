@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, X, Compass } from 'lucide-react';
 import {
   MINING_SITES,
   STATUS_COLORS,
@@ -9,6 +10,7 @@ import {
   STATUS_LABELS_EN,
   TYPE_LABELS_ES,
   TYPE_LABELS_EN,
+  COMMODITY_LABELS_ES,
 } from './mining-data';
 import type { MiningSite } from './mining-data';
 
@@ -20,13 +22,23 @@ interface SiteInfoPanelProps {
   site: MiningSite | null;
   lang: 'es' | 'en';
   onClose: () => void;
+  onPrev?: () => void;
+  onNext?: () => void;
+  position?: { index: number; total: number };
 }
 
 /* ------------------------------------------------------------------ */
 /* Component                                                          */
 /* ------------------------------------------------------------------ */
 
-export default function SiteInfoPanel({ site, lang, onClose }: SiteInfoPanelProps) {
+export default function SiteInfoPanel({
+  site,
+  lang,
+  onClose,
+  onPrev,
+  onNext,
+  position,
+}: SiteInfoPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -53,31 +65,19 @@ export default function SiteInfoPanel({ site, lang, onClose }: SiteInfoPanelProp
           color: 'var(--t3)',
         }}
       >
-        <svg
-          width="48"
-          height="48"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          style={{ opacity: 0.4 }}
-        >
-          <circle cx="12" cy="12" r="9" />
-          <path d="M12 8v4l2 2" strokeLinecap="round" />
-          <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
-        </svg>
-        <div style={{ fontSize: 14, lineHeight: 1.6, maxWidth: 220 }}>
+        <Compass size={44} strokeWidth={1.5} aria-hidden style={{ opacity: 0.45 }} />
+        <div style={{ fontSize: 14, lineHeight: 1.6, maxWidth: 240, color: 'var(--t2)' }}>
           {lang === 'es'
-            ? 'Seleccione un sitio minero en el mapa para ver sus detalles.'
-            : 'Select a mining site on the map to view its details.'}
+            ? 'Toque un sitio en el mapa para conocer su contexto y los mineros que operan en la zona.'
+            : 'Tap a site on the map to view its context and the miners operating in the area.'}
         </div>
         <div
           style={{
-            fontSize: 12,
+            fontSize: 11,
             fontFamily: 'var(--font-mono)',
             letterSpacing: '0.04em',
             color: 'var(--slate-lt)',
-            marginTop: 8,
+            marginTop: 4,
           }}
         >
           {MINING_SITES.length}{' '}
@@ -106,55 +106,66 @@ export default function SiteInfoPanel({ site, lang, onClose }: SiteInfoPanelProp
         flexDirection: 'column',
       }}
     >
-      {/* ---- header ---- */}
+      {/* ---- nav row (Prev / position / Next  …  Close) ---- */}
       <div
         style={{
-          padding: '20px 20px 16px',
-          borderBottom: '1px solid var(--border)',
-          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 16px 0',
+          gap: 8,
         }}
       >
-        {/* close button */}
-        <button
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <IconButton
+            label={lang === 'es' ? 'Sitio anterior' : 'Previous site'}
+            onClick={onPrev}
+            disabled={!onPrev}
+          >
+            <ChevronLeft size={16} strokeWidth={1.75} />
+          </IconButton>
+          <IconButton
+            label={lang === 'es' ? 'Siguiente sitio' : 'Next site'}
+            onClick={onNext}
+            disabled={!onNext}
+          >
+            <ChevronRight size={16} strokeWidth={1.75} />
+          </IconButton>
+          {position && (
+            <span
+              style={{
+                marginLeft: 6,
+                fontFamily: 'var(--font-mono)',
+                fontSize: 11,
+                color: 'var(--slate)',
+                letterSpacing: '0.04em',
+              }}
+            >
+              {lang === 'es'
+                ? `Sitio ${position.index} de ${position.total}`
+                : `Site ${position.index} of ${position.total}`}
+            </span>
+          )}
+        </div>
+        <IconButton
+          label={lang === 'es' ? 'Cerrar' : 'Close'}
           onClick={onClose}
-          aria-label={lang === 'es' ? 'Cerrar' : 'Close'}
-          style={{
-            position: 'absolute',
-            top: 12,
-            right: 12,
-            width: 28,
-            height: 28,
-            borderRadius: 6,
-            border: '1px solid var(--border)',
-            background: 'var(--bg)',
-            color: 'var(--t3)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 16,
-            lineHeight: 1,
-            transition: 'all 0.15s',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'var(--ink)';
-            e.currentTarget.style.color = 'var(--ink)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = 'var(--border)';
-            e.currentTarget.style.color = 'var(--t3)';
-          }}
         >
-          &times;
-        </button>
+          <X size={16} strokeWidth={1.75} />
+        </IconButton>
+      </div>
 
-        {/* badges */}
+      {/* ---- header (badges + name + location) ---- */}
+      <div
+        style={{
+          padding: '12px 20px 16px',
+          borderBottom: '1px solid var(--border)',
+        }}
+      >
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
           <Badge label={typeLabel} color={typeColor} />
           <Badge label={statusLabel} color={statusColor} />
         </div>
-
-        {/* name */}
         <h3
           style={{
             fontFamily: 'var(--font-display)',
@@ -163,13 +174,10 @@ export default function SiteInfoPanel({ site, lang, onClose }: SiteInfoPanelProp
             color: 'var(--ink)',
             lineHeight: 1.3,
             letterSpacing: '-0.01em',
-            paddingRight: 36,
           }}
         >
           {lang === 'es' ? site.nameEs : site.name}
         </h3>
-
-        {/* location */}
         <div
           style={{
             fontSize: 12,
@@ -178,7 +186,7 @@ export default function SiteInfoPanel({ site, lang, onClose }: SiteInfoPanelProp
             fontWeight: 500,
           }}
         >
-          {site.department} &mdash; {site.municipality}
+          {site.department} &middot; {site.municipality}
         </div>
       </div>
 
@@ -191,12 +199,10 @@ export default function SiteInfoPanel({ site, lang, onClose }: SiteInfoPanelProp
           gap: 14,
         }}
       >
-        {/* description */}
         <p style={{ fontSize: 13, color: 'var(--t2)', lineHeight: 1.7, margin: 0 }}>
           {lang === 'es' ? site.descriptionEs : site.descriptionEn}
         </p>
 
-        {/* detail grid */}
         <div
           style={{
             display: 'grid',
@@ -226,7 +232,6 @@ export default function SiteInfoPanel({ site, lang, onClose }: SiteInfoPanelProp
           )}
         </div>
 
-        {/* commodities */}
         {site.commodities && site.commodities.length > 0 && (
           <div style={{ marginTop: 4 }}>
             <div
@@ -234,7 +239,7 @@ export default function SiteInfoPanel({ site, lang, onClose }: SiteInfoPanelProp
                 fontFamily: 'var(--font-mono)',
                 fontSize: 10,
                 fontWeight: 600,
-                letterSpacing: '0.14em',
+                letterSpacing: '0.18em',
                 textTransform: 'uppercase',
                 color: 'var(--t3)',
                 marginBottom: 8,
@@ -256,14 +261,13 @@ export default function SiteInfoPanel({ site, lang, onClose }: SiteInfoPanelProp
                     border: '1px solid var(--border)',
                   }}
                 >
-                  {c}
+                  {lang === 'es' ? COMMODITY_LABELS_ES[c] ?? c : c}
                 </span>
               ))}
             </div>
           </div>
         )}
 
-        {/* coordinates */}
         <div
           style={{
             marginTop: 8,
@@ -278,7 +282,7 @@ export default function SiteInfoPanel({ site, lang, onClose }: SiteInfoPanelProp
               fontFamily: 'var(--font-mono)',
               fontSize: 10,
               fontWeight: 600,
-              letterSpacing: '0.14em',
+              letterSpacing: '0.18em',
               textTransform: 'uppercase',
               color: 'var(--t3)',
               marginBottom: 4,
@@ -295,44 +299,61 @@ export default function SiteInfoPanel({ site, lang, onClose }: SiteInfoPanelProp
             }}
           >
             {site.coordinates[1].toFixed(4)}
-            &deg;N, {Math.abs(site.coordinates[0]).toFixed(4)}
-            &deg;W
+            &deg;{lang === 'es' ? 'N' : 'N'}, {Math.abs(site.coordinates[0]).toFixed(4)}
+            &deg;{lang === 'es' ? 'O' : 'W'}
           </div>
         </div>
 
-        {(site.status === 'active' || site.status === 'inactive') && (
-          <a
-            href={`https://wa.me/50497373139?text=${encodeURIComponent(
-              lang === 'es'
-                ? `Hola María, me interesa explorar formalización para ${site.nameEs} (${site.department} — ${site.municipality}).`
-                : `Hi María, I'd like to explore formalization for ${site.name} (${site.department} — ${site.municipality}).`
-            )}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              marginTop: 4,
-              padding: '11px 14px',
-              borderRadius: 8,
-              background: 'var(--moss)',
-              color: 'white',
-              fontFamily: 'var(--font-body)',
-              fontSize: 13,
-              fontWeight: 600,
-              textAlign: 'center',
-              textDecoration: 'none',
-              display: 'block',
-              transition: 'background 0.15s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'color-mix(in oklch, var(--moss) 88%, black)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'var(--moss)';
-            }}
-          >
-            {lang === 'es' ? 'Iniciar trámite con CHT' : 'Begin formalization with CHT'}
-          </a>
-        )}
+        {/* CTA — every site frames itself as a district where artisanal /
+            small-scale miners operate; they are the audience, not the
+            corporate operator listed above. */}
+        <a
+          href={`https://wa.me/50497373139?text=${encodeURIComponent(
+            lang === 'es'
+              ? `Buenas, soy minero artesanal en la zona de ${site.nameEs} (${site.department}, ${site.municipality}). Quisiera información sobre formalización con CHT.`
+              : `Hi, I'm an artisanal miner working near ${site.name} (${site.department}, ${site.municipality}). I'd like information about formalizing with CHT.`
+          )}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            marginTop: 4,
+            padding: '11px 14px',
+            borderRadius: 8,
+            background: 'var(--moss)',
+            color: 'white',
+            fontFamily: 'var(--font-body)',
+            fontSize: 13,
+            fontWeight: 600,
+            textAlign: 'center',
+            textDecoration: 'none',
+            display: 'block',
+            transition: 'background 0.15s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background =
+              'color-mix(in oklch, var(--moss) 88%, white)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'var(--moss)';
+          }}
+        >
+          {lang === 'es'
+            ? '¿Operas en esta zona? Inicia trámite con CHT'
+            : 'Mining in this district? Begin a process with CHT'}
+        </a>
+        <p
+          style={{
+            margin: 0,
+            fontSize: 11,
+            lineHeight: 1.5,
+            color: 'var(--t3)',
+            textAlign: 'center',
+          }}
+        >
+          {lang === 'es'
+            ? 'Pensado para mineros artesanales y de pequeña escala que operan en el área.'
+            : 'For artisanal and small-scale miners operating in this area.'}
+        </p>
       </div>
     </div>
   );
@@ -396,7 +417,7 @@ function DetailField({
           fontFamily: 'var(--font-mono)',
           fontSize: 10,
           fontWeight: 600,
-          letterSpacing: '0.14em',
+          letterSpacing: '0.18em',
           textTransform: 'uppercase',
           color: 'var(--t3)',
           marginBottom: 3,
@@ -408,5 +429,53 @@ function DetailField({
         {value}
       </div>
     </div>
+  );
+}
+
+function IconButton({
+  label,
+  onClick,
+  disabled,
+  children,
+}: {
+  label: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={label}
+      style={{
+        width: 28,
+        height: 28,
+        borderRadius: 6,
+        border: '1px solid var(--border)',
+        background: 'var(--bg)',
+        color: disabled ? 'var(--slate-lt)' : 'var(--t3)',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'all 0.15s',
+        padding: 0,
+      }}
+      onMouseEnter={(e) => {
+        if (disabled) return;
+        e.currentTarget.style.borderColor = 'var(--ink)';
+        e.currentTarget.style.color = 'var(--ink)';
+      }}
+      onMouseLeave={(e) => {
+        if (disabled) return;
+        e.currentTarget.style.borderColor = 'var(--border)';
+        e.currentTarget.style.color = 'var(--t3)';
+      }}
+    >
+      {children}
+    </button>
   );
 }

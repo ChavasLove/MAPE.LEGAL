@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import {
@@ -12,7 +12,7 @@ import {
   TYPE_LABELS_ES,
   TYPE_LABELS_EN,
 } from './mining-data';
-import type { MiningSite } from './mining-data';
+import type { MiningSite, MineType } from './mining-data';
 
 /* ------------------------------------------------------------------ */
 /* Types                                                              */
@@ -21,27 +21,33 @@ import type { MiningSite } from './mining-data';
 interface MiningMap3DProps {
   lang: 'es' | 'en';
   selectedSiteId: string | null;
+  visibleTypes: Set<MineType>;
   onSiteSelect: (siteId: string | null) => void;
 }
 
+interface MarkerEntry {
+  marker: maplibregl.Marker;
+  el: HTMLDivElement;
+  site: MiningSite;
+}
+
 /* ------------------------------------------------------------------ */
-/* Helpers                                                            */
+/* Constants & helpers                                                */
 /* ------------------------------------------------------------------ */
 
 const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY;
 const HAS_KEY = Boolean(MAPTILER_KEY);
+const INITIAL_CENTER: [number, number] = [-86.5, 14.8];
+const INITIAL_ZOOM = 6.5;
 
 // `StyleSpecification` / `TerrainSpecification` are not always re-exported by
 // every version of maplibre-gl's typings, so we use `any` to avoid coupling to
 // a specific minor release. Runtime shape is documented inline.
-/** Return the map style. Without a MapTiler key we fall back to free
- * CartoDB Voyager raster tiles so the map works out of the box. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getMapStyle(hasKey: boolean): string | any {
   if (hasKey && MAPTILER_KEY) {
     return `https://api.maptiler.com/maps/hybrid/style.json?key=${MAPTILER_KEY}`;
   }
-
   return {
     version: 8,
     sources: {
@@ -68,8 +74,6 @@ function getMapStyle(hasKey: boolean): string | any {
   };
 }
 
-/** Return terrain source info. Without a MapTiler key we use MapLibre's
- * free demo DEM tiles (SRTM-based, global coverage). */
 function getTerrainConfig(hasKey: boolean): {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   terrainSpec: any | null;
@@ -82,7 +86,6 @@ function getTerrainConfig(hasKey: boolean): {
       hillshadeSource: null,
     };
   }
-
   return {
     terrainSpec: { source: 'terrain', exaggeration: 1.5 },
     hillshadeSource: {
@@ -93,6 +96,48 @@ function getTerrainConfig(hasKey: boolean): {
   };
 }
 
+function markerCss(fillColor: string, isSelected: boolean): string {
+  const size = isSelected ? 28 : 22;
+  const baseShadow =
+    '0 2px 8px color-mix(in oklch, var(--ink) 24%, transparent)';
+  const selectedShadow =
+    '0 0 0 3px var(--ink), 0 4px 14px color-mix(in oklch, var(--ink) 30%, transparent)';
+  return `
+    width: ${size}px;
+    height: ${size}px;
+    border-radius: 50%;
+    background: ${fillColor};
+    border: 3px solid var(--bg);
+    box-shadow: ${isSelected ? selectedShadow : baseShadow};
+    cursor: pointer;
+    transition: width 0.18s ease, height 0.18s ease, box-shadow 0.18s ease;
+    position: relative;
+  `;
+}
+
+function popupHTML(site: MiningSite, lang: 'es' | 'en'): string {
+  const typeLabels = lang === 'es' ? TYPE_LABELS_ES : TYPE_LABELS_EN;
+  const statusLabels = lang === 'es' ? STATUS_LABELS_ES : STATUS_LABELS_EN;
+  const typeLabel = typeLabels[site.type] ?? site.type;
+  const statusLabel = statusLabels[site.status] ?? site.status;
+  const typeColor = TYPE_COLORS[site.type] ?? 'var(--earth)';
+  const statusColor = STATUS_COLORS[site.status] ?? 'var(--t3)';
+  return `
+    <div style="font-family:var(--font-body);min-width:180px;">
+      <div style="font-family:var(--font-display);font-size:15px;font-weight:600;color:var(--ink);margin-bottom:6px;line-height:1.25;">
+        ${lang === 'es' ? site.nameEs : site.name}
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+        <span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;background:color-mix(in oklch, ${typeColor} 14%, white);color:${typeColor};">${typeLabel}</span>
+        <span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;background:color-mix(in oklch, ${statusColor} 14%, white);color:${statusColor};">${statusLabel}</span>
+      </div>
+      <div style="font-size:12px;color:var(--slate);line-height:1.5;">
+        ${site.department} &middot; ${site.municipality}
+      </div>
+    </div>
+  `;
+}
+
 /* ------------------------------------------------------------------ */
 /* Component                                                          */
 /* ------------------------------------------------------------------ */
@@ -100,101 +145,60 @@ function getTerrainConfig(hasKey: boolean): {
 export default function MiningMap3D({
   lang,
   selectedSiteId,
+  visibleTypes,
   onSiteSelect,
 }: MiningMap3DProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
-  const markersRef = useRef<maplibregl.Marker[]>([]);
-  const popupsRef = useRef<maplibregl.Popup[]>([]);
+  const markersRef = useRef<Map<string, MarkerEntry>>(new Map());
+  const popupRef = useRef<maplibregl.Popup | null>(null);
+
+  // Refs so the one-time click/keydown listeners always see current props.
   const onSiteSelectRef = useRef(onSiteSelect);
+  const selectedIdRef = useRef(selectedSiteId);
+  const langRef = useRef(lang);
+  const visibleTypesRef = useRef(visibleTypes);
   onSiteSelectRef.current = onSiteSelect;
+  selectedIdRef.current = selectedSiteId;
+  langRef.current = lang;
+  visibleTypesRef.current = visibleTypes;
 
-  /* ---- build a DOM element for a site marker -------------------- */
-  const createMarkerElement = useCallback(
-    (site: MiningSite, isSelected: boolean) => {
-      const el = document.createElement('div');
-      const fillColor = TYPE_COLORS[site.type] ?? 'var(--earth)';
-      el.style.cssText = `
-        width: ${isSelected ? '28px' : '22px'};
-        height: ${isSelected ? '28px' : '22px'};
-        border-radius: 50%;
-        background: ${fillColor};
-        border: 3px solid var(--bg);
-        box-shadow: ${
-          isSelected
-            ? `0 0 0 3px ${fillColor}, 0 4px 12px rgba(0,0,0,0.3)`
-            : '0 2px 8px rgba(0,0,0,0.25)'
-        };
-        cursor: pointer;
-        transition: all 0.2s ease;
-        position: relative;
-      `;
+  /* ---- in-place style mutations (no teardown) ------------------- */
 
-      // No continuous animations per DESIGN.md §4 — the green color of
-      // STATUS_COLORS.active already conveys "active".
-
-      return el;
-    },
-    []
-  );
-
-  /* ---- (re)create all markers ----------------------------------- */
-  const updateMarkers = useCallback(() => {
-    // clear previous
-    markersRef.current.forEach((m) => m.remove());
-    popupsRef.current.forEach((p) => p.remove());
-    markersRef.current = [];
-    popupsRef.current = [];
-
-    if (!map.current) return;
-
-    const statusLabels = lang === 'es' ? STATUS_LABELS_ES : STATUS_LABELS_EN;
-    const typeLabels = lang === 'es' ? TYPE_LABELS_ES : TYPE_LABELS_EN;
-
-    MINING_SITES.forEach((site) => {
-      const isSelected = site.id === selectedSiteId;
-      const el = createMarkerElement(site, isSelected);
-
-      const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
-        .setLngLat(site.coordinates)
-        .addTo(map.current!);
-
-      // popup HTML
-      const typeLabel = typeLabels[site.type] ?? site.type;
-      const statusLabel = statusLabels[site.status] ?? site.status;
-      const typeColor = TYPE_COLORS[site.type] ?? 'var(--earth)';
-      const statusColor = STATUS_COLORS[site.status] ?? 'var(--t3)';
-      const popupHTML = `
-        <div style="font-family:Inter,system-ui,sans-serif;padding:4px;min-width:180px;">
-          <div style="font-family:Georgia,serif;font-size:15px;font-weight:600;color:var(--ink);margin-bottom:6px;">
-            ${lang === 'es' ? site.nameEs : site.name}
-          </div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
-            <span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;background:color-mix(in oklch, ${typeColor} 14%, white);color:${typeColor};">${typeLabel}</span>
-            <span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;background:color-mix(in oklch, ${statusColor} 14%, white);color:${statusColor};">${statusLabel}</span>
-          </div>
-          <div style="font-size:12px;color:var(--slate);line-height:1.5;">
-            ${site.department} &mdash; ${site.municipality}
-          </div>
-        </div>
-      `;
-
-      const popup = new maplibregl.Popup({
-        closeButton: false,
-        closeOnClick: true,
-        offset: 16,
-        className: 'mining-popup',
-      }).setHTML(popupHTML);
-
-      el.addEventListener('click', () => {
-        onSiteSelectRef.current(site.id);
-        popup.setLngLat(site.coordinates).addTo(map.current!);
-      });
-
-      markersRef.current.push(marker);
-      popupsRef.current.push(popup);
+  const applySelectionStyle = () => {
+    const selectedId = selectedIdRef.current;
+    markersRef.current.forEach((entry) => {
+      const fillColor = TYPE_COLORS[entry.site.type] ?? 'var(--earth)';
+      const isSel = entry.site.id === selectedId;
+      entry.el.style.cssText = markerCss(fillColor, isSel);
+      entry.el.setAttribute('aria-pressed', isSel ? 'true' : 'false');
     });
-  }, [lang, selectedSiteId, createMarkerElement]);
+  };
+
+  const applyVisibilityStyle = () => {
+    const visible = visibleTypesRef.current;
+    markersRef.current.forEach((entry) => {
+      entry.el.style.display = visible.has(entry.site.type) ? '' : 'none';
+    });
+  };
+
+  const applyPopup = () => {
+    if (!map.current || !popupRef.current) return;
+    const selectedId = selectedIdRef.current;
+    if (!selectedId) {
+      popupRef.current.remove();
+      return;
+    }
+    const entry = markersRef.current.get(selectedId);
+    if (!entry) {
+      popupRef.current.remove();
+      return;
+    }
+    popupRef.current
+      .setLngLat(entry.site.coordinates)
+      .setHTML(popupHTML(entry.site, langRef.current))
+      .addTo(map.current);
+  };
 
   /* ---- initialise map (runs once) ------------------------------- */
   useEffect(() => {
@@ -206,8 +210,8 @@ export default function MiningMap3D({
     const instance = new maplibregl.Map({
       container: mapContainer.current,
       style,
-      center: [-86.5, 14.8],
-      zoom: 6.5,
+      center: INITIAL_CENTER,
+      zoom: INITIAL_ZOOM,
       minZoom: 5,
       maxZoom: 16,
       pitch: 0,
@@ -215,10 +219,8 @@ export default function MiningMap3D({
       canvasContextAttributes: { antialias: true },
       attributionControl: false,
     });
-
     map.current = instance;
 
-    // controls
     instance.addControl(
       new maplibregl.NavigationControl({
         visualizePitch: true,
@@ -229,15 +231,23 @@ export default function MiningMap3D({
     );
     instance.addControl(
       new maplibregl.AttributionControl({ compact: true }),
-      'bottom-left'
+      'bottom-right'
     );
     instance.addControl(
       new maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }),
       'bottom-left'
     );
 
+    // Shared popup — created once, reused as the user selects different sites.
+    popupRef.current = new maplibregl.Popup({
+      closeButton: false,
+      closeOnClick: false,
+      offset: 16,
+      className: 'mining-popup',
+      anchor: 'bottom',
+    });
+
     instance.on('load', () => {
-      // free-fallback: add hillshade DEM source + layer
       if (!HAS_KEY && hillshadeSource) {
         instance.addSource('terrain', hillshadeSource);
         instance.addLayer({
@@ -252,16 +262,14 @@ export default function MiningMap3D({
         });
       }
 
-      // enable 3D terrain
       if (terrainSpec) {
         try {
           instance.setTerrain(terrainSpec);
         } catch {
-          // terrain source unavailable — degrade gracefully
+          /* terrain source unavailable — degrade gracefully */
         }
       }
 
-      // inject popup styling once. No keyframe animation per DESIGN.md §4.
       if (!document.getElementById('mining-map-style')) {
         const s = document.createElement('style');
         s.id = 'mining-map-style';
@@ -269,8 +277,9 @@ export default function MiningMap3D({
           .mining-popup .maplibregl-popup-content {
             border-radius: 12px;
             border: 1px solid var(--border);
-            box-shadow: 0 4px 16px rgba(31,42,56,0.12);
+            box-shadow: 0 4px 16px color-mix(in oklch, var(--ink) 12%, transparent);
             padding: 12px;
+            background: var(--bg);
           }
           .mining-popup .maplibregl-popup-tip {
             border-top-color: var(--border);
@@ -279,39 +288,106 @@ export default function MiningMap3D({
         document.head.appendChild(s);
       }
 
-      updateMarkers();
+      // Build all markers ONCE. Subsequent selection / visibility / language
+      // changes mutate these in place — no remove/recreate churn.
+      MINING_SITES.forEach((site) => {
+        const fillColor = TYPE_COLORS[site.type] ?? 'var(--earth)';
+        const el = document.createElement('div');
+        el.style.cssText = markerCss(fillColor, false);
+        el.setAttribute('role', 'button');
+        el.setAttribute('tabindex', '0');
+        el.setAttribute('aria-pressed', 'false');
+        el.setAttribute(
+          'aria-label',
+          langRef.current === 'es' ? `Ver ${site.nameEs}` : `View ${site.name}`
+        );
+
+        const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+          .setLngLat(site.coordinates)
+          .addTo(instance);
+
+        const activate = () => onSiteSelectRef.current(site.id);
+
+        el.addEventListener('click', (e) => {
+          // Prevent the underlying map from getting the click (else closeOnClick
+          // logic in some MapLibre versions could dismiss our own popup).
+          e.stopPropagation();
+          activate();
+        });
+        el.addEventListener('keydown', (e: KeyboardEvent) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            activate();
+          }
+        });
+
+        markersRef.current.set(site.id, { marker, el, site });
+      });
+
+      // Apply initial state (markers were just created with defaults).
+      applySelectionStyle();
+      applyVisibilityStyle();
+      applyPopup();
     });
 
-    // cleanup
     return () => {
-      markersRef.current.forEach((m) => m.remove());
-      popupsRef.current.forEach((p) => p.remove());
-      markersRef.current = [];
-      popupsRef.current = [];
+      markersRef.current.forEach((entry) => entry.marker.remove());
+      markersRef.current.clear();
+      popupRef.current?.remove();
+      popupRef.current = null;
       instance.remove();
       map.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ---- update markers when language or selection changes -------- */
+  /* ---- selection change → mutate style + (re)position popup ----- */
+  useEffect(() => {
+    applySelectionStyle();
+    // applySelectionStyle re-writes cssText which wipes `display`, so re-apply.
+    applyVisibilityStyle();
+    applyPopup();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSiteId]);
+
+  /* ---- filter change → toggle marker visibility ----------------- */
+  useEffect(() => {
+    applyVisibilityStyle();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleTypes]);
+
+  /* ---- language change → update aria-labels + popup HTML -------- */
+  useEffect(() => {
+    markersRef.current.forEach((entry) => {
+      entry.el.setAttribute(
+        'aria-label',
+        lang === 'es' ? `Ver ${entry.site.nameEs}` : `View ${entry.site.name}`
+      );
+    });
+    applyPopup();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang]);
+
+  /* ---- fly to selected site (or back to overview) --------------- */
   useEffect(() => {
     if (!map.current) return;
-    updateMarkers();
-  }, [selectedSiteId, lang, updateMarkers]);
-
-  /* ---- fly to selected site ------------------------------------- */
-  useEffect(() => {
-    if (!map.current || !selectedSiteId) return;
-    const site = MINING_SITES.find((s) => s.id === selectedSiteId);
-    if (!site) return;
-
-    map.current.flyTo({
-      center: site.coordinates,
-      zoom: 10,
-      duration: 1500,
-      essential: true,
-    });
+    if (selectedSiteId) {
+      const entry = markersRef.current.get(selectedSiteId);
+      if (!entry) return;
+      map.current.flyTo({
+        center: entry.site.coordinates,
+        zoom: Math.max(map.current.getZoom(), 9.5),
+        duration: 1200,
+        essential: true,
+      });
+    } else {
+      map.current.flyTo({
+        center: INITIAL_CENTER,
+        zoom: INITIAL_ZOOM,
+        duration: 900,
+        essential: true,
+      });
+    }
   }, [selectedSiteId]);
 
   /* ---- render --------------------------------------------------- */
