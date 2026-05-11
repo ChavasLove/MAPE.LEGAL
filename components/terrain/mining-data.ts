@@ -1,9 +1,20 @@
+export type MineType =
+  | 'gold'
+  | 'zinc'
+  | 'lead'
+  | 'silver'
+  | 'iron'
+  | 'antimony'
+  | 'historical';
+
+export type MineStatus = 'active' | 'inactive' | 'contested' | 'historical';
+
 export interface MiningSite {
   id: string;
   name: string;
   nameEs: string;
-  type: 'gold' | 'zinc' | 'lead' | 'silver' | 'iron' | 'antimony' | 'historical';
-  status: 'active' | 'inactive' | 'contested' | 'historical';
+  type: MineType;
+  status: MineStatus;
   coordinates: [number, number]; // [longitude, latitude]
   department: string;
   municipality: string;
@@ -155,8 +166,19 @@ export const MINING_SITES: MiningSite[] = [
   },
 ];
 
+// Order shown in legend / filter chips. Matches `MineType` keys.
+export const MINE_TYPE_ORDER: MineType[] = [
+  'gold',
+  'silver',
+  'zinc',
+  'lead',
+  'iron',
+  'antimony',
+  'historical',
+];
+
 // Color by mineral type — bound to MAPE LEGAL Color Manual v1.0 tokens (DESIGN.md).
-export const TYPE_COLORS: Record<string, string> = {
+export const TYPE_COLORS: Record<MineType, string> = {
   gold: 'var(--amber)',
   zinc: 'var(--blue)',
   lead: 'var(--plum)',
@@ -166,7 +188,7 @@ export const TYPE_COLORS: Record<string, string> = {
   historical: 'var(--earth)',
 };
 
-export const TYPE_LABELS_ES: Record<string, string> = {
+export const TYPE_LABELS_ES: Record<MineType, string> = {
   gold: 'Oro',
   zinc: 'Zinc',
   lead: 'Plomo',
@@ -176,7 +198,7 @@ export const TYPE_LABELS_ES: Record<string, string> = {
   historical: 'Histórico',
 };
 
-export const TYPE_LABELS_EN: Record<string, string> = {
+export const TYPE_LABELS_EN: Record<MineType, string> = {
   gold: 'Gold',
   zinc: 'Zinc',
   lead: 'Lead',
@@ -186,22 +208,37 @@ export const TYPE_LABELS_EN: Record<string, string> = {
   historical: 'Historical',
 };
 
-// Color by operational status — also tokenized.
-export const STATUS_COLORS: Record<string, string> = {
+// Lookup table for localizing free-form commodity strings stored on each site
+// (e.g. 'Gold', 'Silver', 'Iron Oxide') back to the user's language.
+export const COMMODITY_LABELS_ES: Record<string, string> = {
+  Gold: 'Oro',
+  Silver: 'Plata',
+  Zinc: 'Zinc',
+  Lead: 'Plomo',
+  Iron: 'Hierro',
+  'Iron Oxide': 'Óxido de hierro',
+  Antimony: 'Antimonio',
+  Graphite: 'Grafito',
+  Copper: 'Cobre',
+};
+
+// Color by operational status — also tokenized. Surfaced only in the side panel,
+// never on map markers (those are colored by mineral type).
+export const STATUS_COLORS: Record<MineStatus, string> = {
   active: 'var(--green)',
   inactive: 'var(--t3)',
   contested: 'var(--red)',
   historical: 'var(--earth)',
 };
 
-export const STATUS_LABELS_ES: Record<string, string> = {
+export const STATUS_LABELS_ES: Record<MineStatus, string> = {
   active: 'Activa',
   inactive: 'Inactiva',
-  contested: 'Controvertida',
+  contested: 'En disputa',
   historical: 'Histórica',
 };
 
-export const STATUS_LABELS_EN: Record<string, string> = {
+export const STATUS_LABELS_EN: Record<MineStatus, string> = {
   active: 'Active',
   inactive: 'Inactive',
   contested: 'Contested',
