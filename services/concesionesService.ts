@@ -13,7 +13,7 @@
  * María pueda llamar desde la anon-key sin depender de service_role BYPASSRLS.
  */
 
-import { getSupabase } from '@/services/supabase';
+import { supabase } from '@/services/supabase';
 import { getAdminClient } from '@/services/adminSupabase';
 
 export type CategoriaConcesion =
@@ -97,9 +97,6 @@ export async function searchConcesion(opts: {
   clasificacion?: ClasificacionConcesion | null;
   limit?: number;
 }): Promise<ConcesionSearchResult[]> {
-  const supabase = getSupabase();
-  if (!supabase) return [];
-
   const { data, error } = await supabase.rpc('search_concesion_minera', {
     p_query:          opts.query,
     p_categoria:      opts.categoria ?? null,
@@ -119,9 +116,6 @@ export async function searchConcesion(opts: {
  * de María. RPC con SECURITY DEFINER.
  */
 export async function getConcesionStats(): Promise<ConcesionStats | null> {
-  const supabase = getSupabase();
-  if (!supabase) return null;
-
   const { data, error } = await supabase.rpc('concesiones_minera_stats');
   if (error) {
     console.warn('[concesionesService.getConcesionStats] RPC error:', error.message);
