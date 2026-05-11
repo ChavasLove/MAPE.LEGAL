@@ -653,8 +653,11 @@ async function buildConcesionContext(message, supabaseClient) {
   if (!CONCESION_TRIGGERS.test(message)) return '';
 
   // Extraer un término de búsqueda razonable — quitamos palabras gatillo y
-  // dejamos lo distintivo (nombre, empresa, código).
-  const stopwords = /(concesi[oó]n(?:es)?|inhgeomin|permiso|exploraci[oó]n|explotaci[oó]n|miner[oa]?|registro|otorgad[ao]|para|en|solicitud|pendiente|de|aprobaci[oó]n|qui[eé]n|tiene|la|el|empresa|d[oó]nde|est[aá]|ubicad[ao]?|hay|alguna|alguien|los|las|del|al|si|me|por|favor|gracias)/gi;
+  // dejamos lo distintivo (nombre, empresa, código). Word boundaries (`\b`)
+  // evitan strippear substrings dentro de nombres reales (e.g. "Dorado" no
+  // contiene "de" como palabra, pero `/de/g` sin boundary podría matchear
+  // dentro de zonas como "depósito" o "dedos").
+  const stopwords = /\b(concesi[oó]n(?:es)?|inhgeomin|permiso|exploraci[oó]n|explotaci[oó]n|miner[oa]?|registro|otorgad[ao]|para|en|solicitud|pendiente|de|aprobaci[oó]n|qui[eé]n|tiene|la|el|empresa|d[oó]nde|est[aá]|ubicad[ao]?|hay|alguna|alguien|los|las|del|al|si|me|por|favor|gracias)\b/gi;
   const cleaned = message
     .replace(stopwords, ' ')
     .replace(/[¿?¡!.,;:%_\\]/g, ' ')
