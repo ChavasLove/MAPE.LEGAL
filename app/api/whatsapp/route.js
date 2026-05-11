@@ -637,6 +637,64 @@ Usa esta información para responder con precisión. No inventes datos fuera de 
   }
 }
 
+// ─── Concesiones INHGEOMIN — registro público ──────────────────────────────────
+// Si el usuario menciona "concesión", "INHGEOMIN", "permiso de exploración",
+// "permiso de explotación", "está registrado", etc. — buscamos en el registro
+// `concesiones_mineras_registro` y devolvemos un bloque resumen para que
+// María responda con datos reales en vez de inventar.
+//
+// Tres categorías canónicas: explotacion_otorgada, exploracion_otorgada,
+// solicitud_pendiente (la mayoría son solicitudes pendientes).
+// El RPC `search_concesion_minera` tiene SECURITY DEFINER → bypasea RLS
+// independientemente del estado del service_role.
+const CONCESION_TRIGGERS = /\b(concesi[oó]n(?:es)?|inhgeomin|permiso\s+(?:de\s+)?(?:exploraci[oó]n|explotaci[oó]n|miner[oa])|registro\s+(?:de\s+)?(?:concesi[oó]n|miner[oa])|otorgad[ao]\s+para|en\s+solicitud|pendiente\s+de\s+aprobaci[oó]n|qui[eé]n\s+tiene\s+(?:la\s+)?concesi[oó]n|empresa\s+miner|d[oó]nde\s+est[aá]\s+ubicad)/i;
+
+async function buildConcesionContext(message, supabaseClient) {
+  if (!CONCESION_TRIGGERS.test(message)) return '';
+
+  // Extraer un término de búsqueda razonable — quitamos palabras gatillo y
+  // dejamos lo distintivo (nombre, empresa, código).
+  const stopwords = /(concesi[oó]n(?:es)?|inhgeomin|permiso|exploraci[oó]n|explotaci[oó]n|miner[oa]?|registro|otorgad[ao]|para|en|solicitud|pendiente|de|aprobaci[oó]n|qui[eé]n|tiene|la|el|empresa|d[oó]nde|est[aá]|ubicad[ao]?|hay|alguna|alguien|los|las|del|al|si|me|por|favor|gracias)/gi;
+  const cleaned = message
+    .replace(stopwords, ' ')
+    .replace(/[¿?¡!.,;:%_\\]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Si no queda nada distintivo, no consultamos.
+  if (cleaned.length < 3) return '';
+
+  try {
+    const { data, error } = await supabaseClient.rpc('search_concesion_minera', {
+      p_query:         cleaned.slice(0, 80),
+      p_categoria:     null,
+      p_clasificacion: null,
+      p_limit:         5,
+    });
+    if (error || !data?.length) return '';
+
+    const CATEGORIA_SHORT = {
+      explotacion_otorgada: 'Otorgada · Explotación',
+      exploracion_otorgada: 'Otorgada · Exploración',
+      solicitud_pendiente:  'En Solicitud (pendiente)',
+    };
+
+    const lines = data.slice(0, 5).map(r => {
+      const cat   = CATEGORIA_SHORT[r.categoria] ?? r.categoria;
+      const cod   = r.codigo ? ` · cód. ${r.codigo}` : '';
+      const fecha = r.fecha_solicitud ?? 's/f';
+      return `• ${r.nombre_zona}${cod} — ${r.solicitante} — ${cat} (${r.clasificacion}) — solicitud ${fecha}`;
+    });
+
+    return `\n\nREGISTRO INHGEOMIN — concesiones encontradas (datos públicos):
+${lines.join('\n')}
+Si el cliente quiere más detalle de alguno, sugiérele consultar el portal de INHGEOMIN o el panel www.mape.legal/admin/concesiones. La mayoría de los registros marcados "En Solicitud" siguen pendientes de aprobación; no afirmes que ya está aprobada una concesión que figura como "solicitud_pendiente".`;
+  } catch (e) {
+    console.warn('[concesiones] non-fatal:', e?.message);
+    return '';
+  }
+}
+
 // ─── RAG: knowledge retrieval from maria_knowledge ────────────────────────────
 // Calls the search_maria_knowledge_fts RPC (Postgres full-text search) to pull
 // the top 3 most relevant chunks for the user's question. Returns a single
@@ -1102,13 +1160,20 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
       .join('\n');
     const manualContext = await buildManualContext(incomingMessage, getSupabase(), recentHistoryText);
 
+    // --- Concesiones INHGEOMIN — registro público (keyword-triggered) ---
+    // Cuando el cliente pregunta por una concesión específica, una empresa, o
+    // "¿quién tiene el permiso de X?", inyectamos hasta 5 filas del registro
+    // INHGEOMIN. La mayoría siguen siendo solicitudes pendientes — el bloque
+    // instruye a María a no afirmar aprobación cuando el estado es solicitud.
+    const concesionContext = await buildConcesionContext(incomingMessage, getSupabase());
+
     // --- RAG: retrieve top-3 relevant chunks from maria_knowledge (FTS) ---
     const knowledgeContext = await retrieveKnowledge(getSupabase(), incomingMessage);
     const ragBlock = knowledgeContext
       ? `\n\nCONTEXTO DEL SISTEMA (información relevante para esta consulta):\n${knowledgeContext}\n\nUsa esta información para responder precisamente. Si no puedes responder con esta información, di que consultarás con el equipo técnico.`
       : '';
 
-    const dynamicPrompt = CHT_SYSTEM_PROMPT + priceContext + clienteContext + expedienteContext + manualContext + ragBlock + (isNewConversation
+    const dynamicPrompt = CHT_SYSTEM_PROMPT + priceContext + clienteContext + expedienteContext + manualContext + concesionContext + ragBlock + (isNewConversation
       ? ''
       : `
 

@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import Image from 'next/image';
 import {
   Users, UserCheck, LayoutDashboard, LogOut, Shield, FileText, Settings, LayoutGrid,
-  MessageSquare, UserPlus, Coins, Radio, Terminal, Bot, KeyRound,
+  MessageSquare, UserPlus, Coins, Radio, Terminal, Bot, KeyRound, Mountain,
 } from 'lucide-react';
 import { getServerAuth } from '@/lib/serverAuth';
 import SidebarNav from '@/components/dashboard/SidebarNav';
@@ -23,6 +23,7 @@ const adminItems = [
   { href: '/admin/roles',          label: 'Roles',          icon: <Shield          {...ICON} />              },
   { href: '/admin/permisos',       label: 'Permisos',       icon: <KeyRound        {...ICON} />              },
   { href: '/admin/contenido',      label: 'Contenido',      icon: <FileText        {...ICON} />              },
+  { href: '/admin/concesiones',    label: 'Concesiones',    icon: <Mountain        {...ICON} />              },
   { href: '/admin/config',         label: 'Configuración',  icon: <Settings        {...ICON} />              },
 ];
 
