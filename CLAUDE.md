@@ -175,7 +175,7 @@ Webhook Twilio que conecta WhatsApp con Claude AI.
 
 ## Landing page
 
-**Estado real (Phase 1, 2026-05-10):** la landing activa es `app/page.tsx` (~580 líneas, autocontenido, repositionada como **superficie institucional**, no de ventas). Estructura: Nav · Hero · Identidad (`#identidad`) · Cumplimiento (`#cumplimiento`) · Verificación (`#verificacion`) · Contacto (`#contacto`) · Footer. **No hay formulario de contacto, ni CTAs hacia clientes** — los clientes entran por María (WhatsApp) y relaciones directas. Los datos institucionales son reales: WhatsApp `+504 9737 3139`, correo `gerencia@mape.legal`, oficina Nexcrea (Tegucigalpa). Bilingüe ES/EN vía helper `t(es, en)` y `localStorage('ml_lang')`.
+**Estado real (Phase 1, 2026-05-10; overhaul móvil 2026-05-11):** la landing activa es `app/page.tsx` (~700 líneas, autocontenido, repositionada como **superficie institucional**, no de ventas). Estructura: Nav · Hero · Identidad (`#identidad`) · Cumplimiento (`#cumplimiento`) · Verificación (`#verificacion`) · Archivos Mineros (`#archivos-mineros`) · Contacto (`#contacto`) · Footer. **No hay formulario de contacto, ni CTAs hacia clientes** — los clientes entran por María (WhatsApp) y relaciones directas. Los datos institucionales son reales: WhatsApp `+504 9737 3139`, correo `gerencia@mape.legal`, oficina Nexcrea (Tegucigalpa). Bilingüe ES/EN vía helper `t(es, en)` y `localStorage('ml_lang')`.
 
 Los 15 archivos de `components/landing/*` fueron **eliminados en Phase 1** (ver commit `chore(landing): remove orphan components/landing/*`). Cualquier cambio de UI ahora va a `app/page.tsx`.
 
@@ -293,13 +293,20 @@ Requiere env vars. Es idempotente — re-ejecutable sin efectos secundarios.
 ## Landing page — responsividad móvil
 Convenciones aplicables a `app/page.tsx` (los componentes en `components/landing/` están huérfanos — ver sección "Landing page" arriba):
 
+- **Breakpoints canónicos**: alineados con Tailwind — `sm: 640`, `md: 768`, `lg: 1024`. Las `@media (max-width: …)` en `app/globals.css` usan `1023` (= `<lg`) y `639` (= `<sm`). Los antiguos cortes 900/600 fueron migrados en PR #126 (2026-05-11) para sacar el tablet-portrait 768–900 de la zona muerta y meterlo en el stack mobile.
 - **Tipografía escalada**: H1 del Hero usa `text-3xl sm:text-4xl md:text-5xl lg:text-[4.5rem]` — nunca tamaño fijo grande
 - **`<br />` condicionales**: saltos de línea decorativos usan `<br className="hidden sm:block" />` para no romper el flujo en pantallas pequeñas
-- **Nav en móvil**: el texto de marca junto al logo se oculta en xs (`hidden sm:inline`); padding del botón se reduce con `px-3 sm:px-5`
-- **Tablas de 2 columnas**: cuando el contenido es texto largo, usar `flex flex-col sm:grid sm:grid-cols-2` en lugar de `grid grid-cols-2` fijo — evita que el texto se corte
-- **Grids de sección**: `gap-10 lg:gap-16` para grids principales (no `gap-16` flat)
-- **Padding interior de cards/strips**: `p-5 sm:p-8` — no `p-8` plano
+- **Nav en móvil — hamburger** (PR #126): bajo `<1024px`, los 4 anchor links se ocultan vía `.nav-links { display: none }` y aparece `.nav-toggle` (botón con SVG `<path d="M4 7h16M4 12h16M4 17h16"/>`). Al togglearlo se renderiza `.nav-mobile-panel` (slide-down sticky bajo el nav). State machine en `app/page.tsx`: `useState(navOpen)` + 5 `useEffect`s (Escape cierra + restaura foco al toggle, click-outside cierra, resize ≥1024 auto-cierra, `body.style.overflow='hidden'` cuando abierto, focus al primer link en open). El **lang toggle se mueve fuera de `.nav-links`** así queda visible en mobile junto al hamburger.
+- **`.mape-section` class** (`app/globals.css`): aplica padding responsivo a todas las `<section>` de la landing — `80px` desktop → `56px` `<lg` → `48px` `<sm`. Cada `<section>` lleva `className="mape-section"` y conserva `background / borderBottom / id` inline; el `padding` inline se elimina. Cualquier `<section>` nueva en la landing debe usar esta clase.
+- **Grids de sección** (PR #126): reemplazo de `gridTemplateColumns` inline por clases Tailwind responsive. Patrones canónicos:
+  - 2-col texto + imagen (Identidad/Verificación): `grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16 mt-10 items-start` (o `lg:grid-cols-2` cuando una columna trae un card pesado que solo encaja en desktop ancho)
+  - 4 cards (Cumplimiento): `grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6 mt-12`
+  - 3 cards de contacto: `grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 mt-10`
+- **Padding interior de cards** (PR #126): `padding: 'clamp(20px, 4vw, 24px)'` inline para cards que necesitan respirar en mobile sin romper a desktop. Reemplaza el `padding: 24` plano.
+- **Headers de tarjetas con dos elementos en flex** (ej. certificate dark bar): siempre `flexWrap: 'wrap'` + `gap: 8` para que los dos labels apilen en 320px en lugar de colisionar.
 - **Listas horizontales**: siempre `flex-wrap` cuando los ítems pueden desbordar en móvil (badges, certificaciones, footer)
+- **TerrainMapSection — submods**: `MapLegend` usa `window.matchMedia('(max-width: 639px)')` para auto-collapse + pinning a `bottom: 16, left: 16, right: 16` en mobile (evita colisión con los nav controls top-right de MapLibre). `SiteInfoPanel` usa `gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))'` en su detail grid para colapsar a 1-col en 320px sin JS. `TopoBand` SVG labels llevan `className="topo-band-labels"` que se oculta vía `@media (max-width: 413px)` en `globals.css`.
+- **Quality gate antes de mergear cambios de landing**: confirmar manualmente en DevTools mobile-emulator a 320 / 375 / 414 / 640 / 768 / 1024 antes de aprobar. El build prerender (`○ /`) no detecta solapamientos visuales — solo errores de SSR. Hamburger interaction: tap → overlay aparece + body scroll lock + foco al primer link; tap link / Escape / click-outside / resize ≥1024 → cierra + foco regresa al toggle.
 
 ## Variables de Entorno Requeridas (Producción)
 ```
@@ -544,6 +551,12 @@ Follow-up diferido: auto-promover `@cht.hn` / `@mape.legal` a `abogado` en el ca
 - **Repro local**: stub `getServerAuth` para devolver `{ role: 'admin' }`, hit `/admin` → 500 con stack `at stringify (<anonymous>)` y `digest: 'XXXXXXXXXX'` para cada ícono. Tras el fix, todas las rutas (`/admin`, `/admin/usuarios`, `/admin/profesionales`, `/admin/roles`, `/admin/contenido`, `/admin/config`, `/dashboard`, `/dashboard/expedientes`, `/dashboard/minas`) devuelven 200.
 - **Lección recurrente** (segunda vez en este repo, ver también PR #100): el type-check / build pueden mentir sobre la salud de SSR. Para layouts y server components que pasan props complejos a client islands, hay que probar el render runtime (curl con cookies stub, o un test e2e).
 
+### Landing móvil — resuelto 2026-05-11 (PR #126)
+- **Síntoma**: bajo 1024px la landing perdía toda la navegación (`globals.css:307-310` ocultaba los 4 anchor links sin hamburger fallback) y las 4 secciones (Identidad · Cumplimiento · Verificación · Contacto) mantenían sus grids multi-columna porque el `gridTemplateColumns` vivía inline (que no responde a media queries). El padding vertical fijo de 80px + cards `padding: 24` flat hacían que en 320–414px las secciones gastaran 30%+ de viewport en chrome. La leyenda de `MiningMap3D` (`MapLegend.tsx`) chocaba con los controles top-right de MapLibre.
+- **Fix**: ver sección "Landing page — responsividad móvil" arriba. Resumen: hamburger nav con focus management + scroll lock + Escape/click-outside/resize dismiss, 4 grids movidos a clases Tailwind responsive, nueva clase `.mape-section` para padding responsivo, `MapLegend` auto-collapse + pinning a bottom-left bajo 640px, `SiteInfoPanel` con `auto-fit minmax(140px, 1fr)`, breakpoints migrados 900→1023 / 600→639 para alinear con Tailwind.
+- **Quality gates**: `npx tsc --noEmit` y `npx next build` ambos limpios (cero errores, cero warnings). Las pre-existencias `app/api/admin/clientes/route.ts:61` y `app/dashboard/minas/page.tsx:72` ya no aparecen en `tsc` — sea que las resolvieron en otra rama, sea que el upgrade de tipos las absorbió.
+- **Limitación**: el environment de la PR no permitió validación visual; el quality gate manual (DevTools mobile-emulator a 320/375/414/640/768/1024 + Lighthouse mobile) queda pendiente para la primera deploy.
+
 ### Carryover Phase 0 (no en scope de Phase 1)
-- ⚠ `app/dashboard/minas/page.tsx:72` — lint error `react-hooks/set-state-in-effect` (pre-existente).
-- ⚠ `app/api/admin/clientes/route.ts:61` — TS error `Cannot find name 'clientes'` (pre-existente, bloquea `npm run build` type-check). El compile step pasa; solo el type-check falla. Phase 1 no introduce nuevos errores.
+- ⚠ `app/dashboard/minas/page.tsx:72` — lint error `react-hooks/set-state-in-effect` (pre-existente; **ya no aparece en `tsc --noEmit` post-PR #126**, verificar si sigue vigente).
+- ⚠ `app/api/admin/clientes/route.ts:61` — TS error `Cannot find name 'clientes'` (pre-existente; **ya no aparece en `tsc --noEmit` post-PR #126**, verificar si sigue vigente).
