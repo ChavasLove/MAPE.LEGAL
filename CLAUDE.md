@@ -211,14 +211,16 @@ Los 15 archivos de `components/landing/*` fueron **eliminados en Phase 1** (ver 
 
 ## Biblioteca Archivos Mineros (`#archivos-mineros`, 2026-05-10)
 
-Sección institucional bajo el ancla `#archivos-mineros` en la landing (`app/page.tsx`); enlace en el nav como "Mapa Minero" / "Mining Map". Mapa interactivo 3D de 8 sitios mineros verificados de Honduras renderizado con MapLibre GL JS v5 (~220 KB gzipped, WebGL, GPU-accelerated). Framing: cada pin es contexto histórico **y** candidato de formalización dentro del universo donde opera CHT.
+Sección institucional bajo el ancla `#archivos-mineros` en la landing (`app/page.tsx`); enlace en el nav como "Mapa Minero" / "Mining Map". Mapa interactivo 3D de 8 distritos mineros verificados de Honduras renderizado con MapLibre GL JS v5 (~220 KB gzipped, WebGL, GPU-accelerated). **Framing canónico (2026-05-11):** el mapa NO es un catálogo de empresas mineras — es un mapa de **distritos** donde se concentran mineros artesanales y de pequeña escala. Cada pin representa una zona donde CHT tiene clientes potenciales (los mineros artesanales/SSM que operan en ese territorio), independientemente del estatus de la operación corporativa listada en cada card.
+
+> **Update 2026-05-11 (PR #124, `claude/fix-map-legend-navigation-MYEUb`):** legend → filtro de mineral, agregada navegación Next/Prev, marker click race condition resuelto, CTA WhatsApp ahora se muestra en todos los sitios (la audiencia es el minero artesanal, no la corporación). Ver "Arquitectura interactiva" abajo.
 
 **Archivos** (todos `'use client'`):
-- `components/terrain/mining-data.ts` — dataset de 8 sitios + `TYPE_COLORS` / `STATUS_COLORS` / `*_LABELS_*` bound a tokens.
-- `components/terrain/MiningMap3D.tsx` — core del mapa, controles, popups.
-- `components/terrain/SiteInfoPanel.tsx` — panel de detalle + CTA WhatsApp.
-- `components/terrain/MapLegend.tsx` — leyenda colapsable.
-- `components/terrain/TerrainMapSection.tsx` — wrapper de sección + stats bar + responsive overrides.
+- `components/terrain/mining-data.ts` — dataset de 8 sitios + `MineType`/`MineStatus` aliases + `MINE_TYPE_ORDER` + `TYPE_COLORS` / `STATUS_COLORS` / `*_LABELS_*` + `COMMODITY_LABELS_ES` (todos `Record<MineType,...>` / `Record<MineStatus,...>` — tipados estrictos, typos fallan al compilar).
+- `components/terrain/MiningMap3D.tsx` — core del mapa, controles, popup compartido, markers con a11y de teclado.
+- `components/terrain/SiteInfoPanel.tsx` — panel de detalle con header de navegación (Prev/Next/posición/Close) + CTA WhatsApp.
+- `components/terrain/MapLegend.tsx` — **filtro de mineral interactivo** (chips toggleables); el nombre del archivo conserva "Legend" por historia, pero el componente ya no muestra leyenda de estado (los markers se colorean solo por mineral, nunca por estado).
+- `components/terrain/TerrainMapSection.tsx` — wrapper de sección, owner del estado `selectedSiteId` + `visibleTypes: Set<MineType>`, deriva `visibleSites` por memo, expone `handleNext`/`handlePrev` con wrap-around, auto-deselect si filtro oculta el sitio activo.
 
 **Tiles + 3D terrain**:
 - Default: CartoDB Voyager raster + DEM de `demotiles.maplibre.org` (SRTM hillshade). Gratis, sin API key — el mapa funciona out-of-the-box.
@@ -236,17 +238,43 @@ Sección institucional bajo el ancla `#archivos-mineros` en la landing (`app/pag
 | `antimony` → `var(--slate)` |  |
 | `historical` → `var(--earth)` |  |
 
-Las CSS variables `var(--token)` funcionan dentro de inline `style` (el browser las resuelve) y dentro de `color-mix(in oklch, ${token} 14%, white)` para fondos translúcidos de pills/badges. No se importa ningún hex desde el dataset.
+Los markers se colorean **solo por tipo mineral**. Los colores de status (`STATUS_COLORS`) aparecen únicamente en los badges del panel y popups — nunca en los pines del mapa. Por eso el filtro vive sobre `MineType`, no sobre `MineStatus`. Las CSS variables `var(--token)` funcionan dentro de inline `style` (el browser las resuelve) y dentro de `color-mix(in oklch, ${token} 14%, white)` para fondos translúcidos de pills/badges.
 
-**Init crítico — `pitch: 0, bearing: 0`** (`MiningMap3D.tsx:213-214`). Con `pitch > 0`, los DOM markers (`maplibregl.Marker({ anchor: 'center' })`) **están correctamente anclados a sus coordenadas geográficas**, pero la perspectiva los proyecta visualmente alejados de las etiquetas del basemap (que se renderizan en el raster del tile, proyección distinta). A zoom 6.5 con `pitch: 45` el offset visible es de varios pixels — un usuario sin contexto lo lee como "los pines están en el lugar equivocado" (síntoma reportado en commit `f18ab3c`). El fix correcto es default flat; el usuario puede inclinar manualmente con drag-right-click y el knob `visualizePitch` del NavigationControl sigue disponible. **Aplica a cualquier futuro uso de DOM markers en este proyecto — symbol layers (`icon-pitch-alignment: map`) son la única forma de que markers + pitch coexistan sin distorsión.** El `flyTo` al seleccionar un sitio tampoco escala pitch.
+**Init crítico — `pitch: 0, bearing: 0`** (`MiningMap3D.tsx:217-218`). Con `pitch > 0`, los DOM markers (`maplibregl.Marker({ anchor: 'center' })`) **están correctamente anclados a sus coordenadas geográficas**, pero la perspectiva los proyecta visualmente alejados de las etiquetas del basemap (que se renderizan en el raster del tile, proyección distinta). A zoom 6.5 con `pitch: 45` el offset visible es de varios pixels — un usuario sin contexto lo lee como "los pines están en el lugar equivocado" (síntoma reportado en commit `f18ab3c`). El fix correcto es default flat; el usuario puede inclinar manualmente con drag-right-click y el knob `visualizePitch` del NavigationControl sigue disponible. **Aplica a cualquier futuro uso de DOM markers en este proyecto — symbol layers (`icon-pitch-alignment: map`) son la única forma de que markers + pitch coexistan sin distorsión.** El `flyTo` al seleccionar un sitio tampoco escala pitch.
 
 **Sin animaciones continuas** (DESIGN.md §4). El script PDF original incluía un `@keyframes mining-pulse` para markers con `status: 'active'`; se eliminó por la regla del manual. El color verde de `STATUS_COLORS.active` ya transmite "activa" sin animación.
 
-**CTA "Iniciar trámite con CHT"** (`SiteInfoPanel.tsx`): cada pin es un cliente potencial. Botón verde-moss al fondo del panel que abre `https://wa.me/50497373139?text=…` con mensaje pre-llenado incluyendo `nameEs`, `department`, `municipality` del sitio. **Gate por `status`**:
-- `active` → mostrar (operación viva, candidato directo a formalización).
-- `inactive` → mostrar (dormido, posible reactivación vía formalización).
-- `contested` → **ocultar** (Guapinol/Los Pinares — sensible políticamente; vías formales, no WhatsApp en frío).
-- `historical` → **ocultar** (corporaciones extintas — sin contraparte).
+### Arquitectura interactiva (PR #124, 2026-05-11)
+
+**Markers se crean UNA VEZ** en el handler `instance.on('load', …)` (`MiningMap3D.tsx`). Se guardan en `markersRef: Map<string, MarkerEntry>` keyed por `site.id`. Subsecuentes cambios de selección / visibilidad / idioma **mutan el DOM en su lugar** — nunca remove+recreate. Esto cierra el race condition pre-PR #124 que tiraba todos los markers y popups en el mismo tick del click, causando que el popup parpadeara por ~1 frame y el marker recién clickeado desapareciera brevemente.
+
+**3 funciones de mutación** (declaradas en el componente, leen de refs así son siempre fresh):
+- `applySelectionStyle()` — itera markers, re-aplica `cssText` con el tamaño/sombra correcto según si es el `selectedIdRef.current` (28px + ring `var(--ink)` 3px) o no (22px). También setea `aria-pressed`.
+- `applyVisibilityStyle()` — itera markers y setea `el.style.display = visibleTypesRef.current.has(site.type) ? '' : 'none'`. **Crítico:** `cssText` en `applySelectionStyle` borra `display`, así que **hay que llamar ambas tras cualquier cambio de selección**. El useEffect de `selectedSiteId` llama las dos.
+- `applyPopup()` — popup compartido (`maplibregl.Popup` único). `closeOnClick: false`. Si hay `selectedIdRef.current`, lo posiciona en el sitio y setea HTML; si no, llama `popupRef.current.remove()`. Llamar `.remove()` sobre un popup no agregado es no-op.
+
+**4 useEffects** en `MiningMap3D.tsx`:
+1. **Init** (deps `[]`) — crea map, controles, popup compartido, markers, inyecta CSS chrome para `.mining-popup`.
+2. **Selection** (deps `[selectedSiteId]`) — `applySelectionStyle()` + `applyVisibilityStyle()` (re-apply post-cssText reset) + `applyPopup()`.
+3. **Visibility** (deps `[visibleTypes]`) — `applyVisibilityStyle()`.
+4. **Lang** (deps `[lang]`) — re-setea `aria-label` de cada marker + `applyPopup()` (re-renderea HTML del popup con labels en el idioma actual).
+5. **Fly-to** (deps `[selectedSiteId]`) — separado del effect de selection para que el camera move no acople con la mutation del DOM. Cuando `selectedSiteId` es `null`, vuela de regreso al overview (`INITIAL_CENTER`, `INITIAL_ZOOM`).
+
+**Marker selected — ring `var(--ink)` en vez de same-color halo**: el patrón pre-PR #124 era ring del mismo `fillColor` (gold tenía ring gold, etc.), lo que daba un cambio visual sutil (22→28px con halo del mismo color). El nuevo ring usa `var(--ink)` 3px — visible sin importar el color del mineral.
+
+**Marker a11y**: cada `el` tiene `role="button"`, `tabindex="0"`, `aria-label`, `aria-pressed`, y un keydown handler que activa con Enter o Space. La activación llama `onSiteSelectRef.current(site.id)`. El click handler hace `e.stopPropagation()` para evitar que algunas versiones de MapLibre traten el click como "click en mapa" y disparen lógica de close.
+
+**Filtro de mineral** (`MapLegend.tsx`): renderizado top-left (movido desde bottom-left para no chocar con scale/attribution de MapLibre). Cada `MINE_TYPE_ORDER` row es un `<button aria-pressed>` que toggle-a `value: Set<MineType>`. Empty selection se bumpea automáticamente a "all on" (el mapa nunca queda vacío). Cuando el filtro está activo, `TerrainMapSection.tsx` renderiza un pill `"Mostrando N de N sitios"` en top-right con `aria-live="polite"`.
+
+**Navigation Next/Prev**: `TerrainMapSection.tsx` deriva `visibleSites = MINING_SITES.filter(s => visibleTypes.has(s.type))` por `useMemo`, computa `selectedIndex` del sitio activo dentro de la lista filtrada, y expone `handleNext`/`handlePrev` con wrap-around (`(i + 1) % len` / `(i - 1 + len) % len`). Se pasan a `SiteInfoPanel` como `onNext`/`onPrev` opcionales; el panel los muestra como chevrons Lucide en el header pegados al close button. `position={index+1, total: visibleSites.length}` renderea el indicador `Sitio N de N` / `Site N of N` en `var(--font-mono)`. Si `visibleSites.length <= 1` los botones son `undefined` y no se renderean.
+
+**Auto-deselect bajo filtro**: si el filtro oculta el sitio actualmente seleccionado, un useEffect en `TerrainMapSection` lo deselecciona (`setSelectedSiteId(null)`) — evita un panel zombie con un sitio cuyo marker está hidden.
+
+**CTA WhatsApp — visible en todos los sitios** (`SiteInfoPanel.tsx`, post PR #124): el gate por status del diseño original (mostrar solo en `active`/`inactive`, ocultar en `contested`/`historical`) **se eliminó**. Razón: la audiencia del CTA son los mineros artesanales y de pequeña escala que operan en cada distrito — independientemente de si la operación corporativa listada en el card está activa, dormida, en disputa, o extinta. Un sitio histórico como Rosario (Tegucigalpa) o un sitio en disputa como Guapinol siguen siendo distritos donde hay mineros buscando formalizarse. Copy del CTA habla al minero directamente: ES `"¿Operas en esta zona? Inicia trámite con CHT"` / EN `"Mining in this district? Begin a process with CHT"`, con caption `"Pensado para mineros artesanales y de pequeña escala que operan en el área."` Mensaje pre-llenado de WhatsApp también reframe-ado: `"Buenas, soy minero artesanal en la zona de {nameEs} ({department}, {municipality})…"`.
+
+**Hover del CTA — `white` no `black`** (DESIGN.md §3): `color-mix(in oklch, var(--moss) 88%, white)`. Pre-PR #124 estaba mixed con `black` lo que daba un hover oscuro casi `var(--ink)`.
+
+**`STATUS_LABELS_ES.contested`**: cambió de `"Controvertida"` a `"En disputa"` (PR #124). "Controvertida" leía como public-opinion framing; "En disputa" es el término que usa la prensa legal hondureña y matchea cleanly con EN `"Contested"`.
 
 **Dataset (8 sitios, hardcoded en `mining-data.ts`)**:
 
@@ -261,12 +289,14 @@ Las CSS variables `var(--token)` funcionan dentro de inline `style` (el browser 
 | `el-quetzal` | El Quetzal (Antimonio) | antimony | inactive | Copán |
 | `la-pochota` | La Pochota | silver | historical | Choluteca / Distrito Clavo Rico |
 
-Stats bar derivado (`TerrainMapSection.tsx`): 4 numerales en `var(--font-display)` 28px — total mapeados / activas / controvertidas / históricas. Actualmente lee `8 / 2 / 2 / 2`.
+Stats bar derivado (`TerrainMapSection.tsx`): 4 numerales en `var(--font-display)` 28px — total mapeados / activas / **en disputa** / históricas. Lee `8 / 2 / 2 / 2`. **Los stats reflejan el universo completo, no la lista filtrada** — la cuenta filtrada vive en el pill `Mostrando N de N` sobre el mapa cuando el filtro está activo.
 
 **Future work** (plan operativo en `/root/.claude/plans/yes-proceed-suggestions-are-abundant-rain.md`):
 - **Wire al Supabase `minas` table** vía vista pública `minas_publicas` (mismo patrón que `certificados_origen_publicos` — migración 020 + `app/verificar/[numero]/page.tsx`). Requiere extender `minas` con `descripcion_es`, `descripcion_en`, `desde`, `operador`, `produccion`, `commodities`; nueva vista que strippea `cliente_id`; nueva ruta `app/api/archivos-mineros/route.ts` con lazy-init anon + `Cache-Control: public, s-maxage=300, stale-while-revalidate=900`.
-- **Filtros UI** por mineral y status (multi-select chips arriba del mapa).
+- ~~**Filtros UI** por mineral y status~~ — shipped en PR #124 (mineral only; status filter no requerido porque el usuario quiere ver todos los estados como contexto educativo).
 - **Expandir dataset** a 50–100 sitios usando INHGEOMIN bulletin + BCH histórico + Acuerdo 042-2013 annexes. Cada row debe tener fuente citable y GPS verificado. La migración 023 (`concesiones_mineras_registro`) shipped el 2026-05-11 ya carga 587 concesiones INHGEOMIN — evaluar si la archive map debería leer de ahí en vez de mantener un dataset separado.
+- **Symbol layer migration** — cuando el dataset cruce ~200 sitios, migrar de DOM markers a un `circle` symbol layer + click-handling via `map.on('click', 'mining-circles', …)`. Los DOM markers actuales con CSS variables empiezan a jankearse a esa escala. Bonus: symbol layers + `icon-pitch-alignment: map` resuelven el constraint `pitch: 0` también.
+- **Fact-check pendiente**: las descripciones de `clavo-rico` y `guapinol` afirman años específicos para denegaciones de permisos INHGEOMIN (2024-2025) que vale la pena verificar contra boletines INHGEOMIN antes de un push de marketing al landing.
 
 ## SEO / Open Graph
 
