@@ -80,6 +80,7 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 | `services/cmsService.ts` | Lectura/escritura de `contenido_cms` — anon para leer, admin para escribir |
 | `services/configService.ts` | Lectura/escritura de `configuracion_sistema` — solo admin client |
 | `services/dashboardService.ts` | Datos de expedientes para el dashboard (`DashExpediente`, `DashHito`, `DashDoc`). `createDashExpediente()` calcula `numero_expediente` con `Number.parseInt` max en JS sobre todas las filas del año actual (no via `ORDER BY numero_expediente DESC` — el sort lex trataba `EXP-YYYY-1000` como menor que `EXP-YYYY-999` y se rompía al expediente 1000; mezclar 3 dígitos legacy con 4 dígitos nuevos recreaba el bug en la frontera). Padding actual: 4 dígitos. **Cada insert hijo (hitos, documentos, legalidad_items, progress_fases, progress_subpasos) chequea `error` y `throw`** — antes el fallo silencioso devolvía un expediente "creado" con datos faltantes y sin auditoría |
+| `services/concesionesService.ts` | Helpers del registro INHGEOMIN (migración 023). `searchConcesion()` envuelve el RPC `search_concesion_minera` con anon-key (RPC es `SECURITY DEFINER`, OK desde anon). `getConcesionStats()` agregados. `listConcesionesAdmin()` paginado con service-role + ilike fallback. `renderConcesionContextForMaria()` formatea hasta N filas en líneas tipo "• Zona — Solicitante — Categoría (Clasif) — fecha". Exporta `CATEGORIA_LABELS` / `CATEGORIA_SHORT` para reuso en UI. Tipos: `CategoriaConcesion`, `ClasificacionConcesion`, `ConcesionMinera`, `ConcesionSearchResult`, `ConcesionStats` |
 
 ### Plantillas de email disponibles
 | Función | Destinatario | Evento |
@@ -155,6 +156,7 @@ Webhook Twilio que conecta WhatsApp con Claude AI.
 - **`GOLDAPI_KEY` no seteada en producción (2026-05-10)**: `services/pricingService.ts:fetchGoldFromGoldAPI()` retorna `null` silenciosamente cuando la env var falta, así que `fetchAllPrices()` siempre cae a Yahoo Finance (`fuente=yahoo-finance` en logs). Setear la key en Vercel → Project → Settings → Environment Variables daría una fuente primaria más autoritativa en días hábiles. No urgente: Yahoo COMEX GC=F es válido como proxy.
 - **`precios_diarios` cache write blocked por RLS (2026-05-10)**: cada invocación de María dispara `fetchAndStorePrices()` fire-and-forget, pero el INSERT/UPSERT falla con `new row violates row-level security policy for table "precios_diarios"` porque el `service_role` del proyecto no tiene `BYPASSRLS` (mismo root cause de la saga de auth resuelta en migración 019). Resultado: cache siempre vacío → cada turno fetcha live (~250 ms extra). Fix: nueva migración con `create policy "service_all_precios_diarios" on precios_diarios for all to service_role using (true) with check (true)`. Loggea como "non-fatal" así que no bloquea la respuesta de María.
 - **Formato canónico de respuesta de precio de oro** (MARIA.md §8, v1.1+): cada respuesta que mencione precio de oro DEBE incluir SIEMPRE 4 viñetas — `LBMA`, `CHT compra al 80%`, `Tipo de cambio USD/LPS`, `Actualizado: [frescuraLabel]` — más `Finacoop` y `www.mape.legal`. El timestamp y el tipo de cambio USD/LPS son obligatorios aunque el cliente no los pida. La regla está implementada en el system prompt (`CUANDO PREGUNTAN POR EL PRECIO DEL ORO` + `SI EL CLIENTE MENCIONA UN PESO ESPECIFICO EN GRAMOS`) y reflejada en MARIA.md §8.
+- **Registro INHGEOMIN (concesiones)**: helper `buildConcesionContext()` se dispara con la regex `CONCESION_TRIGGERS` (palabras "concesión", "INHGEOMIN", "permiso minero/exploración/explotación", "en solicitud", "¿quién tiene la concesión?", "empresa minera", "¿dónde está ubicado?"). Limpia stopwords con boundary `\b` para preservar nombres como "Dorado", llama el RPC `search_concesion_minera` (anon-key, RPC es SECURITY DEFINER) con `p_limit: 5`, y inyecta un bloque `REGISTRO INHGEOMIN — concesiones encontradas (datos públicos):` con instrucción explícita de **no afirmar aprobación si la categoría es `solicitud_pendiente`**. 587 registros disponibles (125 explotación otorgada + 170 exploración otorgada + 292 en solicitud). Falla silenciosa: si el RPC retorna error, loggea `[concesiones] non-fatal` y devuelve string vacío — nunca bloquea la respuesta de María.
 - **Perfil completo del cliente**: calcula campos faltantes (nombre, DPI, municipio, situación tierra, tipo mineral) e inyecta `completenessSummary` en el prompt. María responde a "¿ya tienes mis datos?" con los campos faltantes exactos.
 - **REGLA DE MEMORIA**: si el contexto ya tiene un dato, María nunca lo repite ni re-pregunta — lo usa directamente.
 - **Nuevo expediente**: flujo estructurado cuando cliente registrado quiere iniciar un trámite (tipo → municipio → manzanas). Al completar, inserta en `transacciones_pendientes` con `detalle` del servicio.
@@ -396,7 +398,41 @@ Helper canónico para todas las lookups admin. Strippea prefijos `whatsapp:`/`te
 
 ### Sidebar nav (`app/admin/layout.tsx`)
 
-Dos secciones agrupadas: **admin items** (Resumen · Usuarios · Profesionales · Roles · Permisos · Contenido · Configuración) y **María items** (Panel María · Conversaciones · Clientes y leads · Transacciones · Broadcast · Auditoría) separadas por un eyebrow `MARÍA` en mono small caps. Los items pasan `icon: <Foo {...ICON} />` (JSX pre-renderizado), no `Icon: Foo` — `SidebarNav` es un client component y los component refs de lucide-react no cruzan el boundary RSC server→client.
+Dos secciones agrupadas: **admin items** (Resumen · Usuarios · Profesionales · Roles · Permisos · Contenido · **Concesiones** · Configuración) y **María items** (Panel María · Conversaciones · Clientes y leads · Transacciones · Broadcast · Auditoría) separadas por un eyebrow `MARÍA` en mono small caps. Los items pasan `icon: <Foo {...ICON} />` (JSX pre-renderizado), no `Icon: Foo` — `SidebarNav` es un client component y los component refs de lucide-react no cruzan el boundary RSC server→client. El ícono de Concesiones es `Mountain` de lucide-react.
+
+## Registro de Concesiones INHGEOMIN (`app/admin/concesiones`, `app/registro`, 2026-05-11)
+
+Base de datos pública de **587 concesiones mineras** en Honduras transcritas de 3 PDFs INHGEOMIN. Cubre tanto las concesiones otorgadas como las solicitudes pendientes — la mayoría son pendientes de aprobación.
+
+### Datos
+- **Fuente**: 3 PDFs subidos por el equipo (`Concesiones_Mineras_Otorgadas_para_Exploraci_n_1/2/3.pdf`, los nombres tienen el typo del scanner). PDF 1 = otorgadas para EXPLOTACIÓN (125 filas, código 3–543, El Mochito el más antiguo, 1934-11-13). PDF 2 = otorgadas para EXPLORACIÓN (170 filas). PDF 3 = METÁLICAS EN SOLICITUD (292 filas — incluye `Solicitud de Concesión Minera` regular Y `Solicitud de Pequeña Minería`).
+- **Transcripción**: hecha por 4 agentes paralelos con vision sobre PNGs a 400 DPI (`pdftoppm -r 400`). OCR vía tesseract fallaba (0 lines) porque los scans son CamScanner blurry. Cada agente produjo un JSONL en `/tmp/transcripts/*.jsonl`; `scripts/aggregate-concesiones-jsonl.mjs` los consolida en `data/concesiones-mineras-registro.json` agregando `categoria` y `fuente_documento`.
+- **Distribución final**: 125 explotación + 170 exploración + 292 solicitud = **587 filas**. Por clasificación: 243 Metálica + 250 No Metálica + 94 Pequeña Minería Metálica. Por estado: 170 Otorgada Exploración, 125 Otorgada Explotación, 191 Solicitud Exploración, 94 Solicitud Explotación, 7 Suspenso.
+
+### Activación en producción
+1. **Aplicar migración 023** en Supabase Studio → SQL Editor (Vercel deploy NO aplica migraciones).
+2. Desde una máquina con `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`: `node scripts/seed-concesiones-mineras.mjs` — idempotente, upsert por `(categoria, numero_registro)` en chunks de 200, re-ejecutable sin duplicar.
+3. Una vez seedeada la tabla, todos los surfaces (admin, público, María) la ven automáticamente.
+
+### Surfaces
+| Surface | Path | Audience |
+|---|---|---|
+| Admin UI (KPIs + filtros + tabla paginada) | `/admin/concesiones` | admin only (guard del layout) |
+| Búsqueda pública en vivo (debounce 250ms) | `/registro` | anon |
+| API admin list | `GET /api/admin/concesiones` | admin/abogado/tecnico_ambiental |
+| API admin stats | `GET /api/admin/concesiones/stats` | admin/abogado/tecnico_ambiental |
+| API admin detail + edit | `GET / PATCH /api/admin/concesiones/[id]` | admin/abogado/tecnico_ambiental |
+| API público de búsqueda | `GET /api/concesiones/buscar?q=&categoria=&clasificacion=&limit=` | anon (cache 60s + SWR 5min) |
+| María (WhatsApp) RAG | `buildConcesionContext` en `route.js` | cliente vía WhatsApp |
+
+### Schema gotchas
+- **Unique key** es `(categoria, numero_registro)`, NO `numero_registro` solo — cada PDF reinicia la numeración desde 1.
+- **Codigo NO es único** — los 3 PDFs comparten un mismo espacio de códigos INHGEOMIN; la unicidad debe ser por (categoria, numero_registro).
+- **Suspenso es estado, no clasificación** — 7 filas en `solicitud_pendiente` tienen `estado_expediente = 'Suspenso'` pero su `clasificacion` sigue siendo "Metálica" / "No Metálica".
+- **No existe DELETE** en el API admin — los registros del INHGEOMIN son históricos, sólo `PATCH` con whitelist de campos.
+
+### María — guardrail crítico
+El bloque inyectado a María dice literalmente "*La mayoría de los registros marcados 'En Solicitud' siguen pendientes de aprobación; no afirmes que ya está aprobada una concesión que figura como solicitud_pendiente.*" — esto evita que María afirme que una concesión está aprobada cuando realmente está pendiente. **Si modificás el helper, mantené este guardrail.**
 
 ## Auditoría — deuda técnica conocida (2026-05-03, parcialmente resuelta 2026-05-09)
 
