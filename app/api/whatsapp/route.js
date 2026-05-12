@@ -4,6 +4,7 @@ import { getUserByPhone, getOrCreateUserByPhone } from "@/services/userService";
 import { interpretAndExecute } from "@/services/adminCommandService";
 import { getOnboardingState, startOnboarding, handleOnboarding } from "@/services/onboardingService";
 import { fetchAllPrices, fetchAndStorePrices } from "@/services/pricingService";
+import { embedQuery } from "@/lib/maria/embeddings";
 
 // Conditional init — instantiating these unconditionally at module load would
 // throw during Next.js's page-data-collection build phase when env vars aren't
@@ -770,24 +771,54 @@ Si el cliente quiere más detalle de alguno, sugiérele consultar el portal de I
 }
 
 // ─── RAG: knowledge retrieval from maria_knowledge ────────────────────────────
-// Calls the search_maria_knowledge_fts RPC (Postgres full-text search) to pull
-// the top 3 most relevant chunks for the user's question. Returns a single
-// concatenated string of "[category] title: content" blocks, or null when
-// nothing matches or the RPC fails. Non-blocking by design.
+// Hybrid retrieval. Primero intenta búsqueda semántica vía embeddings (OpenAI
+// `text-embedding-3-small` → RPC `match_maria_knowledge`). Si no hay
+// `OPENAI_API_KEY`, si el embed call falla, o si el threshold de similitud
+// no devuelve filas, cae al RPC FTS determinístico
+// (`search_maria_knowledge_fts`) que sigue activo desde migración 024.
 //
-// TODO: When embeddings are generated in maria_knowledge.embedding,
-// switch to match_maria_knowledge() for semantic similarity search.
-// For now, full-text search (FTS) works well for keyword-heavy mining queries.
+// Devuelve string concatenado de "[category] title: content" o null si
+// ninguna de las dos rutas trajo resultados. Non-blocking — cualquier
+// excepción se loggea y se retorna null para no romper la respuesta de María.
+const RAG_MATCH_COUNT = 3;
+const RAG_MATCH_THRESHOLD = 0.7;
+
+function formatKnowledgeRows(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+  return rows.map(c => `[${c.category}] ${c.title}: ${c.content}`).join('\n\n');
+}
+
 async function retrieveKnowledge(supabaseClient, userMessage) {
+  // 1. Semantic search (preferred — captures intent across synonyms).
+  try {
+    const queryEmbedding = await embedQuery(userMessage);
+    if (queryEmbedding) {
+      const { data, error } = await supabaseClient.rpc('match_maria_knowledge', {
+        query_embedding: queryEmbedding,
+        match_threshold: RAG_MATCH_THRESHOLD,
+        match_count: RAG_MATCH_COUNT,
+      });
+      if (!error && data?.length) {
+        return formatKnowledgeRows(data);
+      }
+      if (error) {
+        console.warn('[rag] match_maria_knowledge RPC error:', error.message);
+      }
+    }
+  } catch (e) {
+    console.warn('[rag] semantic search non-fatal:', e?.message);
+  }
+
+  // 2. FTS fallback — keyword-based, no external API call.
   try {
     const { data: chunks, error } = await supabaseClient.rpc('search_maria_knowledge_fts', {
       query_text: userMessage,
-      match_count: 3,
+      match_count: RAG_MATCH_COUNT,
     });
     if (error || !chunks?.length) return null;
-    return chunks.map(c => `[${c.category}] ${c.title}: ${c.content}`).join('\n\n');
+    return formatKnowledgeRows(chunks);
   } catch (e) {
-    console.error('RAG retrieve error:', e);
+    console.error('[rag] FTS retrieve error:', e?.message);
     return null;
   }
 }
