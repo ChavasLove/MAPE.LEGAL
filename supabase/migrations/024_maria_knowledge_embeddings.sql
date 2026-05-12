@@ -122,6 +122,14 @@ create policy "maria_knowledge_service_all"
   with check (true);
 
 -- ─── RPC: FTS fallback (mantiene compatibilidad con código existente) ───────
+-- DROP defensivo: si una versión previa de `search_maria_knowledge_fts` ya
+-- existe con un return type distinto (caso producción al 12-mayo-2026,
+-- donde la tabla `maria_knowledge` se creó manualmente con un RPC FTS
+-- diferente), `create or replace function` falla con 42P13 "cannot change
+-- return type of existing function". Hay que dropear primero.
+drop function if exists public.search_maria_knowledge_fts(text, integer);
+drop function if exists public.search_maria_knowledge_fts(text);
+
 create or replace function public.search_maria_knowledge_fts(
   query_text text,
   match_count int default 3
@@ -163,6 +171,10 @@ grant execute on function public.search_maria_knowledge_fts(text, int)
 -- `query_embedding` lo genera el caller (en este repo: `lib/maria/embeddings.ts`
 -- → OpenAI `text-embedding-3-small`). `match_threshold` 0.7 filtra ruido;
 -- bajar a 0.5 si el recall queda demasiado restrictivo en producción.
+-- DROP defensivo (mismo motivo que el RPC FTS de arriba).
+drop function if exists public.match_maria_knowledge(vector, float, integer);
+drop function if exists public.match_maria_knowledge(vector, double precision, integer);
+
 create or replace function public.match_maria_knowledge(
   query_embedding vector(1536),
   match_threshold float default 0.7,
