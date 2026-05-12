@@ -127,14 +127,39 @@ create policy "maria_knowledge_service_all"
   using (true)
   with check (true);
 
+-- ─── DROP defensivo TOTAL — todos los overloads previos ─────────────────────
+-- Producción al 12-mayo-2026 tenía versiones previas de ambos RPCs creadas
+-- manualmente con signatures arbitrarias (por ejemplo `match_maria_knowledge
+-- (vector, real, integer)` en vez de `(vector, float, integer)`).
+-- `drop function if exists ...(vector, float, integer)` solo droppea esa
+-- firma exacta, dejando los otros overloads vivos. Cuando intentamos crear
+-- la versión canónica, PostgreSQL acepta el create (porque el otro overload
+-- tiene argtypes distintos) pero luego la llamada `match_maria_knowledge(
+-- vector, numeric, integer)` se vuelve ambigua (42725).
+--
+-- Este bloque enumera *todos* los overloads en `pg_proc` y los droppea. Es
+-- idempotente y safe en setups frescos (el cursor simplemente no retorna
+-- filas).
+do $$
+declare
+  r record;
+begin
+  for r in
+    select pg_get_function_identity_arguments(p.oid) as args, p.proname
+    from pg_proc p
+    join pg_namespace n on p.pronamespace = n.oid
+    where n.nspname = 'public'
+      and p.proname in ('match_maria_knowledge', 'search_maria_knowledge_fts')
+  loop
+    execute format(
+      'drop function if exists public.%I(%s) cascade',
+      r.proname,
+      r.args
+    );
+  end loop;
+end $$;
+
 -- ─── RPC: FTS fallback (mantiene compatibilidad con código existente) ───────
--- DROP defensivo: si una versión previa de `search_maria_knowledge_fts` ya
--- existe con un return type distinto (caso producción al 12-mayo-2026,
--- donde la tabla `maria_knowledge` se creó manualmente con un RPC FTS
--- diferente), `create or replace function` falla con 42P13 "cannot change
--- return type of existing function". Hay que dropear primero.
-drop function if exists public.search_maria_knowledge_fts(text, integer);
-drop function if exists public.search_maria_knowledge_fts(text);
 
 create or replace function public.search_maria_knowledge_fts(
   query_text text,
@@ -177,10 +202,7 @@ grant execute on function public.search_maria_knowledge_fts(text, int)
 -- `query_embedding` lo genera el caller (en este repo: `lib/maria/embeddings.ts`
 -- → OpenAI `text-embedding-3-small`). `match_threshold` 0.7 filtra ruido;
 -- bajar a 0.5 si el recall queda demasiado restrictivo en producción.
--- DROP defensivo (mismo motivo que el RPC FTS de arriba).
-drop function if exists public.match_maria_knowledge(vector, float, integer);
-drop function if exists public.match_maria_knowledge(vector, double precision, integer);
-
+-- (DROP defensivo ya ejecutado en el bloque DO arriba.)
 create or replace function public.match_maria_knowledge(
   query_embedding vector(1536),
   match_threshold float default 0.7,
