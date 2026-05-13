@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Playfair_Display, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -28,6 +28,13 @@ const siteTitle =
 const siteDescription =
   "Infraestructura de evidencia legal con la que Corporación Hondureña Tenka formaliza unidades mineras artesanales y emite certificados de origen verificables bajo la Ley de Minería de Honduras y la Guía de Debida Diligencia de la OCDE.";
 const ogImage = "/images/RIVER AND MOUNTAINS.png";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#1F2A38",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
