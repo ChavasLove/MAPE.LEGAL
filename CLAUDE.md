@@ -512,6 +512,35 @@ Documentado para evitar trabajo duplicado en futuras sesiones. Ninguno está blo
 
 > **Update 2026-05-10 (`claude/admin-audit-dashboard-NHVaE`):** Master Control Panel para María shipped + revisado por dos agentes (lógica + diseño/código). Findings críticos resueltos en commit `c4057fa` — incluyendo (a) take-over POST loguea con la forma `whatsapp:+504…` que matchea la query de `route.js` para que María vea sus propias respuestas admin, (b) `route.js` strippea el prefijo `[Admin · email]` antes de armar el prompt de Claude para no filtrar correos del admin al cliente, (c) `/api/admin/broadcast/trigger` es fire-and-forget para no exceder timeout de Vercel functions, (d) POST de `/api/admin/broadcast/subscribers` preserva opt-out (no resetea `activo`/`suscrito` en upsert), (e) PATCH de onboarding hace upsert. Ver sección "Master Control Panel — María" arriba.
 
+> **Update 2026-05-12 (`claude/add-embedding-retrieval-adxvF` + `…-drop-functions` + `…-vector-serialization`):** RAG semántico está **shipped en código pero NO operativo en producción** porque el backfill de embeddings falla silenciosamente. Estado al cierre:
+>
+> **Lo que funciona:**
+> - Migración 024 aplicada en producción (después de 3 iteraciones — ver "Saga de migración 024" abajo). Tabla `maria_knowledge` tiene la columna `embedding vector` (sin typmod, agregada manualmente antes de este PR) y ambos RPCs (`match_maria_knowledge`, `search_maria_knowledge_fts`) existen con signatures correctas y `id integer` en lugar del `id uuid` que asumía la migración original.
+> - `OPENAI_API_KEY` configurada en Vercel (Production + Preview).
+> - PR #128 (código del RAG hybrid) + PR #129 (migración fix + temp admin endpoint) + PR #130 (vector serialization fix) merged en main.
+> - Endpoint admin-gated **`POST /api/admin/maria/embeddings-backfill`** existe y se invoca correctamente (admin auth funciona, OpenAI embeds responden). Diseñado como herramienta one-shot para evitar tener que correr el script local.
+> - La búsqueda semántica **falla limpio**: `retrieveKnowledge()` cae a `search_maria_knowledge_fts` cuando `match_maria_knowledge` retorna 0 filas (que es siempre, porque ninguna fila tiene embedding aún). María sigue respondiendo igual que antes — cero regresión.
+>
+> **Lo que NO funciona (bug abierto al cerrar sesión):**
+> - El backfill reporta `{ok: false, done: 0, failed: 53, failures: [{reason: 'update returned 0 rows affected'}, …]}`. Cada `UPDATE maria_knowledge SET embedding = '[f1,f2,…]' WHERE id = N` retorna `count = 0` aunque la fila existe y service_role tiene policy `for all using (true) with check (true)` (verificado en `pg_policy`).
+> - PR #130 ya pasa la embedding como texto `[f1,f2,…]` (canonical pgvector literal), no como JSON array crudo, y agrega el chequeo `count === 0 → fail` para que ya no haya falsos positivos. Aún así, count viene 0.
+> - Hipótesis pendientes de validar en la próxima sesión:
+>   1. **Stale PostgREST schema cache** — la columna `embedding` se agregó manualmente fuera de migración; PostgREST puede no haber refrescado y estar silenciosamente filtrando el field. Fix: `NOTIFY pgrst, 'reload schema';` desde SQL Editor.
+>   2. **Privilegios de tabla** — service_role puede no tener `GRANT UPDATE` explícito sobre `maria_knowledge` aunque las RLS policies lo permitan. Verificar con `select grantee, privilege_type from information_schema.table_privileges where table_name = 'maria_knowledge';`. Fix: `grant all on public.maria_knowledge to service_role;`.
+>   3. **Política RESTRICTIVE oculta** — las policies pre-existentes `Allow admin write` / `Allow public read` se mostraron como `to {authenticated}` pero no chequeamos `polpermissive`. Una restrictive en `{public}` aplicaría a service_role también. Verificar con `select polname, polpermissive, polroles::regrole[]::text from pg_policy where polrelid = 'public.maria_knowledge'::regclass;`.
+>   4. **Manual test desde SQL Editor** (como `postgres` superuser, bypasea RLS): `update public.maria_knowledge set embedding = array_fill(0.1::real, array[1536])::vector where id = 1 returning id, embedding is not null;` — si devuelve la fila con `embedding is not null = true`, confirma que la columna acepta el formato y aísla el problema al cliente service_role.
+> - El endpoint **`/api/admin/maria/embeddings-backfill` queda en producción** como herramienta de debug — re-ejecutable cuando se resuelva la causa. Documentado en `app/api/admin/maria/embeddings-backfill/route.ts` con comentarios sobre por qué existe.
+
+### Saga de migración 024 — para que no se repita
+
+Tres errores encadenados al aplicar 024 en producción, todos resueltos:
+
+1. **`42P13 cannot change return type of existing function`** — la tabla y el RPC `search_maria_knowledge_fts` se habían creado manualmente antes del PR con signatures distintas. `create or replace function` no puede cambiar return types. **Fix:** prepend `drop function if exists` antes de cada `create or replace`. La forma robusta (vive en 024 actual) es un bloque `do $$ ... pg_get_function_identity_arguments(p.oid) ... drop function ... $$` que enumera todos los overloads y los droppea, en lugar de drops narrow.
+2. **`42P13 return type mismatch ... integer instead of uuid`** — el `id` de `maria_knowledge` en prod es `integer` (de un setup manual con `serial`), no `uuid` como asumía la migración. `create table if not exists` es no-op cuando la tabla existe → la columna integer sobrevivió + el RPC quería retornar uuid. **Fix:** migración 024 ahora declara `id integer generated by default as identity` y los RPCs retornan `id integer` con casts explícitos `category::text, title::text` (la tabla guarda varchar).
+3. **`42725 function is not unique`** — después de aplicar la migración corregida, llamar al RPC dio ambiguous-function. La policy 024 había creado el nuevo overload PERO el viejo seguía vivo (Postgres permite ambos cuando los OUT params difieren). **Fix:** el bloque `do $$` (mismo del #1) ya droppea TODO regardless of OUT params, así que esto es ahora redundante con #1.
+
+Lección operativa: cuando una tabla existe pre-migración (creada manualmente), las assumptions de `create table if not exists` no aplican. **Antes de escribir migraciones que tocan tablas existentes, correr `information_schema.columns` para ver el schema real**, no el deseado.
+
 ### Auth — "Sin rol asignado" (resuelto 2026-05-09 vía RPC SECURITY DEFINER)
 
 **Causa raíz**: el `service_role` en este proyecto Supabase no tenía `BYPASSRLS` (o el grant no se propagó), así que el SELECT directo `from('user_roles').select(...)` evaluaba la policy `"Users can read own role"` con `auth.uid()=null` y devolvía 0 filas, indistinguible de un row real faltante. El probe en `/api/debug/auth-config` daba falso positivo (`probe.status:'ok'`) porque sólo chequeaba ausencia de error en el HEAD count, no que devolviera filas reales.
