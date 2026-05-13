@@ -199,14 +199,14 @@ export default function LandingPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             <p style={{ fontSize: 16, color: 'var(--t2)', lineHeight: 1.7 }}>
               {t(
-                'CHT es una empresa hondureña dedicada a la formalización de la minería artesanal y de pequeña escala (MAPE). Operamos como intermediario de certificación y comercialización entre productores artesanales y la refinería Chiopa Industrias, bajo el marco jurídico hondureño y los estándares de debida diligencia de la cadena de oro.',
-                'CHT is a Honduran company dedicated to the formalization of artisanal and small-scale mining (MAPE). We operate as a certification and commercialization intermediary between artisanal producers and the Chiopa Industrias refinery, under the Honduran legal framework and the gold supply chain due-diligence standards.'
+                'CHT es una empresa hondureña dedicada a la formalización de la minería artesanal y de pequeña escala (MAPE). Operamos como intermediario de certificación y comercialización entre productores artesanales y la cadena formal de comercialización de oro responsable, bajo el marco jurídico hondureño y los estándares de debida diligencia de la cadena de oro.',
+                'CHT is a Honduran company dedicated to the formalization of artisanal and small-scale mining (MAPE). We operate as a certification and commercialization intermediary between artisanal producers and the formal responsible-gold supply chain, under the Honduran legal framework and the gold supply chain due-diligence standards.'
               )}
             </p>
             <p style={{ fontSize: 16, color: 'var(--t2)', lineHeight: 1.7 }}>
               {t(
-                'Nuestro piloto opera en Iriona, departamento de Colón, con una asociación de mineros artesanales que ha completado su consulta libre, previa e informada bajo el Convenio 169 de la OIT. La operación canaliza pagos a través de Finacoop y mantiene cuentas bancarias formales en lempiras para cada productor formalizado.',
-                'Our pilot operates in Iriona, department of Colón, with an artisanal miners association that has completed its free, prior and informed consent under ILO Convention 169. The operation channels payments through Finacoop and maintains formal bank accounts in lempiras for each formalized producer.'
+                'Trabajamos con asociaciones de mineros artesanales en Honduras que completan la consulta libre, previa e informada bajo el Convenio 169 de la OIT antes del inicio del proceso de formalización. La operación canaliza pagos a través de Finacoop y mantiene cuentas bancarias formales en lempiras para cada productor formalizado.',
+                "We work with artisanal miners' associations in Honduras that complete free, prior and informed consultation under ILO Convention 169 before the formalization process begins. The operation channels payments through Finacoop and maintains formal bank accounts in lempiras for each formalized producer."
               )}
             </p>
             <p style={{ fontSize: 16, color: 'var(--t2)', lineHeight: 1.7 }}>
@@ -479,7 +479,7 @@ export default function LandingPage() {
                     {t('Unidad minera', 'Mining unit')}
                   </div>
                   <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}>
-                    Iriona — Colón
+                    {t('Distrito minero — Honduras', 'Mining district — Honduras')}
                   </div>
                 </div>
                 <div>

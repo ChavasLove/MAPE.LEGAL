@@ -69,7 +69,7 @@ export default function TopoBand({ variant, position = 'overlay', className }: P
             fontFamily="ui-monospace, monospace"
           >
             <text x="40" y="200">15°56′N</text>
-            <text x="780" y="200">85°08′W · IRIONA, COLÓN</text>
+            <text x="780" y="200">85°00′W · HONDURAS</text>
             <text x="1480" y="200">200km</text>
           </g>
         )}
