@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/serverAuth';
 import { getAdminClient } from '@/services/adminSupabase';
-import { embedBatch, EMBEDDING_DIMS, EMBEDDING_MODEL } from '@/lib/maria/embeddings';
+import {
+  embedBatch,
+  toVectorText,
+  buildCanonicalText,
+  EMBEDDING_DIMS,
+  EMBEDDING_MODEL,
+} from '@/lib/maria/embeddings';
 
 export const dynamic = 'force-dynamic';
 // Allow up to 60s — embedding 50 rows + 50 updates can take 5-15s; give margin.
@@ -20,15 +26,8 @@ export const maxDuration = 60;
 // POST body (optional): { force?: boolean, limit?: number }
 //   force: re-embed every row regardless of current state (default false).
 //   limit: cap on rows processed (useful for canary runs). Defaults to all.
-const MAX_INPUT_CHARS = 8000;
 
-function buildInputText(row: { category: string | null; title: string | null; content: string | null }) {
-  const cat = String(row.category ?? '').trim();
-  const t   = String(row.title ?? '').trim();
-  const c   = String(row.content ?? '').trim();
-  const prefix = cat ? `[${cat}] ` : '';
-  return `${prefix}${t}\n\n${c}`.slice(0, MAX_INPUT_CHARS);
-}
+type KnowledgeRow = { id: number; category: string | null; title: string | null; content: string | null };
 
 export async function POST(request: Request) {
   const auth = await requireRole('admin');
@@ -73,7 +72,9 @@ export async function POST(request: Request) {
     });
   }
 
-  const inputs = rows.map(buildInputText);
+  const inputs = (rows as KnowledgeRow[]).map(r =>
+    buildCanonicalText(r.title ?? '', r.content ?? '', r.category ?? '')
+  );
   const vectors = await embedBatch(inputs);
 
   let done = 0;
@@ -88,14 +89,16 @@ export async function POST(request: Request) {
       failures.push({ id: row.id, reason: 'embedding missing or wrong dim' });
       continue;
     }
-    // pgvector requires the text form `[f1,f2,...]`. When the column is
-    // unbounded `vector` (no typmod), passing a raw JS number array makes
-    // supabase-js JSON-serialize it as a JSON array, which PostgREST sends
-    // to PG as a json value — PG silently strips it because there's no
-    // implicit cast from json to vector. The UPDATE returns 0 rows affected
-    // but no error. Convert to the canonical text form first so PG parses
-    // it as a vector literal.
-    const vecText = `[${vec.join(',')}]`;
+    // pgvector requires the text form `[f1,f2,...]`. `toVectorText` is the
+    // canonical serializer — raw JS arrays get JSON-encoded by supabase-js
+    // and PG silently rejects them (UPDATE returns 0 rows affected, no
+    // error). Same root cause as the query-side bug in retrieveKnowledge.
+    const vecText = toVectorText(vec);
+    if (!vecText) {
+      failed++;
+      failures.push({ id: row.id, reason: 'toVectorText returned null' });
+      continue;
+    }
     // `.select('id')` forces `Prefer: return=representation` so PostgREST
     // returns the rows that were actually written. Without it (when only
     // `{ count: 'exact' }` is set on `.update()`), supabase-js returns

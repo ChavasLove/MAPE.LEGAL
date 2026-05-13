@@ -4,7 +4,7 @@ import { getUserByPhone, getOrCreateUserByPhone } from "@/services/userService";
 import { interpretAndExecute } from "@/services/adminCommandService";
 import { getOnboardingState, startOnboarding, handleOnboarding } from "@/services/onboardingService";
 import { fetchAllPrices, fetchAndStorePrices } from "@/services/pricingService";
-import { embedQuery } from "@/lib/maria/embeddings";
+import { embedQuery, toVectorText } from "@/lib/maria/embeddings";
 
 // Conditional init — instantiating these unconditionally at module load would
 // throw during Next.js's page-data-collection build phase when env vars aren't
@@ -795,35 +795,59 @@ function formatKnowledgeRows(rows) {
 }
 
 async function retrieveKnowledge(supabaseClient, userMessage) {
-  // 1. Semantic search (preferred — captures intent across synonyms).
+  // 0. Pre-check: count rows with an embedding. If the table isn't
+  //    backfilled yet (or every row was wiped to NULL by some operator
+  //    action), skip the OpenAI call entirely and go straight to FTS.
+  //    `head: true` makes this a HEAD request with no row body —
+  //    cheap even on a busy table.
+  let hasEmbeddings = false;
   try {
-    const queryEmbedding = await embedQuery(userMessage);
-    if (queryEmbedding) {
-      // pgvector requires the text form `[f1,f2,...]` as RPC arg. Passing
-      // a raw JS array makes supabase-js JSON-encode it as a JSON array;
-      // PostgREST hands it to PG as a json value, and there is no implicit
-      // cast from json to vector — the RPC either errors or silently
-      // returns 0 rows. Same root cause as the UPDATE serialization bug
-      // fixed for the backfill in PR #130; the query path was missed.
-      const vecText = `[${queryEmbedding.join(',')}]`;
-      const { data, error } = await supabaseClient.rpc('match_maria_knowledge', {
-        query_embedding: vecText,
-        match_threshold: RAG_MATCH_THRESHOLD,
-        match_count: RAG_MATCH_COUNT,
-      });
-      if (!error && data?.length) {
-        console.log(`[rag] path=semantic candidates=${data.length}`);
-        return formatKnowledgeRows(data);
-      }
-      if (error) {
-        // Surface as error, not warn — a broken semantic path looks
-        // identical to "no match" downstream, so this log line is the
-        // only diagnostic.
-        console.error('[rag] match_maria_knowledge RPC error:', error.message);
-      }
+    const { count, error } = await supabaseClient
+      .from('maria_knowledge')
+      .select('id', { count: 'exact', head: true })
+      .not('embedding', 'is', null);
+    if (error) {
+      console.error('[rag] pre-check failed:', error.message);
+    } else {
+      hasEmbeddings = (count ?? 0) > 0;
+      console.log(`[rag] pre-check embedded=${count ?? 0}`);
     }
   } catch (e) {
-    console.error('[rag] semantic search non-fatal:', e?.message);
+    console.error('[rag] pre-check non-fatal:', e?.message);
+  }
+
+  // 1. Semantic search (preferred — captures intent across synonyms).
+  if (hasEmbeddings) {
+    try {
+      const queryEmbedding = await embedQuery(userMessage);
+      if (queryEmbedding) {
+        // pgvector requires the text form `[f1,f2,...]` as RPC arg. Passing
+        // a raw JS array makes supabase-js JSON-encode it as a JSON array;
+        // PostgREST hands it to PG as a json value, and there is no implicit
+        // cast from json to vector — the RPC either errors or silently
+        // returns 0 rows. Same root cause as the UPDATE serialization bug
+        // fixed for the backfill in PR #130; the query path was missed
+        // until PR #136.
+        const vecText = toVectorText(queryEmbedding);
+        const { data, error } = await supabaseClient.rpc('match_maria_knowledge', {
+          query_embedding: vecText,
+          match_threshold: RAG_MATCH_THRESHOLD,
+          match_count: RAG_MATCH_COUNT,
+        });
+        if (!error && data?.length) {
+          console.log(`[rag] path=semantic candidates=${data.length}`);
+          return formatKnowledgeRows(data);
+        }
+        if (error) {
+          // Surface as error, not warn — a broken semantic path looks
+          // identical to "no match" downstream, so this log line is the
+          // only diagnostic.
+          console.error('[rag] match_maria_knowledge RPC error:', error.message);
+        }
+      }
+    } catch (e) {
+      console.error('[rag] semantic search non-fatal:', e?.message);
+    }
   }
 
   // 2. FTS fallback — keyword-based, no external API call.

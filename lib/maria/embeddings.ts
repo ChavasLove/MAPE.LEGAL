@@ -21,7 +21,53 @@ export const EMBEDDING_DIMS = 1536;
 // Hard cap defensivo — `text-embedding-3-small` admite hasta 8192 tokens.
 // 8000 caracteres es una aproximación conservadora (~2-3k tokens) que cubre
 // cualquier mensaje de WhatsApp sin tocar el límite.
-const MAX_INPUT_CHARS = 8000;
+export const MAX_INPUT_CHARS = 8000;
+
+// Timeouts conservadores. El path runtime (María) es de tipo "user esperando"
+// — 5 s + 2 retries vs 10 s de Vercel function. El path batch (backfill) es
+// "operator esperando" — más holgado.
+const QUERY_TIMEOUT_MS = 5000;
+const BATCH_TIMEOUT_MS = 15000;
+const MAX_RETRIES = 2;
+
+// pgvector requiere el texto `[f1,f2,…]` cuando la columna es `vector` (con
+// o sin typmod). Pasar el array crudo hace que supabase-js lo serialice como
+// JSON array y PG lo descarte sin error (UPDATE devuelve 0 filas, RPC
+// retorna 0 resultados). Este helper es la única forma soportada.
+export function toVectorText(vec: number[] | null | undefined): string | null {
+  if (!Array.isArray(vec) || vec.length === 0) return null;
+  return '[' + vec.join(',') + ']';
+}
+
+// Construye el texto canónico que se pasa a OpenAI. `label` se renderiza
+// como `[label] ` al inicio — usado por el backfill para inyectar la
+// categoría de cada fila. Truncado al cap de 8000 chars defensivo.
+export function buildCanonicalText(
+  primary: string,
+  secondary = '',
+  label = ''
+): string {
+  const p = String(primary ?? '').trim();
+  const s = String(secondary ?? '').trim();
+  const prefix = label ? `[${label}] ` : '';
+  const body = s ? `${p}\n\n${s}` : p;
+  return `${prefix}${body}`.slice(0, MAX_INPUT_CHARS);
+}
+
+function logEmbeddingError(scope: string, e: unknown) {
+  const err = e as { status?: number; message?: string; code?: string };
+  const status = err?.status;
+  const message = err?.message ?? String(e);
+  if (status === 401) {
+    console.error(`[embeddings] ${scope} INVALID API KEY:`, message);
+  } else if (status === 429) {
+    console.error(`[embeddings] ${scope} RATE LIMITED:`, message);
+  } else if (/timeout|aborted/i.test(message)) {
+    console.error(`[embeddings] ${scope} TIMEOUT:`, message);
+  } else {
+    console.error(`[embeddings] ${scope} failed:`, message);
+  }
+}
 
 export async function embedQuery(text: string): Promise<number[] | null> {
   const client = getOpenAI();
@@ -31,14 +77,24 @@ export async function embedQuery(text: string): Promise<number[] | null> {
   if (!cleaned) return null;
 
   try {
-    const res = await client.embeddings.create({
-      model: EMBEDDING_MODEL,
-      input: cleaned.slice(0, MAX_INPUT_CHARS),
-    });
+    const res = await client.embeddings.create(
+      {
+        model: EMBEDDING_MODEL,
+        input: cleaned.slice(0, MAX_INPUT_CHARS),
+      },
+      { timeout: QUERY_TIMEOUT_MS, maxRetries: MAX_RETRIES }
+    );
     const vec = res.data?.[0]?.embedding;
-    return Array.isArray(vec) && vec.length === EMBEDDING_DIMS ? vec : null;
+    if (!Array.isArray(vec)) return null;
+    if (vec.length !== EMBEDDING_DIMS) {
+      console.warn(
+        `[embeddings] embedQuery dim mismatch: got ${vec.length}, expected ${EMBEDDING_DIMS}`
+      );
+      return null;
+    }
+    return vec;
   } catch (e) {
-    console.error('[embeddings] embedQuery failed:', (e as Error)?.message);
+    logEmbeddingError('embedQuery', e);
     return null;
   }
 }
@@ -51,16 +107,26 @@ export async function embedBatch(texts: string[]): Promise<(number[] | null)[]> 
   if (cleaned.every(t => !t)) return texts.map(() => null);
 
   try {
-    const res = await client.embeddings.create({
-      model: EMBEDDING_MODEL,
-      input: cleaned,
-    });
+    const res = await client.embeddings.create(
+      {
+        model: EMBEDDING_MODEL,
+        input: cleaned,
+      },
+      { timeout: BATCH_TIMEOUT_MS, maxRetries: MAX_RETRIES }
+    );
     return cleaned.map((_, i) => {
       const vec = res.data?.[i]?.embedding;
-      return Array.isArray(vec) && vec.length === EMBEDDING_DIMS ? vec : null;
+      if (!Array.isArray(vec)) return null;
+      if (vec.length !== EMBEDDING_DIMS) {
+        console.warn(
+          `[embeddings] embedBatch[${i}] dim mismatch: got ${vec.length}, expected ${EMBEDDING_DIMS}`
+        );
+        return null;
+      }
+      return vec;
     });
   } catch (e) {
-    console.error('[embeddings] embedBatch failed:', (e as Error)?.message);
+    logEmbeddingError('embedBatch', e);
     return texts.map(() => null);
   }
 }
