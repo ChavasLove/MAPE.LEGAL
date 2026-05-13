@@ -799,20 +799,31 @@ async function retrieveKnowledge(supabaseClient, userMessage) {
   try {
     const queryEmbedding = await embedQuery(userMessage);
     if (queryEmbedding) {
+      // pgvector requires the text form `[f1,f2,...]` as RPC arg. Passing
+      // a raw JS array makes supabase-js JSON-encode it as a JSON array;
+      // PostgREST hands it to PG as a json value, and there is no implicit
+      // cast from json to vector — the RPC either errors or silently
+      // returns 0 rows. Same root cause as the UPDATE serialization bug
+      // fixed for the backfill in PR #130; the query path was missed.
+      const vecText = `[${queryEmbedding.join(',')}]`;
       const { data, error } = await supabaseClient.rpc('match_maria_knowledge', {
-        query_embedding: queryEmbedding,
+        query_embedding: vecText,
         match_threshold: RAG_MATCH_THRESHOLD,
         match_count: RAG_MATCH_COUNT,
       });
       if (!error && data?.length) {
+        console.log(`[rag] path=semantic candidates=${data.length}`);
         return formatKnowledgeRows(data);
       }
       if (error) {
-        console.warn('[rag] match_maria_knowledge RPC error:', error.message);
+        // Surface as error, not warn — a broken semantic path looks
+        // identical to "no match" downstream, so this log line is the
+        // only diagnostic.
+        console.error('[rag] match_maria_knowledge RPC error:', error.message);
       }
     }
   } catch (e) {
-    console.warn('[rag] semantic search non-fatal:', e?.message);
+    console.error('[rag] semantic search non-fatal:', e?.message);
   }
 
   // 2. FTS fallback — keyword-based, no external API call.
@@ -821,7 +832,12 @@ async function retrieveKnowledge(supabaseClient, userMessage) {
       query_text: userMessage,
       match_count: RAG_MATCH_COUNT,
     });
-    if (error || !chunks?.length) return null;
+    if (error || !chunks?.length) {
+      if (error) console.error('[rag] search_maria_knowledge_fts RPC error:', error.message);
+      console.log('[rag] path=none');
+      return null;
+    }
+    console.log(`[rag] path=fts candidates=${chunks.length}`);
     return formatKnowledgeRows(chunks);
   } catch (e) {
     console.error('[rag] FTS retrieve error:', e?.message);

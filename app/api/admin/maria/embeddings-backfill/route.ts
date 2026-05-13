@@ -96,18 +96,26 @@ export async function POST(request: Request) {
     // but no error. Convert to the canonical text form first so PG parses
     // it as a vector literal.
     const vecText = `[${vec.join(',')}]`;
-    const { error: upErr, count } = await admin
+    // `.select('id')` forces `Prefer: return=representation` so PostgREST
+    // returns the rows that were actually written. Without it (when only
+    // `{ count: 'exact' }` is set on `.update()`), supabase-js returns
+    // `count: null` regardless of what was written, which means the
+    // previous `count === 0` check was dead code and silent no-op
+    // updates reported as successes.
+    const { data: updated, error: upErr } = await admin
       .from('maria_knowledge')
-      .update({ embedding: vecText }, { count: 'exact' })
-      .eq('id', row.id);
+      .update({ embedding: vecText })
+      .eq('id', row.id)
+      .select('id');
     if (upErr) {
       failed++;
       failures.push({ id: row.id, reason: upErr.message });
-    } else if (count === 0) {
-      // Defensive: should not happen if RLS + grants are right, but report
-      // it explicitly instead of silently incrementing done.
+    } else if (!updated || updated.length === 0) {
+      // Ground truth: no row came back, so nothing was written. Surfaces
+      // schema-cache staleness, RLS denials, or id-type mismatches that
+      // would otherwise look like success.
       failed++;
-      failures.push({ id: row.id, reason: 'update returned 0 rows affected' });
+      failures.push({ id: row.id, reason: 'update affected 0 rows (verify column type, RLS grant, schema cache)' });
     } else {
       done++;
     }
