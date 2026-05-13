@@ -13,13 +13,16 @@ import { getActiveSubscribers, type BroadcastRol } from '@/services/userService'
 // No llama a Claude — el mensaje es determinístico para garantizar consistencia
 // y evitar alucinaciones de precio.
 
+// 1 troy ounce = 31.1034768 grams (LBMA standard)
+const TROY_OUNCE_GRAMS = 31.1034768;
+
 export async function generateDailyMessage(precios: PreciosDiarios): Promise<string> {
   const now = new Date();
 
   // Honduras: UTC-6, sin horario de verano
   const hondurasTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Tegucigalpa' }));
   const fechaLarga = hondurasTime.toLocaleDateString('es-HN', {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    year: 'numeric', month: 'long', day: 'numeric',
   });
   const horaCorta = hondurasTime.toLocaleTimeString('es-HN', {
     hour: '2-digit', minute: '2-digit', hour12: true,
@@ -28,7 +31,8 @@ export async function generateDailyMessage(precios: PreciosDiarios): Promise<str
   const tc = precios.usd_hnl ?? 0;
   const oroUsd = precios.oro ?? 0;
   const oroLps = oroUsd && tc ? oroUsd * tc : 0;
-  const compraLps = oroLps ? oroLps * 0.8 : 0;
+  const compraLpsPorGramo = oroLps ? (oroLps * 0.8) / TROY_OUNCE_GRAMS : 0;
+  const fuente = precios.fuente && precios.fuente !== 'failed-all-sources' ? precios.fuente : 'yahoo-finance';
 
   const fmtLps = (n: number) =>
     n > 0
@@ -43,38 +47,38 @@ export async function generateDailyMessage(precios: PreciosDiarios): Promise<str
   // Si no hay precio de oro, devolver mensaje de fallback
   if (oroUsd <= 0) {
     return [
-      `Estimado Socio MAPE`,
+      `BOLETIN DIARIO`,
       ``,
-      `Fijese que hoy no pude traer el precio exacto. Te lo envio en cuanto lo tengamos.`,
+      `Buenos Días,`,
+      `Hoy no pude traer el precio exacto. Te lo enviamos en cuanto lo tengamos.`,
       ``,
       `Precios de referencia al ${fechaLarga} — ${horaCorta} Honduras`,
-      `Fuentes: [goldapi.io](http://goldapi.io) + BCH referencial`,
+      `Fuentes: ${fuente} + BCH referencial`,
       ``,
-      `Ver detalles: [www.mape.legal](http://www.mape.legal)`,
-      ``,
-      `Dale pues, cualquier consulta me escribis.`,
+      `Ver detalles: [www.mape.legal](https://www.mape.legal)`,
     ].join('\n');
   }
 
   const lines = [
-    `Estimado Socio MAPE`,
+    `BOLETIN DIARIO`,
     ``,
-    `El precio de oro el dia de hoy es:`,
-    `- LBMA: ${fmtUsd(oroUsd)} USD/oz`,
-    `- En Lempiras: ${fmtLps(oroLps)} por onza (aprox.)`,
+    `Buenos Días,`,
+    `El precio de oro el día de hoy es:`,
+    `* LBMA: ${fmtUsd(oroUsd)} USD/oz`,
+    `* En Lempiras: ${fmtLps(oroLps)} por onza (aprox.)`,
     ``,
     `Tasa de cambio referencia: ${tc > 0 ? 'L ' + tc.toFixed(2) + ' por USD' : 'N/D'}`,
     ``,
     `Precio de compra oro calculado en Lempiras:`,
-    `- MAPE LEGAL compra al 80% LBMA`,
-    `- ${fmtLps(compraLps)} por onza estimado`,
+    `* MAPE LEGAL compra al 80% LBMA`,
+    `* ${fmtLps(compraLpsPorGramo)} por gramo estimado`,
+    ``,
+    `Pago realizado en Lempiras en su cuenta de FINACOOP`,
     ``,
     `Precios de referencia al ${fechaLarga} — ${horaCorta} Honduras`,
-    `Fuentes: [goldapi.io](http://goldapi.io) + BCH referencial`,
+    `Fuentes: ${fuente} + BCH referencial`,
     ``,
-    `Ver detalles: [www.mape.legal](http://www.mape.legal)`,
-    ``,
-    `Dale pues, cualquier consulta me escribis.`,
+    `Ver detalles: [www.mape.legal](https://www.mape.legal)`,
   ];
 
   return lines.join('\n');
