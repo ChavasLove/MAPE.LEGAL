@@ -30,7 +30,7 @@ function esc(s) {
 }
 
 const CHT_SYSTEM_PROMPT = `Eres María, asistente virtual de CHT (Corporación Hondureña Tenka, S.A.).
-Atiendes a mineros artesanales y propietarios de tierra en Honduras, especialmente en Iriona, Colón.
+Atiendes a mineros artesanales y propietarios de tierra en Honduras.
 Tu función es orientar, informar y recopilar datos — no ejecutar trámites.
 
 ═══════════════════════════════════
@@ -169,7 +169,7 @@ Precio total: L 55,000
 Co-pagado: L 27,500 el minero + L 27,500 el dueño de tierra
 Plazo estimado: 2 a 3 semanas
 
-COMPRA DE ORO (via Chiopa Industrias):
+COMPRA DE ORO:
 CHT compra oro a mineros FORMALIZADOS al 80% del precio LBMA del día.
 El pago se realiza a través de Finacoop.
 Requisito: el minero debe tener permiso vigente o en trámite y estar registrado en CHT.
@@ -226,7 +226,7 @@ Paso 32: Entrega del Título de Permiso (INHGEOMIN) y Licencia Ambiental (SERNA)
 
 FASE 4 — PERMISO MUNICIPAL Y COMERCIALIZADOR (Pasos 33-38) — SERVICIO ADICIONAL FUERA DEL PAQUETE ANCLA
 Esta fase NO está incluida en los L 1,600,000 del Paquete Ancla. Se cotiza por separado y se ofrece al cliente cuando ya tiene el permiso minero y la licencia ambiental, y quiere comercializar oro legalmente.
-Paso 33-34: Permiso de operación — Alcaldía de Iriona (15-30 días)
+Paso 33-34: Permiso de operación — Alcaldía municipal correspondiente (15-30 días)
 Paso 35: Registro de Comercializador INHGEOMIN — SIN ESTE REGISTRO EL MINERO NO PUEDE VENDER ORO LEGALMENTE
 Paso 36: Verificación Índice de Legalidad (5 componentes en verde)
 Paso 37: Pago de honorarios del servicio adicional (cotización separada — no es Hito 3 del Paquete Ancla)
@@ -266,7 +266,7 @@ CHT ASESORA pero NO puede ejecutar estos pasos por el cliente:
 - Garantía bancaria ante SERNA
 - Pago al Fondo Rotatorio DECA en BANADESA
 - Pago T.G.R. 1 en Tesorería General de la República
-- Solvencia municipal ante la Alcaldía de Iriona
+- Solvencia municipal ante la alcaldía del municipio donde opera
 - Testigos para el proceso de titulación
 - Presencia personal en notaría para el contrato de sociedad
 
@@ -994,7 +994,7 @@ Notas: ${exp.notas || 'Sin notas'}`
       const expedientesSection = expedientesRes.error
         ? `Error leyendo expedientes: ${expedientesRes.error.message}`
         : totalExpedientes === 0
-          ? 'Total expedientes: 0\n→ No hay expedientes registrados. Sistema operativo, esperando piloto Iriona o registros nuevos.'
+          ? 'Total expedientes: 0\n→ No hay expedientes registrados. Sistema operativo, esperando registros nuevos.'
           : `Total expedientes: ${totalExpedientes}\n\nPor estado:\n${Object.entries(expByEstado).map(([k, v]) => `- ${k}: ${v}`).join('\n')}\n\nPor servicio:\n${Object.entries(expByServicio).map(([k, v]) => `- ${k}: ${v}`).join('\n')}`;
 
       const transaccionesSection = transaccionesRes.error
@@ -1063,7 +1063,7 @@ REGULACIONES
 INHGEOMIN: Operativo. Ventanilla presencial Tegucigalpa.
 SERNA/SLAS-2: Sistema en linea activo.
 INA Titulacion: Operativo. Plazo 60-120 dias.
-Alcaldia Iriona: Verificar requisitos locales vigentes.
+Alcaldias municipales: Verificar requisitos locales vigentes por municipio.
 Registro Comercializador: Unidad Fiscalizacion Minera activa.
 ━━━━━━━━━━━━━━━━━━━━
 Comandos disponibles:
@@ -1229,7 +1229,7 @@ El formato canónico de respuesta para precio del día está en CUANDO PREGUNTAN
       ? `
 CONTEXTO DEL MINERO ACTIVO:
 - Nombre: ${cliente.nombre}
-- Municipio: ${cliente.municipio || 'Iriona, Colón'}
+- Municipio: ${cliente.municipio || 'no registrado'}
 - Situación de tierra: ${cliente.situacion_tierra || 'no registrada'}
 - Mineral: ${cliente.tipo_mineral || 'oro'}
 - DPI: ${cliente.dpi || 'no registrado'}${completenessSummary}
@@ -1433,7 +1433,6 @@ Accion requerida: Llamar o escribir al cliente hoy.`;
         await getSupabase().from('clientes').insert([{
           nombre: nombreDetectado,
           telefono_whatsapp: cleanNumber,
-          municipio: 'Iriona, Colón',
           tipo_mineral: 'oro',
           situacion_tierra: 'arrendatario_sin_titulo'
         }]);
@@ -1487,7 +1486,7 @@ Si algún dato no está claramente mencionado, deja null.`
               .insert([{
                 nombre: extracted.nombre,
                 telefono_whatsapp: cleanNumber,
-                municipio: extracted.municipio || 'Iriona, Colón',
+                ...(extracted.municipio ? { municipio: extracted.municipio } : {}),
                 tipo_mineral: 'oro',
                 situacion_tierra: 'arrendatario_sin_titulo'
               }]);

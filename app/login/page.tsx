@@ -210,7 +210,7 @@ function LoginForm() {
                 background: 'rgba(255,255,255,0.25)', display: 'inline-block',
               }}
             />
-            <span>IRIONA, COLÓN, HONDURAS</span>
+            <span>HONDURAS · CENTROAMÉRICA</span>
           </div>
         </div>
       </div>
