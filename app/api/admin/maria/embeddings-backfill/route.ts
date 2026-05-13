@@ -88,13 +88,26 @@ export async function POST(request: Request) {
       failures.push({ id: row.id, reason: 'embedding missing or wrong dim' });
       continue;
     }
-    const { error: upErr } = await admin
+    // pgvector requires the text form `[f1,f2,...]`. When the column is
+    // unbounded `vector` (no typmod), passing a raw JS number array makes
+    // supabase-js JSON-serialize it as a JSON array, which PostgREST sends
+    // to PG as a json value — PG silently strips it because there's no
+    // implicit cast from json to vector. The UPDATE returns 0 rows affected
+    // but no error. Convert to the canonical text form first so PG parses
+    // it as a vector literal.
+    const vecText = `[${vec.join(',')}]`;
+    const { error: upErr, count } = await admin
       .from('maria_knowledge')
-      .update({ embedding: vec })
+      .update({ embedding: vecText }, { count: 'exact' })
       .eq('id', row.id);
     if (upErr) {
       failed++;
       failures.push({ id: row.id, reason: upErr.message });
+    } else if (count === 0) {
+      // Defensive: should not happen if RLS + grants are right, but report
+      // it explicitly instead of silently incrementing done.
+      failed++;
+      failures.push({ id: row.id, reason: 'update returned 0 rows affected' });
     } else {
       done++;
     }

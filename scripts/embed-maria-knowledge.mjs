@@ -124,22 +124,29 @@ async function run() {
       continue;
     }
 
-    // 3. Update each row individually. pgvector espera el array crudo,
-    //    supabase-js lo serializa correctamente cuando la columna es vector.
+    // 3. Update each row individually. pgvector requiere el texto
+    //    `[f1,f2,...]` cuando la columna es `vector` sin typmod (caso
+    //    producción al 12-mayo-2026). Pasar el array crudo hace que
+    //    supabase-js lo serialice como JSON array y PG lo descarte sin
+    //    error — el UPDATE retorna 0 filas afectadas pero ningún `upErr`.
+    //    Reportado y arreglado en commit que añadió esta nota.
     const updates = batch.map((row, idx) => {
       const vec = embeddings[idx]?.embedding;
       if (!Array.isArray(vec) || vec.length !== DIMS) return null;
-      return { id: row.id, vec };
+      return { id: row.id, vecText: `[${vec.join(',')}]` };
     });
 
     for (const u of updates) {
       if (!u) { failed++; continue; }
-      const { error: upErr } = await admin
+      const { error: upErr, count } = await admin
         .from('maria_knowledge')
-        .update({ embedding: u.vec })
+        .update({ embedding: u.vecText }, { count: 'exact' })
         .eq('id', u.id);
       if (upErr) {
         console.error(`[embed] update failed for ${u.id}: ${upErr.message}`);
+        failed++;
+      } else if (count === 0) {
+        console.error(`[embed] update for ${u.id} affected 0 rows (RLS or stale schema cache?)`);
         failed++;
       } else {
         done++;
