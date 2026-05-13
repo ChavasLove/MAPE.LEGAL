@@ -47,6 +47,8 @@ const MODEL = 'text-embedding-3-small';
 const DIMS = 1536;
 const BATCH_SIZE = 50;          // OpenAI permite hasta 2048 inputs por request; 50 es prudente y rápido.
 const MAX_INPUT_CHARS = 8000;   // ~2-3k tokens, holgado para entries largos.
+const BATCH_TIMEOUT_MS = 15000; // OpenAI SDK lo aplica per-request; tolerante a latencia variable.
+const MAX_RETRIES = 2;
 
 const admin = createClient(url, key, {
   auth: { autoRefreshToken: false, persistSession: false },
@@ -60,14 +62,23 @@ function chunk(arr, n) {
   return out;
 }
 
+// Mirrors `buildCanonicalText` in lib/maria/embeddings.ts. Inlined here
+// because this script is .mjs and can't directly import a .ts module
+// without a build step. Keep both copies in sync.
 function buildInputText(row) {
-  // Concatenamos title + content para que el embedding capture ambos.
-  // El `[category]` prefix da contexto adicional sin inflar tokens.
   const t = String(row.title ?? '').trim();
   const c = String(row.content ?? '').trim();
   const cat = String(row.category ?? '').trim();
   const prefix = cat ? `[${cat}] ` : '';
   return `${prefix}${t}\n\n${c}`.slice(0, MAX_INPUT_CHARS);
+}
+
+// Mirrors `toVectorText` in lib/maria/embeddings.ts. pgvector requires
+// the `[f1,f2,…]` text form — raw JS arrays get JSON-encoded and PG
+// silently rejects them.
+function toVectorText(vec) {
+  if (!Array.isArray(vec) || vec.length === 0) return null;
+  return '[' + vec.join(',') + ']';
 }
 
 async function run() {
@@ -110,10 +121,18 @@ async function run() {
 
     let embeddings;
     try {
-      const res = await openai.embeddings.create({ model: MODEL, input: inputs });
+      const res = await openai.embeddings.create(
+        { model: MODEL, input: inputs },
+        { timeout: BATCH_TIMEOUT_MS, maxRetries: MAX_RETRIES }
+      );
       embeddings = res.data;
     } catch (e) {
-      console.error(`[embed] Batch ${i + 1}/${batches.length} failed at OpenAI: ${e?.message ?? e}`);
+      const status = e?.status;
+      const tag = status === 401 ? 'INVALID API KEY'
+        : status === 429 ? 'RATE LIMITED'
+        : /timeout|aborted/i.test(e?.message ?? '') ? 'TIMEOUT'
+        : 'failed';
+      console.error(`[embed] Batch ${i + 1}/${batches.length} ${tag}: ${e?.message ?? e}`);
       failed += batch.length;
       continue;
     }
@@ -124,16 +143,16 @@ async function run() {
       continue;
     }
 
-    // 3. Update each row individually. pgvector requiere el texto
-    //    `[f1,f2,...]` cuando la columna es `vector` sin typmod (caso
-    //    producción al 12-mayo-2026). Pasar el array crudo hace que
-    //    supabase-js lo serialice como JSON array y PG lo descarte sin
-    //    error — el UPDATE retorna 0 filas afectadas pero ningún `upErr`.
-    //    Reportado y arreglado en commit que añadió esta nota.
+    // 3. Update each row individually. `toVectorText` serializes to the
+    //    pgvector text literal `[f1,f2,…]`. Raw JS arrays get JSON-encoded
+    //    by supabase-js and PG silently rejects them (UPDATE returns 0
+    //    rows affected, no error). Reportado y arreglado en PR #130.
     const updates = batch.map((row, idx) => {
       const vec = embeddings[idx]?.embedding;
       if (!Array.isArray(vec) || vec.length !== DIMS) return null;
-      return { id: row.id, vecText: `[${vec.join(',')}]` };
+      const vecText = toVectorText(vec);
+      if (!vecText) return null;
+      return { id: row.id, vecText };
     });
 
     for (const u of updates) {
