@@ -141,10 +141,11 @@ Webhook Twilio que conecta WhatsApp con Claude AI.
 - **Modelo**: `claude-haiku-4-5-20251001`
 - **Persona**: María, asistente de CHT — español sencillo, respuestas cortas (≤5 líneas), sin emojis, sin jerga
 - **Conocimiento**: 3 servicios completos con precios, 38 pasos de formalización en 4 fases, titulación, sociedad minera, obligaciones del cliente, fechas críticas
+- **Tierra Primero — protocolo cultural** (MARIA.md §10, v1.3+): el system prompt ordena explícitamente que María pregunte la situación de tierra **antes** que cualquier mención de INHGEOMIN o SERNA, y reordena el catálogo de servicios con titulación como **Servicio 0** (primero) y formalización como **Servicio 1 gated** (solo se ofrece cuando el minero ya tiene título registrado o arrendamiento registrado). La sección `TIERRA PRIMERO — COMPROMISO CULTURAL` del prompt lista 6 compromisos + frases prohibidas vs. correctas. En `CUANDO QUIEREN INICIAR UN TRÁMITE`, "situación de tierra" es **paso 0** (antes del nombre) — si sin papeles, María ofrece titulación, no formalización.
 - **Precios vigentes**:
-  - Formalización minera: L 1,600,000 (3 hitos: 20/30/50%)
-  - Titulación de propiedad: L 60,000 base (hasta 2 manzanas) + L 25,000 por manzana extra
-  - Contrato de sociedad minera: L 55,000 (co-pagado 50/50)
+  - Titulación de propiedad (Servicio 0 — primero si el minero no tiene tierra): L 60,000 base (hasta 2 manzanas) + L 25,000 por manzana extra
+  - Formalización minera (Servicio 1 — gated, requiere tierra resuelta): L 1,600,000 (3 hitos: 40/40/20%)
+  - Contrato de sociedad minera (Servicio 3): L 55,000 (co-pagado 50/50)
 - **Historial**: últimos 40 mensajes de `conversaciones_whatsapp` por número de WhatsApp (suficiente para sostener conversaciones multi-día sin truncar contexto importante)
 - **Lookup de cliente**: busca en tabla `clientes` por `telefono_whatsapp` (strip de `whatsapp:` prefix) — si existe, inyecta nombre/municipio/tierra en el prompt; si no, instruye registro natural
 - **Contexto de expediente**: tras el lookup de cliente, consulta `expedientes` por `cliente_id = cliente.id` (fallback: `cliente ILIKE nombre`). Inyecta en el prompt: `numero_expediente`, fase actual, paso actual, estado, cierre estimado, hitos pendientes. Si no hay expediente: instruye a María a explicar Fase 0 e Hito 1. Helper: `buildExpedienteContext(exps)` en `route.js`.
