@@ -138,15 +138,21 @@ async function run() {
 
     for (const u of updates) {
       if (!u) { failed++; continue; }
-      const { error: upErr, count } = await admin
+      // `.select('id')` forces `Prefer: return=representation` so PostgREST
+      // returns the rows actually written. `update(...).eq(...)` alone with
+      // `{ count: 'exact' }` returns `count: null` in supabase-js v2 — the
+      // old `count === 0` branch was dead code and silent no-op updates
+      // looked like successes.
+      const { data: updated, error: upErr } = await admin
         .from('maria_knowledge')
-        .update({ embedding: u.vecText }, { count: 'exact' })
-        .eq('id', u.id);
+        .update({ embedding: u.vecText })
+        .eq('id', u.id)
+        .select('id');
       if (upErr) {
         console.error(`[embed] update failed for ${u.id}: ${upErr.message}`);
         failed++;
-      } else if (count === 0) {
-        console.error(`[embed] update for ${u.id} affected 0 rows (RLS or stale schema cache?)`);
+      } else if (!updated || updated.length === 0) {
+        console.error(`[embed] update for ${u.id} affected 0 rows (verify column type, RLS grant, schema cache)`);
         failed++;
       } else {
         done++;
