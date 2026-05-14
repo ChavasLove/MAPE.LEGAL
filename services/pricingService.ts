@@ -163,6 +163,24 @@ export async function fetchAndStorePrices(): Promise<{ id: string; precios: Prec
   const precios = await fetchAllPrices();
   const fecha = new Date().toISOString().slice(0, 10);
 
+  // Prefer the SECURITY DEFINER RPC (migration 025) — bypasses RLS regardless
+  // of whether service_role has BYPASSRLS in this Supabase project.
+  const { data: rpcId, error: rpcError } = await admin.rpc('upsert_precios_diarios', {
+    p_fecha:      fecha,
+    p_oro:        precios.oro,
+    p_plata:      precios.plata,
+    p_usd_hnl:    precios.usd_hnl,
+    p_cobre:      precios.cobre,
+    p_fuente:     precios.fuente,
+    p_fetched_at: precios.fetched_at,
+  });
+  if (!rpcError && rpcId) return { id: rpcId as string, precios };
+
+  // Fallback to direct upsert — only reached when migration 025 has not been
+  // applied yet. Logged so the operator notices the missing RPC.
+  if (rpcError) {
+    console.warn('[pricingService] upsert_precios_diarios RPC failed, falling back to direct upsert:', rpcError.message);
+  }
   const { data, error } = await admin
     .from('precios_diarios')
     .upsert(
