@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# RAG seed derived artifacts (regenerated via seed --dry-run / --json)
+data/maria-knowledge/*.chunks.json
