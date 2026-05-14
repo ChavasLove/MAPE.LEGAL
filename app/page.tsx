@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import TopoBand from '@/components/decor/TopoBand'
 import TerrainMapSection from '@/components/terrain/TerrainMapSection'
@@ -9,8 +9,19 @@ type Lang = 'es' | 'en'
 
 const SITE_LAST_UPDATED_ISO = '2026-05-10'
 
+const NAV_LINKS: Array<{ href: string; es: string; en: string }> = [
+  { href: '#identidad', es: 'Identidad', en: 'About' },
+  { href: '#cumplimiento', es: 'Cumplimiento', en: 'Compliance' },
+  { href: '#archivos-mineros', es: 'Mapa Minero', en: 'Mining Map' },
+  { href: '#contacto', es: 'Contacto', en: 'Contact' },
+]
+
 export default function LandingPage() {
   const [lang, setLang] = useState<Lang>('es')
+  const [navOpen, setNavOpen] = useState(false)
+  const navRef = useRef<HTMLElement | null>(null)
+  const panelRef = useRef<HTMLDivElement | null>(null)
+  const toggleRef = useRef<HTMLButtonElement | null>(null)
 
   useEffect(() => {
     try {
@@ -19,6 +30,57 @@ export default function LandingPage() {
       if (saved === 'es' || saved === 'en') setLang(saved)
     } catch {}
   }, [])
+
+  // Close mobile nav on Escape; restore focus to toggle button
+  useEffect(() => {
+    if (!navOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setNavOpen(false)
+        toggleRef.current?.focus()
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [navOpen])
+
+  // Close mobile nav on click outside the nav element
+  useEffect(() => {
+    if (!navOpen) return
+    const onDown = (e: MouseEvent) => {
+      const target = e.target as Node
+      const insideNav = navRef.current?.contains(target)
+      const insidePanel = panelRef.current?.contains(target)
+      if (!insideNav && !insidePanel) setNavOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [navOpen])
+
+  // Auto-close on desktop resize (≥ 1024)
+  useEffect(() => {
+    if (!navOpen) return
+    const onResize = () => {
+      if (window.innerWidth >= 1024) setNavOpen(false)
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [navOpen])
+
+  // Lock body scroll while overlay is open
+  useEffect(() => {
+    if (!navOpen) return
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = previous }
+  }, [navOpen])
+
+  // When overlay opens, move focus into it
+  useEffect(() => {
+    if (!navOpen) return
+    const firstLink = panelRef.current?.querySelector<HTMLAnchorElement>('a')
+    firstLink?.focus()
+  }, [navOpen])
 
   const changeLang = (l: Lang) => {
     setLang(l)
@@ -30,21 +92,53 @@ export default function LandingPage() {
   return (
     <>
       {/* NAV */}
-      <nav className="nav">
+      <nav className="nav" ref={navRef}>
         <Link href="/" className="nav-logo">
           <span className="nav-logo-text">MAPE LEGAL</span>
         </Link>
         <div className="nav-links">
-          <a href="#identidad" className="nav-link">{t('Identidad', 'About')}</a>
-          <a href="#cumplimiento" className="nav-link">{t('Cumplimiento', 'Compliance')}</a>
-          <a href="#archivos-mineros" className="nav-link">{t('Mapa Minero', 'Mining Map')}</a>
-          <a href="#contacto" className="nav-link">{t('Contacto', 'Contact')}</a>
-          <div className="lang-toggle">
-            <button className={`lang-btn${lang === 'es' ? ' active' : ''}`} onClick={() => changeLang('es')}>ES</button>
-            <button className={`lang-btn${lang === 'en' ? ' active' : ''}`} onClick={() => changeLang('en')}>EN</button>
-          </div>
+          {NAV_LINKS.map((link) => (
+            <a key={link.href} href={link.href} className="nav-link">{t(link.es, link.en)}</a>
+          ))}
         </div>
+        <div className="lang-toggle" style={{ marginLeft: 'auto' }}>
+          <button className={`lang-btn${lang === 'es' ? ' active' : ''}`} onClick={() => changeLang('es')}>ES</button>
+          <button className={`lang-btn${lang === 'en' ? ' active' : ''}`} onClick={() => changeLang('en')}>EN</button>
+        </div>
+        <button
+          ref={toggleRef}
+          type="button"
+          className="nav-toggle"
+          aria-expanded={navOpen}
+          aria-controls="nav-mobile-panel"
+          aria-label={navOpen ? t('Cerrar menú', 'Close menu') : t('Abrir menú', 'Open menu')}
+          onClick={() => setNavOpen((v) => !v)}
+        >
+          {navOpen ? (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M6 6l12 12M6 18L18 6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+            </svg>
+          ) : (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+            </svg>
+          )}
+        </button>
       </nav>
+      {navOpen && (
+        <div id="nav-mobile-panel" className="nav-mobile-panel" ref={panelRef}>
+          {NAV_LINKS.map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              className="nav-link"
+              onClick={() => setNavOpen(false)}
+            >
+              {t(link.es, link.en)}
+            </a>
+          ))}
+        </div>
+      )}
 
       {/* HERO */}
       <section
@@ -89,9 +183,9 @@ export default function LandingPage() {
       {/* IDENTIDAD */}
       <section
         id="identidad"
+        className="mape-section"
         style={{
           background: 'var(--bg-soft)',
-          padding: '80px max(24px, calc((100% - 1100px)/2))',
           borderBottom: '1px solid var(--border)',
         }}
       >
@@ -100,25 +194,19 @@ export default function LandingPage() {
           {t('Quiénes somos.', 'Who we are.')}
         </h2>
         <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
-            gap: 64,
-            marginTop: 40,
-            alignItems: 'start',
-          }}
+          className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16 mt-10 items-start"
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             <p style={{ fontSize: 16, color: 'var(--t2)', lineHeight: 1.7 }}>
               {t(
-                'CHT es una empresa hondureña dedicada a la formalización de la minería artesanal y de pequeña escala (MAPE). Operamos como intermediario de certificación y comercialización entre productores artesanales y la refinería Chiopa Industrias, bajo el marco jurídico hondureño y los estándares de debida diligencia de la cadena de oro.',
-                'CHT is a Honduran company dedicated to the formalization of artisanal and small-scale mining (MAPE). We operate as a certification and commercialization intermediary between artisanal producers and the Chiopa Industrias refinery, under the Honduran legal framework and the gold supply chain due-diligence standards.'
+                'CHT es una empresa hondureña dedicada a la formalización de la minería artesanal y de pequeña escala (MAPE). Operamos como intermediario de certificación y comercialización entre productores artesanales y la cadena formal de comercialización de oro responsable, bajo el marco jurídico hondureño y los estándares de debida diligencia de la cadena de oro.',
+                'CHT is a Honduran company dedicated to the formalization of artisanal and small-scale mining (MAPE). We operate as a certification and commercialization intermediary between artisanal producers and the formal responsible-gold supply chain, under the Honduran legal framework and the gold supply chain due-diligence standards.'
               )}
             </p>
             <p style={{ fontSize: 16, color: 'var(--t2)', lineHeight: 1.7 }}>
               {t(
-                'Nuestro piloto opera en Iriona, departamento de Colón, con una asociación de mineros artesanales que ha completado su consulta libre, previa e informada bajo el Convenio 169 de la OIT. La operación canaliza pagos a través de Finacoop y mantiene cuentas bancarias formales en lempiras para cada productor formalizado.',
-                'Our pilot operates in Iriona, department of Colón, with an artisanal miners association that has completed its free, prior and informed consent under ILO Convention 169. The operation channels payments through Finacoop and maintains formal bank accounts in lempiras for each formalized producer.'
+                'Trabajamos con asociaciones de mineros artesanales en Honduras que completan la consulta libre, previa e informada bajo el Convenio 169 de la OIT antes del inicio del proceso de formalización. La operación canaliza pagos a través de Finacoop y mantiene cuentas bancarias formales en lempiras para cada productor formalizado.',
+                "We work with artisanal miners' associations in Honduras that complete free, prior and informed consultation under ILO Convention 169 before the formalization process begins. The operation channels payments through Finacoop and maintains formal bank accounts in lempiras for each formalized producer."
               )}
             </p>
             <p style={{ fontSize: 16, color: 'var(--t2)', lineHeight: 1.7 }}>
@@ -148,9 +236,9 @@ export default function LandingPage() {
       {/* CUMPLIMIENTO */}
       <section
         id="cumplimiento"
+        className="mape-section"
         style={{
           background: 'var(--bg)',
-          padding: '80px max(24px, calc((100% - 1100px)/2))',
           borderBottom: '1px solid var(--border)',
         }}
       >
@@ -165,12 +253,7 @@ export default function LandingPage() {
           )}
         </p>
         <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-            gap: 24,
-            marginTop: 48,
-          }}
+          className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6 mt-12"
         >
           {[
             {
@@ -228,7 +311,7 @@ export default function LandingPage() {
                 background: 'var(--bg)',
                 border: '1px solid var(--border)',
                 borderRadius: 12,
-                padding: 24,
+                padding: 'clamp(20px, 4vw, 24px)',
                 boxShadow: '0 2px 6px rgba(31,42,56,0.05)',
                 display: 'flex',
                 flexDirection: 'column',
@@ -271,9 +354,9 @@ export default function LandingPage() {
       {/* VERIFICACIÓN */}
       <section
         id="verificacion"
+        className="mape-section"
         style={{
           background: 'var(--bg-soft)',
-          padding: '80px max(24px, calc((100% - 1100px)/2))',
           borderBottom: '1px solid var(--border)',
         }}
       >
@@ -282,13 +365,7 @@ export default function LandingPage() {
           {t('Certificado de Origen verificable.', 'Verifiable Certificate of Origin.')}
         </h2>
         <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 0.9fr)',
-            gap: 64,
-            marginTop: 40,
-            alignItems: 'center',
-          }}
+          className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 mt-10 items-start lg:items-center"
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             <p style={{ fontSize: 16, color: 'var(--t2)', lineHeight: 1.7 }}>
@@ -332,6 +409,8 @@ export default function LandingPage() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 8,
               }}
             >
               <div
@@ -400,7 +479,7 @@ export default function LandingPage() {
                     {t('Unidad minera', 'Mining unit')}
                   </div>
                   <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}>
-                    Iriona — Colón
+                    {t('Distrito minero — Honduras', 'Mining district — Honduras')}
                   </div>
                 </div>
                 <div>
@@ -496,10 +575,10 @@ export default function LandingPage() {
       {/* ARCHIVOS MINEROS — BIBLIOTECA DE ARCHIVOS MINEROS DE HONDURAS */}
       <section
         id="archivos-mineros"
+        className="mape-section"
         style={{
           background: 'var(--bg)',
           borderBottom: '1px solid var(--border)',
-          padding: '80px max(24px, calc((100% - 1100px)/2))',
         }}
       >
         <TerrainMapSection lang={lang} t={t} />
@@ -508,9 +587,9 @@ export default function LandingPage() {
       {/* CONTACTO */}
       <section
         id="contacto"
+        className="mape-section"
         style={{
           background: 'var(--bg)',
-          padding: '80px max(24px, calc((100% - 1100px)/2))',
           borderBottom: '1px solid var(--border)',
         }}
       >
@@ -519,12 +598,7 @@ export default function LandingPage() {
           {t('Canales formales de contacto institucional.', 'Formal institutional contact channels.')}
         </h2>
         <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-            gap: 24,
-            marginTop: 40,
-          }}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 mt-10"
         >
           {[
             {
@@ -557,7 +631,7 @@ export default function LandingPage() {
                 background: 'var(--bg)',
                 border: '1px solid var(--border)',
                 borderRadius: 12,
-                padding: 24,
+                padding: 'clamp(20px, 4vw, 24px)',
                 boxShadow: '0 2px 6px rgba(31,42,56,0.05)',
                 display: 'flex',
                 flexDirection: 'column',

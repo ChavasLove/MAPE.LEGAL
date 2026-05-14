@@ -142,10 +142,11 @@ Webhook Twilio que conecta WhatsApp con Claude AI.
 - **Modelo**: `claude-haiku-4-5-20251001`
 - **Persona**: María, asistente de CHT — español sencillo, respuestas cortas (≤5 líneas), sin emojis, sin jerga
 - **Conocimiento**: 3 servicios completos con precios, 38 pasos de formalización en 4 fases, titulación, sociedad minera, obligaciones del cliente, fechas críticas
+- **Tierra Primero — protocolo cultural** (MARIA.md §10, v1.3+): el system prompt ordena explícitamente que María pregunte la situación de tierra **antes** que cualquier mención de INHGEOMIN o SERNA, y reordena el catálogo de servicios con titulación como **Servicio 0** (primero) y formalización como **Servicio 1 gated** (solo se ofrece cuando el minero ya tiene título registrado o arrendamiento registrado). La sección `TIERRA PRIMERO — COMPROMISO CULTURAL` del prompt lista 6 compromisos + frases prohibidas vs. correctas. En `CUANDO QUIEREN INICIAR UN TRÁMITE`, "situación de tierra" es **paso 0** (antes del nombre) — si sin papeles, María ofrece titulación, no formalización.
 - **Precios vigentes**:
-  - Formalización minera: L 1,600,000 (3 hitos: 20/30/50%)
-  - Titulación de propiedad: L 60,000 base (hasta 2 manzanas) + L 25,000 por manzana extra
-  - Contrato de sociedad minera: L 55,000 (co-pagado 50/50)
+  - Titulación de propiedad (Servicio 0 — primero si el minero no tiene tierra): L 60,000 base (hasta 2 manzanas) + L 25,000 por manzana extra
+  - Formalización minera (Servicio 1 — gated, requiere tierra resuelta): L 1,600,000 (3 hitos: 40/40/20%)
+  - Contrato de sociedad minera (Servicio 3): L 55,000 (co-pagado 50/50)
 - **Historial**: últimos 40 mensajes de `conversaciones_whatsapp` por número de WhatsApp (suficiente para sostener conversaciones multi-día sin truncar contexto importante)
 - **Lookup de cliente**: busca en tabla `clientes` por `telefono_whatsapp` (strip de `whatsapp:` prefix) — si existe, inyecta nombre/municipio/tierra en el prompt; si no, instruye registro natural
 - **Contexto de expediente**: tras el lookup de cliente, consulta `expedientes` por `cliente_id = cliente.id` (fallback: `cliente ILIKE nombre`). Inyecta en el prompt: `numero_expediente`, fase actual, paso actual, estado, cierre estimado, hitos pendientes. Si no hay expediente: instruye a María a explicar Fase 0 e Hito 1. Helper: `buildExpedienteContext(exps)` en `route.js`.
@@ -158,6 +159,11 @@ Webhook Twilio que conecta WhatsApp con Claude AI.
 - **`precios_diarios` cache write blocked por RLS (2026-05-10)**: cada invocación de María dispara `fetchAndStorePrices()` fire-and-forget, pero el INSERT/UPSERT falla con `new row violates row-level security policy for table "precios_diarios"` porque el `service_role` del proyecto no tiene `BYPASSRLS` (mismo root cause de la saga de auth resuelta en migración 019). Resultado: cache siempre vacío → cada turno fetcha live (~250 ms extra). Fix: nueva migración con `create policy "service_all_precios_diarios" on precios_diarios for all to service_role using (true) with check (true)`. Loggea como "non-fatal" así que no bloquea la respuesta de María.
 - **Formato canónico de respuesta de precio de oro** (MARIA.md §8, v1.1+): cada respuesta que mencione precio de oro DEBE incluir SIEMPRE 4 viñetas — `LBMA`, `CHT compra al 80%`, `Tipo de cambio USD/LPS`, `Actualizado: [frescuraLabel]` — más `Finacoop` y `www.mape.legal`. El timestamp y el tipo de cambio USD/LPS son obligatorios aunque el cliente no los pida. La regla está implementada en el system prompt (`CUANDO PREGUNTAN POR EL PRECIO DEL ORO` + `SI EL CLIENTE MENCIONA UN PESO ESPECIFICO EN GRAMOS`) y reflejada en MARIA.md §8.
 - **Registro INHGEOMIN (concesiones)**: helper `buildConcesionContext()` se dispara con la regex `CONCESION_TRIGGERS` (palabras "concesión", "INHGEOMIN", "permiso minero/exploración/explotación", "en solicitud", "¿quién tiene la concesión?", "empresa minera", "¿dónde está ubicado?"). Limpia stopwords con boundary `\b` para preservar nombres como "Dorado", llama el RPC `search_concesion_minera` (anon-key, RPC es SECURITY DEFINER) con `p_limit: 5`, y inyecta un bloque `REGISTRO INHGEOMIN — concesiones encontradas (datos públicos):` con instrucción explícita de **no afirmar aprobación si la categoría es `solicitud_pendiente`**. 587 registros disponibles (125 explotación otorgada + 170 exploración otorgada + 292 en solicitud). Falla silenciosa: si el RPC retorna error, loggea `[concesiones] non-fatal` y devuelve string vacío — nunca bloquea la respuesta de María.
+- **RAG semántico (`maria_knowledge`)**: `retrieveKnowledge()` en `app/api/whatsapp/route.js` es **híbrida**. Antes de tocar OpenAI hace un **pre-check** (`select id, count exact head, not embedding is null`) — si el resultado es 0, salta directo a FTS sin gastar una llamada al modelo. Luego, si hay embeddings, llama `embedQuery()` de `lib/maria/embeddings.ts` (OpenAI `text-embedding-3-small`, 1536 dims, 5 s timeout, 2 retries) → serializa el vector con `toVectorText(queryEmbedding)` → RPC `match_maria_knowledge(query_embedding, match_threshold=0.7, match_count=3)`. Fallback final: RPC FTS determinístico (`search_maria_knowledge_fts`). Ambos RPCs son `SECURITY DEFINER` con owner = `postgres` (patrón de migración 019 — bypasean RLS sin depender de BYPASSRLS). El bloque inyectado al system prompt se llama `CONTEXTO DEL SISTEMA`. Cada turno deja en logs `[rag] pre-check embedded=N` y `[rag] path=semantic|fts|none candidates=N` para que el operador distinga "matched nothing" de "silent 500" sin abrir la consola de DB. Backfill: `node scripts/embed-maria-knowledge.mjs` (idempotente) o `POST /api/admin/maria/embeddings-backfill` desde Vercel.
+  - **Helpers canónicos** en `lib/maria/embeddings.ts`: `toVectorText(vec)` (única serialización aceptada por pgvector — raw arrays se silencian) y `buildCanonicalText(title, content, category)` (formato `[category] title\n\ncontent`, cap 8000 chars). Los callers (`retrieveKnowledge`, `embeddings-backfill/route.ts`, `embed-maria-knowledge.mjs`) usan estos helpers; el script .mjs los inlinea porque ESM no puede importar TS sin build step — drift risk acotado a 3 líneas. **Categoría prefix asymmetric on purpose**: backfill embebe `[category] title…`, runtime embebe el mensaje crudo. `text-embedding-3-small` es robusto al desbalance; documentado como deuda menor.
+  - **Diagnóstico — `/api/admin/maria/rag-health`** (admin-only, modelo `auth-config`): retorna JSON con `env` (3 vars), `rows.total/with_embedding/sample_dim`, `rpc.match_maria_knowledge.state` + `rpc.search_maria_knowledge_fts.state`, `openai.state/dims/error`, y un `hint` accionable. Es el primer chequeo cuando "no funciona el RAG" — distingue env rota de RPC faltante de embeddings 0 de dim mismatch en la columna.
+  - **Errores categorizados de OpenAI**: `embedQuery` y `embedBatch` loggean `[embeddings] <scope> INVALID API KEY` (401), `RATE LIMITED` (429), `TIMEOUT` (network/abort), o `failed` (default) — antes era un mensaje genérico. Vercel function logs se vuelven útiles sin SSH.
+  - **Migración 024**: crea (o adiciona idempotentemente columnas a) `maria_knowledge`, instala extensión `vector`, agrega índice `ivfflat` sobre `embedding` con `vector_cosine_ops` + índice `gin` para FTS, y crea ambos RPCs. Hasta que se aplique en Supabase Studio, el flow sigue funcionando vía el RPC FTS existente — el embedding path simplemente no retorna nada y cae al fallback. **Future work documentado pero no shipped**: HNSW en vez de IVFFLAT (mejor recall, requiere SQL manual del operador), columnas `content_hash` + `embedded_at` para freshness tracking + flag `--stale-only` en el backfill, alinear el prefijo `[category]` entre backfill y runtime (requiere re-embed completo).
 - **Perfil completo del cliente**: calcula campos faltantes (nombre, DPI, municipio, situación tierra, tipo mineral) e inyecta `completenessSummary` en el prompt. María responde a "¿ya tienes mis datos?" con los campos faltantes exactos.
 - **REGLA DE MEMORIA**: si el contexto ya tiene un dato, María nunca lo repite ni re-pregunta — lo usa directamente.
 - **Nuevo expediente**: flujo estructurado cuando cliente registrado quiere iniciar un trámite (tipo → municipio → manzanas). Al completar, inserta en `transacciones_pendientes` con `detalle` del servicio.
@@ -176,7 +182,7 @@ Webhook Twilio que conecta WhatsApp con Claude AI.
 
 ## Landing page
 
-**Estado real (Phase 1, 2026-05-10):** la landing activa es `app/page.tsx` (~580 líneas, autocontenido, repositionada como **superficie institucional**, no de ventas). Estructura: Nav · Hero · Identidad (`#identidad`) · Cumplimiento (`#cumplimiento`) · Verificación (`#verificacion`) · Contacto (`#contacto`) · Footer. **No hay formulario de contacto, ni CTAs hacia clientes** — los clientes entran por María (WhatsApp) y relaciones directas. Los datos institucionales son reales: WhatsApp `+504 9737 3139`, correo `gerencia@mape.legal`, oficina Nexcrea (Tegucigalpa). Bilingüe ES/EN vía helper `t(es, en)` y `localStorage('ml_lang')`.
+**Estado real (Phase 1, 2026-05-10; overhaul móvil 2026-05-11):** la landing activa es `app/page.tsx` (~700 líneas, autocontenido, repositionada como **superficie institucional**, no de ventas). Estructura: Nav · Hero · Identidad (`#identidad`) · Cumplimiento (`#cumplimiento`) · Verificación (`#verificacion`) · Archivos Mineros (`#archivos-mineros`) · Contacto (`#contacto`) · Footer. **No hay formulario de contacto, ni CTAs hacia clientes** — los clientes entran por María (WhatsApp) y relaciones directas. Los datos institucionales son reales: WhatsApp `+504 9737 3139`, correo `gerencia@mape.legal`, oficina Nexcrea (Tegucigalpa). Bilingüe ES/EN vía helper `t(es, en)` y `localStorage('ml_lang')`.
 
 Los 15 archivos de `components/landing/*` fueron **eliminados en Phase 1** (ver commit `chore(landing): remove orphan components/landing/*`). Cualquier cambio de UI ahora va a `app/page.tsx`.
 
@@ -212,14 +218,16 @@ Los 15 archivos de `components/landing/*` fueron **eliminados en Phase 1** (ver 
 
 ## Biblioteca Archivos Mineros (`#archivos-mineros`, 2026-05-10)
 
-Sección institucional bajo el ancla `#archivos-mineros` en la landing (`app/page.tsx`); enlace en el nav como "Mapa Minero" / "Mining Map". Mapa interactivo 3D de 8 sitios mineros verificados de Honduras renderizado con MapLibre GL JS v5 (~220 KB gzipped, WebGL, GPU-accelerated). Framing: cada pin es contexto histórico **y** candidato de formalización dentro del universo donde opera CHT.
+Sección institucional bajo el ancla `#archivos-mineros` en la landing (`app/page.tsx`); enlace en el nav como "Mapa Minero" / "Mining Map". Mapa interactivo 3D de 8 distritos mineros verificados de Honduras renderizado con MapLibre GL JS v5 (~220 KB gzipped, WebGL, GPU-accelerated). **Framing canónico (2026-05-11):** el mapa NO es un catálogo de empresas mineras — es un mapa de **distritos** donde se concentran mineros artesanales y de pequeña escala. Cada pin representa una zona donde CHT tiene clientes potenciales (los mineros artesanales/SSM que operan en ese territorio), independientemente del estatus de la operación corporativa listada en cada card.
+
+> **Update 2026-05-11 (PR #124, `claude/fix-map-legend-navigation-MYEUb`):** legend → filtro de mineral, agregada navegación Next/Prev, marker click race condition resuelto, CTA WhatsApp ahora se muestra en todos los sitios (la audiencia es el minero artesanal, no la corporación). Ver "Arquitectura interactiva" abajo.
 
 **Archivos** (todos `'use client'`):
-- `components/terrain/mining-data.ts` — dataset de 8 sitios + `TYPE_COLORS` / `STATUS_COLORS` / `*_LABELS_*` bound a tokens.
-- `components/terrain/MiningMap3D.tsx` — core del mapa, controles, popups.
-- `components/terrain/SiteInfoPanel.tsx` — panel de detalle + CTA WhatsApp.
-- `components/terrain/MapLegend.tsx` — leyenda colapsable.
-- `components/terrain/TerrainMapSection.tsx` — wrapper de sección + stats bar + responsive overrides.
+- `components/terrain/mining-data.ts` — dataset de 8 sitios + `MineType`/`MineStatus` aliases + `MINE_TYPE_ORDER` + `TYPE_COLORS` / `STATUS_COLORS` / `*_LABELS_*` + `COMMODITY_LABELS_ES` (todos `Record<MineType,...>` / `Record<MineStatus,...>` — tipados estrictos, typos fallan al compilar).
+- `components/terrain/MiningMap3D.tsx` — core del mapa, controles, popup compartido, markers con a11y de teclado.
+- `components/terrain/SiteInfoPanel.tsx` — panel de detalle con header de navegación (Prev/Next/posición/Close) + CTA WhatsApp.
+- `components/terrain/MapLegend.tsx` — **filtro de mineral interactivo** (chips toggleables); el nombre del archivo conserva "Legend" por historia, pero el componente ya no muestra leyenda de estado (los markers se colorean solo por mineral, nunca por estado).
+- `components/terrain/TerrainMapSection.tsx` — wrapper de sección, owner del estado `selectedSiteId` + `visibleTypes: Set<MineType>`, deriva `visibleSites` por memo, expone `handleNext`/`handlePrev` con wrap-around, auto-deselect si filtro oculta el sitio activo.
 
 **Tiles + 3D terrain**:
 - Default: CartoDB Voyager raster + DEM de `demotiles.maplibre.org` (SRTM hillshade). Gratis, sin API key — el mapa funciona out-of-the-box.
@@ -237,17 +245,43 @@ Sección institucional bajo el ancla `#archivos-mineros` en la landing (`app/pag
 | `antimony` → `var(--slate)` |  |
 | `historical` → `var(--earth)` |  |
 
-Las CSS variables `var(--token)` funcionan dentro de inline `style` (el browser las resuelve) y dentro de `color-mix(in oklch, ${token} 14%, white)` para fondos translúcidos de pills/badges. No se importa ningún hex desde el dataset.
+Los markers se colorean **solo por tipo mineral**. Los colores de status (`STATUS_COLORS`) aparecen únicamente en los badges del panel y popups — nunca en los pines del mapa. Por eso el filtro vive sobre `MineType`, no sobre `MineStatus`. Las CSS variables `var(--token)` funcionan dentro de inline `style` (el browser las resuelve) y dentro de `color-mix(in oklch, ${token} 14%, white)` para fondos translúcidos de pills/badges.
 
-**Init crítico — `pitch: 0, bearing: 0`** (`MiningMap3D.tsx:213-214`). Con `pitch > 0`, los DOM markers (`maplibregl.Marker({ anchor: 'center' })`) **están correctamente anclados a sus coordenadas geográficas**, pero la perspectiva los proyecta visualmente alejados de las etiquetas del basemap (que se renderizan en el raster del tile, proyección distinta). A zoom 6.5 con `pitch: 45` el offset visible es de varios pixels — un usuario sin contexto lo lee como "los pines están en el lugar equivocado" (síntoma reportado en commit `f18ab3c`). El fix correcto es default flat; el usuario puede inclinar manualmente con drag-right-click y el knob `visualizePitch` del NavigationControl sigue disponible. **Aplica a cualquier futuro uso de DOM markers en este proyecto — symbol layers (`icon-pitch-alignment: map`) son la única forma de que markers + pitch coexistan sin distorsión.** El `flyTo` al seleccionar un sitio tampoco escala pitch.
+**Init crítico — `pitch: 0, bearing: 0`** (`MiningMap3D.tsx:217-218`). Con `pitch > 0`, los DOM markers (`maplibregl.Marker({ anchor: 'center' })`) **están correctamente anclados a sus coordenadas geográficas**, pero la perspectiva los proyecta visualmente alejados de las etiquetas del basemap (que se renderizan en el raster del tile, proyección distinta). A zoom 6.5 con `pitch: 45` el offset visible es de varios pixels — un usuario sin contexto lo lee como "los pines están en el lugar equivocado" (síntoma reportado en commit `f18ab3c`). El fix correcto es default flat; el usuario puede inclinar manualmente con drag-right-click y el knob `visualizePitch` del NavigationControl sigue disponible. **Aplica a cualquier futuro uso de DOM markers en este proyecto — symbol layers (`icon-pitch-alignment: map`) son la única forma de que markers + pitch coexistan sin distorsión.** El `flyTo` al seleccionar un sitio tampoco escala pitch.
 
 **Sin animaciones continuas** (DESIGN.md §4). El script PDF original incluía un `@keyframes mining-pulse` para markers con `status: 'active'`; se eliminó por la regla del manual. El color verde de `STATUS_COLORS.active` ya transmite "activa" sin animación.
 
-**CTA "Iniciar trámite con CHT"** (`SiteInfoPanel.tsx`): cada pin es un cliente potencial. Botón verde-moss al fondo del panel que abre `https://wa.me/50497373139?text=…` con mensaje pre-llenado incluyendo `nameEs`, `department`, `municipality` del sitio. **Gate por `status`**:
-- `active` → mostrar (operación viva, candidato directo a formalización).
-- `inactive` → mostrar (dormido, posible reactivación vía formalización).
-- `contested` → **ocultar** (Guapinol/Los Pinares — sensible políticamente; vías formales, no WhatsApp en frío).
-- `historical` → **ocultar** (corporaciones extintas — sin contraparte).
+### Arquitectura interactiva (PR #124, 2026-05-11)
+
+**Markers se crean UNA VEZ** en el handler `instance.on('load', …)` (`MiningMap3D.tsx`). Se guardan en `markersRef: Map<string, MarkerEntry>` keyed por `site.id`. Subsecuentes cambios de selección / visibilidad / idioma **mutan el DOM en su lugar** — nunca remove+recreate. Esto cierra el race condition pre-PR #124 que tiraba todos los markers y popups en el mismo tick del click, causando que el popup parpadeara por ~1 frame y el marker recién clickeado desapareciera brevemente.
+
+**3 funciones de mutación** (declaradas en el componente, leen de refs así son siempre fresh):
+- `applySelectionStyle()` — itera markers, re-aplica `cssText` con el tamaño/sombra correcto según si es el `selectedIdRef.current` (28px + ring `var(--ink)` 3px) o no (22px). También setea `aria-pressed`.
+- `applyVisibilityStyle()` — itera markers y setea `el.style.display = visibleTypesRef.current.has(site.type) ? '' : 'none'`. **Crítico:** `cssText` en `applySelectionStyle` borra `display`, así que **hay que llamar ambas tras cualquier cambio de selección**. El useEffect de `selectedSiteId` llama las dos.
+- `applyPopup()` — popup compartido (`maplibregl.Popup` único). `closeOnClick: false`. Si hay `selectedIdRef.current`, lo posiciona en el sitio y setea HTML; si no, llama `popupRef.current.remove()`. Llamar `.remove()` sobre un popup no agregado es no-op.
+
+**4 useEffects** en `MiningMap3D.tsx`:
+1. **Init** (deps `[]`) — crea map, controles, popup compartido, markers, inyecta CSS chrome para `.mining-popup`.
+2. **Selection** (deps `[selectedSiteId]`) — `applySelectionStyle()` + `applyVisibilityStyle()` (re-apply post-cssText reset) + `applyPopup()`.
+3. **Visibility** (deps `[visibleTypes]`) — `applyVisibilityStyle()`.
+4. **Lang** (deps `[lang]`) — re-setea `aria-label` de cada marker + `applyPopup()` (re-renderea HTML del popup con labels en el idioma actual).
+5. **Fly-to** (deps `[selectedSiteId]`) — separado del effect de selection para que el camera move no acople con la mutation del DOM. Cuando `selectedSiteId` es `null`, vuela de regreso al overview (`INITIAL_CENTER`, `INITIAL_ZOOM`).
+
+**Marker selected — ring `var(--ink)` en vez de same-color halo**: el patrón pre-PR #124 era ring del mismo `fillColor` (gold tenía ring gold, etc.), lo que daba un cambio visual sutil (22→28px con halo del mismo color). El nuevo ring usa `var(--ink)` 3px — visible sin importar el color del mineral.
+
+**Marker a11y**: cada `el` tiene `role="button"`, `tabindex="0"`, `aria-label`, `aria-pressed`, y un keydown handler que activa con Enter o Space. La activación llama `onSiteSelectRef.current(site.id)`. El click handler hace `e.stopPropagation()` para evitar que algunas versiones de MapLibre traten el click como "click en mapa" y disparen lógica de close.
+
+**Filtro de mineral** (`MapLegend.tsx`): renderizado top-left (movido desde bottom-left para no chocar con scale/attribution de MapLibre). Cada `MINE_TYPE_ORDER` row es un `<button aria-pressed>` que toggle-a `value: Set<MineType>`. Empty selection se bumpea automáticamente a "all on" (el mapa nunca queda vacío). Cuando el filtro está activo, `TerrainMapSection.tsx` renderiza un pill `"Mostrando N de N sitios"` en top-right con `aria-live="polite"`.
+
+**Navigation Next/Prev**: `TerrainMapSection.tsx` deriva `visibleSites = MINING_SITES.filter(s => visibleTypes.has(s.type))` por `useMemo`, computa `selectedIndex` del sitio activo dentro de la lista filtrada, y expone `handleNext`/`handlePrev` con wrap-around (`(i + 1) % len` / `(i - 1 + len) % len`). Se pasan a `SiteInfoPanel` como `onNext`/`onPrev` opcionales; el panel los muestra como chevrons Lucide en el header pegados al close button. `position={index+1, total: visibleSites.length}` renderea el indicador `Sitio N de N` / `Site N of N` en `var(--font-mono)`. Si `visibleSites.length <= 1` los botones son `undefined` y no se renderean.
+
+**Auto-deselect bajo filtro**: si el filtro oculta el sitio actualmente seleccionado, un useEffect en `TerrainMapSection` lo deselecciona (`setSelectedSiteId(null)`) — evita un panel zombie con un sitio cuyo marker está hidden.
+
+**CTA WhatsApp — visible en todos los sitios** (`SiteInfoPanel.tsx`, post PR #124): el gate por status del diseño original (mostrar solo en `active`/`inactive`, ocultar en `contested`/`historical`) **se eliminó**. Razón: la audiencia del CTA son los mineros artesanales y de pequeña escala que operan en cada distrito — independientemente de si la operación corporativa listada en el card está activa, dormida, en disputa, o extinta. Un sitio histórico como Rosario (Tegucigalpa) o un sitio en disputa como Guapinol siguen siendo distritos donde hay mineros buscando formalizarse. Copy del CTA habla al minero directamente: ES `"¿Operas en esta zona? Inicia trámite con CHT"` / EN `"Mining in this district? Begin a process with CHT"`, con caption `"Pensado para mineros artesanales y de pequeña escala que operan en el área."` Mensaje pre-llenado de WhatsApp también reframe-ado: `"Buenas, soy minero artesanal en la zona de {nameEs} ({department}, {municipality})…"`.
+
+**Hover del CTA — `white` no `black`** (DESIGN.md §3): `color-mix(in oklch, var(--moss) 88%, white)`. Pre-PR #124 estaba mixed con `black` lo que daba un hover oscuro casi `var(--ink)`.
+
+**`STATUS_LABELS_ES.contested`**: cambió de `"Controvertida"` a `"En disputa"` (PR #124). "Controvertida" leía como public-opinion framing; "En disputa" es el término que usa la prensa legal hondureña y matchea cleanly con EN `"Contested"`.
 
 **Dataset (8 sitios, hardcoded en `mining-data.ts`)**:
 
@@ -262,12 +296,14 @@ Las CSS variables `var(--token)` funcionan dentro de inline `style` (el browser 
 | `el-quetzal` | El Quetzal (Antimonio) | antimony | inactive | Copán |
 | `la-pochota` | La Pochota | silver | historical | Choluteca / Distrito Clavo Rico |
 
-Stats bar derivado (`TerrainMapSection.tsx`): 4 numerales en `var(--font-display)` 28px — total mapeados / activas / controvertidas / históricas. Actualmente lee `8 / 2 / 2 / 2`.
+Stats bar derivado (`TerrainMapSection.tsx`): 4 numerales en `var(--font-display)` 28px — total mapeados / activas / **en disputa** / históricas. Lee `8 / 2 / 2 / 2`. **Los stats reflejan el universo completo, no la lista filtrada** — la cuenta filtrada vive en el pill `Mostrando N de N` sobre el mapa cuando el filtro está activo.
 
 **Future work** (plan operativo en `/root/.claude/plans/yes-proceed-suggestions-are-abundant-rain.md`):
 - **Wire al Supabase `minas` table** vía vista pública `minas_publicas` (mismo patrón que `certificados_origen_publicos` — migración 020 + `app/verificar/[numero]/page.tsx`). Requiere extender `minas` con `descripcion_es`, `descripcion_en`, `desde`, `operador`, `produccion`, `commodities`; nueva vista que strippea `cliente_id`; nueva ruta `app/api/archivos-mineros/route.ts` con lazy-init anon + `Cache-Control: public, s-maxage=300, stale-while-revalidate=900`.
-- **Filtros UI** por mineral y status (multi-select chips arriba del mapa).
+- ~~**Filtros UI** por mineral y status~~ — shipped en PR #124 (mineral only; status filter no requerido porque el usuario quiere ver todos los estados como contexto educativo).
 - **Expandir dataset** a 50–100 sitios usando INHGEOMIN bulletin + BCH histórico + Acuerdo 042-2013 annexes. Cada row debe tener fuente citable y GPS verificado. La migración 023 (`concesiones_mineras_registro`) shipped el 2026-05-11 ya carga 587 concesiones INHGEOMIN — evaluar si la archive map debería leer de ahí en vez de mantener un dataset separado.
+- **Symbol layer migration** — cuando el dataset cruce ~200 sitios, migrar de DOM markers a un `circle` symbol layer + click-handling via `map.on('click', 'mining-circles', …)`. Los DOM markers actuales con CSS variables empiezan a jankearse a esa escala. Bonus: symbol layers + `icon-pitch-alignment: map` resuelven el constraint `pitch: 0` también.
+- **Fact-check pendiente**: las descripciones de `clavo-rico` y `guapinol` afirman años específicos para denegaciones de permisos INHGEOMIN (2024-2025) que vale la pena verificar contra boletines INHGEOMIN antes de un push de marketing al landing.
 
 ## SEO / Open Graph
 
@@ -294,13 +330,20 @@ Requiere env vars. Es idempotente — re-ejecutable sin efectos secundarios.
 ## Landing page — responsividad móvil
 Convenciones aplicables a `app/page.tsx` (los componentes en `components/landing/` están huérfanos — ver sección "Landing page" arriba):
 
+- **Breakpoints canónicos**: alineados con Tailwind — `sm: 640`, `md: 768`, `lg: 1024`. Las `@media (max-width: …)` en `app/globals.css` usan `1023` (= `<lg`) y `639` (= `<sm`). Los antiguos cortes 900/600 fueron migrados en PR #126 (2026-05-11) para sacar el tablet-portrait 768–900 de la zona muerta y meterlo en el stack mobile.
 - **Tipografía escalada**: H1 del Hero usa `text-3xl sm:text-4xl md:text-5xl lg:text-[4.5rem]` — nunca tamaño fijo grande
 - **`<br />` condicionales**: saltos de línea decorativos usan `<br className="hidden sm:block" />` para no romper el flujo en pantallas pequeñas
-- **Nav en móvil**: el texto de marca junto al logo se oculta en xs (`hidden sm:inline`); padding del botón se reduce con `px-3 sm:px-5`
-- **Tablas de 2 columnas**: cuando el contenido es texto largo, usar `flex flex-col sm:grid sm:grid-cols-2` en lugar de `grid grid-cols-2` fijo — evita que el texto se corte
-- **Grids de sección**: `gap-10 lg:gap-16` para grids principales (no `gap-16` flat)
-- **Padding interior de cards/strips**: `p-5 sm:p-8` — no `p-8` plano
+- **Nav en móvil — hamburger** (PR #126): bajo `<1024px`, los 4 anchor links se ocultan vía `.nav-links { display: none }` y aparece `.nav-toggle` (botón con SVG `<path d="M4 7h16M4 12h16M4 17h16"/>`). Al togglearlo se renderiza `.nav-mobile-panel` (slide-down sticky bajo el nav). State machine en `app/page.tsx`: `useState(navOpen)` + 5 `useEffect`s (Escape cierra + restaura foco al toggle, click-outside cierra, resize ≥1024 auto-cierra, `body.style.overflow='hidden'` cuando abierto, focus al primer link en open). El **lang toggle se mueve fuera de `.nav-links`** así queda visible en mobile junto al hamburger.
+- **`.mape-section` class** (`app/globals.css`): aplica padding responsivo a todas las `<section>` de la landing — `80px` desktop → `56px` `<lg` → `48px` `<sm`. Cada `<section>` lleva `className="mape-section"` y conserva `background / borderBottom / id` inline; el `padding` inline se elimina. Cualquier `<section>` nueva en la landing debe usar esta clase.
+- **Grids de sección** (PR #126): reemplazo de `gridTemplateColumns` inline por clases Tailwind responsive. Patrones canónicos:
+  - 2-col texto + imagen (Identidad/Verificación): `grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16 mt-10 items-start` (o `lg:grid-cols-2` cuando una columna trae un card pesado que solo encaja en desktop ancho)
+  - 4 cards (Cumplimiento): `grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6 mt-12`
+  - 3 cards de contacto: `grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 mt-10`
+- **Padding interior de cards** (PR #126): `padding: 'clamp(20px, 4vw, 24px)'` inline para cards que necesitan respirar en mobile sin romper a desktop. Reemplaza el `padding: 24` plano.
+- **Headers de tarjetas con dos elementos en flex** (ej. certificate dark bar): siempre `flexWrap: 'wrap'` + `gap: 8` para que los dos labels apilen en 320px en lugar de colisionar.
 - **Listas horizontales**: siempre `flex-wrap` cuando los ítems pueden desbordar en móvil (badges, certificaciones, footer)
+- **TerrainMapSection — submods**: `MapLegend` usa `window.matchMedia('(max-width: 639px)')` para auto-collapse + pinning a `bottom: 16, left: 16, right: 16` en mobile (evita colisión con los nav controls top-right de MapLibre). `SiteInfoPanel` usa `gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))'` en su detail grid para colapsar a 1-col en 320px sin JS. `TopoBand` SVG labels llevan `className="topo-band-labels"` que se oculta vía `@media (max-width: 413px)` en `globals.css`.
+- **Quality gate antes de mergear cambios de landing**: confirmar manualmente en DevTools mobile-emulator a 320 / 375 / 414 / 640 / 768 / 1024 antes de aprobar. El build prerender (`○ /`) no detecta solapamientos visuales — solo errores de SSR. Hamburger interaction: tap → overlay aparece + body scroll lock + foco al primer link; tap link / Escape / click-outside / resize ≥1024 → cierra + foco regresa al toggle.
 
 ## Variables de Entorno Requeridas (Producción)
 ```
@@ -315,6 +358,7 @@ WHATSAPP_TOKEN
 WHATSAPP_PHONE_ID
 WHATSAPP_VERIFY_TOKEN
 ANTHROPIC_API_KEY              # Requerida por app/api/whatsapp/route.js (asistente María)
+OPENAI_API_KEY                 # Embeddings RAG (text-embedding-3-small). Opcional: sin esta key, retrieveKnowledge() cae al RPC FTS — el flow no se rompe, sólo se degrada el recall semántico
 TWILIO_ACCOUNT_SID             # Consola Twilio — contact forwarding a Willis
 TWILIO_AUTH_TOKEN              # Consola Twilio — contact forwarding a Willis
 TWILIO_WHATSAPP_FROM           # whatsapp:+14155238886 (sandbox) o sender aprobado
@@ -331,7 +375,7 @@ CRON_SECRET                    # Header Bearer para proteger /api/broadcast/run.
 - **Tablas**: `usuarios_broadcast`, `daily_report_config`, `precios_diarios`, `broadcast_log`
 - **Roles broadcast**: `minero` (default), `comprador`, `tecnico`, `admin`
 - **Flujo**: cron → `GET /api/broadcast/run` → `runDailyBroadcast()` → fetch precios → store → `generateDailyMessage()` (template fijo) → `sendDailyBroadcast()` → Meta Cloud API → log
-- **Formato de reporte**: template determinístico "Estimado Socio MAPE" — LBMA USD/oz, conversión a LPS, TC, precio de compra al 80% LBMA, fecha+hora Honduras (UTC-6), enlaces a goldapi.io y www.mape.legal. **No llama a Claude** — garantiza consistencia y evita alucinaciones de precio. Fallback automático cuando `precios.oro` es null/0.
+- **Formato de reporte (Boletín Diario)**: template determinístico encabezado `BOLETIN DIARIO` + saludo `Buenos Días,` — LBMA USD/oz, conversión a LPS por onza, TC, **precio de compra al 80% LBMA expresado por gramo** (`oroLps × 0.80 ÷ 31.1034768` — constante `TROY_OUNCE_GRAMS`), línea `Pago realizado en Lempiras en su cuenta de FINACOOP`, fecha+hora Honduras (UTC-6), fuente dinámica desde `precios.fuente` (fallback `yahoo-finance`), link `https://www.mape.legal`. Viñetas con `*` (no `-`). **No llama a Claude** — garantiza consistencia y evita alucinaciones de precio. Fallback automático cuando `precios.oro` es null/0 (mismo encabezado + mensaje "Hoy no pude traer el precio exacto…"). El template canónico en el system prompt de María (`app/api/whatsapp/route.js` §`NOTIFICACIÓN DIARIA DE PRECIOS`) refleja la misma estructura para responder ad-hoc a quien pida el boletín por WhatsApp.
 - **Servicios**:
   - `services/userService.ts` — `getOrCreateUserByPhone`, `assignRole`, `getActiveSubscribers`, `listUsers`
   - `services/pricingService.ts` — `fetchGoldPrice`, `fetchSilverPrice`, `fetchUSDHNL`, `fetchCopperPrice`, `fetchAndStorePrices` (usa metals.live como fallback — **bloqueado en Vercel**, solo funciona en local)
@@ -502,6 +546,47 @@ Documentado para evitar trabajo duplicado en futuras sesiones. Ninguno está blo
 
 > **Update 2026-05-10 (`claude/admin-audit-dashboard-NHVaE`):** Master Control Panel para María shipped + revisado por dos agentes (lógica + diseño/código). Findings críticos resueltos en commit `c4057fa` — incluyendo (a) take-over POST loguea con la forma `whatsapp:+504…` que matchea la query de `route.js` para que María vea sus propias respuestas admin, (b) `route.js` strippea el prefijo `[Admin · email]` antes de armar el prompt de Claude para no filtrar correos del admin al cliente, (c) `/api/admin/broadcast/trigger` es fire-and-forget para no exceder timeout de Vercel functions, (d) POST de `/api/admin/broadcast/subscribers` preserva opt-out (no resetea `activo`/`suscrito` en upsert), (e) PATCH de onboarding hace upsert. Ver sección "Master Control Panel — María" arriba.
 
+> **Update 2026-05-12 (`claude/add-embedding-retrieval-adxvF` + `…-drop-functions` + `…-vector-serialization` + `…-document-embedding-rollout-state`):** RAG semántico está **shipped en código pero NO operativo en producción**. Estado al cierre (2026-05-13 07:10 UTC):
+>
+> **Root cause descubierto:** la columna `maria_knowledge.embedding` se había creado manualmente con **`vector(384)`** (probablemente para `gte-small` o `text-embedding-3-small` truncado), no `vector(1536)` como asume el código. Nuestro código pasa arrays de 1536 floats, y pgvector rechazaba el typmod mismatch silenciosamente vía PostgREST — el `UPDATE` regresaba count=0 sin error, y la rama original del endpoint (pre-PR #130) lo reportaba como `done: 53` falsamente. Confirmado con un `update … set embedding = array_fill(0.1::real, array[1536])::vector` desde SQL Editor que arrojó `22000: expected 384 dimensions, not 1536`.
+>
+> **Mitigación aplicada:** columna recreada como `vector(1536)` + IVFFLAT reconstruido + `notify pgrst, 'reload schema'`. Verificado con `format_type(atttypid, atttypmod)` → `vector(1536)`.
+>
+> **Estado al cierre:** aún después de la resize, el backfill sigue fallando (el usuario reportó "not working" sin pegar el JSON exacto del response). Posibles causas residuales — investigar en próxima sesión:
+>   1. **PR #130 sin mergear** — si la versión deployed sigue siendo el código original (raw array + sin count check), nada cambió desde el primer intento. Verificar en `mape.legal/api/admin/maria/embeddings-backfill` que la response incluya `failed: N > 0` cuando falle (señal de que PR #130 sí está activo).
+>   2. **PostgREST schema cache no se refrescó del todo** — probar re-ejecutar `notify pgrst, 'reload schema'` *después* de la resize del column, no antes.
+>   3. **Privilegios** — confirmar `select grantee, privilege_type from information_schema.table_privileges where table_name = 'maria_knowledge'` muestra `service_role` con `UPDATE`. Si no, `grant all on public.maria_knowledge to service_role`.
+>   4. **Manual update final test** — tras resize ya confirmamos que `array_fill(0.1::real, array[1536])::vector` no da error de dim. Ejecutar el `update … returning has_embedding` original para ver si se persiste como postgres.
+> - El endpoint **`/api/admin/maria/embeddings-backfill` queda en producción** como herramienta de debug — re-ejecutable cuando se resuelva la causa.
+> - PR #130 (vector serialization + count=0 check) y PR #134 (este doc update) quedan abiertos al cierre.
+
+> **Update 2026-05-13 (PR #136 + follow-up `claude/fix-rag-embedding-bugs-gwKmX`):** dos blockers más confirmados por dos agentes paralelos (code-review + logic-audit) y arreglados:
+>
+> 1. **`update(values, { count: 'exact' }).eq(...)` en supabase-js v2 devolvía `count: null` (no 0)** — sin `.select()` el cliente usa `Prefer: return=minimal` y el header `Content-Range` no se propaga al property `count`. El check `count === 0` era código muerto: cada UPDATE silenciosamente fallida incrementaba `done`. El endpoint reportaba `{ done: 53, failed: 0 }` aún cuando ninguna fila se escribió — síntoma "not working" exacto. Fix (PR #136): `.update(...).eq('id', row.id).select('id')` y check `data.length === 0`. PostgREST devuelve la fila escrita, ground truth en lugar de número fantasma.
+> 2. **`retrieveKnowledge()` pasaba `number[]` crudo al RPC `match_maria_knowledge`** — mismo bug JSON↔vector que PR #130 arregló para UPDATE, pero el query path se omitió. Fix (PR #136): serializar a la text form `[f1,f2,…]` antes del `rpc(...)`.
+>
+> Follow-up PR `claude/fix-rag-embedding-bugs-gwKmX` (este) endurece el pipeline:
+>   - Helpers `toVectorText` y `buildCanonicalText` extraídos a `lib/maria/embeddings.ts` — única fuente de la serialización canónica.
+>   - Timeouts (5 s query / 15 s batch) + `maxRetries: 2` + errores categorizados (401 / 429 / TIMEOUT) en `embedQuery` y `embedBatch`.
+>   - Pre-check en `retrieveKnowledge` que salta directo a FTS cuando no hay embeddings — sin desperdiciar la llamada a OpenAI.
+>   - Endpoint nuevo `GET /api/admin/maria/rag-health` (admin-gated, modelo `auth-config`): ENV vars + row counts + RPC probes + OpenAI probe + sample dim de un embedding + `hint` accionable. **Primer diagnóstico cuando el RAG no responda.**
+
+### Lo que se aprendió (para próximas migraciones)
+
+1. Cuando una tabla pre-existe (creada fuera de migraciones), **`create table if not exists` + `add column if not exists` son completamente no-op** si los objetos ya existen — incluso si los tipos no coinciden. La migración se ejecuta "limpia" pero produce un schema inconsistente.
+2. **Inspección obligatoria antes de escribir una migración que toca una tabla existente:** correr `information_schema.columns` Y `format_type(atttypid, atttypmod)` desde `pg_attribute` para ver el typmod completo (info_schema reporta `udt_name = 'vector'` sin la dimensión).
+3. **pgvector + supabase-js silent failures:** size mismatches (384 vs 1536) no se reportan como error al cliente — el UPDATE simplemente afecta 0 filas. **Cualquier path de UPDATE crítico debe usar `.update(...).eq(...).select('id')` y validar `data.length > 0`** — el patrón anterior con `{ count: 'exact' }` sin `.select()` deja `count: null` (no 0) en supabase-js v2 y el check `count === 0` es dead code. Corregido en PR #136.
+
+### Saga de migración 024 — para que no se repita
+
+Tres errores encadenados al aplicar 024 en producción, todos resueltos:
+
+1. **`42P13 cannot change return type of existing function`** — la tabla y el RPC `search_maria_knowledge_fts` se habían creado manualmente antes del PR con signatures distintas. `create or replace function` no puede cambiar return types. **Fix:** prepend `drop function if exists` antes de cada `create or replace`. La forma robusta (vive en 024 actual) es un bloque `do $$ ... pg_get_function_identity_arguments(p.oid) ... drop function ... $$` que enumera todos los overloads y los droppea, en lugar de drops narrow.
+2. **`42P13 return type mismatch ... integer instead of uuid`** — el `id` de `maria_knowledge` en prod es `integer` (de un setup manual con `serial`), no `uuid` como asumía la migración. `create table if not exists` es no-op cuando la tabla existe → la columna integer sobrevivió + el RPC quería retornar uuid. **Fix:** migración 024 ahora declara `id integer generated by default as identity` y los RPCs retornan `id integer` con casts explícitos `category::text, title::text` (la tabla guarda varchar).
+3. **`42725 function is not unique`** — después de aplicar la migración corregida, llamar al RPC dio ambiguous-function. La policy 024 había creado el nuevo overload PERO el viejo seguía vivo (Postgres permite ambos cuando los OUT params difieren). **Fix:** el bloque `do $$` (mismo del #1) ya droppea TODO regardless of OUT params, así que esto es ahora redundante con #1.
+
+Lección operativa: cuando una tabla existe pre-migración (creada manualmente), las assumptions de `create table if not exists` no aplican. **Antes de escribir migraciones que tocan tablas existentes, correr `information_schema.columns` para ver el schema real**, no el deseado.
+
 ### Auth — "Sin rol asignado" (resuelto 2026-05-09 vía RPC SECURITY DEFINER)
 
 **Causa raíz**: el `service_role` en este proyecto Supabase no tenía `BYPASSRLS` (o el grant no se propagó), así que el SELECT directo `from('user_roles').select(...)` evaluaba la policy `"Users can read own role"` con `auth.uid()=null` y devolvía 0 filas, indistinguible de un row real faltante. El probe en `/api/debug/auth-config` daba falso positivo (`probe.status:'ok'`) porque sólo chequeaba ausencia de error en el HEAD count, no que devolviera filas reales.
@@ -553,5 +638,5 @@ Follow-up diferido: auto-promover `@cht.hn` / `@mape.legal` a `abogado` en el ca
 - **Lección recurrente**: tercera vez que un build production rompe sin que ningún gate pre-merge lo detecte (ver también PR #100 con `const clientes` dropeado y PR #104 con íconos lucide cruzando RSC). `npm run build` local sobre la rama antes de mergear sigue siendo el único filtro confiable — `tsc --noEmit` y CI checks han pasado limpios en las tres ocasiones.
 
 ### Carryover Phase 0 (no en scope de Phase 1)
-- ⚠ `app/dashboard/minas/page.tsx:72` — lint error `react-hooks/set-state-in-effect` (pre-existente).
-- ⚠ `app/api/admin/clientes/route.ts:61` — TS error `Cannot find name 'clientes'` (pre-existente, bloquea `npm run build` type-check). El compile step pasa; solo el type-check falla. Phase 1 no introduce nuevos errores.
+- ⚠ `app/dashboard/minas/page.tsx:72` — lint error `react-hooks/set-state-in-effect` (pre-existente; **ya no aparece en `tsc --noEmit` post-PR #126**, verificar si sigue vigente).
+- ⚠ `app/api/admin/clientes/route.ts:61` — TS error `Cannot find name 'clientes'` (pre-existente; **ya no aparece en `tsc --noEmit` post-PR #126**, verificar si sigue vigente).

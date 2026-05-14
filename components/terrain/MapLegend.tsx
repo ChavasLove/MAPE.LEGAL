@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 import {
   TYPE_COLORS,
@@ -21,8 +21,27 @@ const TYPE_LABELS: Record<'es' | 'en', Record<MineType, string>> = {
   en: TYPE_LABELS_EN,
 };
 
+const MOBILE_QUERY = '(max-width: 639px)';
+
 export default function MapLegend({ lang, value, onChange }: MapLegendProps) {
+  const [isMobile, setIsMobile] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+
+  // Detect mobile viewport; on mobile, default the legend to collapsed
+  // and pin it to the bottom so it doesn't collide with MapLibre's
+  // top-right navigation controls at narrow widths.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mql = window.matchMedia(MOBILE_QUERY);
+    const apply = (matches: boolean) => {
+      setIsMobile(matches);
+      if (matches) setCollapsed(true);
+    };
+    apply(mql.matches);
+    const handler = (e: MediaQueryListEvent) => apply(e.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, []);
 
   const allOn = value.size === MINE_TYPE_ORDER.length;
 
@@ -47,8 +66,9 @@ export default function MapLegend({ lang, value, onChange }: MapLegendProps) {
     <div
       style={{
         position: 'absolute',
-        top: 16,
-        left: 16,
+        ...(isMobile
+          ? { bottom: 16, left: 16, right: 16, top: 'auto' }
+          : { top: 16, left: 16 }),
         zIndex: 10,
         background: 'color-mix(in oklch, var(--bg) 96%, transparent)',
         backdropFilter: 'blur(8px)',
@@ -56,8 +76,8 @@ export default function MapLegend({ lang, value, onChange }: MapLegendProps) {
         border: '1px solid var(--border)',
         boxShadow: '0 2px 12px color-mix(in oklch, var(--ink) 10%, transparent)',
         padding: collapsed ? '8px 12px' : '12px 14px',
-        minWidth: collapsed ? 'auto' : 200,
-        maxWidth: 240,
+        minWidth: collapsed || isMobile ? 'auto' : 200,
+        maxWidth: isMobile ? 'none' : 240,
         transition: 'padding 0.2s ease',
       }}
     >
