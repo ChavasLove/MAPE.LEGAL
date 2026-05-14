@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import Image from 'next/image';
 import {
   Users, UserCheck, LayoutDashboard, LogOut, Shield, FileText, Settings, LayoutGrid,
-  MessageSquare, UserPlus, Coins, Radio, Terminal, Bot, KeyRound, Mountain,
+  MessageSquare, UserPlus, Coins, Radio, Terminal, Bot, KeyRound, Mountain, Sparkles,
 } from 'lucide-react';
 import { getServerAuth } from '@/lib/serverAuth';
 import SidebarNav from '@/components/dashboard/SidebarNav';
@@ -34,6 +34,7 @@ const mariaItems = [
   { href: '/admin/maria/transacciones',  label: 'Transacciones',    icon: <Coins         {...ICON} />              },
   { href: '/admin/maria/broadcast',      label: 'Broadcast',        icon: <Radio         {...ICON} />              },
   { href: '/admin/maria/auditoria',      label: 'Auditoría',        icon: <Terminal      {...ICON} />              },
+  { href: '/admin/maria/rag-health',     label: 'RAG / Embeddings', icon: <Sparkles      {...ICON} />              },
 ];
 
 const dashboardItems = [
