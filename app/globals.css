@@ -367,21 +367,29 @@ footer a:hover { color: var(--sand); }
 }
 
 /* ── 3D TERRAIN MAP SECTION ────────────────────────────────────────── */
-.terrain-map-layout { position: relative; }
+.terrain-map-frame { position: relative; }
 
-/* Map popup overrides */
-.mining-popup .maplibregl-popup-content {
-  border-radius: 12px !important;
-  border: 1px solid var(--border) !important;
-  box-shadow: 0 4px 16px rgba(31,42,56,0.12) !important;
-  padding: 12px !important;
-  font-family: var(--font-body) !important;
+/* Tone down MapLibre's default chrome to match the design system. */
+.terrain-map-frame .maplibregl-ctrl-attrib,
+.terrain-map-frame .maplibregl-ctrl-scale {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--t3);
 }
-.mining-popup .maplibregl-popup-tip {
-  border-top-color: var(--border) !important;
+.terrain-map-frame .maplibregl-ctrl-attrib-button,
+.terrain-map-frame .maplibregl-ctrl-attrib-inner {
+  background: color-mix(in oklch, var(--bg) 90%, transparent);
+}
+.terrain-map-frame .maplibregl-ctrl-bottom-left,
+.terrain-map-frame .maplibregl-ctrl-bottom-right {
+  margin: 6px;
 }
 
-/* Force stats bar to 2 columns on small screens */
+/* Bottom sheet (mobile) — system-style snap container. */
+.mining-sheet { -webkit-user-select: none; user-select: none; }
+.mining-sheet :where(p, h3, span, a) { -webkit-user-select: text; user-select: text; }
+
+/* Stats bar — 4 columns desktop, 2 columns small screens */
 @media (max-width: 639px) {
   .terrain-stats-bar { grid-template-columns: repeat(2, 1fr) !important; }
 }

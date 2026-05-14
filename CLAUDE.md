@@ -222,16 +222,21 @@ Sección institucional bajo el ancla `#archivos-mineros` en la landing (`app/pag
 
 > **Update 2026-05-11 (PR #124, `claude/fix-map-legend-navigation-MYEUb`):** legend → filtro de mineral, agregada navegación Next/Prev, marker click race condition resuelto, CTA WhatsApp ahora se muestra en todos los sitios (la audiencia es el minero artesanal, no la corporación). Ver "Arquitectura interactiva" abajo.
 
+> **Update 2026-05-14 (rama `claude/3d-topographic-map-lH1Wf`):** rediseño mobile-first — terreno 3D default (pitch 55°, hillshade + sky, exaggeration 1.8), markers migrados de DOM a `circle` layer con `pitch-alignment: map` (destraba el constraint `pitch: 0`), el `SiteInfoPanel` lateral fue reemplazado por `SiteInfoSheet` (bottom sheet con snaps `closed`/`peek`/`full` y drag por pointer events), agregado `CompassButton` flotante, `MapLegend` con dos modos (chip row scroll-snap horizontal en `<768px`, lista vertical en desktop). Todas las secciones de abajo describen este estado.
+
 **Archivos** (todos `'use client'`):
 - `components/terrain/mining-data.ts` — dataset de 8 sitios + `MineType`/`MineStatus` aliases + `MINE_TYPE_ORDER` + `TYPE_COLORS` / `STATUS_COLORS` / `*_LABELS_*` + `COMMODITY_LABELS_ES` (todos `Record<MineType,...>` / `Record<MineStatus,...>` — tipados estrictos, typos fallan al compilar).
-- `components/terrain/MiningMap3D.tsx` — core del mapa, controles, popup compartido, markers con a11y de teclado.
-- `components/terrain/SiteInfoPanel.tsx` — panel de detalle con header de navegación (Prev/Next/posición/Close) + CTA WhatsApp.
-- `components/terrain/MapLegend.tsx` — **filtro de mineral interactivo** (chips toggleables); el nombre del archivo conserva "Legend" por historia, pero el componente ya no muestra leyenda de estado (los markers se colorean solo por mineral, nunca por estado).
-- `components/terrain/TerrainMapSection.tsx` — wrapper de sección, owner del estado `selectedSiteId` + `visibleTypes: Set<MineType>`, deriva `visibleSites` por memo, expone `handleNext`/`handlePrev` con wrap-around, auto-deselect si filtro oculta el sitio activo.
+- `components/terrain/MiningMap3D.tsx` — core del mapa: terreno 3D, hillshade, sky, source GeoJSON + 2 capas `circle` (`mining-circles-touch` invisible 20px + `mining-circles` visible 8–12px). Selección via `setFeatureState({ selected: true })`. Visibilidad via `setFilter([...])`. flyTo a `pitch: 62, zoom 9.5` al seleccionar; vuelve a overview al deseleccionar. Expone `MiningMapApi` (handle imperativo con `getBearing`/`getPitch`/`easeTo`) consumido por `CompassButton`.
+- `components/terrain/SiteInfoSheet.tsx` — **bottom sheet** con 3 snaps (`closed`/`peek`/`full`). Drag por pointer events (`setPointerCapture`), animación CSS `translateY` con curva `cubic-bezier(0.32, 0.72, 0, 1)` (sheet de iOS). En `<768px` aparece como sheet pegado al fondo; en `≥768px` se renderea como panel lateral fijo derecho (mismo componente, otro `Wrapper`). Respeta `env(safe-area-inset-bottom)`. Tap fuera del sheet (en el mapa) cuando hay sitio seleccionado → colapsa a `peek`. Drag de `peek` hacia abajo → deselecciona.
+- `components/terrain/MapLegend.tsx` — **dos modos por `isMobile`**: chip row horizontal con `scroll-snap-type: x mandatory` en mobile (panel anclado top con flex-wrap), lista vertical en desktop (mismo top-left que pre-PR #124). Cada `MINE_TYPE_ORDER` row es `<button aria-pressed>`. Empty selection se bumpea a "all on".
+- `components/terrain/CompassButton.tsx` — botón circular flotante (44×44, mobile bottom-right encima del sheet peek; desktop top-right). Lucide `Compass` ícono. Rota con `transform: rotate(${-bearing}deg)`. Tap → `map.easeTo({ bearing: -18, pitch: 55 })`. Fade a baja opacidad cuando `Math.abs(bearing - -18) < 0.5 && Math.abs(pitch - 55) < 0.5`.
+- `components/terrain/TerrainMapSection.tsx` — wrapper de sección. Owner de `selectedSiteId`, `visibleTypes`, `bearing`, `pitch`. Memoiza `visibleSites = MINING_SITES.filter(s => visibleTypes.has(s.type))`. Expone `handleNext`/`handlePrev` con wrap-around. Hook local `useIsMobile()` con `matchMedia('(max-width: 767px)')`. Auto-deselect si filtro oculta el sitio activo.
 
-**Tiles + 3D terrain**:
-- Default: CartoDB Voyager raster + DEM de `demotiles.maplibre.org` (SRTM hillshade). Gratis, sin API key — el mapa funciona out-of-the-box.
-- Upgrade: si `NEXT_PUBLIC_MAPTILER_KEY` está set, `getMapStyle()` retorna `https://api.maptiler.com/maps/hybrid/style.json?key=…` y `setTerrain()` activa extrusión 3D real con `exaggeration: 1.5`. Free tier 100 K req/mo en cloud.maptiler.com.
+**Tiles + 3D terrain — 3D default**:
+- Basemap raster: CartoDB Voyager (sin auth). Si `NEXT_PUBLIC_MAPTILER_KEY` está set, upgrade automático a estilo MapTiler outdoor/hybrid (3D real con bordes vector + labels altimétricas).
+- DEM source: `demotiles.maplibre.org/terrain-tiles/tiles.json` (SRTM, gratis, sin API key) — agregado como `terrain-dem` source y consumido por (a) `setTerrain({ exaggeration: 1.8 })` para extrusión 3D y (b) capa `hillshade` para sombreado de relieve incluso a pitch bajo. Hillshade paint usa tokens: shadow `--ink`, highlight `--sand`, accent `--ink-2`, `hillshade-exaggeration: 0.45`.
+- Sky layer: `setSky({ 'sky-color': --bg, 'horizon-color': --sand, 'fog-color': --ink })` — horizonte cálido para que el pitch alto se sienta atmosférico, no clínico.
+- Cámara inicial: `pitch: 55`, `bearing: -18`, `zoom: 6.8`, center `[-86.5, 14.7]` (centro de Honduras). En `flyTo` a un sitio: `pitch: 62`, `zoom: 9.5`, `essential: true` (respeta `prefers-reduced-motion`), `duration: 1500ms`.
 
 **Tokens del Color Manual v1.0** (cero hex literals en `components/terrain/`, regla de DESIGN.md):
 
@@ -247,41 +252,67 @@ Sección institucional bajo el ancla `#archivos-mineros` en la landing (`app/pag
 
 Los markers se colorean **solo por tipo mineral**. Los colores de status (`STATUS_COLORS`) aparecen únicamente en los badges del panel y popups — nunca en los pines del mapa. Por eso el filtro vive sobre `MineType`, no sobre `MineStatus`. Las CSS variables `var(--token)` funcionan dentro de inline `style` (el browser las resuelve) y dentro de `color-mix(in oklch, ${token} 14%, white)` para fondos translúcidos de pills/badges.
 
-**Init crítico — `pitch: 0, bearing: 0`** (`MiningMap3D.tsx:217-218`). Con `pitch > 0`, los DOM markers (`maplibregl.Marker({ anchor: 'center' })`) **están correctamente anclados a sus coordenadas geográficas**, pero la perspectiva los proyecta visualmente alejados de las etiquetas del basemap (que se renderizan en el raster del tile, proyección distinta). A zoom 6.5 con `pitch: 45` el offset visible es de varios pixels — un usuario sin contexto lo lee como "los pines están en el lugar equivocado" (síntoma reportado en commit `f18ab3c`). El fix correcto es default flat; el usuario puede inclinar manualmente con drag-right-click y el knob `visualizePitch` del NavigationControl sigue disponible. **Aplica a cualquier futuro uso de DOM markers en este proyecto — symbol layers (`icon-pitch-alignment: map`) son la única forma de que markers + pitch coexistan sin distorsión.** El `flyTo` al seleccionar un sitio tampoco escala pitch.
+**Sin animaciones continuas** (DESIGN.md §4). El script PDF original incluía un `@keyframes mining-pulse` para markers con `status: 'active'`; se eliminó por la regla del manual. El color verde de `STATUS_COLORS.active` ya transmite "activa" sin animación. Las transiciones puntuales (apertura del sheet, `flyTo`, hover de la legend chip) sí están permitidas — la regla aplica solo a animaciones que corren indefinidamente.
 
-**Sin animaciones continuas** (DESIGN.md §4). El script PDF original incluía un `@keyframes mining-pulse` para markers con `status: 'active'`; se eliminó por la regla del manual. El color verde de `STATUS_COLORS.active` ya transmite "activa" sin animación.
+### Arquitectura interactiva (2026-05-14)
 
-### Arquitectura interactiva (PR #124, 2026-05-11)
+**Markers ahora son una capa MapLibre `circle`, no DOM nodes.** Esto destraba 3 problemas a la vez:
 
-**Markers se crean UNA VEZ** en el handler `instance.on('load', …)` (`MiningMap3D.tsx`). Se guardan en `markersRef: Map<string, MarkerEntry>` keyed por `site.id`. Subsecuentes cambios de selección / visibilidad / idioma **mutan el DOM en su lugar** — nunca remove+recreate. Esto cierra el race condition pre-PR #124 que tiraba todos los markers y popups en el mismo tick del click, causando que el popup parpadeara por ~1 frame y el marker recién clickeado desapareciera brevemente.
+1. **`pitch > 0` no rompe el alineamiento.** El paint expression incluye `'circle-pitch-alignment': 'map'` — los círculos rotan con el terreno. Sin esto, el constraint `pitch: 0` de PR #124 seguía vigente y bloqueaba el viewing 3D.
+2. **No race conditions.** El patrón pre-PR #124 (`markersRef.clear() + recreate`) y aún el patrón mutación-en-lugar de PR #124 (3 funciones `applySelectionStyle/Visibility/Popup`) dejaron de ser necesarios. La selección es state declarativo (`setFeatureState({ selected: true })`) y la visibilidad es un `setFilter`.
+3. **Escalabilidad.** Estamos en 8 sitios pero el plan de seedear desde `concesiones_mineras_registro` (587 filas) ya cabe sin re-arquitectura.
 
-**3 funciones de mutación** (declaradas en el componente, leen de refs así son siempre fresh):
-- `applySelectionStyle()` — itera markers, re-aplica `cssText` con el tamaño/sombra correcto según si es el `selectedIdRef.current` (28px + ring `var(--ink)` 3px) o no (22px). También setea `aria-pressed`.
-- `applyVisibilityStyle()` — itera markers y setea `el.style.display = visibleTypesRef.current.has(site.type) ? '' : 'none'`. **Crítico:** `cssText` en `applySelectionStyle` borra `display`, así que **hay que llamar ambas tras cualquier cambio de selección**. El useEffect de `selectedSiteId` llama las dos.
-- `applyPopup()` — popup compartido (`maplibregl.Popup` único). `closeOnClick: false`. Si hay `selectedIdRef.current`, lo posiciona en el sitio y setea HTML; si no, llama `popupRef.current.remove()`. Llamar `.remove()` sobre un popup no agregado es no-op.
+**Tokens de color via `getComputedStyle`** (`MiningMap3D.tsx:83`): MapLibre paint expressions no leen CSS variables. El helper `readVar('--token')` resuelve `getComputedStyle(document.documentElement).getPropertyValue('--token').trim()` una sola vez al mount y arma un objeto `tokens` que se pasa a los paint specs. Si se cambia el theme runtime, hace falta re-resolver — fuera de scope hoy.
 
-**4 useEffects** en `MiningMap3D.tsx`:
-1. **Init** (deps `[]`) — crea map, controles, popup compartido, markers, inyecta CSS chrome para `.mining-popup`.
-2. **Selection** (deps `[selectedSiteId]`) — `applySelectionStyle()` + `applyVisibilityStyle()` (re-apply post-cssText reset) + `applyPopup()`.
-3. **Visibility** (deps `[visibleTypes]`) — `applyVisibilityStyle()`.
-4. **Lang** (deps `[lang]`) — re-setea `aria-label` de cada marker + `applyPopup()` (re-renderea HTML del popup con labels en el idioma actual).
-5. **Fly-to** (deps `[selectedSiteId]`) — separado del effect de selection para que el camera move no acople con la mutation del DOM. Cuando `selectedSiteId` es `null`, vuela de regreso al overview (`INITIAL_CENTER`, `INITIAL_ZOOM`).
+**Source + 2 capas** (en `instance.on('load')`):
 
-**Marker selected — ring `var(--ink)` en vez de same-color halo**: el patrón pre-PR #124 era ring del mismo `fillColor` (gold tenía ring gold, etc.), lo que daba un cambio visual sutil (22→28px con halo del mismo color). El nuevo ring usa `var(--ink)` 3px — visible sin importar el color del mineral.
+- `mining-sites` (source) — `geojson` con `promoteId: 'id'` para que `setFeatureState` use `site.id` como string en vez del autoincrement.
+- `mining-circles-touch` — `circle` invisible, `circle-radius: 20`, `circle-opacity: 0`. Solo existe para el tap target — pinpoints de 8–12px son chicos para los dedos.
+- `mining-circles` — `circle` visible. Paint specs:
+  - `circle-radius`: `case ['feature-state','selected'] 12, ['feature-state','hover'] 10, default 8` — más interpolación leve sobre zoom.
+  - `circle-color`: `match ['get','type']` → `tokens.type[mineType]`. Fallback `tokens.type.historical`.
+  - `circle-stroke-color`: `case ['feature-state','selected'] tokens.ink, default tokens.bg` (ring oscuro cuando seleccionado, ring blanco para contraste cuando no).
+  - `circle-stroke-width`: `case ['feature-state','selected'] 3, default 1.5`.
+  - `circle-pitch-alignment: 'map'`.
 
-**Marker a11y**: cada `el` tiene `role="button"`, `tabindex="0"`, `aria-label`, `aria-pressed`, y un keydown handler que activa con Enter o Space. La activación llama `onSiteSelectRef.current(site.id)`. El click handler hace `e.stopPropagation()` para evitar que algunas versiones de MapLibre traten el click como "click en mapa" y disparen lógica de close.
+**Eventos** (declarativos, no race-prone):
 
-**Filtro de mineral** (`MapLegend.tsx`): renderizado top-left (movido desde bottom-left para no chocar con scale/attribution de MapLibre). Cada `MINE_TYPE_ORDER` row es un `<button aria-pressed>` que toggle-a `value: Set<MineType>`. Empty selection se bumpea automáticamente a "all on" (el mapa nunca queda vacío). Cuando el filtro está activo, `TerrainMapSection.tsx` renderiza un pill `"Mostrando N de N sitios"` en top-right con `aria-live="polite"`.
+- Click sobre `mining-circles-touch` → `setSelectedSiteId(feature.properties.id)`.
+- Hover sobre `mining-circles-touch` → `setFeatureState({ hover: true })` + `cursor: 'pointer'`.
+- Selección cambia (effect) → `setFeatureState({ selected: true })` en el nuevo + `removeFeatureState({ selected: false })` en el viejo + `flyTo` al sitio.
+- `visibleTypes` cambia (effect) → `setFilter('mining-circles', ['in', ['get','type'], ['literal', [...visibleTypes]]])` + igual filtro al touch layer.
+- Bearing/pitch del camera → `map.on('rotate'|'pitch', ...)` actualiza state via `onBearingChange` callback que `TerrainMapSection` consume para alimentar el `CompassButton`.
 
-**Navigation Next/Prev**: `TerrainMapSection.tsx` deriva `visibleSites = MINING_SITES.filter(s => visibleTypes.has(s.type))` por `useMemo`, computa `selectedIndex` del sitio activo dentro de la lista filtrada, y expone `handleNext`/`handlePrev` con wrap-around (`(i + 1) % len` / `(i - 1 + len) % len`). Se pasan a `SiteInfoPanel` como `onNext`/`onPrev` opcionales; el panel los muestra como chevrons Lucide en el header pegados al close button. `position={index+1, total: visibleSites.length}` renderea el indicador `Sitio N de N` / `Site N of N` en `var(--font-mono)`. Si `visibleSites.length <= 1` los botones son `undefined` y no se renderean.
+**Bottom sheet — `SiteInfoSheet`** (mobile-first):
 
-**Auto-deselect bajo filtro**: si el filtro oculta el sitio actualmente seleccionado, un useEffect en `TerrainMapSection` lo deselecciona (`setSelectedSiteId(null)`) — evita un panel zombie con un sitio cuyo marker está hidden.
+- 3 snaps: `closed` (hidden translateY 100%), `peek` (~132px visible — header + status badge), `full` (~70vh con cuerpo scrollable + CTA).
+- Drag por pointer events. `setPointerCapture` en `onPointerDown`, tracking delta-y en `onPointerMove`, snap-to-nearest en `onPointerUp`. Sin libraries.
+- Transición CSS `transform: translateY(...)` con `cubic-bezier(0.32, 0.72, 0, 1)` (iOS sheet curve).
+- Body se hide cuando snap=`peek` (clip vertical), evita scroll cuando no hay espacio.
+- Cuando se selecciona un sitio: el sheet abre a `peek` automáticamente. Tap el handle expande a `full`. Drag handle hacia abajo desde `peek` cierra (deselecciona).
+- En desktop (`≥768px`): mismo componente, otro `Wrapper`. Se renderea como panel pegado a la derecha del mapa, sin gestos drag — usa Next/Prev y Close.
+- `padding-bottom: max(16px, env(safe-area-inset-bottom))` para iOS.
 
-**CTA WhatsApp — visible en todos los sitios** (`SiteInfoPanel.tsx`, post PR #124): el gate por status del diseño original (mostrar solo en `active`/`inactive`, ocultar en `contested`/`historical`) **se eliminó**. Razón: la audiencia del CTA son los mineros artesanales y de pequeña escala que operan en cada distrito — independientemente de si la operación corporativa listada en el card está activa, dormida, en disputa, o extinta. Un sitio histórico como Rosario (Tegucigalpa) o un sitio en disputa como Guapinol siguen siendo distritos donde hay mineros buscando formalizarse. Copy del CTA habla al minero directamente: ES `"¿Operas en esta zona? Inicia trámite con CHT"` / EN `"Mining in this district? Begin a process with CHT"`, con caption `"Pensado para mineros artesanales y de pequeña escala que operan en el área."` Mensaje pre-llenado de WhatsApp también reframe-ado: `"Buenas, soy minero artesanal en la zona de {nameEs} ({department}, {municipality})…"`.
+**Compass button — `CompassButton`**:
 
-**Hover del CTA — `white` no `black`** (DESIGN.md §3): `color-mix(in oklch, var(--moss) 88%, white)`. Pre-PR #124 estaba mixed con `black` lo que daba un hover oscuro casi `var(--ink)`.
+- `position: absolute` (mobile bottom-right, desktop top-right), 44×44, fondo `var(--bg)` con `1px solid var(--border)` + `shadow-sm`.
+- Lucide `Compass` ícono 20px. Rota con `transform: rotate(${-bearing}deg)` (negative porque queremos que la "N" apunte al norte cuando bearing=0).
+- Click → `mapApi.easeTo({ bearing: -18, pitch: 55, duration: 600 })`.
+- `atRest = Math.abs(bearing - -18) < 0.5 && Math.abs(pitch - 55) < 0.5` → opacidad 0.5 cuando estamos en la pose default; 1.0 cuando el usuario rotó/inclinó. Sutil signal de "puedo regresarte al inicial".
 
-**`STATUS_LABELS_ES.contested`**: cambió de `"Controvertida"` a `"En disputa"` (PR #124). "Controvertida" leía como public-opinion framing; "En disputa" es el término que usa la prensa legal hondureña y matchea cleanly con EN `"Contested"`.
+**MapLegend — dos modos por `isMobile`**:
+
+- Mobile (`<768px`): chip row horizontal con `overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none`. Renderea en la parte de arriba del mapa, full-width. Cada chip es 44px alto. Tap toggles. Visualmente similar a chips de Material Design 3 pero con tokens de la marca.
+- Desktop (`≥768px`): lista vertical en top-left del map container (mismo patrón pre-PR #124). Card blanco con border, cada row es un `<button>` con el dot de color + label.
+- En ambos modos: empty selection se bumpea a "all on" para que el mapa nunca quede vacío.
+
+**Auto-deselect bajo filtro**: si el filtro oculta el sitio actualmente seleccionado, un useEffect en `TerrainMapSection` lo deselecciona (`setSelectedSiteId(null)`) — evita un sheet zombie con un sitio cuyo marker está hidden.
+
+**Navigation Next/Prev** (`SiteInfoSheet` header en modo `full`): mismo wrap-around que PR #124. `TerrainMapSection` deriva `visibleSites` por `useMemo`, computa `selectedIndex`, expone `handleNext`/`handlePrev`. Position indicator `Sitio N de N` / `Site N of N` en `var(--font-mono)`. Si `visibleSites.length <= 1` los chevrons se omiten.
+
+**CTA WhatsApp** (en el sheet `full` view, todos los sitios — preservado de PR #124): copy `"¿Operas en esta zona? Inicia trámite con CHT"` / `"Mining in this district? Begin a process with CHT"`. El mensaje pre-llenado de WhatsApp incluye el nombre del distrito y el departamento. Hover: `color-mix(in oklch, var(--moss) 88%, white)`.
+
+**`STATUS_LABELS_ES.contested`** = `"En disputa"` (no `"Controvertida"`) — preservado de PR #124.
 
 **Dataset (8 sitios, hardcoded en `mining-data.ts`)**:
 
@@ -298,12 +329,14 @@ Los markers se colorean **solo por tipo mineral**. Los colores de status (`STATU
 
 Stats bar derivado (`TerrainMapSection.tsx`): 4 numerales en `var(--font-display)` 28px — total mapeados / activas / **en disputa** / históricas. Lee `8 / 2 / 2 / 2`. **Los stats reflejan el universo completo, no la lista filtrada** — la cuenta filtrada vive en el pill `Mostrando N de N` sobre el mapa cuando el filtro está activo.
 
-**Future work** (plan operativo en `/root/.claude/plans/yes-proceed-suggestions-are-abundant-rain.md`):
+**Future work**:
 - **Wire al Supabase `minas` table** vía vista pública `minas_publicas` (mismo patrón que `certificados_origen_publicos` — migración 020 + `app/verificar/[numero]/page.tsx`). Requiere extender `minas` con `descripcion_es`, `descripcion_en`, `desde`, `operador`, `produccion`, `commodities`; nueva vista que strippea `cliente_id`; nueva ruta `app/api/archivos-mineros/route.ts` con lazy-init anon + `Cache-Control: public, s-maxage=300, stale-while-revalidate=900`.
-- ~~**Filtros UI** por mineral y status~~ — shipped en PR #124 (mineral only; status filter no requerido porque el usuario quiere ver todos los estados como contexto educativo).
-- **Expandir dataset** a 50–100 sitios usando INHGEOMIN bulletin + BCH histórico + Acuerdo 042-2013 annexes. Cada row debe tener fuente citable y GPS verificado. La migración 023 (`concesiones_mineras_registro`) shipped el 2026-05-11 ya carga 587 concesiones INHGEOMIN — evaluar si la archive map debería leer de ahí en vez de mantener un dataset separado.
-- **Symbol layer migration** — cuando el dataset cruce ~200 sitios, migrar de DOM markers a un `circle` symbol layer + click-handling via `map.on('click', 'mining-circles', …)`. Los DOM markers actuales con CSS variables empiezan a jankearse a esa escala. Bonus: symbol layers + `icon-pitch-alignment: map` resuelven el constraint `pitch: 0` también.
+- ~~**Filtros UI** por mineral y status~~ — shipped en PR #124 (mineral only).
+- ~~**Symbol layer migration**~~ — shipped 2026-05-14 en la rama `claude/3d-topographic-map-lH1Wf`. El constraint `pitch: 0` ya no aplica.
+- **Expandir dataset** a 50–100 sitios usando INHGEOMIN bulletin + BCH histórico + Acuerdo 042-2013 annexes. Cada row debe tener fuente citable y GPS verificado. La migración 023 (`concesiones_mineras_registro`) shipped el 2026-05-11 ya carga 587 concesiones INHGEOMIN — evaluar si la archive map debería leer de ahí en vez de mantener un dataset separado. Con el cambio a `circle` layer, agregar más rows ya no requiere re-arquitectura.
+- **Etiquetas dinámicas** — agregar un `symbol` layer con `text-field: ['get','shortName']` que se active a `zoom >= 8` para que los nombres aparezcan al hacer zoom. Hoy se ven solo via el sheet/popup.
 - **Fact-check pendiente**: las descripciones de `clavo-rico` y `guapinol` afirman años específicos para denegaciones de permisos INHGEOMIN (2024-2025) que vale la pena verificar contra boletines INHGEOMIN antes de un push de marketing al landing.
+- **Performance en mid-range Android** — el terrain rendering puede pegar fuerte el GPU. Hasta hoy fue probado solo en DevTools mobile emulator. Si reportan jank, reducir `exaggeration` a 1.5 y/o eliminar el hillshade en `<768px`.
 
 ## SEO / Open Graph
 
