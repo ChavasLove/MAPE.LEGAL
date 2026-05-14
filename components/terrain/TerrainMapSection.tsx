@@ -1,9 +1,16 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import MiningMap3D from './MiningMap3D';
-import SiteInfoPanel from './SiteInfoPanel';
+import {
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+  useRef,
+} from 'react';
+import MiningMap3D, { type MiningMapApi } from './MiningMap3D';
+import SiteInfoSheet from './SiteInfoSheet';
 import MapLegend from './MapLegend';
+import CompassButton from './CompassButton';
 import TopoBand from '@/components/decor/TopoBand';
 import { MINING_SITES, MINE_TYPE_ORDER } from './mining-data';
 import type { MineType } from './mining-data';
@@ -13,11 +20,34 @@ interface Props {
   t: (es: string, en: string) => string;
 }
 
+const MOBILE_QUERY = '(max-width: 767px)';
+
+/** Tiny in-file media query hook — avoids adding a dep. */
+function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mql = window.matchMedia(MOBILE_QUERY);
+    const apply = (matches: boolean) => setIsMobile(matches);
+    apply(mql.matches);
+    const handler = (e: MediaQueryListEvent) => apply(e.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, []);
+  return isMobile;
+}
+
 export default function TerrainMapSection({ lang, t }: Props) {
+  const isMobile = useIsMobile();
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
   const [visibleTypes, setVisibleTypes] = useState<Set<MineType>>(
     () => new Set(MINE_TYPE_ORDER)
   );
+  const [bearing, setBearing] = useState(-18);
+  const [pitch, setPitch] = useState(55);
+  const [announce, setAnnounce] = useState<string>('');
+
+  const apiRef = useRef<MiningMapApi | null>(null);
 
   const visibleSites = useMemo(
     () => MINING_SITES.filter((s) => visibleTypes.has(s.type)),
@@ -35,6 +65,18 @@ export default function TerrainMapSection({ lang, t }: Props) {
     () => MINING_SITES.find((s) => s.id === selectedSiteId) ?? null,
     [selectedSiteId]
   );
+
+  // a11y polite announcement on selection change
+  useEffect(() => {
+    if (!selectedSite) {
+      setAnnounce('');
+      return;
+    }
+    const name = lang === 'es' ? selectedSite.nameEs : selectedSite.name;
+    setAnnounce(
+      lang === 'es' ? `Sitio seleccionado: ${name}` : `Selected site: ${name}`
+    );
+  }, [selectedSite, lang]);
 
   const selectedIndex = selectedSite
     ? visibleSites.findIndex((s) => s.id === selectedSite.id)
@@ -71,8 +113,20 @@ export default function TerrainMapSection({ lang, t }: Props) {
     setSelectedSiteId(prev.id);
   }, [visibleSites, selectedIndex]);
 
-  // Only enable Next/Prev when there's more than one visible site to cycle through.
   const navEnabled = visibleSites.length > 1;
+
+  const handleBearingChange = useCallback((b: number, p: number) => {
+    setBearing(b);
+    setPitch(p);
+  }, []);
+
+  const handleMapReady = useCallback((api: MiningMapApi) => {
+    apiRef.current = api;
+  }, []);
+
+  const handleCompassClick = useCallback(() => {
+    apiRef.current?.resetView();
+  }, []);
 
   /* ---- derived stats (full universe; not filtered) ------------- */
   const stats = [
@@ -100,13 +154,24 @@ export default function TerrainMapSection({ lang, t }: Props) {
 
   const filterActive = visibleTypes.size !== MINE_TYPE_ORDER.length;
 
+  // Map area height — taller on mobile (the map is the experience) yet
+  // capped so portrait phones still expose stats below.
+  const mapHeight: React.CSSProperties['height'] = isMobile ? '72vh' : 560;
+
   return (
     <div style={{ position: 'relative' }}>
-      <div style={{ position: 'relative', height: 48, overflow: 'hidden', marginBottom: -1 }}>
+      <div
+        style={{
+          position: 'relative',
+          height: 48,
+          overflow: 'hidden',
+          marginBottom: -1,
+        }}
+      >
         <TopoBand variant="light" position="band" />
       </div>
 
-      <div style={{ marginBottom: 32 }}>
+      <div style={{ marginBottom: 24 }}>
         <div className="section-label">{t('Archivo', 'Archive')}</div>
         <h2 className="section-title">
           {t(
@@ -116,91 +181,143 @@ export default function TerrainMapSection({ lang, t }: Props) {
         </h2>
         <p className="section-sub" style={{ maxWidth: 720 }}>
           {t(
-            'Mapa de referencia de los distritos mineros del país: operaciones activas, yacimientos en pausa, sitios en disputa y zonas con presencia histórica. Cada uno de estos territorios concentra mineros artesanales y de pequeña escala que son los clientes naturales del proceso de formalización con CHT.',
-            "A reference map of Honduras' mining districts: active operations, paused deposits, contested sites, and areas with historical presence. Each of these territories concentrates artisanal and small-scale miners — the natural clients for CHT's formalization process."
+            'Mapa topográfico 3D de los distritos mineros del país: operaciones activas, yacimientos en pausa, sitios en disputa y zonas con presencia histórica. Cada uno de estos territorios concentra mineros artesanales y de pequeña escala que son los clientes naturales del proceso de formalización con CHT.',
+            "A 3D topographic map of Honduras' mining districts: active operations, paused deposits, contested sites, and areas with historical presence. Each of these territories concentrates artisanal and small-scale miners — the natural clients for CHT's formalization process."
           )}
         </p>
       </div>
 
+      {/* Map container — relative for floating overlays + the sheet */}
       <div
-        className="terrain-map-layout"
+        className="terrain-map-frame"
         style={{
-          display: 'flex',
-          gap: 0,
+          position: 'relative',
+          width: '100%',
+          height: mapHeight,
+          minHeight: 440,
           borderRadius: 12,
           border: '1px solid var(--border)',
           boxShadow: '0 2px 6px color-mix(in oklch, var(--ink) 5%, transparent)',
           overflow: 'hidden',
           background: 'var(--bg)',
-          minHeight: 550,
         }}
       >
-        <div style={{ flex: 1, minHeight: 400, position: 'relative' }}>
-          <MiningMap3D
-            lang={lang}
-            selectedSiteId={selectedSiteId}
-            visibleTypes={visibleTypes}
-            onSiteSelect={handleSiteSelect}
-          />
-          <MapLegend lang={lang} value={visibleTypes} onChange={setVisibleTypes} />
-          {filterActive && (
-            <div
-              style={{
-                position: 'absolute',
-                top: 16,
-                right: 16,
-                zIndex: 10,
-                padding: '6px 10px',
-                borderRadius: 999,
-                background: 'color-mix(in oklch, var(--bg) 96%, transparent)',
-                border: '1px solid var(--border)',
-                boxShadow: '0 1px 4px color-mix(in oklch, var(--ink) 10%, transparent)',
-                fontFamily: 'var(--font-mono)',
-                fontSize: 11,
-                color: 'var(--slate)',
-                letterSpacing: '0.04em',
-              }}
-              aria-live="polite"
-            >
-              {t(
-                `Mostrando ${visibleSites.length} de ${MINING_SITES.length} sitios`,
-                `Showing ${visibleSites.length} of ${MINING_SITES.length} sites`
-              )}
-            </div>
-          )}
-        </div>
+        <MiningMap3D
+          lang={lang}
+          selectedSiteId={selectedSiteId}
+          visibleTypes={visibleTypes}
+          onSiteSelect={handleSiteSelect}
+          onBearingChange={handleBearingChange}
+          onMapReady={handleMapReady}
+        />
 
-        <div
-          className="terrain-info-panel"
+        {/* Filter — chip row on mobile, vertical list on desktop */}
+        <MapLegend
+          lang={lang}
+          value={visibleTypes}
+          onChange={setVisibleTypes}
+          isMobile={isMobile}
+        />
+
+        {/* Compass / reset view */}
+        <CompassButton
+          bearing={bearing}
+          pitch={pitch}
+          lang={lang}
+          onClick={handleCompassClick}
+        />
+
+        {/* Filter active counter (desktop only — mobile chip row already shows it) */}
+        {filterActive && !isMobile && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 16,
+              right: 68,
+              zIndex: 10,
+              padding: '6px 10px',
+              borderRadius: 999,
+              background: 'color-mix(in oklch, var(--bg) 96%, transparent)',
+              border: '1px solid var(--border)',
+              boxShadow: '0 1px 4px color-mix(in oklch, var(--ink) 10%, transparent)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 11,
+              color: 'var(--slate)',
+              letterSpacing: '0.04em',
+            }}
+            aria-live="polite"
+          >
+            {t(
+              `Mostrando ${visibleSites.length} de ${MINING_SITES.length} sitios`,
+              `Showing ${visibleSites.length} of ${MINING_SITES.length} sites`
+            )}
+          </div>
+        )}
+
+        {/* Info panel — bottom sheet on mobile, right-side card on desktop */}
+        <SiteInfoSheet
+          site={selectedSite}
+          lang={lang}
+          isMobile={isMobile}
+          onClose={handleClose}
+          onPrev={selectedSite && navEnabled ? handlePrev : undefined}
+          onNext={selectedSite && navEnabled ? handleNext : undefined}
+          position={
+            selectedSite && selectedIndex >= 0
+              ? { index: selectedIndex + 1, total: visibleSites.length }
+              : undefined
+          }
+        />
+
+        {/* a11y live region — visually hidden */}
+        <span
+          aria-live="polite"
+          aria-atomic="true"
           style={{
-            width: 360,
-            flexShrink: 0,
-            borderLeft: '1px solid var(--border)',
-            background: 'var(--bg)',
+            position: 'absolute',
+            width: 1,
+            height: 1,
+            padding: 0,
+            margin: -1,
+            overflow: 'hidden',
+            clip: 'rect(0, 0, 0, 0)',
+            whiteSpace: 'nowrap',
+            border: 0,
           }}
         >
-          <SiteInfoPanel
-            site={selectedSite}
-            lang={lang}
-            onClose={handleClose}
-            onPrev={selectedSite && navEnabled ? handlePrev : undefined}
-            onNext={selectedSite && navEnabled ? handleNext : undefined}
-            position={
-              selectedSite && selectedIndex >= 0
-                ? { index: selectedIndex + 1, total: visibleSites.length }
-                : undefined
-            }
-          />
-        </div>
+          {announce}
+        </span>
       </div>
 
+      {/* Hint strip — helps first-time mobile users discover gestures */}
+      {isMobile && (
+        <p
+          style={{
+            marginTop: 10,
+            fontSize: 11,
+            fontFamily: 'var(--font-mono)',
+            letterSpacing: '0.04em',
+            color: 'var(--t3)',
+            textAlign: 'center',
+          }}
+        >
+          {t(
+            'Pellizque para acercar · arrastre con dos dedos para inclinar · toque un pin',
+            'Pinch to zoom · two-finger drag to tilt · tap a pin'
+          )}
+        </p>
+      )}
+
+      {/* Stats — smaller on mobile to keep map dominant */}
       <div
         className="terrain-stats-bar"
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
+          gridTemplateColumns: isMobile
+            ? 'repeat(4, 1fr)'
+            : 'repeat(4, 1fr)',
           gap: 1,
-          marginTop: 1,
+          marginTop: isMobile ? 18 : 1,
           borderRadius: 12,
           overflow: 'hidden',
           border: '1px solid var(--border)',
@@ -210,7 +327,7 @@ export default function TerrainMapSection({ lang, t }: Props) {
           <div
             key={stat.labelEs}
             style={{
-              padding: '16px 20px',
+              padding: isMobile ? '12px 8px' : '16px 20px',
               background: 'var(--bg)',
               textAlign: 'center',
             }}
@@ -218,7 +335,7 @@ export default function TerrainMapSection({ lang, t }: Props) {
             <div
               style={{
                 fontFamily: 'var(--font-display)',
-                fontSize: 28,
+                fontSize: isMobile ? 'clamp(20px, 5vw, 28px)' : 28,
                 fontWeight: 600,
                 color: 'var(--ink)',
                 letterSpacing: '-0.02em',
@@ -230,12 +347,13 @@ export default function TerrainMapSection({ lang, t }: Props) {
             <div
               style={{
                 fontFamily: 'var(--font-mono)',
-                fontSize: 10,
+                fontSize: isMobile ? 9 : 10,
                 fontWeight: 600,
                 letterSpacing: '0.18em',
                 textTransform: 'uppercase',
                 color: 'var(--slate)',
                 marginTop: 4,
+                lineHeight: 1.3,
               }}
             >
               {t(stat.labelEs, stat.labelEn)}
@@ -243,19 +361,6 @@ export default function TerrainMapSection({ lang, t }: Props) {
           </div>
         ))}
       </div>
-
-      <style>{`
-        @media (max-width: 900px) {
-          .terrain-map-layout { flex-direction: column !important; }
-          .terrain-info-panel {
-            width: 100% !important;
-            border-left: none !important;
-            border-top: 1px solid var(--border);
-            max-height: 460px;
-          }
-          .terrain-stats-bar { grid-template-columns: repeat(2, 1fr) !important; }
-        }
-      `}</style>
     </div>
   );
 }

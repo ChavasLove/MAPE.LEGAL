@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, X } from 'lucide-react';
 import {
   TYPE_COLORS,
   TYPE_LABELS_ES,
@@ -14,6 +14,7 @@ interface MapLegendProps {
   lang: 'es' | 'en';
   value: Set<MineType>;
   onChange: (next: Set<MineType>) => void;
+  isMobile: boolean;
 }
 
 const TYPE_LABELS: Record<'es' | 'en', Record<MineType, string>> = {
@@ -21,39 +22,15 @@ const TYPE_LABELS: Record<'es' | 'en', Record<MineType, string>> = {
   en: TYPE_LABELS_EN,
 };
 
-const MOBILE_QUERY = '(max-width: 639px)';
-
-export default function MapLegend({ lang, value, onChange }: MapLegendProps) {
-  const [isMobile, setIsMobile] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
-
-  // Detect mobile viewport; on mobile, default the legend to collapsed
-  // and pin it to the bottom so it doesn't collide with MapLibre's
-  // top-right navigation controls at narrow widths.
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const mql = window.matchMedia(MOBILE_QUERY);
-    const apply = (matches: boolean) => {
-      setIsMobile(matches);
-      if (matches) setCollapsed(true);
-    };
-    apply(mql.matches);
-    const handler = (e: MediaQueryListEvent) => apply(e.matches);
-    mql.addEventListener('change', handler);
-    return () => mql.removeEventListener('change', handler);
-  }, []);
-
+export default function MapLegend({ lang, value, onChange, isMobile }: MapLegendProps) {
   const allOn = value.size === MINE_TYPE_ORDER.length;
 
   const toggle = (type: MineType) => {
     const next = new Set(value);
-    if (next.has(type)) {
-      next.delete(type);
-    } else {
-      next.add(type);
-    }
-    // Disallow empty selection — re-enable everything instead of an empty map.
+    if (next.has(type)) next.delete(type);
+    else next.add(type);
     if (next.size === 0) {
+      // Disallow empty selection — re-enable everything instead of an empty map.
       onChange(new Set(MINE_TYPE_ORDER));
       return;
     }
@@ -62,13 +39,205 @@ export default function MapLegend({ lang, value, onChange }: MapLegendProps) {
 
   const showAll = () => onChange(new Set(MINE_TYPE_ORDER));
 
+  if (isMobile) {
+    return (
+      <MobileChipRow
+        lang={lang}
+        value={value}
+        toggle={toggle}
+        showAll={showAll}
+        allOn={allOn}
+      />
+    );
+  }
+
+  return (
+    <DesktopList
+      lang={lang}
+      value={value}
+      toggle={toggle}
+      showAll={showAll}
+      allOn={allOn}
+    />
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Mobile: horizontal-scroll chip row                                  */
+/* ------------------------------------------------------------------ */
+
+function MobileChipRow({
+  lang,
+  value,
+  toggle,
+  showAll,
+  allOn,
+}: {
+  lang: 'es' | 'en';
+  value: Set<MineType>;
+  toggle: (t: MineType) => void;
+  showAll: () => void;
+  allOn: boolean;
+}) {
+  const activeCount = value.size;
+  const total = MINE_TYPE_ORDER.length;
+
+  return (
+    <div
+      role="group"
+      aria-label={lang === 'es' ? 'Filtrar por mineral' : 'Filter by mineral'}
+      className="mining-chip-row"
+      style={{
+        position: 'absolute',
+        top: 12,
+        left: 12,
+        right: 12,
+        zIndex: 15,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '8px 10px',
+        background: 'color-mix(in oklch, var(--bg) 96%, transparent)',
+        backdropFilter: 'blur(10px)',
+        border: '1px solid var(--border)',
+        borderRadius: 999,
+        boxShadow: '0 2px 12px color-mix(in oklch, var(--ink) 10%, transparent)',
+        maxWidth: 'calc(100% - 24px)',
+      }}
+    >
+      {/* horizontal scroll list */}
+      <div
+        className="mining-chip-scroller"
+        style={{
+          display: 'flex',
+          gap: 6,
+          overflowX: 'auto',
+          scrollSnapType: 'x mandatory',
+          scrollbarWidth: 'none',
+          flex: 1,
+          minWidth: 0,
+        }}
+      >
+        {MINE_TYPE_ORDER.map((type) => {
+          const color = TYPE_COLORS[type];
+          const label = TYPE_LABELS[lang][type];
+          const active = value.has(type);
+          return (
+            <button
+              key={type}
+              type="button"
+              onClick={() => toggle(type)}
+              aria-pressed={active}
+              style={{
+                flexShrink: 0,
+                scrollSnapAlign: 'start',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 10px',
+                background: active
+                  ? `color-mix(in oklch, ${color} 14%, white)`
+                  : 'transparent',
+                border: `1px solid ${
+                  active ? `color-mix(in oklch, ${color} 32%, white)` : 'var(--border)'
+                }`,
+                borderRadius: 999,
+                cursor: 'pointer',
+                color: active ? 'var(--ink)' : 'var(--t3)',
+                fontSize: 12,
+                fontWeight: 500,
+                whiteSpace: 'nowrap',
+                minHeight: 28,
+              }}
+            >
+              <span
+                aria-hidden
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  background: active ? color : `color-mix(in oklch, ${color} 30%, white)`,
+                }}
+              />
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* counter / reset */}
+      {!allOn ? (
+        <button
+          type="button"
+          onClick={showAll}
+          aria-label={lang === 'es' ? 'Mostrar todos' : 'Show all'}
+          style={{
+            flexShrink: 0,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '4px 8px',
+            background: 'var(--ink)',
+            color: 'white',
+            border: 'none',
+            borderRadius: 999,
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+            fontWeight: 600,
+            cursor: 'pointer',
+            minHeight: 26,
+          }}
+        >
+          <span>{activeCount} / {total}</span>
+          <X size={12} strokeWidth={2} />
+        </button>
+      ) : (
+        <span
+          style={{
+            flexShrink: 0,
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+            color: 'var(--slate)',
+            padding: '4px 8px',
+          }}
+        >
+          {activeCount} / {total}
+        </span>
+      )}
+
+      {/* hide WebKit scrollbar */}
+      <style>{`
+        .mining-chip-scroller::-webkit-scrollbar { display: none; }
+      `}</style>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Desktop: collapsible vertical list                                  */
+/* ------------------------------------------------------------------ */
+
+function DesktopList({
+  lang,
+  value,
+  toggle,
+  showAll,
+  allOn,
+}: {
+  lang: 'es' | 'en';
+  value: Set<MineType>;
+  toggle: (t: MineType) => void;
+  showAll: () => void;
+  allOn: boolean;
+}) {
+  const [collapsed, setCollapsed] = useState(false);
+
   return (
     <div
       style={{
         position: 'absolute',
-        ...(isMobile
-          ? { bottom: 16, left: 16, right: 16, top: 'auto' }
-          : { top: 16, left: 16 }),
+        top: 16,
+        left: 16,
         zIndex: 10,
         background: 'color-mix(in oklch, var(--bg) 96%, transparent)',
         backdropFilter: 'blur(8px)',
@@ -76,8 +245,8 @@ export default function MapLegend({ lang, value, onChange }: MapLegendProps) {
         border: '1px solid var(--border)',
         boxShadow: '0 2px 12px color-mix(in oklch, var(--ink) 10%, transparent)',
         padding: collapsed ? '8px 12px' : '12px 14px',
-        minWidth: collapsed || isMobile ? 'auto' : 200,
-        maxWidth: isMobile ? 'none' : 240,
+        minWidth: collapsed ? 'auto' : 200,
+        maxWidth: 240,
         transition: 'padding 0.2s ease',
       }}
     >
@@ -189,6 +358,7 @@ export default function MapLegend({ lang, value, onChange }: MapLegendProps) {
                   }}
                 >
                   <span
+                    aria-hidden
                     style={{
                       width: 10,
                       height: 10,
@@ -197,10 +367,6 @@ export default function MapLegend({ lang, value, onChange }: MapLegendProps) {
                         ? color
                         : `color-mix(in oklch, ${color} 28%, white)`,
                       flexShrink: 0,
-                      boxShadow: active
-                        ? '0 1px 3px color-mix(in oklch, var(--ink) 18%, transparent)'
-                        : 'none',
-                      transition: 'background 0.15s',
                     }}
                   />
                   <span
