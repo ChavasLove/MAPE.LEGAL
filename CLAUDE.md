@@ -443,6 +443,7 @@ Superficie admin completa para operar el asistente virtual desde el navegador. V
 - **`/admin/maria/transacciones`** — cola de `transacciones_pendientes`. Filtros por estado. Botones inline `Confirmar`/`Cancelar` que hacen `PATCH /api/admin/maria/transactions/[id]`.
 - **`/admin/maria/broadcast`** — control center del broadcast diario: toggles por métrica (gold/silver/usd_hnl/copper), audiencia por rol (minero/comprador/tecnico/admin), horario documentado (la programación real vive en `vercel.json`), CRUD de suscriptores (`usuarios_broadcast`), historial de envíos (`broadcast_log`) con `aborted_reason`, y botón **Enviar ahora**.
 - **`/admin/maria/auditoria`** — timeline de `admin_actions` (comandos via passphrase WhatsApp). Filtros por `command_type`. Payload jsonb pretty-printed.
+- **`/admin/maria/rag-health`** — diagnóstico + operación del RAG semántico de María. Wrapper UI sobre `/api/admin/maria/rag-health` (probes) y `/api/admin/maria/embeddings-backfill` (escritura). Status banner verde/ámbar con `hint` accionable + 4 cards (env vars, filas con/sin embedding + sample_dim, estado de los 2 RPCs, probe a OpenAI). Tres botones: **Canario (5 filas)** · **Completar (todas las pendientes)** · **Forzar re-embed total** (confirm()-gated, costo OpenAI proporcional). Cada run muestra `Candidatos / Escritas / Fallidas / Modelo` + las primeras 20 razones de fallo. Auto-recarga el status tras cada backfill. **Reemplaza el flujo de DevTools + Supabase Studio para todo el ciclo de diagnóstico-y-fix del RAG.**
 - **`/admin/permisos`** — matriz read-only `rol × permiso` calculada desde `roles.permisos` (con `*` = acceso total). Edición sigue viviendo en `/admin/roles`.
 
 ### APIs nuevas (todas `requireRole('admin')`, todas `force-dynamic`)
@@ -471,7 +472,7 @@ Helper canónico para todas las lookups admin. Strippea prefijos `whatsapp:`/`te
 
 ### Sidebar nav (`app/admin/layout.tsx`)
 
-Dos secciones agrupadas: **admin items** (Resumen · Usuarios · Profesionales · Roles · Permisos · Contenido · **Concesiones** · Configuración) y **María items** (Panel María · Conversaciones · Clientes y leads · Transacciones · Broadcast · Auditoría) separadas por un eyebrow `MARÍA` en mono small caps. Los items pasan `icon: <Foo {...ICON} />` (JSX pre-renderizado), no `Icon: Foo` — `SidebarNav` es un client component y los component refs de lucide-react no cruzan el boundary RSC server→client. El ícono de Concesiones es `Mountain` de lucide-react.
+Dos secciones agrupadas: **admin items** (Resumen · Usuarios · Profesionales · Roles · Permisos · Contenido · **Concesiones** · Configuración) y **María items** (Panel María · Conversaciones · Clientes y leads · Transacciones · Broadcast · Auditoría · **RAG / Embeddings**) separadas por un eyebrow `MARÍA` en mono small caps. Los items pasan `icon: <Foo {...ICON} />` (JSX pre-renderizado), no `Icon: Foo` — `SidebarNav` es un client component y los component refs de lucide-react no cruzan el boundary RSC server→client. El ícono de Concesiones es `Mountain` y el de RAG / Embeddings es `Sparkles`.
 
 ## Registro de Concesiones INHGEOMIN (`app/admin/concesiones`, `app/registro`, 2026-05-11)
 
@@ -539,6 +540,11 @@ Documentado para evitar trabajo duplicado en futuras sesiones. Ninguno está blo
 >   - Timeouts (5 s query / 15 s batch) + `maxRetries: 2` + errores categorizados (401 / 429 / TIMEOUT) en `embedQuery` y `embedBatch`.
 >   - Pre-check en `retrieveKnowledge` que salta directo a FTS cuando no hay embeddings — sin desperdiciar la llamada a OpenAI.
 >   - Endpoint nuevo `GET /api/admin/maria/rag-health` (admin-gated, modelo `auth-config`): ENV vars + row counts + RPC probes + OpenAI probe + sample dim de un embedding + `hint` accionable. **Primer diagnóstico cuando el RAG no responda.**
+>   - Página admin `/admin/maria/rag-health` (commit `d76477a`): UI wrapper sobre el endpoint anterior + `embeddings-backfill` con 3 botones (canary 5 / completar / forzar re-embed). Elimina la dependencia de DevTools paste protection y SQL Editor para el ciclo diagnóstico-y-fix.
+>
+> **Root cause final descubierto en producción (2026-05-13 ~18:00 HN):** después de aplicar todos los fixes anteriores el canary seguía devolviendo `failed: 5, "update affected 0 rows"`. La cadena de diagnósticos (RLS forzado? policy? grants? schema cache?) descartó todas las hipótesis estructurales; SQL Editor con `SET LOCAL ROLE service_role` + UPDATE devolvía `id=2, has_embedding=true` — la policy `maria_knowledge_service_all` funciona perfectamente cuando el rol activo es `service_role`. El problema era que **`SUPABASE_SERVICE_ROLE_KEY` en Vercel no era la JWT con claim `role: service_role`** — al validar la JWT, PostgREST hacía `SET ROLE` al rol del claim (probablemente `anon`), y entonces SELECT/RPC funcionaban (read policy + grant execute), pero UPDATE caía silenciosamente porque ninguna policy `for all to anon` existe. Fix: copiar el `service_role` secret legacy desde **Supabase → Settings → API Keys (Legacy)**, pegarlo en **Vercel → Settings → Environment Variables → SUPABASE_SERVICE_ROLE_KEY (Production)**, redeploy. Canary subsecuente: `5 / 0`. ✅
+>
+> **Lección operativa**: cuando supabase-js `.update()` devuelve `data: []` sin error desde un cliente con la "service_role key", **la primera hipótesis a verificar es que la JWT realmente tenga `role: service_role`**. SELECT y RPC con `grant execute to anon` enmascaran el problema porque funcionan con cualquier rol válido — solo UPDATE/INSERT/DELETE revelan el mismatch. El nuevo `/admin/maria/rag-health` reduce este diagnóstico a un click; la lección general aplica a cualquier path admin que dependa del service_role.
 
 ### Lo que se aprendió (para próximas migraciones)
 
