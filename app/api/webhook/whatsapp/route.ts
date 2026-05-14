@@ -25,8 +25,13 @@ export async function POST(req: NextRequest) {
     const messages = parseWebhookMessages(payload);
 
     for (const msg of messages) {
-      // Skip non-media messages (only store documents and images as pending verification)
-      if (msg.type !== 'image' && msg.type !== 'document') continue;
+      // Twilio handles text via /api/whatsapp; this Meta endpoint only stores
+      // media for the admin verification queue. Log dropped non-media so
+      // misrouted text is visible in function logs instead of vanishing.
+      if (msg.type !== 'image' && msg.type !== 'document') {
+        console.warn('[meta-webhook] dropped non-media message from', msg.from, 'type=', msg.type);
+        continue;
+      }
 
       const tipo    = msg.type === 'image' ? 'imagen' : 'PDF';
       const archivo = msg.mediaId ? `wa-media-${msg.mediaId}` : '';
