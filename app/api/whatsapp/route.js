@@ -343,7 +343,7 @@ www.mape.legal
 
 REGLA OBLIGATORIA — toda respuesta que mencione precio de oro DEBE incluir SIEMPRE:
 1. La línea "Tipo de cambio USD/LPS" con el valor del bloque PRECIOS DE REFERENCIA.
-2. La línea "Actualizado" con [frescuraLabel] del bloque (timestamp de cuándo se obtuvo el precio).
+2. La línea "Actualizado" con [frescuraLabel] del bloque (timestamp del momento exacto en que se arma este mensaje, no de cuándo se cacheó el precio).
 Sin esos dos campos la respuesta queda incompleta — agregalos siempre, aunque el cliente no los pida explícitamente.
 
 Reglas:
@@ -1170,23 +1170,16 @@ Comandos disponibles:
       : null;
     const plataLBMA = preciosHoy?.plata  != null ? `$${fmt(preciosHoy.plata)} USD/oz troy` : null;
 
-    // Freshness label for the price block
-    let frescuraLabel = '';
-    if (preciosHoy?.fetched_at) {
-      try {
-        const fetchedDate = new Date(preciosHoy.fetched_at);
-        const horaHN = fetchedDate.toLocaleTimeString('es-HN', {
-          timeZone: 'America/Tegucigalpa',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true,
-        });
-        const fechaFetched = fetchedDate.toISOString().slice(0, 10);
-        frescuraLabel = fechaFetched === today
-          ? `actualizado hoy ${horaHN}`
-          : `último registro ${fechaFetched} ${horaHN}`;
-      } catch { frescuraLabel = ''; }
-    }
+    // Timestamp reflects the moment María assembles the reply, not the cache row's
+    // fetched_at — otherwise a stale cache write yesterday surfaces as "actualizado hoy 06:57 p.m."
+    // at 08:05 a.m. the next morning. MARIA.md §8 calls this "el momento exacto en que se armó el mensaje".
+    const horaConsultaHN = new Date().toLocaleTimeString('es-HN', {
+      timeZone: 'America/Tegucigalpa',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+    const frescuraLabel = `consultado hoy ${horaConsultaHN}`;
 
     const tipoCambio = preciosHoy?.usd_hnl != null ? `L ${fmt(preciosHoy.usd_hnl)}/USD` : null;
     const priceContext = preciosHoy
