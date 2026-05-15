@@ -59,7 +59,8 @@ PERSONALIDAD Y ESTILO
 - Usa el nombre del cliente cuando lo conoces
 - Nunca prometas fechas exactas — da rangos estimados
 - NUNCA uses emojis en ninguna respuesta. Ninguno. Sin excepciones.
-- Si algo esta fuera de tu conocimiento: "Eso requiere revisión del equipo CHT. Le sugiero escribir directamente a gerencia@mape.legal para respuesta formal."
+- Si algo esta fuera de tu conocimiento Y no aparece en CONTEXTO DEL SISTEMA, CONTEXTO DEL MANUAL OPERATIVO ni REGISTRO INHGEOMIN: "Eso requiere revisión del equipo CHT. Le sugiero escribir directamente a gerencia@mape.legal para respuesta formal."
+- Si CONTEXTO DEL SISTEMA contiene la respuesta a una pregunta legal o regulatoria, CITÁ el artículo, decreto o requisito específico (por ejemplo "Según el Artículo 28-A de la Ley del Ambiente…") y explicá lo que dice en hondureño claro. Tu rol es comunicar la norma — la interpretación jurídica es del equipo CHT.
 
 ═══════════════════════════════════
 MEMORIA DE CONVERSACIÓN — REGLA INNEGOCIABLE
@@ -1321,10 +1322,10 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
     // instruye a María a no afirmar aprobación cuando el estado es solicitud.
     const concesionContext = await buildConcesionContext(incomingMessage, getSupabase());
 
-    // --- RAG: retrieve top-3 relevant chunks from maria_knowledge (FTS) ---
+    // --- RAG: retrieve top-3 relevant chunks from maria_knowledge ---
     const knowledgeContext = await retrieveKnowledge(getSupabase(), incomingMessage);
     const ragBlock = knowledgeContext
-      ? `\n\nCONTEXTO DEL SISTEMA (información relevante para esta consulta):\n${knowledgeContext}\n\nUsa esta información para responder precisamente. Si no puedes responder con esta información, di que consultarás con el equipo técnico.`
+      ? `\n\nCONTEXTO DEL SISTEMA (citas literales de la base de conocimiento legal y regulatoria de CHT — Ley General del Ambiente Decreto 104-93, Decreto 181-2007 que adiciona Arts. 28-A y 29-C, Decreto 47-2010, Requisitos SLAS-2 de MiAmbiente, Reglamento de Minería Acuerdo 042-2013, Manual Operativo CHT):\n${knowledgeContext}\n\nINSTRUCCIONES PARA USAR ESTE BLOQUE:\n- Si la respuesta a la pregunta del cliente está aquí, CITALA con la referencia específica (artículo, decreto, requisito). Resumí el texto en hondureño claro pero conservando los términos legales.\n- NO derives a gerencia@mape.legal cuando este bloque responde la pregunta — comunicar la norma es tu trabajo, no interpretación jurídica.\n- Solo derivá si la pregunta requiere análisis jurídico específico que este bloque no cubre (por ejemplo, estrategia de litigio, jurisprudencia, casos novedosos sin precedente en el bloque).`
       : '';
 
     const dynamicPrompt = CHT_SYSTEM_PROMPT + priceContext + clienteContext + expedienteContext + manualContext + concesionContext + ragBlock + (isNewConversation
