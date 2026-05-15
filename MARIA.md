@@ -308,4 +308,51 @@ El `CHT_SYSTEM_PROMPT` en `app/api/whatsapp/route.js` (línea 56 + bloque RAG en
 
 ---
 
-*Fin del documento. Este archivo se carga como contexto operativo de María; el system prompt en `app/api/whatsapp/route.js` lo refleja en sus secciones REGLAS OPERATIVAS, SERVICIOS Y PRECIOS CHT — ORDEN CORRECTO, FLUJOS DE CONVERSACIÓN (PRIMER CONTACTO + PROTOCOLO DE SECUENCIA + CUANDO EL MINERO CONFIESA), BENEFICIOS FORMALES, CONTACTO INSTITUCIONAL, LO QUE MARÍA NUNCA HACE, LO QUE MARÍA SIEMPRE HACE, TIERRA PRIMERO — COMPROMISO CULTURAL, FRASE ANCLA, FORMATO CANÓNICO DE PRECIO DE ORO, REGISTRO DE CONCESIONES INHGEOMIN y BASE DE CONOCIMIENTO LEGAL CON POLÍTICA DE CITA RAG-FIRST.*
+## 12. Cómo agregar conocimiento nuevo al RAG (runbook)
+
+> **Lección clave (incidente 2026-05-15):** Vercel **no corre scripts de seed**. Mergear un PR que añade markdown a `data/maria-knowledge/**` y un script `seed-maria-*.mjs` NO carga las filas en producción. Sin el seed manual + backfill de embeddings, María sigue deflectando a `gerencia@mape.legal` aunque el código y el prompt estén perfectos.
+
+**Síntoma típico:** una pregunta cubierta por la fuente recién agregada recibe la respuesta genérica de fallback ("eso requiere revisión del equipo CHT…"). Vercel logs muestran `[rag] path=none` para esos turnos.
+
+### 12.1 Checklist obligatorio al añadir nuevas fuentes
+
+1. **Transcribir** la fuente verbatim a markdown en `data/maria-knowledge/<categoria>/NN-titulo.md`. Preservar typos del original con notas de transcripción; el RAG cita literalmente.
+2. **Escribir el seed script** en `scripts/seed-maria-<categoria>.mjs` siguiendo el patrón de `seed-maria-honduras-ambiental.mjs`:
+   - Chunker estructura-aware (un chunk por artículo / requisito / sección lógica)
+   - Cada chunk lleva `title` (breadcrumb completo) + `category` (prefijo `[tag]` que María ve)
+   - Idempotente: `delete from public.maria_knowledge where source like '<categoria>/%'` antes de `insert`
+   - Soporta `--dry-run` y `--json` (emite `data/maria-knowledge/<categoria>.chunks.json`)
+3. **Validar el chunking localmente:** `node scripts/seed-maria-<categoria>.mjs --dry-run --json`. Inspeccionar el primer chunk de cada documento y el total. **Si un chunk crítico no aparece, ajustar el chunker antes de seedear** — re-corridas con chunks rotos solo embeben basura.
+4. **Cargar a Supabase producción — elegir UNO:**
+   - **(a) Si tenés `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` localmente:** `node scripts/seed-maria-<categoria>.mjs`
+   - **(b) Si solo tenés acceso a Supabase Studio (laptop sin env vars):** generar SQL pegable con `scripts/chunks-json-to-sql.mjs` (helper genérico) y pegar el resultado en SQL Editor → Run.
+5. **Verificar el insert** en SQL Editor:
+   ```sql
+   select source, count(*) from public.maria_knowledge where source like '<categoria>/%' group by source;
+   ```
+   El conteo debe igualar al del `--dry-run`.
+6. **Generar embeddings:** abrir `/admin/maria/rag-health` (admin only) → botón **"Completar (todas las pendientes)"**. El resultado debe mostrar `Candidatos: N · Escritas: N · Fallidas: 0`. Banner verde `RAG operativo · N/N rows embedded`.
+7. **Smoke test FTS** (no requiere embeddings — confirma que el texto es indexable):
+   ```sql
+   select id, title, left(content, 250) from public.search_maria_knowledge_fts('<keyword del doc nuevo>', 5);
+   ```
+8. **Test end-to-end por WhatsApp:** mandar una pregunta cubierta por el doc nuevo. María debe citar el artículo/requisito específico, no derivar a gerencia.
+
+### 12.2 Por qué Vercel no resuelve esto solo
+
+- Vercel solo ejecuta lo que está en rutas `/api/**` y `app/**` durante request handling, más los cronjobs declarados en `vercel.json`. **Scripts en `scripts/**` jamás corren.**
+- Los seeds son intencionalmente manuales porque (a) pueden borrar/reescribir filas existentes y (b) consumen créditos de OpenAI para embeddings — operación que debe ser autorizada explícitamente.
+- Las migraciones de Supabase tienen el mismo patrón: el archivo `.sql` viaja con el repo, pero el operador lo aplica en Supabase Studio. Mergear el PR ≠ aplicar la migración.
+
+### 12.3 Diagnóstico cuando el RAG no responde a un tema cubierto por una fuente nueva
+
+Path single-click: **`/admin/maria/rag-health`**. Lee la columna *Filas en maria_knowledge*:
+- `Total = 53` (o el número viejo) → seed nunca corrió. Volver al paso 4.
+- `Total = expected, Sin embedding > 0` → seed corrió pero embeddings no. Click "Completar".
+- `Total = expected, Sin embedding = 0`, pero María sigue deflectando → problema de prompt/threshold, no de datos. Revisar `RAG_MATCH_THRESHOLD` (0.7 default), o cambios al system prompt en `app/api/whatsapp/route.js` que pueden estar entrenando a Haiku a deferir.
+
+Logs de Vercel filtrados por `[rag]` clasifican el path de cada turno: `semantic candidates=N`, `fts candidates=N`, o `none`. `none` con un keyword obvio significa que el chunk no está seedeado o que el embedding nunca se generó.
+
+---
+
+*Fin del documento. Este archivo se carga como contexto operativo de María; el system prompt en `app/api/whatsapp/route.js` lo refleja en sus secciones REGLAS OPERATIVAS, SERVICIOS Y PRECIOS CHT — ORDEN CORRECTO, FLUJOS DE CONVERSACIÓN (PRIMER CONTACTO + PROTOCOLO DE SECUENCIA + CUANDO EL MINERO CONFIESA), BENEFICIOS FORMALES, CONTACTO INSTITUCIONAL, LO QUE MARÍA NUNCA HACE, LO QUE MARÍA SIEMPRE HACE, TIERRA PRIMERO — COMPROMISO CULTURAL, FRASE ANCLA, FORMATO CANÓNICO DE PRECIO DE ORO, REGISTRO DE CONCESIONES INHGEOMIN, BASE DE CONOCIMIENTO LEGAL CON POLÍTICA DE CITA RAG-FIRST y CÓMO AGREGAR CONOCIMIENTO NUEVO AL RAG.*

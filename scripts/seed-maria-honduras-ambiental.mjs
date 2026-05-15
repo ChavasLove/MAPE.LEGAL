@@ -34,9 +34,20 @@
  *
  * Requires NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY en env.
  *
+ * Operador sin env vars locales (path b — pegar SQL en Supabase Studio):
+ *   node scripts/seed-maria-honduras-ambiental.mjs --dry-run --json
+ *   node scripts/chunks-json-to-sql.mjs \
+ *     data/maria-knowledge/honduras-ambiental.chunks.json \
+ *     > data/maria-knowledge/seed-honduras-ambiental.sql
+ *   # Pegar el .sql en Supabase Studio → SQL Editor → Run.
+ *
  * Después del seed correr el embed:
  *   node scripts/embed-maria-knowledge.mjs
  * o desde el admin UI: /admin/maria/rag-health → "Completar (todas las pendientes)".
+ *
+ * Runbook completo en README §"Runbook — Añadir conocimiento al RAG de María"
+ * + MARIA.md §12. **Vercel deploys NO ejecutan este script**; los pasos
+ * post-merge son obligatorios para que María pueda citar este conocimiento.
  */
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
