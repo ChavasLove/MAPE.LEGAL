@@ -428,9 +428,42 @@ POST /api/expedientes/:id/transition
 - [ ] Variables de entorno en Vercel (ver sección 9)
 - [ ] `node scripts/seed-super-admin.mjs` post-deploy
 - [ ] `node scripts/seed-concesiones-mineras.mjs` post-deploy (587 filas INHGEOMIN)
+- [ ] `node scripts/seed-maria-honduras-ambiental.mjs` post-deploy (165 chunks RAG legal — ver §RAG)
 - [ ] SPF + DKIM para `gerencia@mape.legal` en SendGrid
 - [ ] Webhook Meta Business Portal → `/api/webhook/whatsapp`
 - [ ] Webhook Twilio → `/api/whatsapp`
+
+### Runbook — Añadir conocimiento al RAG de María
+
+**Vercel no corre scripts de seed.** Cada documento nuevo en `data/maria-knowledge/**` requiere dos pasos manuales antes de que María lo pueda citar. La omisión del paso 1 fue causa raíz del incidente 2026-05-15 (María deflectaba "¿Qué dice el Artículo 28-A?" a `gerencia@mape.legal` porque los 165 chunks de Ley 104-93 / Decreto 181-2007 / SLAS-2 nunca se insertaron en producción).
+
+**Flujo canónico para añadir nuevo conocimiento:**
+
+1. **Transcribir** la fuente (PDF, gaceta, manual) a markdown verbatim en `data/maria-knowledge/<categoria>/NN-titulo.md`.
+2. **Escribir / extender el seed script** en `scripts/seed-maria-<categoria>.mjs` siguiendo el patrón de `seed-maria-honduras-ambiental.mjs` (chunker estructura-aware, idempotente por `source LIKE '<categoria>/%'`, soporta `--dry-run --json`).
+3. **Verificar localmente** con `node scripts/seed-maria-<categoria>.mjs --dry-run --json` → revisar `data/maria-knowledge/<categoria>.chunks.json` y el conteo total de chunks.
+4. **Cargar a producción — elegir UNO:**
+   - **(a)** Con env vars locales (`NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`):
+     ```bash
+     node scripts/seed-maria-<categoria>.mjs
+     ```
+   - **(b)** Sin env vars locales — generar SQL pegable en Supabase Studio:
+     ```bash
+     node scripts/seed-maria-<categoria>.mjs --dry-run --json
+     node scripts/chunks-json-to-sql.mjs data/maria-knowledge/<categoria>.chunks.json \
+       > data/maria-knowledge/seed-<categoria>.sql
+     # Pegar el .sql en Supabase Studio → SQL Editor → Run
+     ```
+5. **Generar embeddings** — log in como admin a `/admin/maria/rag-health` → botón **"Completar (todas las pendientes)"**. Alternativamente `node scripts/embed-maria-knowledge.mjs` si hay env vars locales.
+6. **Verificar end-to-end:**
+   - `/admin/maria/rag-health` debe mostrar `Sin embedding: 0` y banner verde `RAG operativo`.
+   - Smoke test FTS desde SQL Editor: `select * from public.search_maria_knowledge_fts('<keyword del nuevo doc>', 5);` — debe retornar filas.
+   - Pregunta de prueba por WhatsApp → María debe citar el documento.
+
+**Diagnóstico cuando "el RAG no funciona":**
+- Primer chequeo: abrir `/admin/maria/rag-health` (admin only). El JSON / UI dice exactamente qué falta — env vars, RPCs, embeddings count, dim mismatch, OpenAI key, etc.
+- Segundo chequeo: SQL `select source, count(*), count(*) filter (where embedding is not null) from public.maria_knowledge group by source;` — confirma que (a) los chunks están seedeados y (b) tienen embedding.
+- Logs de Vercel filtrados por `[rag]` muestran si María elige `path=semantic`, `path=fts`, o `path=none` en cada turno.
 
 ### Próximas fases en cola
 - **Phase 2B** — Transactions + Certificate issuance: `transacciones_oro` CRUD,
