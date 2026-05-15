@@ -50,6 +50,36 @@ export interface OnboardingState {
 
 // ─── State helpers ────────────────────────────────────────────────────────────
 
+// Names that must NOT be accepted as the user's nombre_completo. Primary risk:
+// "Hola Maria" → Haiku extracts "Maria" because the assistant's own name
+// collides with the user's input. Also covers brand and greeting tokens that
+// the LLM sometimes mistakes for proper nouns.
+const BLOCKED_NAMES = new Set([
+  'maria', 'maría',
+  'cht', 'mape', 'mape legal',
+  'hola', 'buenas', 'buenos dias', 'buenos días',
+  'buenas tardes', 'buenas noches',
+  'gerencia', 'soporte', 'asistente', 'bot',
+]);
+
+function isBlockedName(name: string): boolean {
+  return BLOCKED_NAMES.has(name.trim().toLowerCase().replace(/\s+/g, ' '));
+}
+
+// Detects explicit correction intent: user is denying a previously-set field.
+// Run before extraction so wrong data can be rolled back instead of permanent.
+// Patterns avoid bare "no es" / "no soy" — those would false-trigger when a
+// user answers ASK_ROLE with "no soy minero, soy comprador".
+const CORRECTION_REGEX = /\b(no\s+me\s+llamo|mi\s+nombre\s+no|te\s+equivocaste|equivocado|incorrecto|no\s+es\s+correcto|borr[aá]me|reiniciar|empezar\s+de\s+nuevo)\b/i;
+
+function detectCorrection(message: string): boolean {
+  return CORRECTION_REGEX.test(message);
+}
+
+// Mid-flow rows untouched for this long are treated as abandoned. Prevents a
+// user from being stuck in a stale state from weeks-old test traffic.
+const STALE_ROW_MS = 7 * 24 * 60 * 60 * 1000;
+
 // Determines the next state based on which fields are still missing
 function nextPendingState(datos: OnboardingDatos): OnboardingEstado {
   if (!datos.nombre_completo)    return 'ASK_NAME';
@@ -123,7 +153,11 @@ Responde SOLO con JSON valido, sin texto adicional:
 }
 
 Reglas:
-- nombre_completo: nombre del usuario, una o mas palabras (ej "Willis", "Willis Yang", "Maria Jose Lopez"). Solo si parece un nombre propio claro. NO extraer preguntas, saludos ("hola", "buenas", "buenos dias"), verbos ("tienes", "quiero", "necesito"), ni palabras comunes.
+- nombre_completo: nombre del usuario, una o mas palabras (ej "Willis", "Willis Yang", "Maria Jose Lopez"). Solo si parece un nombre propio que el USUARIO esta declarando como suyo. NO extraer:
+  * "Maria" o "María" — es el nombre del asistente, NUNCA del usuario; devuelve null aunque el mensaje sea solo "Maria".
+  * saludos solos ("hola", "buenas", "buenos dias") incluso si llevan mayuscula.
+  * verbos ("tienes", "quiero", "necesito"), preguntas, palabras comunes.
+  * si el mensaje es solo un saludo seguido de un nombre (ej "Hola Maria", "buenas Carlos"), asume que el nombre se refiere al asistente y devuelve null.
 - numero_identidad: numero de DPI hondureno (13 digitos, puede tener guiones) o pasaporte.
 - ubicacion_proyecto: municipio, zona o departamento de Honduras mencionado.
 - rol: "minero", "comprador" o "tecnico". Mapea "1"→minero, "2"→comprador, "3"→tecnico.
@@ -151,7 +185,18 @@ export async function getOnboardingState(
     .select('*')
     .eq('telefono', telefono)
     .single();
-  return (data as OnboardingState) ?? null;
+  if (!data) return null;
+  const row = data as OnboardingState;
+  // Garbage-collect abandoned mid-flow rows so a stale state doesn't trap the
+  // user on the next contact. COMPLETE rows are kept indefinitely as a record.
+  if (row.estado !== 'COMPLETE') {
+    const age = Date.now() - new Date(row.updated_at).getTime();
+    if (age > STALE_ROW_MS) {
+      await admin.from('onboarding_states').delete().eq('id', row.id);
+      return null;
+    }
+  }
+  return row;
 }
 
 async function upsertState(
@@ -230,10 +275,31 @@ export async function handleOnboarding(
   message:  string
 ): Promise<string> {
   const existing = await getOnboardingState(telefono);
-  const current  = existing ?? { estado: 'ASK_NAME' as OnboardingEstado, datos: {} };
+  const current  = existing ?? { estado: 'ASK_NAME' as OnboardingEstado, datos: {} as OnboardingDatos };
+
+  // Correction intent: user is denying a previously-captured field. Wipe the
+  // most-recently captured field (or the name by default — that's where false
+  // positives hurt most) and re-ask. Bypasses Haiku because a "no" is fast and
+  // unambiguous when matched at the regex layer.
+  if (detectCorrection(message) && Object.keys(current.datos).length > 0) {
+    const datos = { ...current.datos };
+    if (datos.nombre_completo)         delete datos.nombre_completo;
+    else if (datos.numero_identidad)   delete datos.numero_identidad;
+    else if (datos.ubicacion_proyecto) delete datos.ubicacion_proyecto;
+    else if (datos.rol)                delete datos.rol;
+    const nextAfterFix = nextPendingState(datos);
+    await upsertState(telefono, nextAfterFix, datos);
+    return `Disculpa, lo corrijo. ${buildQuestion(nextAfterFix, datos)}`;
+  }
 
   // Extract whatever fields are present in this message
   const extracted = await extractFields(message, current.datos);
+
+  // Bot-name / brand-name filter — Haiku occasionally reads "Hola Maria" as a
+  // name reveal. Reject before merging so the wrong value never persists.
+  if (extracted.nombre_completo && isBlockedName(extracted.nombre_completo)) {
+    extracted.nombre_completo = null;
+  }
 
   // Merge into existing datos — never overwrite with null
   const merged: OnboardingDatos = {
