@@ -62,8 +62,22 @@ const BLOCKED_NAMES = new Set([
   'gerencia', 'soporte', 'asistente', 'bot',
 ]);
 
+// Tokens that, when they appear as the FIRST word of an otherwise-valid
+// compound name, indicate the LLM picked up the assistant/brand name and not
+// the user's. Keep this list narrow — generic Spanish first names like Ana,
+// Juan, etc. must never appear here.
+const BLOCKED_NAME_PREFIXES = new Set(['maria', 'maría', 'mape']);
+
 function isBlockedName(name: string): boolean {
-  return BLOCKED_NAMES.has(name.trim().toLowerCase().replace(/\s+/g, ' '));
+  const normalized = name.trim().toLowerCase().replace(/\s+/g, ' ');
+  if (!normalized) return true;
+  if (BLOCKED_NAMES.has(normalized)) return true;
+  // Compound names starting with a blocked prefix ("Maria Jose Lopez",
+  // "María García") — without this, the exact-match check above only caught
+  // the bare token and any decoration slipped through.
+  const firstWord = normalized.split(' ', 1)[0];
+  if (BLOCKED_NAME_PREFIXES.has(firstWord)) return true;
+  return false;
 }
 
 // Detects explicit correction intent: user is denying a previously-set field.
@@ -114,6 +128,22 @@ interface ExtractedFields {
   rol?:                BroadcastRol | null;
 }
 
+// Messages that obviously carry no extractable name/DPI/location — short
+// greetings, pure questions, acknowledgments, or canned escapes. Catching
+// them here avoids a Haiku round-trip per turn AND removes the most common
+// path where the LLM hallucinates "Maria" as the user's name from a hola.
+const NO_DATA_REGEX  = /^(hola|holi|holaa|holiwi|buenas|buenos\s+d[ií]as|buenas\s+tardes|buenas\s+noches|saludos|hey|hi|hello|gracias|ok|dale|si|s[ií]|no|talvez|quiz[aá]s?|claro|listo|bien|aja|aj[aá])[\s.!¡?¿]*$/i;
+const QUESTION_REGEX = /^[\s¿]*(qu[eé]|cu[áa]l|c[oó]mo|d[oó]nde|cu[áa]ndo|por\s+qu[eé]|qui[eé]n|cu[áa]nto|bolet[ií]n|precio|cotizaci[oó]n|tipo\s+de\s+cambio|art[ií]culo|reglamento|ley)\b/i;
+
+function hasNoExtractableData(message: string): boolean {
+  const trimmed = message.trim();
+  if (!trimmed) return true;
+  if (NO_DATA_REGEX.test(trimmed)) return true;
+  // Pure questions starting with an interrogative don't carry user data.
+  if (QUESTION_REGEX.test(trimmed) && !/\d{10,}/.test(trimmed)) return true;
+  return false;
+}
+
 async function extractFields(
   message:  string,
   existing: OnboardingDatos
@@ -127,6 +157,13 @@ async function extractFields(
   const trimmed = message.trim().toLowerCase();
   if (roleMap[trimmed]) {
     return { rol: roleMap[trimmed] };
+  }
+
+  // Fast path: greetings, questions, and short acknowledgments carry no data.
+  // Skipping the LLM here removes the loop where Haiku hallucinated "Maria"
+  // as the user's name from a plain "hola maria".
+  if (hasNoExtractableData(message)) {
+    return {};
   }
 
   if (!anthropic) {
@@ -153,8 +190,8 @@ Responde SOLO con JSON valido, sin texto adicional:
 }
 
 Reglas:
-- nombre_completo: nombre del usuario, una o mas palabras (ej "Willis", "Willis Yang", "Maria Jose Lopez"). Solo si parece un nombre propio que el USUARIO esta declarando como suyo. NO extraer:
-  * "Maria" o "María" — es el nombre del asistente, NUNCA del usuario; devuelve null aunque el mensaje sea solo "Maria".
+- nombre_completo: nombre del usuario, una o mas palabras (ej "Willis", "Willis Yang", "Jose Lopez", "Ana Garcia"). Solo si parece un nombre propio que el USUARIO esta declarando como suyo. NO extraer:
+  * "Maria", "María", "Mape" o "Mape Legal" — son nombres del asistente o de la marca, NUNCA del usuario; devuelve null aunque el mensaje empiece o termine con uno de esos. Esto incluye compuestos como "Maria Jose", "Maria Lopez", "María García" — siempre devuelve null cuando la PRIMERA palabra del nombre es Maria/María/Mape.
   * saludos solos ("hola", "buenas", "buenos dias") incluso si llevan mayuscula.
   * verbos ("tienes", "quiero", "necesito"), preguntas, palabras comunes.
   * si el mensaje es solo un saludo seguido de un nombre (ej "Hola Maria", "buenas Carlos"), asume que el nombre se refiere al asistente y devuelve null.
@@ -187,6 +224,7 @@ export async function getOnboardingState(
     .single();
   if (!data) return null;
   const row = data as OnboardingState;
+  row.datos = row.datos ?? {};
   // Garbage-collect abandoned mid-flow rows so a stale state doesn't trap the
   // user on the next contact. COMPLETE rows are kept indefinitely as a record.
   if (row.estado !== 'COMPLETE') {
@@ -194,6 +232,29 @@ export async function getOnboardingState(
     if (age > STALE_ROW_MS) {
       await admin.from('onboarding_states').delete().eq('id', row.id);
       return null;
+    }
+    // Heal rows poisoned by an earlier extraction that captured the bot's
+    // own name. Existing stuck conversations had nombre_completo='Maria'
+    // persisted before isBlockedName covered compound forms; without this
+    // pass they keep looping at ASK_ID until the row hits STALE_ROW_MS.
+    if (row.datos.nombre_completo && isBlockedName(row.datos.nombre_completo)) {
+      console.warn(
+        `[onboarding] poisoned nombre_completo="${row.datos.nombre_completo}" for ${telefono} — wiping`
+      );
+      delete row.datos.nombre_completo;
+    }
+    // Repair inconsistent rows: estado must match what datos implies.
+    // Without this a row saved as ASK_ID + datos:{} (e.g. via admin patch or
+    // a partial write) loops forever — buildQuestion renders the ASK_ID
+    // greeting with no name, the user can't satisfy it, and nextPendingState
+    // would still want ASK_NAME.
+    const expectedState = nextPendingState(row.datos);
+    if (row.estado !== expectedState) {
+      console.warn(
+        `[onboarding] state drift for ${telefono}: row=${row.estado} expected=${expectedState} — repairing`
+      );
+      row.estado = expectedState;
+      await upsertState(telefono, expectedState, row.datos);
     }
   }
   return row;
@@ -280,8 +341,10 @@ export async function handleOnboarding(
   // Correction intent: user is denying a previously-captured field. Wipe the
   // most-recently captured field (or the name by default — that's where false
   // positives hurt most) and re-ask. Bypasses Haiku because a "no" is fast and
-  // unambiguous when matched at the regex layer.
-  if (detectCorrection(message) && Object.keys(current.datos).length > 0) {
+  // unambiguous when matched at the regex layer. Runs even when datos is
+  // empty: a "reiniciar" or "mi nombre no" at turn 0 is a no-op for wiping
+  // but still re-presents the current question, never gets stuck.
+  if (detectCorrection(message)) {
     const datos = { ...current.datos };
     if (datos.nombre_completo)         delete datos.nombre_completo;
     else if (datos.numero_identidad)   delete datos.numero_identidad;
