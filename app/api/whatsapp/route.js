@@ -30,6 +30,11 @@ function esc(s) {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// User intents that bypass the onboarding gate so substantive questions don't
+// get black-holed by the registration flow. The row (if any) stays so the
+// user can resume onboarding later; this only relaxes the gate for this turn.
+const ONBOARDING_ESCAPE_PATTERNS = /\b(boletin|bolet[ií]n|precio(s)?\s+(de(l)?\s+)?(oro|plata|hoy)|cotizaci[oó]n|tipo\s+de\s+cambio|ley\s+general|reglamento|acuerdo\s+042|art[ií]culo\s+\d+|art\.?\s*\d+|no\s+quiero\s+(registrar(me|se)?|onboarding)|m[aá]s\s+tarde|despu[eé]s|stop|salir)\b/i;
+
 const CHT_SYSTEM_PROMPT = `Eres María, asistente virtual de CHT (Corporación Hondureña Tenka, S.A.).
 Atiendes a mineros artesanales y propietarios de tierra en Honduras.
 Tu función es orientar, informar y recopilar datos — no ejecutar trámites.
@@ -1269,7 +1274,13 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
     // handleOnboarding handles both turn-1 (no row yet — defaults to ASK_NAME/{}) and
     // subsequent turns, so it always parses the user's actual message for fields
     // instead of greeting blindly when the first message already contains a name.
-    if (!isAdmin) {
+    //
+    // Escape gate: if the user is asking for prices, the daily bulletin, a law
+    // reference, or explicitly opting out, skip onboarding this turn and route
+    // them to free chat. Their onboarding row stays untouched so they can
+    // resume later when they send a non-escape message.
+    const wantsEscape = ONBOARDING_ESCAPE_PATTERNS.test(incomingMessage);
+    if (!isAdmin && !wantsEscape) {
       try {
         const onboardingState = await getOnboardingState(cleanNumber);
         const isNewUser     = !cliente && onboardingState === null;
@@ -1290,6 +1301,8 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
         // Falls through to the regular María flow so unregistered users still get a reply.
         console.error('[onboarding] non-fatal — falling through to María flow:', e?.message);
       }
+    } else if (wantsEscape) {
+      console.log('[onboarding] escape pattern matched — bypassing gate for this turn:', incomingMessage.slice(0, 60));
     }
 
     // --- Manual Operativo 2026 lookup (keyword-triggered, non-blocking) ---
