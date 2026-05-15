@@ -99,7 +99,10 @@ async function extractFields(
     return { rol: roleMap[trimmed] };
   }
 
-  if (!anthropic) return {};
+  if (!anthropic) {
+    console.warn('[onboarding] ANTHROPIC_API_KEY missing — field extraction disabled');
+    return {};
+  }
 
   try {
     const res = await anthropic.messages.create({
@@ -120,7 +123,7 @@ Responde SOLO con JSON valido, sin texto adicional:
 }
 
 Reglas:
-- nombre_completo: nombre y apellido (minimo 2 palabras). Solo si esta CLARAMENTE presente.
+- nombre_completo: nombre del usuario, una o mas palabras (ej "Willis", "Willis Yang", "Maria Jose Lopez"). Solo si parece un nombre propio claro. NO extraer preguntas, saludos ("hola", "buenas", "buenos dias"), verbos ("tienes", "quiero", "necesito"), ni palabras comunes.
 - numero_identidad: numero de DPI hondureno (13 digitos, puede tener guiones) o pasaporte.
 - ubicacion_proyecto: municipio, zona o departamento de Honduras mencionado.
 - rol: "minero", "comprador" o "tecnico". Mapea "1"→minero, "2"→comprador, "3"→tecnico.

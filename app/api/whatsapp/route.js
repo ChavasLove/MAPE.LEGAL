@@ -2,9 +2,10 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { getUserByPhone, getOrCreateUserByPhone } from "@/services/userService";
 import { interpretAndExecute } from "@/services/adminCommandService";
-import { getOnboardingState, startOnboarding, handleOnboarding } from "@/services/onboardingService";
+import { getOnboardingState, handleOnboarding } from "@/services/onboardingService";
 import { fetchAllPrices, fetchAndStorePrices } from "@/services/pricingService";
 import { embedQuery, toVectorText } from "@/lib/maria/embeddings";
+import { normalizePhone } from "@/lib/maria/normalizePhone";
 
 // Conditional init — instantiating these unconditionally at module load would
 // throw during Next.js's page-data-collection build phase when env vars aren't
@@ -1097,7 +1098,9 @@ Comandos disponibles:
     console.log('History found:', conversationHistory.length, 'messages');
 
     // --- Look up miner in clientes table ---
-    const cleanNumber = fromNumber.replace('whatsapp:', '');
+    // normalizePhone handles whatsapp:/tel:/sms: prefixes, URL-encoding, and stray whitespace.
+    // fromNumber stays as-is for conversaciones_whatsapp inserts (legacy rows use the prefix).
+    const cleanNumber = normalizePhone(fromNumber);
     const { data: cliente } = await getSupabase()
       .from('clientes')
       .select('id, nombre, situacion_tierra, municipio, tipo_mineral, dpi, telefono_whatsapp')
@@ -1263,21 +1266,15 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
     // --- Onboarding check (new users, runs BEFORE building the prompt) ---
     // Wrapped in try/catch so a missing onboarding_states table or any DB error
     // gracefully falls through to the normal María flow instead of erroring.
+    // handleOnboarding handles both turn-1 (no row yet — defaults to ASK_NAME/{}) and
+    // subsequent turns, so it always parses the user's actual message for fields
+    // instead of greeting blindly when the first message already contains a name.
     if (!isAdmin) {
       try {
         const onboardingState = await getOnboardingState(cleanNumber);
-        if (!cliente && onboardingState === null) {
-          const firstQ = await startOnboarding(cleanNumber);
-          await getSupabase().from("conversaciones_whatsapp").insert([
-            { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
-            { numero_whatsapp: fromNumber, role: "assistant", content: firstQ },
-          ]);
-          return new Response(
-            `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(firstQ)}</Message></Response>`,
-            { status: 200, headers: { "Content-Type": "text/xml" } }
-          );
-        }
-        if (onboardingState && onboardingState.estado !== 'COMPLETE') {
+        const isNewUser     = !cliente && onboardingState === null;
+        const isInProgress  = onboardingState && onboardingState.estado !== 'COMPLETE';
+        if (isNewUser || isInProgress) {
           const reply = await handleOnboarding(cleanNumber, incomingMessage);
           await getSupabase().from("conversaciones_whatsapp").insert([
             { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
@@ -1348,6 +1345,14 @@ Responde DIRECTAMENTE a lo que acaba de decir el usuario.`);
       role: "user",
       content: incomingMessage,
     });
+
+    if (!anthropic) {
+      console.error('[maria] ANTHROPIC_API_KEY missing — cannot call Claude');
+      return new Response(
+        `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc('Estoy en mantenimiento un momento. Escribime de nuevo en unos minutos.')}</Message></Response>`,
+        { status: 200, headers: { 'Content-Type': 'text/xml' } }
+      );
+    }
 
     const claudeResponse = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
