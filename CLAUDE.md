@@ -183,9 +183,24 @@ Webhook Twilio que conecta WhatsApp con Claude AI.
 
 ## Landing page
 
-**Estado real (Phase 1, 2026-05-10; overhaul móvil 2026-05-11):** la landing activa es `app/page.tsx` (~700 líneas, autocontenido, repositionada como **superficie institucional**, no de ventas). Estructura: Nav · Hero · Identidad (`#identidad`) · Cumplimiento (`#cumplimiento`) · Verificación (`#verificacion`) · Archivos Mineros (`#archivos-mineros`) · Contacto (`#contacto`) · Footer. **No hay formulario de contacto, ni CTAs hacia clientes** — los clientes entran por María (WhatsApp) y relaciones directas. Los datos institucionales son reales: WhatsApp `+504 9737 3139`, correo `gerencia@mape.legal`, oficina Nexcrea (Tegucigalpa). Bilingüe ES/EN vía helper `t(es, en)` y `localStorage('ml_lang')`.
+**Estado real (Phase 1, 2026-05-10; overhaul móvil 2026-05-11; humanizer copy pass 2026-05-20):** la landing activa es `app/page.tsx` (~700 líneas, autocontenido, repositionada como **superficie institucional**, no de ventas). Estructura: Nav · Hero · Identidad (`#identidad`) · Cumplimiento (`#cumplimiento`) · Verificación (`#verificacion`) · Archivos Mineros (`#archivos-mineros`) · Contacto (`#contacto`) · Footer. **No hay formulario de contacto, ni CTAs hacia clientes** — los clientes entran por María (WhatsApp) y relaciones directas. Los datos institucionales son reales: WhatsApp `+504 9737 3139`, correo `gerencia@mape.legal`, oficina Nexcrea (Tegucigalpa). Bilingüe ES/EN vía helper `t(es, en)` y `localStorage('ml_lang')`.
 
 Los 15 archivos de `components/landing/*` fueron **eliminados en Phase 1** (ver commit `chore(landing): remove orphan components/landing/*`). Cualquier cambio de UI ahora va a `app/page.tsx`.
+
+### Voz canónica de la landing (2026-05-20, PR #157)
+
+**Registro:** institucional pero humano. Voz tercera persona, formal usted-implícito, sin marketing-speak. Audiencia primaria: compradores/refinadores haciendo due diligence, reguladores, prensa, partners de la cadena formal — **no** los mineros artesanales (esos entran por María). ES es primario, EN secundario para audiencia internacional.
+
+**Reglas activas (aplicables a cualquier copy nuevo en `app/page.tsx`):**
+- **Voz activa con sujeto concreto.** Evitar "la operación canaliza…", "está enmarcada en…", "queda registrada en…". Preferir "CHT formaliza…", "cada certificado sigue…", "los pagos pasan por Finacoop…".
+- **Frases ≤22 palabras (ES) / ≤25 (EN).** Si el dato exige más, cortar con dos puntos o punto.
+- **Títulos de sección = pregunta editorial o verbo, nunca sustantivo solo.** "Quiénes somos." / "Bajo qué reglas opera CHT." / "Verifique un certificado." / "Cómo escribirnos." NO "Marco regulatorio y estándares.", NO "Canales formales de contacto institucional.".
+- **Anclas regulatorias siempre con consecuencia plana.** INHGEOMIN / SLAS-2 / OCDE / Convenio 169 / Acuerdo 042-2013 / SERNA / MiAmbiente+ / Finacoop son credibilidad — preservarlas — pero cada mención debe terminar en lo que significa en la práctica (e.g. "el comprador sabe de qué bocamina viene cada gramo", "el acta de consulta queda dentro del expediente").
+- **Vocabulario CHT (no service-provider).** Usar `formaliza`, `certifica`, `ampara`, `acompaña`, `emite`, `responde a`. **Evitar** `ofrecemos`, `brindamos`, `nos comprometemos`, `plataforma`, `solución integral`, `infraestructura de evidencia`.
+- **No traducción literal.** ES y EN deben leerse nativos en su idioma respectivo, no como back-translation. "Bocamina" en ES vs. "mine" en EN es asimetría correcta.
+- **Anti-patterns prohibidos** (todos verificados en review): hero CTA button, "Conoce más / Learn more" link, stats sin auditar en el hero ("N unidades formalizadas"), pull-quotes / testimonios, partner logo strips, emojis, per-section timestamps, "trabajamos para…", primera persona del minero/comprador.
+
+**Pendiente (no shipped en PR #157):** alinear el `h1` y microcopy de `app/verificar/page.tsx` y `app/verificar/[numero]/page.tsx` con la nueva voz de la sección Verificación; aplicar las mismas reglas a las strings dentro de `components/terrain/TerrainMapSection.tsx` (legend / sheet / CTA) cuando se haga ese pass.
 
 **Componente decorativo activo**: `components/decor/TopoBand.tsx` — SVG de líneas topográficas usado como watermark embossed en hero y footer (`app/page.tsx`) y como fondo del login (`app/login/page.tsx`). Variantes `light` / `dark` × posiciones `overlay` (full-bleed) / `band` (48px en top edge). `aria-hidden`, `pointer-events: none`, opacidad 0.06 (light, color `--ink` `#1F2A38`) / 0.18 (dark, color `--moss` `#2F5D50`). No interactivo, no animado — quiet nod al territorio hondureño.
 
