@@ -167,14 +167,14 @@ export default function LandingPage() {
           </div>
           <h1 className="hero-title">
             {t(
-              'Trazabilidad legal del oro de minería artesanal en Honduras.',
-              'Legal traceability of artisanal gold in Honduras.'
+              'CHT formaliza oro artesanal hondureño y certifica su origen.',
+              'CHT formalizes artisanal Honduran gold and certifies its origin.'
             )}
           </h1>
           <p className="hero-sub" style={{ maxWidth: 680 }}>
             {t(
-              'MAPE LEGAL es la infraestructura de evidencia con la que CHT formaliza unidades mineras artesanales y de pequeña escala bajo la Ley de Minería de Honduras y emite certificados de origen verificables para la cadena de comercialización formal.',
-              "MAPE LEGAL is the evidence infrastructure CHT uses to formalize artisanal and small-scale mining units under Honduras' Mining Law and to issue verifiable certificates of origin for the formal commercialization chain."
+              'MAPE LEGAL es la capa documental de esa operación: ampara cada unidad minera bajo la Ley General de Minería de Honduras y emite certificados de origen que el comprador puede verificar.',
+              "MAPE LEGAL is the documentary layer of that operation: it covers each mining unit under Honduras' General Mining Law and issues certificates of origin the buyer can verify."
             )}
           </p>
         </div>
@@ -199,20 +199,20 @@ export default function LandingPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             <p style={{ fontSize: 16, color: 'var(--t2)', lineHeight: 1.7 }}>
               {t(
-                'CHT es una empresa hondureña dedicada a la formalización de la minería artesanal y de pequeña escala (MAPE). Operamos como intermediario de certificación y comercialización entre productores artesanales y la cadena formal de comercialización de oro responsable, bajo el marco jurídico hondureño y los estándares de debida diligencia de la cadena de oro.',
-                'CHT is a Honduran company dedicated to the formalization of artisanal and small-scale mining (MAPE). We operate as a certification and commercialization intermediary between artisanal producers and the formal responsible-gold supply chain, under the Honduran legal framework and the gold supply chain due-diligence standards.'
+                'CHT es una empresa hondureña que formaliza unidades de minería artesanal y de pequeña escala (MAPE). Acompañamos al productor desde el expediente de INHGEOMIN hasta la venta de oro certificado en la cadena formal.',
+                'CHT is a Honduran company that formalizes artisanal and small-scale mining (MAPE) units. We accompany the producer from the INHGEOMIN file through the sale of certified gold into the formal supply chain.'
               )}
             </p>
             <p style={{ fontSize: 16, color: 'var(--t2)', lineHeight: 1.7 }}>
               {t(
-                'Trabajamos con asociaciones de mineros artesanales en Honduras que completan la consulta libre, previa e informada bajo el Convenio 169 de la OIT antes del inicio del proceso de formalización. La operación canaliza pagos a través de Finacoop y mantiene cuentas bancarias formales en lempiras para cada productor formalizado.',
-                "We work with artisanal miners' associations in Honduras that complete free, prior and informed consultation under ILO Convention 169 before the formalization process begins. The operation channels payments through Finacoop and maintains formal bank accounts in lempiras for each formalized producer."
+                'Las asociaciones mineras con las que trabajamos completan la consulta libre, previa e informada del Convenio 169 de la OIT antes de abrir expediente. Los pagos pasan por Finacoop, y cada productor formalizado mantiene cuenta bancaria propia en lempiras.',
+                "The miners' associations we work with complete the free, prior and informed consultation under ILO Convention 169 before a file is opened. Payments move through Finacoop, and every formalized producer holds their own lempira bank account."
               )}
             </p>
             <p style={{ fontSize: 16, color: 'var(--t2)', lineHeight: 1.7 }}>
               {t(
-                'Toda la actividad descrita en este sitio está respaldada por expedientes legales, contratos firmados y certificados de origen emitidos por CHT. Las cifras agregadas y los certificados publicados aquí son los únicos canales de divulgación pública de la operación.',
-                'Every activity described on this site is backed by legal files, signed contracts and certificates of origin issued by CHT. The aggregate figures and certificates published here are the only public disclosure channels of the operation.'
+                'Todo lo que aparece en este sitio existe en papel: expediente legal, contrato firmado y certificado de origen emitido por CHT. Las cifras agregadas y los certificados publicados aquí son la única divulgación pública de la operación.',
+                "Everything you see on this site exists on paper: a legal file, a signed contract and a certificate of origin issued by CHT. The aggregate figures and certificates published here are this operation's only public disclosure."
               )}
             </p>
           </div>
@@ -244,12 +244,12 @@ export default function LandingPage() {
       >
         <div className="section-label">{t('Cumplimiento', 'Compliance')}</div>
         <h2 className="section-title">
-          {t('Marco regulatorio y estándares.', 'Regulatory framework and standards.')}
+          {t('Bajo qué reglas opera CHT.', 'The rules CHT operates under.')}
         </h2>
         <p className="section-sub" style={{ maxWidth: 680 }}>
           {t(
-            'La operación de CHT está enmarcada en cuatro capas de cumplimiento: ley nacional, derecho indígena internacional, debida diligencia de cadena de suministro y registro auditable.',
-            "CHT's operation is framed by four compliance layers: national law, international indigenous rights, supply chain due diligence and auditable record-keeping."
+            'CHT responde a cuatro marcos a la vez: la ley nacional, el derecho de consulta indígena, los estándares OCDE de cadena de suministro y un registro auditable. Cada expediente minero los cruza todos.',
+            'CHT answers to four frameworks at once: national law, indigenous consultation rights, OECD supply-chain due diligence, and an auditable record. Every mining file crosses all four.'
           )}
         </p>
         <div
@@ -265,8 +265,8 @@ export default function LandingPage() {
               ),
               titleEs: 'Marco jurídico hondureño',
               titleEn: 'Honduran legal framework',
-              bodyEs: 'Operamos bajo la Ley General de Minería, su Reglamento y el Reglamento Especial para la Minería Artesanal y la Pequeña Minería (Acuerdo 042-2013). Cada expediente sigue las cuatro fases de INHGEOMIN y la licencia ambiental SLAS-2 de SERNA / MiAmbiente+.',
-              bodyEn: 'We operate under the General Mining Law, its Regulations and the Special Regulation for Artisanal and Small-Scale Mining (Agreement 042-2013). Each file follows the four INHGEOMIN phases and the SLAS-2 environmental license issued by SERNA / MiAmbiente+.',
+              bodyEs: 'Cada unidad minera avanza por las cuatro fases del INHGEOMIN previstas en la Ley General de Minería y el Reglamento Especial para la Minería Artesanal (Acuerdo 042-2013). La operación ambiental se ampara en la licencia SLAS-2 de SERNA / MiAmbiente+.',
+              bodyEn: 'Every mining unit moves through the four INHGEOMIN phases set out in the General Mining Law and the Special Regulation for Artisanal Mining (Agreement 042-2013). Environmental operation is covered by the SLAS-2 license issued by SERNA / MiAmbiente+.',
             },
             {
               icon: (
@@ -277,8 +277,8 @@ export default function LandingPage() {
               ),
               titleEs: 'Convenio 169 de la OIT',
               titleEn: 'ILO Convention 169',
-              bodyEs: 'Las comunidades en las que operamos completan la consulta libre, previa e informada antes del inicio del proceso de formalización. La documentación de consulta forma parte del expediente legal de cada unidad minera.',
-              bodyEn: 'The communities where we operate complete free, prior and informed consultation before the formalization process begins. Consultation documentation is part of the legal file of every mining unit.',
+              bodyEs: 'Antes de abrir expediente, la comunidad anfitriona completa la consulta libre, previa e informada que exige el Convenio 169 de la OIT. El acta de consulta queda dentro del expediente legal de la unidad minera.',
+              bodyEn: "Before a file is opened, the host community completes the free, prior and informed consultation required by ILO Convention 169. The consultation record sits inside the mining unit's legal file.",
             },
             {
               icon: (
@@ -289,8 +289,8 @@ export default function LandingPage() {
               ),
               titleEs: 'Debida diligencia OCDE',
               titleEn: 'OECD due diligence',
-              bodyEs: 'La emisión de certificados de origen sigue la lógica de la Guía de Debida Diligencia de la OCDE para Cadenas de Suministro Responsables de Minerales en Áreas de Conflicto y de Alto Riesgo. La trazabilidad es por unidad minera, no por lote agregado.',
-              bodyEn: 'The issuance of certificates of origin follows the OECD Due Diligence Guidance for Responsible Supply Chains of Minerals from Conflict-Affected and High-Risk Areas. Traceability is per mining unit, not per aggregate batch.',
+              bodyEs: 'Cada certificado de origen sigue la Guía de Debida Diligencia de la OCDE para Cadenas de Suministro Responsables de Minerales en Zonas de Conflicto y Alto Riesgo. La trazabilidad se hace por unidad minera concreta, no por lote agregado: el comprador sabe de qué bocamina viene cada gramo.',
+              bodyEn: 'Each certificate of origin follows the OECD Due Diligence Guidance for Responsible Supply Chains of Minerals from Conflict-Affected and High-Risk Areas. Traceability is per individual mining unit, not per aggregate batch: the buyer knows which mine each gram came from.',
             },
             {
               icon: (
@@ -301,8 +301,8 @@ export default function LandingPage() {
               ),
               titleEs: 'Auditoría y registro',
               titleEn: 'Audit and record-keeping',
-              bodyEs: 'Toda transacción y emisión de certificado queda registrada en expediente legal, con copia firmada para el productor, copia para CHT y verificación pública del número de certificado. El registro es inmutable y auditable.',
-              bodyEn: 'Every transaction and certificate issuance is recorded in the legal file, with a signed copy for the producer, a copy for CHT and public verification of the certificate number. The record is immutable and auditable.',
+              bodyEs: 'Cada transacción y cada certificado existen por triplicado: copia firmada para el productor, copia para CHT y número público verificable en este sitio. El registro no se reescribe.',
+              bodyEn: 'Every transaction and every certificate exists in triplicate: a signed copy for the producer, a copy for CHT, and a publicly verifiable number on this site. The record is not rewritten.',
             },
           ].map((card) => (
             <div
@@ -362,7 +362,7 @@ export default function LandingPage() {
       >
         <div className="section-label">{t('Verificación', 'Verification')}</div>
         <h2 className="section-title">
-          {t('Certificado de Origen verificable.', 'Verifiable Certificate of Origin.')}
+          {t('Verifique un certificado.', 'Verify a certificate.')}
         </h2>
         <div
           className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 mt-10 items-start lg:items-center"
@@ -370,8 +370,8 @@ export default function LandingPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             <p style={{ fontSize: 16, color: 'var(--t2)', lineHeight: 1.7 }}>
               {t(
-                'Cualquier persona puede verificar la validez de un certificado de origen emitido por CHT introduciendo el número de certificado en el portal público. La verificación devuelve la unidad minera de origen, la fecha de emisión, el peso del oro certificado y el estado vigente del certificado. No se publican datos personales del productor ni montos de transacción.',
-                'Anyone can verify the validity of a certificate of origin issued by CHT by entering the certificate number in the public portal. Verification returns the source mining unit, the issue date, the certified gold weight and the current status of the certificate. No personal data of the producer or transaction amounts are published.'
+                'Introduzca el número de certificado en el portal público y obtendrá la unidad minera de origen, la fecha de emisión, el peso certificado y el estado del certificado. No se publican datos personales del productor ni montos de transacción.',
+                "Enter the certificate number in the public portal and you will see the source mining unit, the issue date, the certified weight, and the certificate's current status. No personal data of the producer or transaction amounts are published."
               )}
             </p>
             <Link
@@ -595,7 +595,7 @@ export default function LandingPage() {
       >
         <div className="section-label">{t('Contacto', 'Contact')}</div>
         <h2 className="section-title">
-          {t('Canales formales de contacto institucional.', 'Formal institutional contact channels.')}
+          {t('Cómo escribirnos.', 'How to reach us.')}
         </h2>
         <div
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 mt-10"
@@ -685,7 +685,7 @@ export default function LandingPage() {
         <div className="copy">
           © 2026 Corporación Hondureña Tenka, S.A. — {t('Todos los derechos reservados.', 'All rights reserved.')} {t('Tegucigalpa, Honduras.', 'Tegucigalpa, Honduras.')}
           <span style={{ display: 'block', marginTop: 4, color: 'rgba(255,255,255,0.45)', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
-            {t('Última actualización del sitio:', 'Site last updated:')} {SITE_LAST_UPDATED_ISO}
+            {t('Actualizado el:', 'Site last updated:')} {SITE_LAST_UPDATED_ISO}
           </span>
         </div>
         <div className="links">
