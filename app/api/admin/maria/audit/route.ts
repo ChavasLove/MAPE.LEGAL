@@ -12,7 +12,8 @@ export async function GET(req: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   const url = new URL(req.url);
-  const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '100', 10) || 100, 500);
+  const limitRaw = parseInt(url.searchParams.get('limit') ?? '100', 10);
+  const limit = Math.min(Number.isFinite(limitRaw) && limitRaw > 0 ? limitRaw : 100, 500);
   const commandType = url.searchParams.get('command_type');
   const since = url.searchParams.get('since');
 
@@ -27,7 +28,10 @@ export async function GET(req: NextRequest) {
   if (since) q = q.gte('created_at', since);
 
   const { data, error } = await q;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[admin/maria/audit GET] failed:', error);
+    return NextResponse.json({ error: 'Error al obtener auditoría' }, { status: 500 });
+  }
 
   return NextResponse.json({ actions: data ?? [] });
 }

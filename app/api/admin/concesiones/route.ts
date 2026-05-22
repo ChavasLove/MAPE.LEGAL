@@ -9,7 +9,10 @@ import {
 export const dynamic = 'force-dynamic';
 
 const CATEGORIAS = ['explotacion_otorgada', 'exploracion_otorgada', 'solicitud_pendiente'] as const;
-const CLASIFS    = ['Metálica', 'No Metálica', 'Pequeña Minería Metálica', 'Suspenso'] as const;
+// Suspenso is a value of estado_expediente, not clasificacion. Filtering by
+// clasificacion=Suspenso silently returned 0 rows because no row carries that
+// value in the clasificacion column.
+const CLASIFS    = ['Metálica', 'No Metálica', 'Pequeña Minería Metálica'] as const;
 
 function pickCategoria(v: string | null): CategoriaConcesion | null {
   if (!v) return null;
@@ -32,13 +35,17 @@ export async function GET(req: Request) {
   const limit         = Number(url.searchParams.get('limit') ?? 100);
   const offset        = Number(url.searchParams.get('offset') ?? 0);
 
-  const result = await listConcesionesAdmin({
-    categoria,
-    clasificacion,
-    q,
-    limit: Number.isFinite(limit) ? limit : 100,
-    offset: Number.isFinite(offset) ? offset : 0,
-  });
-
-  return NextResponse.json(result);
+  try {
+    const result = await listConcesionesAdmin({
+      categoria,
+      clasificacion,
+      q,
+      limit: Number.isFinite(limit) ? limit : 100,
+      offset: Number.isFinite(offset) ? offset : 0,
+    });
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error('[admin/concesiones GET] failed:', error);
+    return NextResponse.json({ error: 'Error al listar concesiones' }, { status: 500 });
+  }
 }

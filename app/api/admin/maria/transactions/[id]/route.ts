@@ -33,7 +33,10 @@ export async function PATCH(
     .select()
     .maybeSingle();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[admin/maria/transactions PATCH] failed:', error);
+    return NextResponse.json({ error: 'Error al actualizar la transacción' }, { status: 500 });
+  }
   if (!data) return NextResponse.json({ error: 'Transacción no encontrada' }, { status: 404 });
 
   return NextResponse.json({ ok: true, transaction: data });

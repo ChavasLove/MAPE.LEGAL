@@ -40,7 +40,10 @@ export async function GET() {
     `)
     .order('created_at', { ascending: false });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[admin/clientes GET] clientes fetch failed:', error);
+    return NextResponse.json({ error: 'Error al obtener clientes' }, { status: 500 });
+  }
 
   // Fetch expedientes linked to each client via cliente_id FK
   const clientes = (data ?? []) as ClienteRow[];

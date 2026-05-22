@@ -29,48 +29,56 @@ export async function GET(
     .select('*')
     .eq('id', id)
     .maybeSingle();
-  if (minaErr) return NextResponse.json({ error: minaErr.message }, { status: 500 });
+  if (minaErr) {
+    console.error('[admin/minas GET] mina fetch failed:', minaErr);
+    return NextResponse.json({ error: 'Error al obtener la mina' }, { status: 500 });
+  }
   if (!mina)   return NextResponse.json({ error: 'Mina no encontrada.' }, { status: 404 });
 
-  let cliente = null;
-  if (mina.cliente_id) {
-    const { data } = await admin
-      .from('clientes')
-      .select('id, nombre, dpi, telefono_whatsapp, municipio, departamento')
-      .eq('id', mina.cliente_id)
-      .maybeSingle();
-    cliente = data ?? null;
-  }
-
-  const { data: indice } = await admin
-    .from('indice_legalidad')
-    .select('*')
-    .eq('mina_id', id);
-
-  const { data: contratos } = await admin
-    .from('contratos')
-    .select('id, tipo, fecha_firma, fecha_vencimiento, monto_total, moneda, estado')
-    .eq('mina_id', id)
-    .order('fecha_firma', { ascending: false, nullsFirst: false });
-
-  const { data: transacciones } = await admin
-    .from('transacciones_oro')
-    .select('id, fecha, gramos, precio_usd_gramo, total_usd, total_hnl, estado')
-    .eq('mina_id', id)
-    .order('fecha', { ascending: false })
-    .limit(20);
-
-  const { count: certificadosCount } = await admin
-    .from('certificados_origen')
-    .select('id', { count: 'exact', head: true })
-    .eq('mina_id', id);
+  // The four optional fetches are independent of each other and of the mina
+  // row — fan them out in parallel instead of stacking 4 RTTs serially.
+  const [
+    { data: cliente },
+    { data: indice },
+    { data: contratos },
+    { data: transacciones },
+    { count: certificadosCount },
+  ] = await Promise.all([
+    mina.cliente_id
+      ? admin
+          .from('clientes')
+          .select('id, nombre, dpi, telefono_whatsapp, municipio, departamento')
+          .eq('id', mina.cliente_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    admin
+      .from('indice_legalidad')
+      .select('*')
+      .eq('mina_id', id),
+    admin
+      .from('contratos')
+      .select('id, tipo, fecha_firma, fecha_vencimiento, monto_total, moneda, estado')
+      .eq('mina_id', id)
+      .order('fecha_firma', { ascending: false, nullsFirst: false })
+      .limit(20),
+    admin
+      .from('transacciones_oro')
+      .select('id, fecha, gramos, precio_usd_gramo, total_usd, total_hnl, estado')
+      .eq('mina_id', id)
+      .order('fecha', { ascending: false })
+      .limit(20),
+    admin
+      .from('certificados_origen')
+      .select('id', { count: 'exact', head: true })
+      .eq('mina_id', id),
+  ]);
 
   return NextResponse.json({
     mina,
-    cliente,
-    indice_legalidad: indice ?? [],
-    contratos:        contratos ?? [],
-    transacciones:    transacciones ?? [],
+    cliente:            cliente ?? null,
+    indice_legalidad:   indice ?? [],
+    contratos:          contratos ?? [],
+    transacciones:      transacciones ?? [],
     certificados_count: certificadosCount ?? 0,
   });
 }
@@ -93,19 +101,28 @@ export async function PATCH(
 
   const update: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(body)) {
-    if (ALLOWED_PATCH_FIELDS.has(k)) update[k] = v;
+    if (!ALLOWED_PATCH_FIELDS.has(k)) continue;
+    // Empty strings on relational/enum fields should mean "clear" (null), not
+    // "store as empty string" which silently bypasses the enum allowlists
+    // below.
+    if (typeof v === 'string' && v.trim() === '' &&
+        (k === 'cliente_id' || k === 'tipo_mineral' || k === 'tipo_concesion' || k === 'estado')) {
+      update[k] = null;
+    } else {
+      update[k] = v;
+    }
   }
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: 'Nada que actualizar.' }, { status: 400 });
   }
 
-  if (update.tipo_mineral && !TIPO_MINERAL_VALUES.includes(update.tipo_mineral as typeof TIPO_MINERAL_VALUES[number])) {
+  if (update.tipo_mineral != null && !TIPO_MINERAL_VALUES.includes(update.tipo_mineral as typeof TIPO_MINERAL_VALUES[number])) {
     return NextResponse.json({ error: 'tipo_mineral inválido.' }, { status: 400 });
   }
-  if (update.tipo_concesion && !TIPO_CONCESION_VALUES.includes(update.tipo_concesion as typeof TIPO_CONCESION_VALUES[number])) {
+  if (update.tipo_concesion != null && !TIPO_CONCESION_VALUES.includes(update.tipo_concesion as typeof TIPO_CONCESION_VALUES[number])) {
     return NextResponse.json({ error: 'tipo_concesion inválido.' }, { status: 400 });
   }
-  if (update.estado && !ESTADO_VALUES.includes(update.estado as typeof ESTADO_VALUES[number])) {
+  if (update.estado != null && !ESTADO_VALUES.includes(update.estado as typeof ESTADO_VALUES[number])) {
     return NextResponse.json({ error: 'estado inválido.' }, { status: 400 });
   }
   if (typeof update.nombre === 'string' && update.nombre.trim().length < 3) {
@@ -153,7 +170,8 @@ export async function PATCH(
     if (error.code === 'PGRST116') {
       return NextResponse.json({ error: 'Mina no encontrada.' }, { status: 404 });
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[admin/minas PATCH] failed:', error);
+    return NextResponse.json({ error: 'Error al actualizar la mina' }, { status: 500 });
   }
 
   return NextResponse.json(data);

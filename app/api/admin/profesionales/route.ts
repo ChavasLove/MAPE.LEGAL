@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/services/adminSupabase';
 import { requireRole } from '@/lib/serverAuth';
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/admin/profesionales — list all profiles
 export async function GET() {
   const auth = await requireRole('admin');
@@ -17,8 +19,8 @@ export async function GET() {
     if (error) throw error;
     return NextResponse.json(data);
   } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Error al obtener perfiles';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error('[admin/profesionales GET] failed:', error);
+    return NextResponse.json({ error: 'Error al obtener perfiles' }, { status: 500 });
   }
 }
 
@@ -50,10 +52,15 @@ export async function POST(req: Request) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      if ((error as { code?: string }).code === '23505') {
+        return NextResponse.json({ error: 'Ya existe un perfil con ese identificador.' }, { status: 409 });
+      }
+      throw error;
+    }
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Error al crear perfil';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error('[admin/profesionales POST] failed:', error);
+    return NextResponse.json({ error: 'Error al crear perfil' }, { status: 500 });
   }
 }

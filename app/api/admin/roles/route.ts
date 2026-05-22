@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/services/adminSupabase';
 import { requireRole } from '@/lib/serverAuth';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const auth = await requireRole('admin');
   if (auth instanceof NextResponse) return auth;
@@ -16,8 +18,8 @@ export async function GET() {
     if (error) throw error;
     return NextResponse.json(data ?? []);
   } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Error al obtener roles';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error('[admin/roles GET] failed:', error);
+    return NextResponse.json({ error: 'Error al obtener roles' }, { status: 500 });
   }
 }
 
@@ -38,10 +40,15 @@ export async function POST(req: Request) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      if ((error as { code?: string }).code === '23505') {
+        return NextResponse.json({ error: 'Ya existe un rol con ese nombre.' }, { status: 409 });
+      }
+      throw error;
+    }
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Error al crear rol';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error('[admin/roles POST] failed:', error);
+    return NextResponse.json({ error: 'Error al crear rol' }, { status: 500 });
   }
 }

@@ -41,7 +41,8 @@ export async function GET(req: NextRequest) {
     .limit(limit);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[admin/maria/conversations GET] failed:', error);
+    return NextResponse.json({ error: 'Error al obtener conversaciones' }, { status: 500 });
   }
 
   // Group by phone — first row per phone is the most recent (we ordered desc)
