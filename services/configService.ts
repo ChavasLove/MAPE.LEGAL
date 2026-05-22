@@ -37,6 +37,10 @@ export async function setConfig(clave: string, valor: string): Promise<void> {
   if (error) throw error;
 }
 
+// Internal upsert — DOES create new rows. Reserved for migrations and trusted
+// callers that need to seed new config keys at runtime (broadcast helpers).
+// Public-facing handlers must use `updateExistingConfigs` instead so an admin
+// session can never write arbitrary keys into configuracion_sistema.
 export async function setConfigs(entries: Record<string, string>): Promise<void> {
   const admin = getAdminClient();
   const updates = Object.entries(entries).map(([clave, valor]) => ({
@@ -48,6 +52,40 @@ export async function setConfigs(entries: Record<string, string>): Promise<void>
     .from('configuracion_sistema')
     .upsert(updates, { onConflict: 'clave' });
   if (error) throw error;
+}
+
+// Updates only keys that already exist in configuracion_sistema. Unknown keys
+// are silently ignored and returned in `ignored` so the caller can surface a
+// 400 if it cares. This is the canonical path for /api/admin/config PATCH —
+// new keys require a migration, not a UI write.
+export async function updateExistingConfigs(
+  entries: Record<string, string>
+): Promise<{ updated: string[]; ignored: string[] }> {
+  const admin = getAdminClient();
+
+  const { data: existing, error: listErr } = await admin
+    .from('configuracion_sistema')
+    .select('clave');
+  if (listErr) throw listErr;
+
+  const known = new Set((existing ?? []).map((r: { clave: string }) => r.clave));
+  const updated: string[] = [];
+  const ignored: string[] = [];
+
+  for (const [clave, valor] of Object.entries(entries)) {
+    if (!known.has(clave)) {
+      ignored.push(clave);
+      continue;
+    }
+    const { error } = await admin
+      .from('configuracion_sistema')
+      .update({ valor, updated_at: new Date().toISOString() })
+      .eq('clave', clave);
+    if (error) throw error;
+    updated.push(clave);
+  }
+
+  return { updated, ignored };
 }
 
 // ─── Daily report config ──────────────────────────────────────────────────────
