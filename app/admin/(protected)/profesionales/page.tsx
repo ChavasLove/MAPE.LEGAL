@@ -72,6 +72,7 @@ export default function ProfesionalesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError]   = useState('');
   const [form, setForm]             = useState(EMPTY_FORM);
+  const [busyRow, setBusyRow]       = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -144,12 +145,25 @@ export default function ProfesionalesPage() {
   }
 
   async function toggleActivo(p: Perfil) {
-    await fetch(`/api/admin/profesionales/${p.id}`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ activo: !p.activo }),
-    });
-    await load();
+    if (busyRow) return;
+    setBusyRow(p.id);
+    setError('');
+    try {
+      const res = await fetch(`/api/admin/profesionales/${p.id}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ activo: !p.activo }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({} as { error?: string }));
+        throw new Error(data.error ?? 'No se pudo cambiar el estado del perfil.');
+      }
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al cambiar estado del perfil');
+    } finally {
+      setBusyRow(null);
+    }
   }
 
   const field = (key: keyof typeof form, label: string, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
@@ -347,7 +361,9 @@ export default function ProfesionalesPage() {
               {/* Active toggle */}
               <button
                 onClick={() => toggleActivo(p)}
-                className="flex items-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer mt-auto"
+                disabled={busyRow === p.id}
+                aria-label={p.activo ? 'Desactivar perfil' : 'Activar perfil'}
+                className="flex items-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer mt-auto disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ color: p.activo ? 'var(--green)' : 'var(--slate)' }}
               >
                 {p.activo

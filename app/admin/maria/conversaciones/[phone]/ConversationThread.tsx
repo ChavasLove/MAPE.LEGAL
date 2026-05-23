@@ -195,6 +195,7 @@ export default function ConversationThread({ phone }: { phone: string }) {
   const [sending,   setSending]   = useState(false);
   const [sendError, setSendError] = useState('');
   const [sendNotice, setSendNotice] = useState('');
+  const [busyTxId, setBusyTxId]   = useState<string | null>(null);
 
   // Track whether the user is composing — pause polling while typing.
   const composingRef = useRef(false);
@@ -320,6 +321,11 @@ export default function ConversationThread({ phone }: { phone: string }) {
 
   /* Transaction actions */
   async function patchTransaction(id: string, estado: 'confirmada' | 'cancelada') {
+    // Guard against the classic double-click → two PATCHes race. The second
+    // click would otherwise hit a transaction whose state was just changed
+    // by the first, and clobber it back.
+    if (busyTxId) return;
+    setBusyTxId(id);
     try {
       const res = await fetch(
         `/api/admin/maria/transactions/${encodeURIComponent(id)}`,
@@ -337,6 +343,8 @@ export default function ConversationThread({ phone }: { phone: string }) {
       await load(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo actualizar la transacción');
+    } finally {
+      setBusyTxId(null);
     }
   }
 
@@ -779,16 +787,18 @@ export default function ConversationThread({ phone }: { phone: string }) {
                         <button
                           type="button"
                           onClick={() => patchTransaction(tx.id, 'confirmada')}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer"
+                          disabled={busyTxId === tx.id}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                           style={{ background: 'var(--moss)', color: '#fff' }}
                         >
                           <Check size={12} strokeWidth={2} />
-                          Confirmar
+                          {busyTxId === tx.id ? 'Procesando…' : 'Confirmar'}
                         </button>
                         <button
                           type="button"
                           onClick={() => patchTransaction(tx.id, 'cancelada')}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer"
+                          disabled={busyTxId === tx.id}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                           style={{
                             color:       'var(--red)',
                             background:  'color-mix(in oklch, var(--red) 14%, white)',

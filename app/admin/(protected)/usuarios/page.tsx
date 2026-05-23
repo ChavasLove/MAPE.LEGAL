@@ -62,6 +62,7 @@ export default function UsuariosPage() {
   const [showForm, setShowForm]       = useState(false);
   const [submitting, setSubmitting]   = useState(false);
   const [formError, setFormError]     = useState('');
+  const [busyRow, setBusyRow]         = useState<string | null>(null);
 
   const [newEmail, setNewEmail]       = useState('');
   const [newRol, setNewRol]           = useState<Rol>('cliente');
@@ -107,18 +108,44 @@ export default function UsuariosPage() {
   }
 
   async function toggleActivo(u: Usuario) {
-    await fetch(`/api/admin/usuarios/${u.id}`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ activo: !u.activo }),
-    });
-    await load();
+    if (busyRow) return;
+    setBusyRow(u.id);
+    setError('');
+    try {
+      const res = await fetch(`/api/admin/usuarios/${u.id}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ activo: !u.activo }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({} as { error?: string }));
+        throw new Error(data.error ?? 'No se pudo cambiar el estado.');
+      }
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al cambiar estado');
+    } finally {
+      setBusyRow(null);
+    }
   }
 
   async function handleDelete(u: Usuario) {
+    if (busyRow) return;
     if (!confirm(`¿Eliminar permanentemente la cuenta de ${u.email}?`)) return;
-    await fetch(`/api/admin/usuarios/${u.id}`, { method: 'DELETE' });
-    await load();
+    setBusyRow(u.id);
+    setError('');
+    try {
+      const res = await fetch(`/api/admin/usuarios/${u.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({} as { error?: string }));
+        throw new Error(data.error ?? 'No se pudo eliminar la cuenta.');
+      }
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al eliminar cuenta');
+    } finally {
+      setBusyRow(null);
+    }
   }
 
   return (
@@ -312,16 +339,20 @@ export default function UsuariosPage() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => toggleActivo(u)}
+                        disabled={busyRow === u.id}
+                        aria-label={u.activo ? 'Desactivar usuario' : 'Activar usuario'}
                         title={u.activo ? 'Desactivar' : 'Activar'}
-                        className="p-1.5 rounded-lg transition-colors cursor-pointer hover:bg-[color:var(--bg-soft)]"
+                        className="p-1.5 rounded-lg transition-colors cursor-pointer hover:bg-[color:var(--bg-soft)] disabled:opacity-50 disabled:cursor-not-allowed"
                         style={{ color: u.activo ? 'var(--green)' : 'var(--slate)' }}
                       >
                         {u.activo ? <UserCheck size={16} strokeWidth={1.5} /> : <UserX size={16} strokeWidth={1.5} />}
                       </button>
                       <button
                         onClick={() => handleDelete(u)}
+                        disabled={busyRow === u.id}
+                        aria-label="Eliminar usuario"
                         title="Eliminar usuario"
-                        className="p-1.5 rounded-lg transition-colors cursor-pointer hover:bg-[color:var(--bg-soft)]"
+                        className="p-1.5 rounded-lg transition-colors cursor-pointer hover:bg-[color:var(--bg-soft)] disabled:opacity-50 disabled:cursor-not-allowed"
                         style={{ color: 'var(--red)' }}
                       >
                         <Trash2 size={16} strokeWidth={1.5} />
