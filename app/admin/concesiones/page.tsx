@@ -85,17 +85,26 @@ export default function ConcesionesAdminPage() {
   const [categoria, setCategoria]     = useState<Categoria | ''>('');
   const [clasif, setClasif]           = useState<Clasificacion | ''>('');
   const [q, setQ]                     = useState('');
+  // Debounced copy of `q` — every keystroke updates `q` (so the input is
+  // controlled and snappy) but only `debouncedQ` triggers a refetch. Without
+  // this, typing "Iriona" fired 6 sequential 100-row fetches.
+  const [debouncedQ, setDebouncedQ]   = useState('');
   const [page, setPage]               = useState(0);
   const PAGE_SIZE = 100;
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedQ(q.trim()), 250);
+    return () => clearTimeout(id);
+  }, [q]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       const params = new URLSearchParams();
-      if (categoria) params.set('categoria', categoria);
-      if (clasif)    params.set('clasificacion', clasif);
-      if (q.trim())  params.set('q', q.trim());
+      if (categoria)   params.set('categoria', categoria);
+      if (clasif)      params.set('clasificacion', clasif);
+      if (debouncedQ)  params.set('q', debouncedQ);
       params.set('limit',  String(PAGE_SIZE));
       params.set('offset', String(page * PAGE_SIZE));
       const res = await fetch(`/api/admin/concesiones?${params.toString()}`);
@@ -108,14 +117,19 @@ export default function ConcesionesAdminPage() {
     } finally {
       setLoading(false);
     }
-  }, [categoria, clasif, q, page]);
+  }, [categoria, clasif, debouncedQ, page]);
 
   const loadStats = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/concesiones/stats');
-      if (!res.ok) return;
+      if (!res.ok) {
+        console.warn('[admin/concesiones] stats fetch failed:', res.status);
+        return;
+      }
       setStats(await res.json());
-    } catch { /* silent */ }
+    } catch (e) {
+      console.warn('[admin/concesiones] stats fetch threw:', e);
+    }
   }, []);
 
   useEffect(() => { void load(); }, [load]);

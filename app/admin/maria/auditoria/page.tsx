@@ -48,8 +48,8 @@ export default function AuditoriaPage() {
   const [error,       setError]       = useState('');
   const [filterCmd,   setFilterCmd]   = useState<string>('');
 
-  const load = useCallback(async () => {
-    setError('');
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setError('');
     try {
       const url = filterCmd
         ? `/api/admin/maria/audit?command_type=${encodeURIComponent(filterCmd)}`
@@ -59,14 +59,24 @@ export default function AuditoriaPage() {
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
       setActions(data.actions ?? []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error al cargar');
+      if (!silent) setError(e instanceof Error ? e.message : 'Error al cargar');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [filterCmd]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
+
+  // Poll every 15s so new admin commands from WhatsApp appear without a
+  // manual click. Paused when the tab is backgrounded.
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (document.hidden) return;
+      void load(true);
+    }, 15_000);
+    return () => clearInterval(id);
+  }, [load]);
 
   const cmdTypes = Array.from(new Set(actions.map(a => a.command_type))).sort();
 
@@ -80,7 +90,7 @@ export default function AuditoriaPage() {
           </p>
         </div>
         <button
-          onClick={load}
+          onClick={() => load()}
           className="p-2 rounded-lg cursor-pointer"
           style={{ color: 'var(--slate)' }}
           aria-label="Recargar"

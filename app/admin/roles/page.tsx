@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, RefreshCw, Shield, Trash2 } from 'lucide-react';
+import { Plus, RefreshCw, Shield, Check, X } from 'lucide-react';
 
 interface Rol {
   id:          string;
@@ -24,9 +24,12 @@ const inputStyle: React.CSSProperties = {
 export default function RolesPage() {
   const [roles,      setRoles]      = useState<Rol[]>([]);
   const [loading,    setLoading]    = useState(true);
+  const [loadError,  setLoadError]  = useState('');
   const [showForm,   setShowForm]   = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError,  setFormError]  = useState('');
+  const [rowError,   setRowError]   = useState('');
+  const [busyId,     setBusyId]     = useState<string | null>(null);
 
   const [nombre,      setNombre]      = useState('');
   const [descripcion, setDescripcion] = useState('');
@@ -34,12 +37,19 @@ export default function RolesPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError('');
     try {
       const res  = await fetch('/api/admin/roles');
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error((data as { error?: string }).error ?? 'No se pudieron cargar los roles.');
+      }
       setRoles(Array.isArray(data) ? data : []);
-    } catch { /* silent */ }
-    finally { setLoading(false); }
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : 'Error al cargar roles');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -72,12 +82,25 @@ export default function RolesPage() {
   }
 
   async function toggleActivo(rol: Rol) {
-    await fetch(`/api/admin/roles/${rol.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ activo: !rol.activo }),
-    });
-    await load();
+    if (busyId) return;
+    setBusyId(rol.id);
+    setRowError('');
+    try {
+      const res = await fetch(`/api/admin/roles/${rol.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ activo: !rol.activo }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({} as { error?: string }));
+        throw new Error(data.error ?? 'No se pudo cambiar el estado del rol.');
+      }
+      await load();
+    } catch (e) {
+      setRowError(e instanceof Error ? e.message : 'Error al cambiar estado del rol');
+    } finally {
+      setBusyId(null);
+    }
   }
 
   const SYSTEM_PERMISOS = [
@@ -222,9 +245,27 @@ export default function RolesPage() {
         </div>
       )}
 
+      {(loadError || rowError) && (
+        <div
+          role="alert"
+          className="text-sm mb-4 px-3 py-2 rounded-lg border"
+          style={{
+            color:       'var(--red)',
+            background:  'color-mix(in oklch, var(--red) 8%, white)',
+            borderColor: 'color-mix(in oklch, var(--red) 30%, white)',
+          }}
+        >
+          {loadError || rowError}
+        </div>
+      )}
+
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {loading ? (
           <p className="col-span-3 text-sm py-8 text-center" style={{ color: 'var(--t2)' }}>Cargando roles...</p>
+        ) : roles.length === 0 ? (
+          <p className="col-span-3 text-sm py-8 text-center" style={{ color: 'var(--t2)' }}>
+            No hay roles para mostrar.
+          </p>
         ) : roles.map(rol => {
           // System roles get a blue tile, custom ones get a moss/green tile.
           const tileToken = rol.es_sistema ? 'blue' : 'green';
@@ -261,11 +302,15 @@ export default function RolesPage() {
                 {!rol.es_sistema && (
                   <button
                     onClick={() => toggleActivo(rol)}
-                    className="p-1.5 rounded-lg transition-colors cursor-pointer hover:bg-[color:var(--bg-soft)]"
+                    disabled={busyId === rol.id}
+                    aria-label={rol.activo ? 'Desactivar rol' : 'Activar rol'}
+                    className="p-1.5 rounded-lg transition-colors cursor-pointer hover:bg-[color:var(--bg-soft)] disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ color: rol.activo ? 'var(--green)' : 'var(--slate)' }}
                     title={rol.activo ? 'Desactivar' : 'Activar'}
                   >
-                    <Trash2 size={15} strokeWidth={1.5} />
+                    {rol.activo
+                      ? <Check size={15} strokeWidth={1.5} />
+                      : <X size={15} strokeWidth={1.5} />}
                   </button>
                 )}
               </div>

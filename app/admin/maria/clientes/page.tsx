@@ -195,9 +195,13 @@ export default function MariaClientesPage() {
     };
   }, [search]);
 
-  // Auto-refresh every 10s — paused while user is typing
+  // Auto-refresh every 10s — paused while user is typing AND when the tab is
+  // backgrounded (document.hidden). Without the hidden guard the page kept
+  // pulling 500 clientes + 2000 conversation rows every 10s in background
+  // tabs, generating gratuitous Supabase egress.
   useEffect(() => {
     const id = setInterval(() => {
+      if (document.hidden) return;
       if (!isTypingRef.current) load(true);
     }, 10_000);
     return () => clearInterval(id);
