@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import TopoBand from '@/components/decor/TopoBand'
 import TerrainMapSection from '@/components/terrain/TerrainMapSection'
+import MariaWidget from '@/components/landing/MariaWidget'
 
 type Lang = 'es' | 'en'
 
@@ -694,6 +695,9 @@ export default function LandingPage() {
           <a href="#contacto">{t('Contacto', 'Contact')}</a>
         </div>
       </footer>
+
+      {/* María — chat widget. Fixed-position FAB, available on every section. */}
+      <MariaWidget lang={lang} />
     </>
   )
 }
