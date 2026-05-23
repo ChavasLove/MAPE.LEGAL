@@ -57,24 +57,6 @@ export async function assignRole(
   if (error) throw new Error(`userService: assignRole failed — ${error.message}`);
 }
 
-export async function setUserActive(rawPhone: string, activo: boolean): Promise<void> {
-  const admin = getAdminClient();
-  const { error } = await admin
-    .from('usuarios_broadcast')
-    .update({ activo, updated_at: new Date().toISOString() })
-    .eq('telefono', normalizePhone(rawPhone));
-  if (error) throw new Error(`userService: setUserActive failed — ${error.message}`);
-}
-
-export async function setUserSuscrito(rawPhone: string, suscrito: boolean): Promise<void> {
-  const admin = getAdminClient();
-  const { error } = await admin
-    .from('usuarios_broadcast')
-    .update({ suscrito, updated_at: new Date().toISOString() })
-    .eq('telefono', normalizePhone(rawPhone));
-  if (error) throw new Error(`userService: setUserSuscrito failed — ${error.message}`);
-}
-
 export async function getActiveSubscribers(
   roles?: BroadcastRol[]
 ): Promise<UsuarioBroadcast[]> {

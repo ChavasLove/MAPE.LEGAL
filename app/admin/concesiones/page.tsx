@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Mountain, Search, RefreshCw, ExternalLink } from 'lucide-react';
 
 type Categoria      = 'explotacion_otorgada' | 'exploracion_otorgada' | 'solicitud_pendiente';
-type Clasificacion  = 'Metálica' | 'No Metálica' | 'Pequeña Minería Metálica' | 'Suspenso';
+type Clasificacion  = 'Metálica' | 'No Metálica' | 'Pequeña Minería Metálica';
 
 interface Concesion {
   id:                 string;
@@ -34,12 +34,6 @@ interface Stats {
   ultima_solicitud:       string | null;
 }
 
-const CATEGORIA_LABELS: Record<Categoria, string> = {
-  explotacion_otorgada: 'Otorgada · Explotación',
-  exploracion_otorgada: 'Otorgada · Exploración',
-  solicitud_pendiente:  'En Solicitud',
-};
-
 const CATEGORIA_TOKEN: Record<Categoria, string> = {
   explotacion_otorgada: 'green',
   exploracion_otorgada: 'blue',
@@ -50,7 +44,6 @@ const CLASIF_TOKEN: Record<Clasificacion, string> = {
   'Metálica':                  'earth',
   'No Metálica':               'slate',
   'Pequeña Minería Metálica':  'moss',
-  'Suspenso':                  'red',
 };
 
 const SHADOW_SM = '0 2px 6px rgba(31,42,56,0.05)';

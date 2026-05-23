@@ -73,12 +73,6 @@ export interface ConcesionStats {
   ultima_solicitud:       string | null;
 }
 
-export const CATEGORIA_LABELS: Record<CategoriaConcesion, string> = {
-  explotacion_otorgada:  'Otorgada para Explotación',
-  exploracion_otorgada:  'Otorgada para Exploración',
-  solicitud_pendiente:   'Solicitud Pendiente',
-};
-
 export const CATEGORIA_SHORT: Record<CategoriaConcesion, string> = {
   explotacion_otorgada:  'Explotación',
   exploracion_otorgada:  'Exploración',
@@ -193,26 +187,3 @@ export async function listConcesionesAdmin(opts: {
   return { rows: (data ?? []) as ConcesionMinera[], total: count ?? 0 };
 }
 
-/**
- * Renderiza un fragmento corto que María inyecta al system prompt cuando
- * detecta que el usuario preguntó por un nombre/empresa/zona del registro.
- * Mantiene 1 línea por concesión y se trunca a `max` resultados.
- */
-export function renderConcesionContextForMaria(
-  rows: ConcesionSearchResult[],
-  max: number = 5,
-): string {
-  if (!rows.length) return '';
-  const top = rows.slice(0, max);
-  const lines = top.map(r => {
-    const cat = CATEGORIA_SHORT[r.categoria];
-    const codigo = r.codigo ? ` (cód. ${r.codigo})` : '';
-    const fecha = r.fecha_solicitud ?? 's/f';
-    return `• ${r.nombre_zona}${codigo} — ${r.solicitante} — ${cat} (${r.clasificacion}) — solicitud ${fecha}`;
-  });
-  return [
-    'REGISTRO INHGEOMIN — concesiones encontradas (público):',
-    ...lines,
-    'Si el cliente quiere más detalle, sugiérele consultar www.mape.legal o el portal INHGEOMIN.',
-  ].join('\n');
-}

@@ -24,21 +24,6 @@ export async function getCmsContent(seccion?: string): Promise<CmsField[]> {
   return (data ?? []) as CmsField[];
 }
 
-export async function getCmsField(seccion: string, campo: string): Promise<string | null> {
-  const { data } = await supabase
-    .from('contenido_cms')
-    .select('valor')
-    .eq('seccion', seccion)
-    .eq('campo', campo)
-    .single();
-  return data?.valor ?? null;
-}
-
-export async function getCmsSection(seccion: string): Promise<Record<string, string>> {
-  const fields = await getCmsContent(seccion);
-  return Object.fromEntries(fields.map(f => [f.campo, f.valor ?? '']));
-}
-
 export async function upsertCmsField(
   seccion: string,
   campo: string,
@@ -64,13 +49,4 @@ export async function deleteCmsField(seccion: string, campo: string): Promise<vo
     .eq('seccion', seccion)
     .eq('campo', campo);
   if (error) throw error;
-}
-
-export async function getCmsSections(): Promise<string[]> {
-  const { data, error } = await supabase
-    .from('contenido_cms')
-    .select('seccion')
-    .order('seccion');
-  if (error) throw error;
-  return Array.from(new Set<string>((data ?? []).map((r: { seccion: string }) => r.seccion)));
 }
