@@ -162,6 +162,8 @@ export default function ContenidoPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={load}
+            aria-label="Recargar"
+            title="Recargar"
             className="p-2 rounded-lg transition-colors cursor-pointer"
             style={{ color: 'var(--slate)' }}
           >

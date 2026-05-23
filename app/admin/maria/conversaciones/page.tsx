@@ -181,11 +181,16 @@ export default function ConversacionesPage() {
 
       {/* Search */}
       <div className="mb-6">
+        <label htmlFor="convo-search" className="sr-only">
+          Buscar conversaciones
+        </label>
         <input
+          id="convo-search"
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Buscar por teléfono, nombre o contenido…"
+          aria-label="Buscar por teléfono, nombre o contenido"
           className="w-full max-w-xl px-3 py-2 rounded-lg text-sm outline-none focus:border-[color:var(--ink)]"
           style={inputStyle}
         />
@@ -224,6 +229,7 @@ export default function ConversacionesPage() {
               {['Teléfono', 'Cliente', 'Estado', 'Último mensaje', 'Hace', 'Acciones'].map(h => (
                 <th
                   key={h}
+                  scope="col"
                   className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider"
                   style={{ color: '#fff' }}
                 >

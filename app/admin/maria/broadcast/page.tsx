@@ -346,6 +346,7 @@ export default function BroadcastPage() {
                   <button
                     key={rol}
                     onClick={() => toggleAudience(rol)}
+                    aria-pressed={isOn}
                     className="px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer border transition-colors"
                     style={{
                       background:  isOn ? 'var(--ink)' : 'var(--bg)',
@@ -371,11 +372,16 @@ export default function BroadcastPage() {
             subtitle="Hora documentada del cron diario. La programación real vive en vercel.json — actualiza ese archivo para cambiarla en producción."
           >
             <div className="flex items-center gap-3">
-              <Clock size={18} strokeWidth={1.5} style={{ color: 'var(--slate)' }} />
+              <Clock size={18} strokeWidth={1.5} style={{ color: 'var(--slate)' }} aria-hidden="true" />
+              <label htmlFor="broadcast-time" className="sr-only">
+                Hora del broadcast (HH:MM)
+              </label>
               <input
+                id="broadcast-time"
                 type="time"
                 value={scheduleDraft}
                 onChange={e => setScheduleDraft(e.target.value)}
+                aria-label="Hora del broadcast en formato 24h"
                 className="px-3 py-2 rounded-lg text-sm outline-none"
                 style={inputStyle}
               />
@@ -467,6 +473,7 @@ export default function BroadcastPage() {
                   <tr style={{ background: 'var(--ink)' }}>
                     {['Teléfono', 'Nombre', 'Rol', 'Estado', 'Acciones'].map(h => (
                       <th key={h}
+                          scope="col"
                           className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider"
                           style={{ color: '#fff' }}>
                         {h}
@@ -541,6 +548,7 @@ export default function BroadcastPage() {
                   <tr style={{ background: 'var(--ink)' }}>
                     {['Fecha', 'Estado', 'Enviados', 'Errores', 'Roles', 'Disparado por'].map(h => (
                       <th key={h}
+                          scope="col"
                           className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider"
                           style={{ color: '#fff' }}>
                         {h}

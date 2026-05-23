@@ -109,6 +109,8 @@ export default function ConfigPage() {
         </div>
         <button
           onClick={load}
+          aria-label="Recargar"
+          title="Recargar"
           className="p-2 rounded-lg transition-colors cursor-pointer"
           style={{ color: 'var(--slate)' }}
         >
@@ -175,6 +177,8 @@ export default function ConfigPage() {
                           <button
                             type="button"
                             onClick={() => toggleShowKey(c.clave)}
+                            aria-label={show ? `Ocultar valor de ${c.clave}` : `Mostrar valor de ${c.clave}`}
+                            title={show ? 'Ocultar' : 'Mostrar'}
                             className="absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer"
                             style={{ color: 'var(--slate)' }}
                           >

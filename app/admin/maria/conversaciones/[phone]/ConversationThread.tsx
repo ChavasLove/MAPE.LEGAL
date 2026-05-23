@@ -432,10 +432,16 @@ export default function ConversationThread({ phone }: { phone: string }) {
           </div>
         )}
 
-        {/* Message scroll area */}
+        {/* Message scroll area. role="log" + aria-live tells screen readers
+            this is a streaming chat — new messages from polling get
+            announced without the user navigating into the region. */}
         <div
           ref={scrollRef}
           onScroll={handleScroll}
+          role="log"
+          aria-live="polite"
+          aria-relevant="additions"
+          aria-label="Hilo de conversación"
           className="flex-1 overflow-y-auto rounded-xl border p-5 space-y-4"
           style={{
             background:  'var(--bg-soft)',

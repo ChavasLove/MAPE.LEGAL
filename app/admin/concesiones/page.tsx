@@ -327,6 +327,7 @@ export default function ConcesionesAdminPage() {
 function Th({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <th
+      scope="col"
       className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
       style={style}
     >

@@ -423,6 +423,7 @@ export default function MariaClientesPage() {
               {['Teléfono', 'Tipo', 'Datos recopilados', 'Onboarding', 'Última actividad', 'Acciones'].map(h => (
                 <th
                   key={h}
+                  scope="col"
                   className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider"
                   style={{ color: '#fff' }}
                 >
