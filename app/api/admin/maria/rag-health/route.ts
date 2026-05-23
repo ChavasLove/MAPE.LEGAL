@@ -45,59 +45,13 @@ export async function GET() {
   };
   const envOk = Object.values(env).every(s => s === 'ok');
 
-  // ── rows probe ─────────────────────────────────────────────────────────
+  // ── rows + RPC probes (parallelized) ──────────────────────────────────
+  // All 5 probes are independent. Running them serially used to add up to
+  // ~5 round-trips; Promise.all collapses to one wall-clock round-trip.
   let totalRows: number | null = null;
   let withEmbedding: number | null = null;
   let sampleDim: number | null = null;
   let rowsError: string | null = null;
-
-  if (envOk) {
-    const admin = getAdminClient();
-    try {
-      const { count, error } = await admin
-        .from('maria_knowledge')
-        .select('id', { count: 'exact', head: true });
-      if (error) rowsError = `${error.code ?? '?'}: ${error.message}`;
-      else totalRows = count ?? 0;
-    } catch (e) {
-      rowsError = e instanceof Error ? e.message : String(e);
-    }
-
-    try {
-      const { count, error } = await admin
-        .from('maria_knowledge')
-        .select('id', { count: 'exact', head: true })
-        .not('embedding', 'is', null);
-      if (error && !rowsError) rowsError = `${error.code ?? '?'}: ${error.message}`;
-      else if (!error) withEmbedding = count ?? 0;
-    } catch (e) {
-      if (!rowsError) rowsError = e instanceof Error ? e.message : String(e);
-    }
-
-    // Sample dim: pull one populated row and count comma-separated values
-    // in the pgvector text form. PostgREST returns vectors as strings like
-    // `"[0.1,0.2,…]"`. Cheap, no extra extension needed.
-    try {
-      const { data, error } = await admin
-        .from('maria_knowledge')
-        .select('embedding')
-        .not('embedding', 'is', null)
-        .limit(1)
-        .maybeSingle();
-      if (!error && data?.embedding) {
-        const raw = String(data.embedding);
-        const inner = raw.startsWith('[') && raw.endsWith(']') ? raw.slice(1, -1) : raw;
-        sampleDim = inner.length === 0 ? 0 : inner.split(',').length;
-      }
-    } catch {
-      // sample dim is informational — swallow.
-    }
-  }
-
-  // ── RPC probes ────────────────────────────────────────────────────────
-  // Both RPCs are SECURITY DEFINER; we call them with sentinel inputs that
-  // are guaranteed to return zero rows but prove the function exists and
-  // accepts our payload shape.
   let matchRpcState: ProbeState = 'skipped';
   let matchRpcError: string | null = null;
   let ftsRpcState:   ProbeState = 'skipped';
@@ -105,39 +59,86 @@ export async function GET() {
 
   if (envOk) {
     const admin = getAdminClient();
-    try {
-      // Zero vector with threshold 1.0 — no real embedding can match.
-      const zeroVec = toVectorText(new Array(EMBEDDING_DIMS).fill(0));
-      const { error } = await admin.rpc('match_maria_knowledge', {
+    const zeroVec = toVectorText(new Array(EMBEDDING_DIMS).fill(0));
+
+    const [totalRes, embeddedRes, sampleRes, matchRes, ftsRes] = await Promise.allSettled([
+      admin
+        .from('maria_knowledge')
+        .select('id', { count: 'exact', head: true }),
+      admin
+        .from('maria_knowledge')
+        .select('id', { count: 'exact', head: true })
+        .not('embedding', 'is', null),
+      admin
+        .from('maria_knowledge')
+        .select('embedding')
+        .not('embedding', 'is', null)
+        .limit(1)
+        .maybeSingle(),
+      // Sentinel inputs: zero vector with threshold 1.0 can't match any
+      // real row, and the unique probe string for FTS won't either — both
+      // prove the function exists and accepts our payload shape.
+      admin.rpc('match_maria_knowledge', {
         query_embedding: zeroVec,
         match_threshold: 1.0,
         match_count: 1,
-      });
+      }),
+      admin.rpc('search_maria_knowledge_fts', {
+        query_text: '__rag_health_probe__',
+        match_count: 1,
+      }),
+    ]);
+
+    if (totalRes.status === 'fulfilled') {
+      const { count, error } = totalRes.value;
+      if (error) rowsError = `${error.code ?? '?'}: ${error.message}`;
+      else totalRows = count ?? 0;
+    } else {
+      rowsError = totalRes.reason instanceof Error ? totalRes.reason.message : String(totalRes.reason);
+    }
+
+    if (embeddedRes.status === 'fulfilled') {
+      const { count, error } = embeddedRes.value;
+      if (error && !rowsError) rowsError = `${error.code ?? '?'}: ${error.message}`;
+      else if (!error) withEmbedding = count ?? 0;
+    } else if (!rowsError) {
+      rowsError = embeddedRes.reason instanceof Error ? embeddedRes.reason.message : String(embeddedRes.reason);
+    }
+
+    if (sampleRes.status === 'fulfilled') {
+      const { data, error } = sampleRes.value;
+      if (!error && data?.embedding) {
+        const raw = String(data.embedding);
+        const inner = raw.startsWith('[') && raw.endsWith(']') ? raw.slice(1, -1) : raw;
+        sampleDim = inner.length === 0 ? 0 : inner.split(',').length;
+      }
+    }
+    // sample dim is informational — swallow on rejection.
+
+    if (matchRes.status === 'fulfilled') {
+      const { error } = matchRes.value;
       if (error) {
         matchRpcState = 'error';
         matchRpcError = `${error.code ?? '?'}: ${error.message}`;
       } else {
         matchRpcState = 'ok';
       }
-    } catch (e) {
+    } else {
       matchRpcState = 'error';
-      matchRpcError = e instanceof Error ? e.message : String(e);
+      matchRpcError = matchRes.reason instanceof Error ? matchRes.reason.message : String(matchRes.reason);
     }
 
-    try {
-      const { error } = await admin.rpc('search_maria_knowledge_fts', {
-        query_text: '__rag_health_probe__',
-        match_count: 1,
-      });
+    if (ftsRes.status === 'fulfilled') {
+      const { error } = ftsRes.value;
       if (error) {
         ftsRpcState = 'error';
         ftsRpcError = `${error.code ?? '?'}: ${error.message}`;
       } else {
         ftsRpcState = 'ok';
       }
-    } catch (e) {
+    } else {
       ftsRpcState = 'error';
-      ftsRpcError = e instanceof Error ? e.message : String(e);
+      ftsRpcError = ftsRes.reason instanceof Error ? ftsRes.reason.message : String(ftsRes.reason);
     }
   }
 

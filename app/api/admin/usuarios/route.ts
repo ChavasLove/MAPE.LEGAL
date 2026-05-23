@@ -18,13 +18,18 @@ export async function GET() {
     // ceiling per page) so projects up to that size show the full list.
     // Past 1000 we'd need real pagination; flag in the response so the UI
     // can warn.
-    const { data: { users }, error } = await admin.auth.admin.listUsers({ perPage: 1000 });
+    //
+    // The roles query is independent of the users payload — run them in
+    // parallel to save one round-trip on every list-users render.
+    const [usersRes, rolesRes] = await Promise.all([
+      admin.auth.admin.listUsers({ perPage: 1000 }),
+      admin
+        .from('user_roles')
+        .select('user_id, rol, activo, perfil_id, perfiles_profesionales(nombre, iniciales, rol)'),
+    ]);
+    const { data: { users }, error } = usersRes;
     if (error || !users) throw error ?? new Error('listUsers returned no data');
-
-    // Fetch roles for all users
-    const { data: roles } = await admin
-      .from('user_roles')
-      .select('user_id, rol, activo, perfil_id, perfiles_profesionales(nombre, iniciales, rol)');
+    const roles = rolesRes.data;
 
     const rolesMap = Object.fromEntries(
       (roles ?? []).map((r: { user_id: string; rol: string; activo: boolean; perfil_id: string | null; perfiles_profesionales: unknown }) => [r.user_id, r])
