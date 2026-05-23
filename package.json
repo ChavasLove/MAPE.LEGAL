@@ -12,6 +12,7 @@
     "@anthropic-ai/sdk": "^0.91.1",
     "@supabase/supabase-js": "^2.104.1",
     "lucide-react": "^1.11.0",
+    "maplibre-contour": "^0.1.0",
     "maplibre-gl": "^5.24.0",
     "next": "16.2.4",
     "openai": "^4.104.0",
