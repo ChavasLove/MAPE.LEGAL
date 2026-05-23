@@ -3,9 +3,9 @@
 import { useRef, useEffect, useMemo, useCallback } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import mlcontour from 'maplibre-contour';
 import {
   MINING_SITES,
-  TYPE_COLORS,
   MINE_TYPE_ORDER,
 } from './mining-data';
 import type { MineType } from './mining-data';
@@ -40,9 +40,6 @@ export interface MiningMapApi {
 /* Constants                                                          */
 /* ------------------------------------------------------------------ */
 
-const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY;
-const HAS_KEY = Boolean(MAPTILER_KEY);
-
 // Honduras center, framed to take in the dramatic Cordillera Nombre de Dios,
 // Sierra de Agalta, and the Atlantic-facing ranges in one shot.
 const INITIAL_CENTER: [number, number] = [-86.8, 14.7];
@@ -50,13 +47,52 @@ const INITIAL_ZOOM = 6.8;
 const INITIAL_PITCH = 55;
 const INITIAL_BEARING = -18;
 
-// DEM source for terrain + hillshade. demotiles is free, SRTM-based, no auth.
-const DEM_URL = 'https://demotiles.maplibre.org/terrain-tiles/tiles.json';
+// DEM source for terrain + hillshade + contour generation.
+// AWS Open Data / Tilezen Terrarium tiles — free, no auth, CORS-open,
+// zoom 0–15 (much better contour resolution than demotiles' z11 ceiling).
+// `encoding: 'terrarium'` is required for both setTerrain and maplibre-contour.
+const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
+const DEM_ATTRIB =
+  '<a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Tile data &copy; Mapzen</a>';
 const TERRAIN_EXAGGERATION = 1.8;
 
 const SOURCE_ID = 'mining-sites';
 const CIRCLE_LAYER = 'mining-circles';
 const TOUCH_LAYER = 'mining-touch-halo';
+const BORDER_SOURCE = 'hn-border';
+const BORDER_LAYER = 'hn-border-line';
+const CONTOUR_SOURCE = 'contours';
+const CONTOUR_MINOR_LAYER = 'isolines-minor';
+const CONTOUR_MAJOR_LAYER = 'isolines-major';
+const CONTOUR_LABEL_LAYER = 'isolines-major-text';
+
+/* ------------------------------------------------------------------ */
+/* maplibre-contour init (module scope, SSR-guarded)                  */
+/* ------------------------------------------------------------------ */
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let demSource: any = null;
+function initDemSource() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ds = new (mlcontour as any).DemSource({
+    url: DEM_URL,
+    encoding: 'terrarium',
+    maxzoom: 13,
+    worker: true,
+    cacheSize: 100,
+    timeoutMs: 10000,
+  });
+  ds.setupMaplibre(maplibregl);
+  return ds;
+}
+if (typeof window !== 'undefined' && !demSource) {
+  try {
+    demSource = initDemSource();
+  } catch {
+    // Plugin init failure degrades to no-contours map; surface real error in DevTools console.
+    demSource = null;
+  }
+}
 
 /* ------------------------------------------------------------------ */
 /* Resolve CSS variables → hex strings (MapLibre paint can't read var())*/
@@ -65,10 +101,15 @@ const TOUCH_LAYER = 'mining-touch-halo';
 interface ResolvedTokens {
   type: Record<MineType, string>;
   ink: string;
+  ink2: string;
   bg: string;
+  bgSoft: string;
   sand: string;
   moss: string;
-  ink2: string;
+  slate: string;
+  slateLt: string;
+  concrete: string;
+  border2: string;
 }
 
 /**
@@ -103,43 +144,37 @@ function resolveTokens(): ResolvedTokens {
     ink: readVar('--ink'),
     ink2: readVar('--ink-2'),
     bg: readVar('--bg'),
+    bgSoft: readVar('--bg-soft'),
     sand: readVar('--sand'),
     moss: readVar('--moss'),
+    slate: readVar('--slate'),
+    slateLt: readVar('--slate-lt'),
+    concrete: readVar('--concrete'),
+    border2: readVar('--border-2'),
   };
 }
 
 /* ------------------------------------------------------------------ */
-/* Style                                                              */
+/* Style — minimal cartographic chart                                 */
+/* ------------------------------------------------------------------ */
+/* A single flat background layer in the paper tone (`--bg-soft`).    */
+/* Contours, hillshade, terrain, border, and pins are all added       */
+/* imperatively in `instance.on('load')` once tokens are resolved.    */
+/* `glyphs` is required so the elevation labels symbol-layer can      */
+/* render. demotiles.maplibre.org hosts Noto Sans for free, no auth.  */
 /* ------------------------------------------------------------------ */
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getMapStyle(): string | any {
-  if (HAS_KEY && MAPTILER_KEY) {
-    return `https://api.maptiler.com/maps/hybrid/style.json?key=${MAPTILER_KEY}`;
-  }
+function getMapStyle(tokens: ResolvedTokens): any {
   return {
     version: 8,
-    sources: {
-      osm: {
-        type: 'raster',
-        tiles: [
-          'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
-          'https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
-          'https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
-        ],
-        tileSize: 256,
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
-        maxzoom: 19,
-      },
-    },
+    glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+    sources: {},
     layers: [
       {
-        id: 'osm-tiles',
-        type: 'raster',
-        source: 'osm',
-        minzoom: 0,
-        maxzoom: 22,
+        id: 'paper',
+        type: 'background',
+        paint: { 'background-color': tokens.bgSoft },
       },
     ],
   };
@@ -260,7 +295,10 @@ export default function MiningMap3D({
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
-    const style = getMapStyle();
+    // Resolve tokens up-front so the initial style background paints in the
+    // correct paper tone instead of flashing white before load.
+    const tokens = getTokens();
+    const style = getMapStyle(tokens);
     const instance = new maplibregl.Map({
       container: mapContainer.current,
       style,
@@ -283,9 +321,12 @@ export default function MiningMap3D({
     map.current = instance;
     if (apiRef.current && onMapReady) onMapReady(apiRef.current);
 
-    // Compact attribution to keep mobile surface clean.
+    // Mapzen Joerd attribution is mandatory for AWS Terrarium tiles (CC-BY).
     instance.addControl(
-      new maplibregl.AttributionControl({ compact: true }),
+      new maplibregl.AttributionControl({
+        compact: true,
+        customAttribution: DEM_ATTRIB,
+      }),
       'bottom-right'
     );
     instance.addControl(
@@ -296,23 +337,29 @@ export default function MiningMap3D({
     /* ---- once-styled: terrain + hillshade + sky + data layers ---- */
     instance.on('load', () => {
       styleReadyRef.current = true;
-      const tokens = getTokens();
+      // tokens resolved at constructor; re-use the same memoized object so the
+      // contour and hillshade layers paint with values consistent with the
+      // initial background.
 
-      /* ---- DEM source + 3D terrain + hillshade ---- */
+      /* ---- DEM source (raster-dem, Terrarium encoding) ---- */
       if (!instance.getSource('terrain-dem')) {
         try {
           instance.addSource('terrain-dem', {
             type: 'raster-dem',
-            url: DEM_URL,
+            tiles: [DEM_URL],
             tileSize: 256,
+            encoding: 'terrarium',
+            maxzoom: 15,
+            attribution: DEM_ATTRIB,
           });
         } catch {
           /* DEM unreachable — degrade gracefully (terrain off) */
         }
       }
 
-      // Hillshade reads from the same DEM. Inserted before the markers so
-      // points sit on top.
+      // Hillshade reads from the same DEM. Heavily attenuated so the contour
+      // lines (added below) carry the relief signal; hillshade is just a
+      // subtle wash to give topography a sense of light direction.
       try {
         if (!instance.getLayer('hillshade')) {
           instance.addLayer({
@@ -320,10 +367,10 @@ export default function MiningMap3D({
             type: 'hillshade',
             source: 'terrain-dem',
             paint: {
-              'hillshade-exaggeration': 0.45,
+              'hillshade-exaggeration': 0.18,
               'hillshade-shadow-color': tokens.ink,
-              'hillshade-highlight-color': tokens.sand,
-              'hillshade-accent-color': tokens.ink2,
+              'hillshade-highlight-color': tokens.bg,
+              'hillshade-accent-color': tokens.border2,
             },
           });
         }
@@ -337,25 +384,137 @@ export default function MiningMap3D({
         /* setTerrain may fail on style without DEM — fine, fall back flat */
       }
 
-      // Sky reads from atmospheric tokens. Subtle, warm horizon → calm sky.
+      // Sky — neutral horizon so the chart reads cartographic, not satellite.
       try {
         instance.setSky({
           'sky-color': tokens.bg,
-          'sky-horizon-blend': 0.6,
-          'horizon-color': tokens.sand,
-          'horizon-fog-blend': 0.55,
-          'fog-color': tokens.ink,
-          'fog-ground-blend': 0.85,
+          'sky-horizon-blend': 0.7,
+          'horizon-color': tokens.concrete,
+          'horizon-fog-blend': 0.6,
+          'fog-color': tokens.slateLt,
+          'fog-ground-blend': 0.9,
           'atmosphere-blend': [
             'interpolate',
             ['linear'],
             ['zoom'],
-            5, 0.6,
-            12, 0.1,
+            5, 0.4,
+            12, 0.05,
           ],
         });
       } catch {
         /* setSky available in MapLibre v3+; ignore if missing */
+      }
+
+      /* ---- Honduras border outline (decorative anchor) ---- */
+      try {
+        if (!instance.getSource(BORDER_SOURCE)) {
+          instance.addSource(BORDER_SOURCE, {
+            type: 'geojson',
+            data: '/data/honduras-border.json',
+          });
+        }
+        if (!instance.getLayer(BORDER_LAYER)) {
+          instance.addLayer({
+            id: BORDER_LAYER,
+            type: 'line',
+            source: BORDER_SOURCE,
+            paint: {
+              'line-color': tokens.ink,
+              'line-opacity': 0.55,
+              'line-width': 1.0,
+            },
+          });
+        }
+      } catch {
+        /* asset unreachable — chart still works without country outline */
+      }
+
+      /* ---- Contour lines (vector tiles, generated client-side) ---- */
+      // Thresholds: at each zoom, [minor interval, major interval] in metres.
+      // Major lines (level=1) get labels; minor lines (level=0) carry density.
+      if (demSource) {
+        try {
+          if (!instance.getSource(CONTOUR_SOURCE)) {
+            instance.addSource(CONTOUR_SOURCE, {
+              type: 'vector',
+              tiles: [
+                demSource.contourProtocolUrl({
+                  thresholds: {
+                    10: [100, 500],
+                    11: [100, 500],
+                    12: [50, 250],
+                    13: [25, 100],
+                  },
+                  elevationKey: 'ele',
+                  levelKey: 'level',
+                  contourLayer: 'contours',
+                }),
+              ],
+              maxzoom: 15,
+            });
+          }
+
+          if (!instance.getLayer(CONTOUR_MINOR_LAYER)) {
+            instance.addLayer({
+              id: CONTOUR_MINOR_LAYER,
+              type: 'line',
+              source: CONTOUR_SOURCE,
+              'source-layer': 'contours',
+              filter: ['==', ['get', 'level'], 0],
+              paint: {
+                'line-color': tokens.ink,
+                'line-opacity': 0.18,
+                'line-width': 0.4,
+              },
+            });
+          }
+
+          if (!instance.getLayer(CONTOUR_MAJOR_LAYER)) {
+            instance.addLayer({
+              id: CONTOUR_MAJOR_LAYER,
+              type: 'line',
+              source: CONTOUR_SOURCE,
+              'source-layer': 'contours',
+              filter: ['==', ['get', 'level'], 1],
+              paint: {
+                'line-color': tokens.ink,
+                'line-opacity': 0.55,
+                'line-width': 0.8,
+              },
+            });
+          }
+
+          if (!instance.getLayer(CONTOUR_LABEL_LAYER)) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            instance.addLayer({
+              id: CONTOUR_LABEL_LAYER,
+              type: 'symbol',
+              source: CONTOUR_SOURCE,
+              'source-layer': 'contours',
+              filter: ['==', ['get', 'level'], 1],
+              minzoom: 11,
+              layout: {
+                'symbol-placement': 'line',
+                'text-field': [
+                  'concat',
+                  ['number-format', ['get', 'ele'], {}],
+                  ' m',
+                ],
+                'text-font': ['Noto Sans Regular'],
+                'text-size': 9,
+                'symbol-spacing': 220,
+              },
+              paint: {
+                'text-color': tokens.slate,
+                'text-halo-color': tokens.bgSoft,
+                'text-halo-width': 1.2,
+              },
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            } as any);
+          }
+        } catch {
+          /* contour plugin failed — paper + border + pins still render */
+        }
       }
 
       /* ---- source + circle layers ---- */
@@ -578,9 +737,9 @@ export default function MiningMap3D({
         height: '100%',
         minHeight: '100%',
         borderRadius: 'inherit',
-        // Honduran sky-at-dusk gradient — visible until tiles paint.
-        background:
-          'linear-gradient(180deg, color-mix(in oklch, var(--sand) 22%, white) 0%, color-mix(in oklch, var(--bg) 100%, transparent) 60%)',
+        // Paper tone — matches the `background` layer painted by MapLibre once
+        // the style loads, so there is no flash between mount and first paint.
+        background: 'var(--bg-soft)',
       }}
     />
   );
