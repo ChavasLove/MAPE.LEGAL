@@ -80,9 +80,9 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 | `services/emailService.ts` | SendGrid REST API — `sendEmail()`, shell HTML de marca, plantillas: avance, rechazo, pago, contacto interno, acuse de contacto, confirmación de correo, invitación de usuario. Helper `esc()` al inicio del módulo escapa `&<>"'` — todas las plantillas lo usan al interpolar campos de usuario o BD para evitar HTML injection (la bandeja de gerencia recibía formularios de contacto crudos sin escape) |
 | `services/whatsappService.ts` | Meta Cloud API v21.0 — texto, templates, webhook parser |
 | `services/cmsService.ts` | Lectura/escritura de `contenido_cms` — anon para leer, admin para escribir |
-| `services/configService.ts` | Lectura/escritura de `configuracion_sistema` — solo admin client |
+| `services/configService.ts` | Lectura/escritura de `configuracion_sistema` — solo admin client. **Dos paths de escritura:** `setConfigs(entries)` es upsert (internal/trusted — usado por `updateAudience`/`updateSchedule`); `updateExistingConfigs(entries)` (PR #159) sólo actualiza keys que ya existen en la tabla y retorna `{updated, ignored}` — es el canónico para `/api/admin/config PATCH` así que un admin (o sesión hijackeada) no puede inyectar keys arbitrarias. Keys nuevas requieren migración. |
 | `services/dashboardService.ts` | Datos de expedientes para el dashboard (`DashExpediente`, `DashHito`, `DashDoc`). `createDashExpediente()` calcula `numero_expediente` con `Number.parseInt` max en JS sobre todas las filas del año actual (no via `ORDER BY numero_expediente DESC` — el sort lex trataba `EXP-YYYY-1000` como menor que `EXP-YYYY-999` y se rompía al expediente 1000; mezclar 3 dígitos legacy con 4 dígitos nuevos recreaba el bug en la frontera). Padding actual: 4 dígitos. **Cada insert hijo (hitos, documentos, legalidad_items, progress_fases, progress_subpasos) chequea `error` y `throw`** — antes el fallo silencioso devolvía un expediente "creado" con datos faltantes y sin auditoría |
-| `services/concesionesService.ts` | Helpers del registro INHGEOMIN (migración 023). `searchConcesion()` envuelve el RPC `search_concesion_minera` con anon-key (RPC es `SECURITY DEFINER`, OK desde anon). `getConcesionStats()` agregados. `listConcesionesAdmin()` paginado con service-role + ilike fallback. `renderConcesionContextForMaria()` formatea hasta N filas en líneas tipo "• Zona — Solicitante — Categoría (Clasif) — fecha". Exporta `CATEGORIA_LABELS` / `CATEGORIA_SHORT` para reuso en UI. Tipos: `CategoriaConcesion`, `ClasificacionConcesion`, `ConcesionMinera`, `ConcesionSearchResult`, `ConcesionStats` |
+| `services/concesionesService.ts` | Helpers del registro INHGEOMIN (migración 023). `searchConcesion()` envuelve el RPC `search_concesion_minera` con anon-key (RPC es `SECURITY DEFINER`, OK desde anon). `getConcesionStats()` agregados. `listConcesionesAdmin()` paginado con service-role + ilike fallback **sanitizada** (PR #159 — escapa `% _ \\` y strippea `, ( )` para cerrar la ilike-injection del `.or()` string); ahora **lanza** en error de DB en vez de retornar `{rows:[],total:0}` así la route puede devolver 500 con código. Exporta sólo `CATEGORIA_SHORT` (el `CATEGORIA_LABELS` y `renderConcesionContextForMaria` se removieron por dead-code en PR #159 — `buildConcesionContext()` vive inline en `route.js`). Tipos: `CategoriaConcesion`, `ClasificacionConcesion` (sin `Suspenso` — ese es un valor de `estado_expediente`, no de clasificación), `ConcesionMinera`, `ConcesionSearchResult`, `ConcesionStats`. |
 
 ### Plantillas de email disponibles
 | Función | Destinatario | Evento |
@@ -107,7 +107,7 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 - `PATCH /api/documentos/[id]` — verificar/rechazar documento
 - `POST /api/contacto` — formulario de contacto → email a `gerencia@mape.legal` + acuse al visitante
 - `POST /api/email/send` — enviar email vía SendGrid
-- `POST /api/whatsapp/send` — enviar mensaje WhatsApp (Meta Cloud API)
+- `POST /api/whatsapp/send` — enviar mensaje WhatsApp (Meta Cloud API). Requiere `requireRole('admin' | 'abogado' | 'tecnico_ambiental')` (PR #159 — antes era cookie-only via proxy, sesiones expiradas podían disparar envíos).
 - `GET+POST /api/webhook/whatsapp` — webhook Meta (verificación + mensajes entrantes)
 - `GET+POST /api/whatsapp` — webhook Twilio; asistente virtual **María** (Claude `claude-haiku-4-5-20251001`)
 - `GET+POST+DELETE /api/admin/cms` — editor CMS
@@ -134,7 +134,7 @@ Next.js **16.2.4** con App Router y Turbopack. Esta versión tiene cambios impor
 - `GET /api/broadcast/config` — configuración de métricas del reporte diario
 - `PATCH /api/broadcast/config` — cambiar métrica: `{ metric, action, currency?, patch?, updated_by? }`
 - `GET /api/broadcast/prices?days=7` — historial de precios; `?latest=true` para solo el más reciente
-- `GET /api/debug/prices` — diagnóstico de fuentes de precios: testea metals.live, exchangerate-api y Yahoo Finance; muestra env vars set/unset. Solo lectura, sin secretos expuestos.
+- `GET /api/debug/prices` — diagnóstico de fuentes de precios: testea metals.live, exchangerate-api y Yahoo Finance; muestra env vars set/unset. Admin-only (PR #159 — antes era público; el mapa de env vars presentes/ausentes servía de perfilamiento al attacker).
 
 ## Asistente Virtual María (`app/api/whatsapp/route.js`)
 Webhook Twilio que conecta WhatsApp con Claude AI.
@@ -424,7 +424,7 @@ CRON_SECRET                    # Header Bearer para proteger /api/broadcast/run.
 - **Tablas**: `usuarios_broadcast`, `daily_report_config`, `precios_diarios`, `broadcast_log`
 - **Roles broadcast**: `minero` (default), `comprador`, `tecnico`, `admin`
 - **Flujo**: cron → `GET /api/broadcast/run` → `runDailyBroadcast()` → fetch precios → store → `generateDailyMessage()` (template fijo) → `sendDailyBroadcast()` → Meta Cloud API → log
-- **Formato de reporte (Boletín Diario)**: template determinístico encabezado `BOLETIN DIARIO` + saludo `Buenos Días,` — LBMA USD/oz, conversión a LPS por onza, TC, **precio de compra al 80% LBMA expresado por gramo** (`oroLps × 0.80 ÷ 31.1034768` — constante `TROY_OUNCE_GRAMS`), línea `Pago realizado en Lempiras en su cuenta de FINACOOP`, fecha+hora Honduras (UTC-6), fuente dinámica desde `precios.fuente` (fallback `yahoo-finance`), link `https://www.mape.legal`. Viñetas con `*` (no `-`). **No llama a Claude** — garantiza consistencia y evita alucinaciones de precio. Fallback automático cuando `precios.oro` es null/0 (mismo encabezado + mensaje "Hoy no pude traer el precio exacto…"). El template canónico en el system prompt de María (`app/api/whatsapp/route.js` §`NOTIFICACIÓN DIARIA DE PRECIOS`) refleja la misma estructura para responder ad-hoc a quien pida el boletín por WhatsApp.
+- **Formato de reporte (Boletín Diario)**: template determinístico encabezado `BOLETIN DIARIO` + saludo `Buenos Días,` — LBMA USD/oz, conversión a LPS por onza, TC, **precio de compra al 80% LBMA expresado por gramo** (`oroLps × 0.80 ÷ 31.1034768` — constante `TROY_OUNCE_GRAMS`), línea `Pago realizado en Lempiras en su cuenta de FINACOOP`, fecha+hora Honduras (UTC-6), fuente dinámica desde `precios.fuente` (fallback `yahoo-finance`), link `https://www.mape.legal`. **Viñetas con `*` (no `-`) en todas las líneas de datos — consistencia reforzada en PR #159** (antes Tasa de cambio y "Pago realizado…" eran texto plano mid-bullet-list, rompiendo la jerarquía visual). **No llama a Claude** — garantiza consistencia y evita alucinaciones de precio. Fallback automático cuando `precios.oro` es null/0 (mismo encabezado + mensaje "Hoy no pude traer el precio exacto…"). El template canónico en el system prompt de María (`app/api/whatsapp/route.js` §`NOTIFICACIÓN DIARIA DE PRECIOS`) refleja la misma estructura para responder ad-hoc a quien pida el boletín por WhatsApp.
 - **Servicios**:
   - `services/userService.ts` — `getOrCreateUserByPhone`, `assignRole`, `getActiveSubscribers`, `listUsers`
   - `services/pricingService.ts` — `fetchGoldPrice`, `fetchSilverPrice`, `fetchUSDHNL`, `fetchCopperPrice`, `fetchAndStorePrices` (usa metals.live como fallback — **bloqueado en Vercel**, solo funciona en local)
@@ -744,5 +744,44 @@ Follow-up diferido: auto-promover `@cht.hn` / `@mape.legal` a `abogado` en el ca
 9 errores y 11 warnings en `npm run lint` con eslint-config-next 16. Categorías:
 - **`react-hooks/set-state-in-effect`** en 5 lugares (`app/admin/concesiones/page.tsx`, `app/dashboard/minas/page.tsx`, `app/registro/RegistroSearch.tsx`, `components/terrain/TerrainMapSection.tsx`) — todos son patrones legítimos de "fetch on mount" o "reset on filter change". La regla es nueva en React 19 y conservadora; no afecta runtime ni build.
 - **`react-hooks/refs`** en `components/terrain/MiningMap3D.tsx:161-164` — refs escritas durante render para que los handlers click/keydown vean props frescas. Es un patrón intencional (los handlers se crean una vez en map init). Migración correcta: escribir refs en `useEffect`. Pendiente como deuda técnica.
-- **Unused vars** menores (`CATEGORIA_LABELS`, `useCallback`, `Search`, `_updatedBy x2`) — limpieza cosmética.
+- **Unused vars** menores (`useCallback`, `Search`) — limpieza cosmética. `CATEGORIA_LABELS` y `_updatedBy x2` resueltos en PR #159.
 - **Unused eslint-disable directives** en `MiningMap3D.tsx` (4 líneas) — código defensivo que la regla actualizada ya no necesita silenciar.
+
+### Auditoría completa del panel admin (PR #159, 2026-05-23)
+
+Resultado de una auditoría multi-agente de los 49 archivos bajo `app/admin/**` + `app/api/admin/**` + servicios consumidos. 16 dominios paralelos (auth, María APIs/UI, broadcast, concesiones, usuarios, permisos, minas, performance, errores, loading/UX, security, a11y, schema, dead code, config/CMS). 7 commits temáticos, build limpio (10.6s). Las invariantes que de ahora en adelante deberían respetarse en cualquier ruta `/api/admin/*` nueva:
+
+**1. Auth obligatorio en cada handler.** El proxy es defensa de primera línea (chequea cookies, no firma JWT). Toda ruta debe llamar `requireRole('admin', …)` al principio. Reglas legacy descubiertas y cerradas:
+- `/api/whatsapp/send` ahora exige `requireRole('admin' | 'abogado' | 'tecnico_ambiental')` (antes era cookie-only via proxy → sesiones expiradas podían disparar envíos).
+- `/api/debug/prices` ahora exige `requireRole('admin')` (antes era anon → exponía el mapa de env vars presentes/ausentes).
+
+**2. No filtrar `error.message` de Supabase al cliente.** El patrón canónico ahora es `console.error('[scope] failed:', error)` + return de mensaje genérico ("Error al X"). Los errores crudos exponen nombres de tablas, columnas, constraints, y a veces fragmentos de queries. Aplicado a ~18 rutas en PR #159. Si abrís una ruta nueva, replicá el patrón.
+
+**3. `console.error` antes de cada return 500 genérico.** Vercel function logs son la única ventana al diagnóstico en producción; sin esto, los failures son invisibles.
+
+**4. `PG 23505` → 409.** Cualquier ruta que haga INSERT/UPSERT debe atrapar el código `23505` (unique violation) y mapearlo a 409 con mensaje específico. Antes faltaba en `roles POST`, `profesionales POST/PATCH`, `subscribers POST`, `usuarios POST` (este último también necesita mapping de "already registered" del `auth.admin.generateLink`).
+
+**5. PATCH usuarios — invariantes de seguridad:** `lib/serverAuth.ts` no es suficiente, hay que **(a)** validar `rol` contra allowlist `['admin','abogado','tecnico_ambiental','cliente']`; **(b)** bloquear cualquier self-modificación de `rol` o `activo` (sólo `perfil_id` permitido); **(c)** chequear `wouldLeaveZeroActiveAdmins()` antes de demote/deactivate. Lo mismo aplica a DELETE para que no se borre al último admin.
+
+**6. Config writes restringidos a keys que ya existen.** El nuevo helper canónico es `updateExistingConfigs()` en `services/configService.ts` (NO `setConfigs` — ese sigue siendo internal para callers trusted como `updateAudience/updateSchedule`). `/api/admin/config PATCH` rechaza keys desconocidas con 400 + lista de ignored. Para agregar una key nueva, usar una migración seed — no permitir crearlas vía UI.
+
+**7. Take-over de María: `whatsapp:+504…` siempre.** `POST /api/admin/maria/conversations/[phone]` debe forzar la forma `whatsapp:${normalized}` como `numero_whatsapp` (no muestrear filas previas). Si la primera fila vino de Meta (stripped), un sample-based path orphana todas las respuestas admin de la vista de historial de María. La regla `route.js:ADMIN_PREFIX_RE` que strippea `[Admin · email]` del prompt sigue siendo necesaria.
+
+**8. Onboarding PATCH es upsert atómico.** `/api/admin/maria/onboarding/[phone] PATCH` ahora usa `.upsert(…, { onConflict: 'telefono' })` (no el patrón SELECT-then-INSERT/UPDATE que tenía race condition).
+
+**9. Performance — paralelizar awaits independientes.** El audit encontró 3 rutas con N awaits secuenciales de queries que no dependen una de otra. Resueltos: `/api/admin/minas/[id] GET` (5→1 round-trip), `/api/admin/maria/rag-health` (5 probes via `Promise.allSettled`), `/api/admin/usuarios GET` (2 queries paralelas). Patrón a replicar en rutas nuevas.
+
+**10. `listUsers()` necesita `perPage` explícito.** El default es 50, silenciosamente trunca. `/api/admin/usuarios` ahora pasa `perPage: 1000` (ceiling de Supabase API) y loggea warning cuando se alcanza. Past 1000 hace falta pagination real.
+
+**11. Embeddings backfill: parallel chunks.** `/api/admin/maria/embeddings-backfill` paralelizado en chunks de 10 (antes era loop secuencial que tocaba el ceiling de `maxDuration=60s` past ~200 rows). Per-row failures aún se acumulan independientemente.
+
+**12. UI: row actions siempre con `busyId` lock + try/catch.** `toggleActivo`, `handleDelete`, `patchSubscriber`, `patchTransaction` ahora todos guardan un `busyRow`/`busyTxId` que deshabilita los botones durante el request. Sin esto, doble-click genera dos requests concurrentes que pueden revertir el efecto del primero.
+
+**13. UI: no `catch { /* silent */ }`.** `config`, `contenido`, `roles`, `concesiones` páginas tenían varios catches que tragaban errores. Ahora cada uno setea un `loadError`/`saveStatus` visible al usuario (con `role="alert"` o `role="status" aria-live="polite"`).
+
+**14. Polling pages: `document.hidden` guard.** Cualquier `setInterval` que haga fetch debe revisar `document.hidden` y saltarse el tick. Sin esto, tabs en background generan egress gratis cada N segundos. Aplicado a `/admin/maria/clientes` (faltaba) y `/admin/maria/auditoria` (nuevo polling 15s).
+
+**15. A11y mínimo no-negociable**: todas las `<table>` admin con `<th scope="col">`; chat thread con `role="log" aria-live="polite" aria-relevant="additions"`; icon-only buttons con `aria-label`; toggles de estado con `aria-pressed`; layout con skip-to-content link + `<main id="admin-main">` + `<aside aria-label>`.
+
+**Pendientes deliberados (no shipped en PR #159):** verificación en Supabase Studio de si `mensajes_wa` y `clientes.tipo_minero` realmente existen (queries activas las referencian); migración de forms (`usuarios`, `profesionales`, `contenido`) a labels con `htmlFor`+`id` reales (work mecánico grande); pagination real en listas (clientes, minas, subscribers, transactions); reemplazo del grouping client-side en `/api/admin/maria/conversations` por un RPC con `GROUP BY HAVING MAX(created_at)`.
+
