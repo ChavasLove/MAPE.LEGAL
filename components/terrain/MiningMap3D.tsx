@@ -88,8 +88,9 @@ function initDemSource() {
 if (typeof window !== 'undefined' && !demSource) {
   try {
     demSource = initDemSource();
-  } catch {
-    // Plugin init failure degrades to no-contours map; surface real error in DevTools console.
+  } catch (err) {
+    // Plugin init failure degrades to no-contours map.
+    console.warn('[mining-map] maplibre-contour DemSource init failed', err);
     demSource = null;
   }
 }
@@ -101,11 +102,8 @@ if (typeof window !== 'undefined' && !demSource) {
 interface ResolvedTokens {
   type: Record<MineType, string>;
   ink: string;
-  ink2: string;
   bg: string;
   bgSoft: string;
-  sand: string;
-  moss: string;
   slate: string;
   slateLt: string;
   concrete: string;
@@ -142,11 +140,8 @@ function resolveTokens(): ResolvedTokens {
   return {
     type,
     ink: readVar('--ink'),
-    ink2: readVar('--ink-2'),
     bg: readVar('--bg'),
     bgSoft: readVar('--bg-soft'),
-    sand: readVar('--sand'),
-    moss: readVar('--moss'),
     slate: readVar('--slate'),
     slateLt: readVar('--slate-lt'),
     concrete: readVar('--concrete'),
@@ -352,8 +347,8 @@ export default function MiningMap3D({
             maxzoom: 15,
             attribution: DEM_ATTRIB,
           });
-        } catch {
-          /* DEM unreachable — degrade gracefully (terrain off) */
+        } catch (err) {
+          console.warn('[mining-map] DEM source unreachable — terrain off', err);
         }
       }
 
@@ -374,14 +369,14 @@ export default function MiningMap3D({
             },
           });
         }
-      } catch {
-        /* hillshade requires the DEM source; if missing, skip */
+      } catch (err) {
+        console.warn('[mining-map] hillshade layer failed', err);
       }
 
       try {
         instance.setTerrain({ source: 'terrain-dem', exaggeration: TERRAIN_EXAGGERATION });
-      } catch {
-        /* setTerrain may fail on style without DEM — fine, fall back flat */
+      } catch (err) {
+        console.warn('[mining-map] setTerrain failed — falling back flat', err);
       }
 
       // Sky — neutral horizon so the chart reads cartographic, not satellite.
@@ -401,8 +396,8 @@ export default function MiningMap3D({
             12, 0.05,
           ],
         });
-      } catch {
-        /* setSky available in MapLibre v3+; ignore if missing */
+      } catch (err) {
+        console.warn('[mining-map] setSky failed (MapLibre v3+ required)', err);
       }
 
       /* ---- Honduras border outline (decorative anchor) ---- */
@@ -425,8 +420,8 @@ export default function MiningMap3D({
             },
           });
         }
-      } catch {
-        /* asset unreachable — chart still works without country outline */
+      } catch (err) {
+        console.warn('[mining-map] Honduras border asset failed', err);
       }
 
       /* ---- Contour lines (vector tiles, generated client-side) ---- */
@@ -439,7 +434,20 @@ export default function MiningMap3D({
               type: 'vector',
               tiles: [
                 demSource.contourProtocolUrl({
+                  // Thresholds per zoom: [minor interval, major interval] in metres.
+                  // Plugin behavior: at any zoom request, picks the highest key
+                  // <= zoom. If no key qualifies, `levels` is empty and the
+                  // tile is returned blank — so coverage MUST start at or below
+                  // `INITIAL_ZOOM` (6.8), otherwise no contours render until
+                  // the user manually zooms past z10. Honduras peaks at ~2870 m
+                  // (Cerro Las Minas), so coarse intervals at low zoom show
+                  // 2–4 major lines across the country without saturating.
                   thresholds: {
+                    5: [500, 2000],
+                    6: [500, 2000],
+                    7: [500, 2000],
+                    8: [250, 1000],
+                    9: [100, 500],
                     10: [100, 500],
                     11: [100, 500],
                     12: [50, 250],
@@ -512,8 +520,8 @@ export default function MiningMap3D({
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any);
           }
-        } catch {
-          /* contour plugin failed — paper + border + pins still render */
+        } catch (err) {
+          console.warn('[mining-map] contour layers failed — paper + border + pins still render', err);
         }
       }
 
