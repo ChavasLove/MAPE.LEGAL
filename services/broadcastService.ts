@@ -59,6 +59,11 @@ export async function generateDailyMessage(precios: PreciosDiarios): Promise<str
     ].join('\n');
   }
 
+  // Every data line is a `* ` bullet — matches MARIA.md §8 (canonical price
+  // format requires 4 obligatory bullets: LBMA, CHT compra 80%, Tipo de
+  // cambio USD/LPS, Actualizado). Footer lines are unprefixed so they read
+  // as a separator from the data section.
+  const tcLine = tc > 0 ? `L ${tc.toFixed(2)} por USD` : 'N/D';
   const lines = [
     `BOLETIN DIARIO`,
     ``,
@@ -66,14 +71,12 @@ export async function generateDailyMessage(precios: PreciosDiarios): Promise<str
     `El precio de oro el día de hoy es:`,
     `* LBMA: ${fmtUsd(oroUsd)} USD/oz`,
     `* En Lempiras: ${fmtLps(oroLps)} por onza (aprox.)`,
-    ``,
-    `Tasa de cambio referencia: ${tc > 0 ? 'L ' + tc.toFixed(2) + ' por USD' : 'N/D'}`,
+    `* Tasa de cambio referencia: ${tcLine}`,
     ``,
     `Precio de compra oro calculado en Lempiras:`,
     `* MAPE LEGAL compra al 80% LBMA`,
     `* ${fmtLps(compraLpsPorGramo)} por gramo estimado`,
-    ``,
-    `Pago realizado en Lempiras en su cuenta de FINACOOP`,
+    `* Pago realizado en Lempiras en su cuenta de FINACOOP`,
     ``,
     `Precios de referencia al ${fechaLarga} — ${horaCorta} Honduras`,
     `Fuentes: ${fuente} + BCH referencial`,
@@ -178,7 +181,12 @@ export async function sendDailyBroadcast(options: {
             console.error('[broadcast] auth error mid-broadcast — aborting remaining batches', e);
             return;
           }
-          console.error(`broadcastService: failed to send to ${user.telefono} —`, e);
+          // Mask the phone number — Vercel function logs are visible to anyone
+          // with project access. Pattern: keep country code + last 4 digits,
+          // mask the middle so log readers can still correlate complaints to
+          // a specific failure without exposing the full PII.
+          const masked = user.telefono.replace(/(\+?\d{3})\d+(\d{4})$/, '$1•••$2');
+          console.error(`broadcastService: failed to send to ${masked} —`, e);
           errores++;
         }
       })

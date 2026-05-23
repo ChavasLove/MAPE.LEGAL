@@ -58,8 +58,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="min-h-screen flex" style={{ background: 'var(--bg-soft)' }}>
+      {/* Skip to content — visible on focus, lets keyboard users bypass the
+          16-item sidebar on every page load. */}
+      <a
+        href="#admin-main"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-3 focus:py-2 focus:rounded-lg focus:bg-white focus:text-[color:var(--ink)] focus:border focus:border-[color:var(--border)] focus:shadow"
+      >
+        Saltar al contenido principal
+      </a>
+
       {/* Sidebar */}
       <aside
+        aria-label="Navegación principal del panel admin"
         className="w-64 shrink-0 flex flex-col border-r"
         style={{ background: 'var(--ink)', borderColor: sidebarHairline }}
       >
@@ -138,7 +148,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 p-8 overflow-auto">
+      <main id="admin-main" className="flex-1 p-8 overflow-auto">
         {children}
       </main>
     </div>

@@ -77,6 +77,16 @@ export async function GET() {
     })),
   ]);
 
+  // Surface any DB failures so the operator sees them in Vercel logs instead
+  // of silently rendering zeroes in KPI tiles.
+  for (const [name, res] of Object.entries({
+    convoCount, convoTodayPhones, onboardingFunnel, pendingTx,
+    lastBroadcastRes, lastAdminCmdRes, subscribersRes, clientesCountRes, pricesTodayRes,
+  })) {
+    const err = (res as { error?: unknown }).error;
+    if (err) console.error(`[admin/maria/stats] ${name} failed:`, err);
+  }
+
   // Build subscribers breakdown by role
   const subs = subscribersRes.data ?? [];
   const subscribers = {

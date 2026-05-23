@@ -21,11 +21,13 @@ export type CategoriaConcesion =
   | 'exploracion_otorgada'
   | 'solicitud_pendiente';
 
+// Suspenso is a state (estado_expediente), NOT a clasificacion. Including it
+// here previously meant a filter `?clasificacion=Suspenso` silently returned
+// zero rows because no row stores "Suspenso" in the clasificacion column.
 export type ClasificacionConcesion =
   | 'Metálica'
   | 'No Metálica'
-  | 'Pequeña Minería Metálica'
-  | 'Suspenso';
+  | 'Pequeña Minería Metálica';
 
 export interface ConcesionMinera {
   id:                  string;
@@ -70,12 +72,6 @@ export interface ConcesionStats {
   pequena_mineria:        number;
   ultima_solicitud:       string | null;
 }
-
-export const CATEGORIA_LABELS: Record<CategoriaConcesion, string> = {
-  explotacion_otorgada:  'Otorgada para Explotación',
-  exploracion_otorgada:  'Otorgada para Exploración',
-  solicitud_pendiente:   'Solicitud Pendiente',
-};
 
 export const CATEGORIA_SHORT: Record<CategoriaConcesion, string> = {
   explotacion_otorgada:  'Explotación',
@@ -135,9 +131,24 @@ export async function getConcesionStats(): Promise<ConcesionStats | null> {
   };
 }
 
+// Sanitize a value before splicing into a PostgREST .or() string.
+//   - backslash-escape SQL LIKE metacharacters (`%` `_` `\`)
+//   - strip the .or() string format's structural chars (`,` `(` `)`) which
+//     would otherwise let an attacker inject extra OR clauses or break the
+//     parser
+function sanitizeIlikeTerm(raw: string): string {
+  return raw
+    .replace(/[\\%_]/g, '\\$&')
+    .replace(/[,()]/g, ' ')
+    .trim();
+}
+
 /**
  * Lista admin con filtros y paginación cursor-less. Usa service-role para
  * leer toda la tabla aunque RLS denegara al anon (no debería, pero es safer).
+ *
+ * Throws on DB error so the route handler can return 500 with a code instead
+ * of a 200 with empty data (which is indistinguishable from "table is empty").
  */
 export async function listConcesionesAdmin(opts: {
   categoria?: CategoriaConcesion | null;
@@ -157,8 +168,11 @@ export async function listConcesionesAdmin(opts: {
   if (opts.categoria)     query = query.eq('categoria', opts.categoria);
   if (opts.clasificacion) query = query.eq('clasificacion', opts.clasificacion);
   if (opts.q && opts.q.trim()) {
-    const term = `%${opts.q.trim()}%`;
-    query = query.or(`nombre_zona.ilike.${term},solicitante.ilike.${term},codigo.ilike.${term}`);
+    const safe = sanitizeIlikeTerm(opts.q);
+    if (safe.length > 0) {
+      const term = `%${safe}%`;
+      query = query.or(`nombre_zona.ilike.${term},solicitante.ilike.${term},codigo.ilike.${term}`);
+    }
   }
 
   const { data, error, count } = await query
@@ -168,31 +182,8 @@ export async function listConcesionesAdmin(opts: {
 
   if (error) {
     console.error('[concesionesService.listConcesionesAdmin]', error.message);
-    return { rows: [], total: 0 };
+    throw error;
   }
   return { rows: (data ?? []) as ConcesionMinera[], total: count ?? 0 };
 }
 
-/**
- * Renderiza un fragmento corto que María inyecta al system prompt cuando
- * detecta que el usuario preguntó por un nombre/empresa/zona del registro.
- * Mantiene 1 línea por concesión y se trunca a `max` resultados.
- */
-export function renderConcesionContextForMaria(
-  rows: ConcesionSearchResult[],
-  max: number = 5,
-): string {
-  if (!rows.length) return '';
-  const top = rows.slice(0, max);
-  const lines = top.map(r => {
-    const cat = CATEGORIA_SHORT[r.categoria];
-    const codigo = r.codigo ? ` (cód. ${r.codigo})` : '';
-    const fecha = r.fecha_solicitud ?? 's/f';
-    return `• ${r.nombre_zona}${codigo} — ${r.solicitante} — ${cat} (${r.clasificacion}) — solicitud ${fecha}`;
-  });
-  return [
-    'REGISTRO INHGEOMIN — concesiones encontradas (público):',
-    ...lines,
-    'Si el cliente quiere más detalle, sugiérele consultar www.mape.legal o el portal INHGEOMIN.',
-  ].join('\n');
-}

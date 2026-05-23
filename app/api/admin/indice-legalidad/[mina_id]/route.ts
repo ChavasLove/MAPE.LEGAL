@@ -47,7 +47,10 @@ export async function GET(
     .select('*')
     .eq('mina_id', mina_id);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[admin/indice-legalidad GET] failed:', error);
+    return NextResponse.json({ error: 'Error al cargar el índice de legalidad' }, { status: 500 });
+  }
 
   const byComponente = new Map<string, IndiceRow>();
   ((rows ?? []) as IndiceRow[]).forEach(r => {
@@ -96,8 +99,8 @@ export async function PATCH(
   if (body.estado && !ESTADOS_COMPONENTE.includes(body.estado)) {
     return NextResponse.json({ error: 'estado inválido.' }, { status: 400 });
   }
-  if (body.puntaje != null && (body.puntaje < 0 || body.puntaje > 20)) {
-    return NextResponse.json({ error: 'puntaje debe estar entre 0 y 20.' }, { status: 400 });
+  if (body.puntaje != null && (!Number.isFinite(body.puntaje) || body.puntaje < 0 || body.puntaje > 20)) {
+    return NextResponse.json({ error: 'puntaje debe ser un número entre 0 y 20.' }, { status: 400 });
   }
 
   const admin = getAdminClient();
@@ -121,6 +124,9 @@ export async function PATCH(
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[admin/indice-legalidad PATCH] upsert failed:', error);
+    return NextResponse.json({ error: 'Error al guardar el componente' }, { status: 500 });
+  }
   return NextResponse.json(data);
 }

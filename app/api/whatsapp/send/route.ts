@@ -1,8 +1,14 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { sendWhatsAppText } from '@/services/whatsappService';
 import { getAdminClient } from '@/services/adminSupabase';
+import { requireRole } from '@/lib/serverAuth';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
+  const auth = await requireRole('admin', 'abogado', 'tecnico_ambiental');
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { to, body: msgBody, expediente_id } = await req.json();
 
@@ -27,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, message_id: messageId });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Error al enviar mensaje';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error('[whatsapp/send] failed:', error);
+    return NextResponse.json({ error: 'Error al enviar mensaje' }, { status: 500 });
   }
 }

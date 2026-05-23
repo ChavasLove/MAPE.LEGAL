@@ -15,7 +15,8 @@ import {
 export const dynamic = 'force-dynamic';
 
 const CATEGORIAS = ['explotacion_otorgada', 'exploracion_otorgada', 'solicitud_pendiente'] as const;
-const CLASIFS    = ['Metálica', 'No Metálica', 'Pequeña Minería Metálica', 'Suspenso'] as const;
+// Suspenso is an estado_expediente value, not a clasificacion. Removed.
+const CLASIFS    = ['Metálica', 'No Metálica', 'Pequeña Minería Metálica'] as const;
 
 function pickCategoria(v: string | null): CategoriaConcesion | null {
   if (!v) return null;

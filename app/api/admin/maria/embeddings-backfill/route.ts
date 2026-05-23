@@ -60,7 +60,8 @@ export async function POST(request: Request) {
 
   const { data: rows, error: selectErr } = await q;
   if (selectErr) {
-    return NextResponse.json({ error: 'select failed', detail: selectErr.message }, { status: 500 });
+    console.error('[admin/maria/embeddings-backfill] select failed:', selectErr);
+    return NextResponse.json({ error: 'No se pudieron cargar las filas pendientes.' }, { status: 500 });
   }
   if (!rows?.length) {
     return NextResponse.json({
@@ -81,46 +82,60 @@ export async function POST(request: Request) {
   let failed = 0;
   const failures: Array<{ id: number; reason: string }> = [];
 
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-    const vec = vectors[i];
-    if (!Array.isArray(vec) || vec.length !== EMBEDDING_DIMS) {
-      failed++;
-      failures.push({ id: row.id, reason: 'embedding missing or wrong dim' });
-      continue;
-    }
-    // pgvector requires the text form `[f1,f2,...]`. `toVectorText` is the
-    // canonical serializer — raw JS arrays get JSON-encoded by supabase-js
-    // and PG silently rejects them (UPDATE returns 0 rows affected, no
-    // error). Same root cause as the query-side bug in retrieveKnowledge.
-    const vecText = toVectorText(vec);
-    if (!vecText) {
-      failed++;
-      failures.push({ id: row.id, reason: 'toVectorText returned null' });
-      continue;
-    }
-    // `.select('id')` forces `Prefer: return=representation` so PostgREST
-    // returns the rows that were actually written. Without it (when only
-    // `{ count: 'exact' }` is set on `.update()`), supabase-js returns
-    // `count: null` regardless of what was written, which means the
-    // previous `count === 0` check was dead code and silent no-op
-    // updates reported as successes.
-    const { data: updated, error: upErr } = await admin
-      .from('maria_knowledge')
-      .update({ embedding: vecText })
-      .eq('id', row.id)
-      .select('id');
-    if (upErr) {
-      failed++;
-      failures.push({ id: row.id, reason: upErr.message });
-    } else if (!updated || updated.length === 0) {
-      // Ground truth: no row came back, so nothing was written. Surfaces
-      // schema-cache staleness, RLS denials, or id-type mismatches that
-      // would otherwise look like success.
-      failed++;
-      failures.push({ id: row.id, reason: 'update affected 0 rows (verify column type, RLS grant, schema cache)' });
-    } else {
-      done++;
+  // Parallelize the UPDATEs in chunks. Sequential N awaits hit the 60s
+  // maxDuration past ~200 rows; running 10 at a time keeps the round-trip
+  // budget bounded while reducing wall time roughly 10x. Per-row failures
+  // are accumulated independently — a chunk does not abort on the first
+  // bad row.
+  const CHUNK_SIZE = 10;
+  for (let chunkStart = 0; chunkStart < rows.length; chunkStart += CHUNK_SIZE) {
+    const chunkEnd = Math.min(chunkStart + CHUNK_SIZE, rows.length);
+    const chunkResults = await Promise.all(
+      Array.from({ length: chunkEnd - chunkStart }, async (_, k) => {
+        const i = chunkStart + k;
+        const row = rows[i];
+        const vec = vectors[i];
+        if (!Array.isArray(vec) || vec.length !== EMBEDDING_DIMS) {
+          return { ok: false, id: row.id, reason: 'embedding missing or wrong dim' };
+        }
+        // pgvector requires the text form `[f1,f2,...]`. `toVectorText` is the
+        // canonical serializer — raw JS arrays get JSON-encoded by supabase-js
+        // and PG silently rejects them (UPDATE returns 0 rows affected, no
+        // error). Same root cause as the query-side bug in retrieveKnowledge.
+        const vecText = toVectorText(vec);
+        if (!vecText) {
+          return { ok: false, id: row.id, reason: 'toVectorText returned null' };
+        }
+        // `.select('id')` forces `Prefer: return=representation` so PostgREST
+        // returns the rows that were actually written. Without it (when only
+        // `{ count: 'exact' }` is set on `.update()`), supabase-js returns
+        // `count: null` regardless of what was written, which means the
+        // previous `count === 0` check was dead code and silent no-op
+        // updates reported as successes.
+        const { data: updated, error: upErr } = await admin
+          .from('maria_knowledge')
+          .update({ embedding: vecText })
+          .eq('id', row.id)
+          .select('id');
+        if (upErr) {
+          return { ok: false, id: row.id, reason: upErr.message };
+        }
+        if (!updated || updated.length === 0) {
+          // Ground truth: no row came back, so nothing was written. Surfaces
+          // schema-cache staleness, RLS denials, or id-type mismatches that
+          // would otherwise look like success.
+          return { ok: false, id: row.id, reason: 'update affected 0 rows (verify column type, RLS grant, schema cache)' };
+        }
+        return { ok: true, id: row.id };
+      })
+    );
+    for (const r of chunkResults) {
+      if (r.ok) {
+        done++;
+      } else {
+        failed++;
+        failures.push({ id: r.id, reason: r.reason ?? 'unknown' });
+      }
     }
   }
 

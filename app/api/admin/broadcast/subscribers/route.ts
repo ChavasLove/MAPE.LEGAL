@@ -24,7 +24,10 @@ export async function GET() {
     .select('id, telefono, nombre, rol, activo, suscrito, created_at, updated_at')
     .order('created_at', { ascending: false });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[admin/broadcast/subscribers GET] failed:', error);
+    return NextResponse.json({ error: 'Error al obtener los suscriptores' }, { status: 500 });
+  }
   return NextResponse.json({ subscribers: data ?? [] });
 }
 
@@ -72,7 +75,10 @@ export async function POST(req: NextRequest) {
       .eq('telefono', telefono)
       .select()
       .single();
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      console.error('[admin/broadcast/subscribers POST] update failed:', error);
+      return NextResponse.json({ error: 'Error al actualizar el suscriptor' }, { status: 500 });
+    }
     return NextResponse.json(
       { ok: true, subscriber: data, existed: true, suscrito: data.suscrito },
       { status: 200 }
@@ -88,6 +94,12 @@ export async function POST(req: NextRequest) {
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    if ((error as { code?: string }).code === '23505') {
+      return NextResponse.json({ error: 'Ya existe un suscriptor con ese teléfono.' }, { status: 409 });
+    }
+    console.error('[admin/broadcast/subscribers POST] insert failed:', error);
+    return NextResponse.json({ error: 'Error al crear el suscriptor' }, { status: 500 });
+  }
   return NextResponse.json({ ok: true, subscriber: data, existed: false }, { status: 201 });
 }

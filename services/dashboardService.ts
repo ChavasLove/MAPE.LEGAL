@@ -96,6 +96,14 @@ export interface DashMensaje {
 
 // ─── Queries ─────────────────────────────────────────────────────────────────
 
+// Cap on rows fetched in the dashboard list. The select is a deeply nested
+// relational query (hitos, documentos, legalidad_items, progress_fases →
+// progress_subpasos), so N expedientes inflate into N×M sub-rows in the
+// function-memory deserialization. Past ~100 it noticeably slows the
+// dashboard page; past ~1000 it'd hit the Vercel function memory ceiling.
+// Real pagination on the dashboard view is a follow-up.
+const DASHBOARD_EXPEDIENTES_LIMIT = 200;
+
 export async function getDashExpedientes(): Promise<DashExpediente[]> {
   const { data, error } = await supabase
     .from('expedientes')
@@ -112,7 +120,8 @@ export async function getDashExpedientes(): Promise<DashExpediente[]> {
         progress_subpasos(nombre, estado, orden)
       )
     `)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(DASHBOARD_EXPEDIENTES_LIMIT);
 
   if (error) throw error;
 

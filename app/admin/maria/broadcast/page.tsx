@@ -212,18 +212,36 @@ export default function BroadcastPage() {
   }
 
   async function patchSubscriber(s: Subscriber, patch: Partial<Subscriber>) {
-    await fetch(`/api/admin/broadcast/subscribers/${s.id}`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(patch),
-    });
-    await load();
+    setSubError('');
+    try {
+      const res = await fetch(`/api/admin/broadcast/subscribers/${s.id}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(patch),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({} as { error?: string }));
+        throw new Error(data.error ?? 'No se pudo actualizar el suscriptor.');
+      }
+      await load();
+    } catch (e) {
+      setSubError(e instanceof Error ? e.message : 'Error al actualizar suscriptor');
+    }
   }
 
   async function deleteSubscriber(s: Subscriber) {
     if (!confirm(`¿Eliminar a ${s.telefono} de la lista?`)) return;
-    await fetch(`/api/admin/broadcast/subscribers/${s.id}`, { method: 'DELETE' });
-    await load();
+    setSubError('');
+    try {
+      const res = await fetch(`/api/admin/broadcast/subscribers/${s.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({} as { error?: string }));
+        throw new Error(data.error ?? 'No se pudo eliminar el suscriptor.');
+      }
+      await load();
+    } catch (e) {
+      setSubError(e instanceof Error ? e.message : 'Error al eliminar suscriptor');
+    }
   }
 
   return (
@@ -328,6 +346,7 @@ export default function BroadcastPage() {
                   <button
                     key={rol}
                     onClick={() => toggleAudience(rol)}
+                    aria-pressed={isOn}
                     className="px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer border transition-colors"
                     style={{
                       background:  isOn ? 'var(--ink)' : 'var(--bg)',
@@ -353,11 +372,16 @@ export default function BroadcastPage() {
             subtitle="Hora documentada del cron diario. La programación real vive en vercel.json — actualiza ese archivo para cambiarla en producción."
           >
             <div className="flex items-center gap-3">
-              <Clock size={18} strokeWidth={1.5} style={{ color: 'var(--slate)' }} />
+              <Clock size={18} strokeWidth={1.5} style={{ color: 'var(--slate)' }} aria-hidden="true" />
+              <label htmlFor="broadcast-time" className="sr-only">
+                Hora del broadcast (HH:MM)
+              </label>
               <input
+                id="broadcast-time"
                 type="time"
                 value={scheduleDraft}
                 onChange={e => setScheduleDraft(e.target.value)}
+                aria-label="Hora del broadcast en formato 24h"
                 className="px-3 py-2 rounded-lg text-sm outline-none"
                 style={inputStyle}
               />
@@ -388,6 +412,19 @@ export default function BroadcastPage() {
               </button>
             }
           >
+            {subError && !showAddSub && (
+              <div
+                role="alert"
+                className="text-xs mb-3 px-3 py-2 rounded-lg border"
+                style={{
+                  color:       'var(--red)',
+                  background:  'color-mix(in oklch, var(--red) 8%, white)',
+                  borderColor: 'color-mix(in oklch, var(--red) 30%, white)',
+                }}
+              >
+                {subError}
+              </div>
+            )}
             {showAddSub && (
               <form onSubmit={addSubscriber} className="grid sm:grid-cols-3 gap-3 p-4 rounded-lg mb-4 border"
                     style={{ background: 'var(--bg-soft)', borderColor: 'var(--border)' }}>
@@ -436,6 +473,7 @@ export default function BroadcastPage() {
                   <tr style={{ background: 'var(--ink)' }}>
                     {['Teléfono', 'Nombre', 'Rol', 'Estado', 'Acciones'].map(h => (
                       <th key={h}
+                          scope="col"
                           className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider"
                           style={{ color: '#fff' }}>
                         {h}
@@ -510,6 +548,7 @@ export default function BroadcastPage() {
                   <tr style={{ background: 'var(--ink)' }}>
                     {['Fecha', 'Estado', 'Enviados', 'Errores', 'Roles', 'Disparado por'].map(h => (
                       <th key={h}
+                          scope="col"
                           className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider"
                           style={{ color: '#fff' }}>
                         {h}

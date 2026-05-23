@@ -1,13 +1,19 @@
 import { NextResponse } from 'next/server';
+import { requireRole } from '@/lib/serverAuth';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/debug/prices
  * Diagnostic endpoint — hit this in a browser to see exactly what the live
- * price fetch returns. NOT protected (read-only, no secrets exposed).
+ * price fetch returns. Admin-only so the env-presence map isn't visible to
+ * anonymous visitors who could use it to profile the production environment.
  */
 export async function GET() {
+  const auth = await requireRole('admin');
+  if (auth instanceof NextResponse) return auth;
+
+
   const results: Record<string, unknown> = {
     timestamp: new Date().toISOString(),
     env: {

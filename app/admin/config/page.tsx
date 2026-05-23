@@ -23,22 +23,29 @@ export default function ConfigPage() {
   const [loading,  setLoading]  = useState(true);
   const [values,   setValues]   = useState<Record<string, string>>({});
   const [saving,   setSaving]   = useState(false);
-  const [saved,    setSaved]    = useState(false);
+  const [status,   setStatus]   = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
   const [showKeys, setShowKeys] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     setLoading(true);
+    setStatus(null);
     try {
       const res  = await fetch('/api/admin/config');
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error((data as { error?: string }).error ?? 'No se pudo cargar la configuración.');
+      }
       if (Array.isArray(data)) {
         setConfig(data);
         const init: Record<string, string> = {};
         data.forEach((c: ConfigEntry) => { init[c.clave] = c.valor ?? ''; });
         setValues(init);
       }
-    } catch { /* silent */ }
-    finally { setLoading(false); }
+    } catch (e) {
+      setStatus({ kind: 'err', msg: e instanceof Error ? e.message : 'Error al cargar configuración' });
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -47,17 +54,24 @@ export default function ConfigPage() {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    setSaved(false);
+    setStatus(null);
     try {
-      await fetch('/api/admin/config', {
+      const res = await fetch('/api/admin/config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(values),
       });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    } catch { /* silent */ }
-    finally { setSaving(false); }
+      const data = await res.json().catch(() => ({} as { error?: string }));
+      if (!res.ok) {
+        throw new Error((data as { error?: string }).error ?? 'No se pudo guardar la configuración.');
+      }
+      setStatus({ kind: 'ok', msg: 'Guardado correctamente' });
+      setTimeout(() => setStatus(null), 3000);
+    } catch (e) {
+      setStatus({ kind: 'err', msg: e instanceof Error ? e.message : 'Error al guardar configuración' });
+    } finally {
+      setSaving(false);
+    }
   }
 
   function toggleShowKey(clave: string) {
@@ -95,6 +109,8 @@ export default function ConfigPage() {
         </div>
         <button
           onClick={load}
+          aria-label="Recargar"
+          title="Recargar"
           className="p-2 rounded-lg transition-colors cursor-pointer"
           style={{ color: 'var(--slate)' }}
         >
@@ -161,6 +177,8 @@ export default function ConfigPage() {
                           <button
                             type="button"
                             onClick={() => toggleShowKey(c.clave)}
+                            aria-label={show ? `Ocultar valor de ${c.clave}` : `Mostrar valor de ${c.clave}`}
+                            title={show ? 'Ocultar' : 'Mostrar'}
                             className="absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer"
                             style={{ color: 'var(--slate)' }}
                           >
@@ -185,9 +203,14 @@ export default function ConfigPage() {
               <Save size={16} strokeWidth={2} />
               {saving ? 'Guardando...' : 'Guardar configuración'}
             </button>
-            {saved && (
-              <span className="text-sm" style={{ color: 'var(--green)' }}>
-                Guardado correctamente
+            {status && (
+              <span
+                role="status"
+                aria-live="polite"
+                className="text-sm"
+                style={{ color: status.kind === 'ok' ? 'var(--green)' : 'var(--red)' }}
+              >
+                {status.msg}
               </span>
             )}
           </div>

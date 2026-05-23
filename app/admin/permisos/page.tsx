@@ -166,6 +166,7 @@ export default function PermisosMatrixPage() {
               <thead>
                 <tr style={{ background: 'var(--ink)' }}>
                   <th
+                    scope="col"
                     className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider"
                     style={{ color: '#fff' }}
                   >
@@ -174,6 +175,7 @@ export default function PermisosMatrixPage() {
                   {roles.map(r => (
                     <th
                       key={r.id}
+                      scope="col"
                       className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider"
                       style={{ color: '#fff' }}
                     >
@@ -186,13 +188,14 @@ export default function PermisosMatrixPage() {
                 {PERMISSION_GROUPS.map(g => (
                   <Fragment key={g.group}>
                     <tr style={{ background: 'var(--bg-soft)' }}>
-                      <td
+                      <th
+                        scope="rowgroup"
                         colSpan={1 + roles.length}
-                        className="px-4 py-2 text-xs uppercase tracking-wider font-semibold"
-                        style={{ color: 'var(--slate)' }}
+                        className="px-4 py-2 text-xs uppercase tracking-wider font-semibold text-left"
+                        style={{ color: 'var(--slate)', fontWeight: 600 }}
                       >
                         {g.group}
-                      </td>
+                      </th>
                     </tr>
                     {g.perms.map(p => (
                       <tr

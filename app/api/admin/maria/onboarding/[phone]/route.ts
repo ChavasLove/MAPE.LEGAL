@@ -45,44 +45,44 @@ export async function PATCH(
 
   const admin = getAdminClient();
 
-  // Upsert: if the phone has no onboarding row yet, create one when `estado`
-  // is provided (admins can pin a stuck conversation to a specific state
-  // without forcing the user to restart the flow). Without `estado`, we
-  // can't safely insert a row — surface a 404 with guidance.
-  const { data: existing } = await admin
-    .from('onboarding_states')
-    .select('telefono')
-    .eq('telefono', telefono)
-    .maybeSingle();
-
-  if (!existing) {
-    if (body.estado === undefined) {
+  // Atomic upsert: if the row doesn't exist, insert; if it does, update. Both
+  // paths require `estado` to satisfy the not-null constraint on insert, so
+  // we still require it when the row is absent. Using the DB's onConflict
+  // path avoids the classic SELECT-then-INSERT/UPDATE TOCTOU race when two
+  // admins (or an admin and an auto-onboarding flow) edit the same phone
+  // concurrently.
+  if (body.estado === undefined) {
+    const { data: existing } = await admin
+      .from('onboarding_states')
+      .select('telefono')
+      .eq('telefono', telefono)
+      .maybeSingle();
+    if (!existing) {
       return NextResponse.json(
         { error: 'No hay onboarding para ese teléfono. Incluye `estado` para crear el registro.' },
         { status: 404 }
       );
     }
-    const { data, error } = await admin
-      .from('onboarding_states')
-      .insert({
-        telefono,
-        estado: body.estado as OnboardingState,
-        datos:  body.datos ?? {},
-      })
-      .select()
-      .single();
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ ok: true, onboarding: data, created: true }, { status: 201 });
   }
+
+  const upsertRow: Record<string, unknown> = {
+    telefono,
+    updated_at: patch.updated_at,
+  };
+  if (body.estado !== undefined) upsertRow.estado = body.estado;
+  if (body.datos  !== undefined) upsertRow.datos  = body.datos;
 
   const { data, error } = await admin
     .from('onboarding_states')
-    .update(patch)
-    .eq('telefono', telefono)
+    .upsert(upsertRow, { onConflict: 'telefono' })
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[admin/maria/onboarding PATCH] upsert failed:', error);
+    return NextResponse.json({ error: 'Error al actualizar el onboarding' }, { status: 500 });
+  }
+
   return NextResponse.json({ ok: true, onboarding: data });
 }
 
@@ -102,6 +102,9 @@ export async function DELETE(
     .delete()
     .eq('telefono', telefono);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[admin/maria/onboarding DELETE] failed:', error);
+    return NextResponse.json({ error: 'Error al borrar el onboarding' }, { status: 500 });
+  }
   return NextResponse.json({ ok: true });
 }

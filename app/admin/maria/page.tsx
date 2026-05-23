@@ -158,7 +158,12 @@ export default function MariaControlPanelPage() {
             style={{ color: 'var(--slate)' }}
             aria-label="Recargar"
           >
-            <RefreshCw size={18} strokeWidth={1.5} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw
+              size={18}
+              strokeWidth={1.5}
+              aria-hidden="true"
+              style={loading ? { opacity: 0.5 } : undefined}
+            />
           </button>
         </div>
       </div>

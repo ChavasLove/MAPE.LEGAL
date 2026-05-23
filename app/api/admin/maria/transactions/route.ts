@@ -11,7 +11,8 @@ export async function GET(req: NextRequest) {
 
   const url = new URL(req.url);
   const estado = url.searchParams.get('estado');
-  const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '100', 10) || 100, 500);
+  const limitRaw = parseInt(url.searchParams.get('limit') ?? '100', 10);
+  const limit = Math.min(Number.isFinite(limitRaw) && limitRaw > 0 ? limitRaw : 100, 500);
 
   const admin = getAdminClient();
   let q = admin
@@ -23,7 +24,10 @@ export async function GET(req: NextRequest) {
   if (estado) q = q.eq('estado', estado);
 
   const { data, error } = await q;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[admin/maria/transactions GET] failed:', error);
+    return NextResponse.json({ error: 'Error al obtener transacciones' }, { status: 500 });
+  }
 
   return NextResponse.json({ transactions: data ?? [] });
 }

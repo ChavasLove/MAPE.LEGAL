@@ -19,6 +19,9 @@ export async function GET(req: NextRequest) {
     .order('created_at', { ascending: false })
     .limit(limit);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[admin/broadcast/log GET] failed:', error);
+    return NextResponse.json({ error: 'Error al cargar el historial de broadcast' }, { status: 500 });
+  }
   return NextResponse.json({ runs: data ?? [] });
 }

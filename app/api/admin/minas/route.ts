@@ -37,7 +37,10 @@ export async function GET() {
     `)
     .order('created_at', { ascending: false });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[admin/minas GET] minas fetch failed:', error);
+    return NextResponse.json({ error: 'Error al obtener minas' }, { status: 500 });
+  }
 
   const minas = (data ?? []) as MinaRow[];
   const clienteIds = Array.from(new Set(minas.map(m => m.cliente_id).filter((v): v is string => !!v)));
@@ -163,7 +166,8 @@ export async function POST(req: Request) {
     if (error.code === '23505') {
       return NextResponse.json({ error: 'Código duplicado.' }, { status: 409 });
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[admin/minas POST] failed:', error);
+    return NextResponse.json({ error: 'Error al crear mina' }, { status: 500 });
   }
   return NextResponse.json(data, { status: 201 });
 }

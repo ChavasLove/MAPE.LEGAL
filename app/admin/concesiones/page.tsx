@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Mountain, Search, RefreshCw, ExternalLink } from 'lucide-react';
 
 type Categoria      = 'explotacion_otorgada' | 'exploracion_otorgada' | 'solicitud_pendiente';
-type Clasificacion  = 'Metálica' | 'No Metálica' | 'Pequeña Minería Metálica' | 'Suspenso';
+type Clasificacion  = 'Metálica' | 'No Metálica' | 'Pequeña Minería Metálica';
 
 interface Concesion {
   id:                 string;
@@ -34,12 +34,6 @@ interface Stats {
   ultima_solicitud:       string | null;
 }
 
-const CATEGORIA_LABELS: Record<Categoria, string> = {
-  explotacion_otorgada: 'Otorgada · Explotación',
-  exploracion_otorgada: 'Otorgada · Exploración',
-  solicitud_pendiente:  'En Solicitud',
-};
-
 const CATEGORIA_TOKEN: Record<Categoria, string> = {
   explotacion_otorgada: 'green',
   exploracion_otorgada: 'blue',
@@ -50,7 +44,6 @@ const CLASIF_TOKEN: Record<Clasificacion, string> = {
   'Metálica':                  'earth',
   'No Metálica':               'slate',
   'Pequeña Minería Metálica':  'moss',
-  'Suspenso':                  'red',
 };
 
 const SHADOW_SM = '0 2px 6px rgba(31,42,56,0.05)';
@@ -85,17 +78,26 @@ export default function ConcesionesAdminPage() {
   const [categoria, setCategoria]     = useState<Categoria | ''>('');
   const [clasif, setClasif]           = useState<Clasificacion | ''>('');
   const [q, setQ]                     = useState('');
+  // Debounced copy of `q` — every keystroke updates `q` (so the input is
+  // controlled and snappy) but only `debouncedQ` triggers a refetch. Without
+  // this, typing "Iriona" fired 6 sequential 100-row fetches.
+  const [debouncedQ, setDebouncedQ]   = useState('');
   const [page, setPage]               = useState(0);
   const PAGE_SIZE = 100;
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedQ(q.trim()), 250);
+    return () => clearTimeout(id);
+  }, [q]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       const params = new URLSearchParams();
-      if (categoria) params.set('categoria', categoria);
-      if (clasif)    params.set('clasificacion', clasif);
-      if (q.trim())  params.set('q', q.trim());
+      if (categoria)   params.set('categoria', categoria);
+      if (clasif)      params.set('clasificacion', clasif);
+      if (debouncedQ)  params.set('q', debouncedQ);
       params.set('limit',  String(PAGE_SIZE));
       params.set('offset', String(page * PAGE_SIZE));
       const res = await fetch(`/api/admin/concesiones?${params.toString()}`);
@@ -108,14 +110,19 @@ export default function ConcesionesAdminPage() {
     } finally {
       setLoading(false);
     }
-  }, [categoria, clasif, q, page]);
+  }, [categoria, clasif, debouncedQ, page]);
 
   const loadStats = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/concesiones/stats');
-      if (!res.ok) return;
+      if (!res.ok) {
+        console.warn('[admin/concesiones] stats fetch failed:', res.status);
+        return;
+      }
       setStats(await res.json());
-    } catch { /* silent */ }
+    } catch (e) {
+      console.warn('[admin/concesiones] stats fetch threw:', e);
+    }
   }, []);
 
   useEffect(() => { void load(); }, [load]);
@@ -313,6 +320,7 @@ export default function ConcesionesAdminPage() {
 function Th({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <th
+      scope="col"
       className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
       style={style}
     >

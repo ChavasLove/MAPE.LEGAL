@@ -66,7 +66,14 @@ export async function GET() {
   ]);
 
   if (clientesRes.error) {
-    return NextResponse.json({ error: clientesRes.error.message }, { status: 500 });
+    console.error('[admin/maria/clientes GET] clientes fetch failed:', clientesRes.error);
+    return NextResponse.json({ error: 'Error al obtener clientes' }, { status: 500 });
+  }
+  if (onboardingRes.error) {
+    console.error('[admin/maria/clientes GET] onboarding fetch failed:', onboardingRes.error);
+  }
+  if (convoMetaRes.error) {
+    console.error('[admin/maria/clientes GET] conversaciones fetch failed:', convoMetaRes.error);
   }
 
   // Build last-message-by-phone map. All phones are funneled through

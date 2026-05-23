@@ -55,7 +55,8 @@ export async function GET(
   ]);
 
   if (msgsRes.error) {
-    return NextResponse.json({ error: msgsRes.error.message }, { status: 500 });
+    console.error('[admin/maria/conversations/phone GET] messages fetch failed:', msgsRes.error);
+    return NextResponse.json({ error: 'Error al cargar el hilo' }, { status: 500 });
   }
 
   return NextResponse.json({
@@ -93,24 +94,31 @@ export async function POST(
     await sendWhatsAppText(normalized, content);
   } catch (e) {
     if (e instanceof WhatsAppApiError) {
+      console.error('[admin/maria/conversations/phone POST] WhatsApp send failed:', e);
       const status = e.isAuthError ? 502 : 500;
+      const userMsg = e.isAuthError
+        ? 'WhatsApp rechazó el envío (token expirado o sin permisos).'
+        : 'No se pudo enviar el mensaje por WhatsApp.';
       return NextResponse.json(
-        { error: `WhatsApp send failed: ${e.message}`, code: e.code, isAuthError: e.isAuthError },
+        { error: userMsg, code: e.code, isAuthError: e.isAuthError },
         { status }
       );
     }
-    const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error('[admin/maria/conversations/phone POST] send failed:', e);
+    return NextResponse.json({ error: 'No se pudo enviar el mensaje.' }, { status: 500 });
   }
 
   // Log the admin reply so María's next history fetch sees it (avoids
   // duplicate greetings or contradictions on the next turn).
   //
   // Two things are critical here:
-  //   1. `numero_whatsapp` MUST match the canonical storage form Twilio uses
-  //      ('whatsapp:+504…') because route.js queries history with
-  //      `eq('numero_whatsapp', fromNumber)`. Inserting the stripped form
-  //      would orphan the admin row from María's view.
+  //   1. `numero_whatsapp` MUST be the Twilio-style `whatsapp:+504…` form
+  //      because route.js queries history with `eq('numero_whatsapp',
+  //      fromNumber)` and Twilio's `fromNumber` always carries that prefix
+  //      in production. We force the canonical form here instead of
+  //      sampling a prior row — the prior-row sample was fragile because
+  //      the first row could have been a Meta-origin (stripped) message,
+  //      which would orphan all subsequent admin replies from María's view.
   //   2. The visible `[Admin · email]` prefix is for the UI thread only.
   //      route.js strips it from assistant messages before constructing the
   //      Claude prompt — otherwise Claude would parrot the bracket convention
@@ -118,17 +126,7 @@ export async function POST(
   const admin = getAdminClient();
   const adminEmail = auth.user.email ?? 'admin';
   const tagged = `[Admin · ${adminEmail}] ${content}`;
-
-  // Detect the prefix already in use for this phone (defaults to the
-  // Twilio-style `whatsapp:` prefix when no prior rows exist, since Twilio
-  // is the production webhook).
-  const { data: priorRow } = await admin
-    .from('conversaciones_whatsapp')
-    .select('numero_whatsapp')
-    .in('numero_whatsapp', [normalized, `whatsapp:${normalized}`])
-    .limit(1)
-    .maybeSingle();
-  const storageKey = priorRow?.numero_whatsapp ?? `whatsapp:${normalized}`;
+  const storageKey = `whatsapp:${normalized}`;
 
   const { error: insertErr } = await admin
     .from('conversaciones_whatsapp')
@@ -140,8 +138,9 @@ export async function POST(
 
   if (insertErr) {
     // The message was sent but logging failed — surface it for visibility.
+    console.error('[admin/maria/conversations/phone POST] log insert failed:', insertErr);
     return NextResponse.json(
-      { ok: true, sent: true, logged: false, log_error: insertErr.message },
+      { ok: true, sent: true, logged: false, log_error: 'No se pudo guardar el mensaje en el hilo.' },
       { status: 200 }
     );
   }
