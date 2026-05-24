@@ -77,7 +77,11 @@ function initDemSource() {
   const ds = new (mlcontour as any).DemSource({
     url: DEM_URL,
     encoding: 'terrarium',
-    maxzoom: 13,
+    // Match the camera's maxZoom (14) so the plugin fetches z14 DEM tiles
+    // directly instead of overzooming from z13 — otherwise contour lines
+    // visibly staircase when the user zooms close to a mining site while
+    // the underlying hillshade/terrain reads native z14 detail.
+    maxzoom: 14,
     worker: true,
     cacheSize: 100,
     timeoutMs: 10000,
@@ -329,6 +333,18 @@ export default function MiningMap3D({
       'bottom-left'
     );
 
+    // Operational visibility — async errors (border 404, glyphs CDN failure,
+    // DEM tile fetch issues) surface here, otherwise they'd be swallowed by
+    // MapLibre's internal source-manager.
+    instance.on('error', (e) => {
+      // MapLibre's `ErrorEvent` carries `sourceId` at runtime (when the error
+      // is scoped to a source) but the public type omits it; cast through any.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const ev = e as any;
+      const target = ev?.sourceId ? ` (source "${ev.sourceId}")` : '';
+      console.warn(`[mining-map] async error${target}`, ev?.error ?? ev);
+    });
+
     /* ---- once-styled: terrain + hillshade + sky + data layers ---- */
     instance.on('load', () => {
       styleReadyRef.current = true;
@@ -400,7 +416,10 @@ export default function MiningMap3D({
         console.warn('[mining-map] setSky failed (MapLibre v3+ required)', err);
       }
 
-      /* ---- Honduras border outline (decorative anchor) ---- */
+      /* ---- Honduras border source (added early to start the async fetch
+       *      ASAP; the line layer itself is added below, AFTER the contour
+       *      layers, so the major 0 m isoline at the coast doesn't paint
+       *      over the country outline). ---- */
       try {
         if (!instance.getSource(BORDER_SOURCE)) {
           instance.addSource(BORDER_SOURCE, {
@@ -408,20 +427,8 @@ export default function MiningMap3D({
             data: '/data/honduras-border.json',
           });
         }
-        if (!instance.getLayer(BORDER_LAYER)) {
-          instance.addLayer({
-            id: BORDER_LAYER,
-            type: 'line',
-            source: BORDER_SOURCE,
-            paint: {
-              'line-color': tokens.ink,
-              'line-opacity': 0.55,
-              'line-width': 1.0,
-            },
-          });
-        }
       } catch (err) {
-        console.warn('[mining-map] Honduras border asset failed', err);
+        console.warn('[mining-map] Honduras border source failed', err);
       }
 
       /* ---- Contour lines (vector tiles, generated client-side) ---- */
@@ -523,6 +530,25 @@ export default function MiningMap3D({
         } catch (err) {
           console.warn('[mining-map] contour layers failed — paper + border + pins still render', err);
         }
+      }
+
+      /* ---- Honduras border line layer (added AFTER contours so the
+       *      country outline paints on top of the 0 m isoline at the coast). ---- */
+      try {
+        if (!instance.getLayer(BORDER_LAYER) && instance.getSource(BORDER_SOURCE)) {
+          instance.addLayer({
+            id: BORDER_LAYER,
+            type: 'line',
+            source: BORDER_SOURCE,
+            paint: {
+              'line-color': tokens.ink,
+              'line-opacity': 0.55,
+              'line-width': 1.0,
+            },
+          });
+        }
+      } catch (err) {
+        console.warn('[mining-map] Honduras border layer failed', err);
       }
 
       /* ---- source + circle layers ---- */
