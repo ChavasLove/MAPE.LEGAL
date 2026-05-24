@@ -9,9 +9,11 @@
 
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { CHT_SYSTEM_PROMPT } from '@/lib/maria/systemPrompt';
 import { embedQuery, toVectorText } from '@/lib/maria/embeddings';
 import { supabase } from '@/services/supabase';
+import { getAdminClient } from '@/services/adminSupabase';
 import { fetchAllPrices } from '@/services/pricingService';
 import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit';
 
@@ -20,12 +22,30 @@ export const dynamic = 'force-dynamic';
 
 const MAX_MESSAGES = 30;
 const MAX_CONTENT_CHARS = 2000;
+// Soft per-request cap on the *merged* content of any single role after dedup,
+// so an attacker can't stack 30 same-role messages × 2000 chars into one 60 KB
+// mega-prompt that bypasses per-message validation and bills Claude tokens.
+const MAX_MERGED_CONTENT_CHARS = 6000;
 const RATE_LIMIT_PER_IP = 20;
 const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
+// Upstream price fetches (GoldAPI / Yahoo / exchangerate-api) don't expose
+// AbortSignal; race them against this timeout so a stalled feed doesn't pin
+// the serverless function past the client's own 30 s abort.
+const PRICE_FETCH_TIMEOUT_MS = 8000;
 
 const anthropic = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   : null;
+
+// Lazy service-role client for reads that anon can't see (precios_diarios has
+// RLS that grants service_role only — migration 009 line 73 documents this
+// explicitly). The RAG/concesiones RPCs are SECURITY DEFINER so they stay on
+// the anon proxy.
+let _admin: SupabaseClient | null = null;
+function admin(): SupabaseClient {
+  if (!_admin) _admin = getAdminClient();
+  return _admin;
+}
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
@@ -90,15 +110,22 @@ function formatKnowledgeRows(rows: KnowledgeRow[]): string | null {
 }
 
 async function retrieveKnowledge(userMessage: string): Promise<string | null> {
+  // Log prefix kept as `[rag]` (channel=web) so operators can grep both
+  // routes uniformly, per CLAUDE.md operational convention.
   let hasEmbeddings = false;
   try {
     const { count, error } = await supabase
       .from('maria_knowledge')
       .select('id', { count: 'exact', head: true })
       .not('embedding', 'is', null);
-    if (!error) hasEmbeddings = (count ?? 0) > 0;
+    if (error) {
+      console.error('[rag][web] pre-check failed:', error.message);
+    } else {
+      hasEmbeddings = (count ?? 0) > 0;
+      console.log(`[rag][web] pre-check embedded=${count ?? 0}`);
+    }
   } catch (e) {
-    console.error('[maria-web rag] pre-check non-fatal:', (e as Error)?.message);
+    console.error('[rag][web] pre-check non-fatal:', (e as Error)?.message);
   }
 
   if (hasEmbeddings) {
@@ -112,12 +139,13 @@ async function retrieveKnowledge(userMessage: string): Promise<string | null> {
           match_count: RAG_MATCH_COUNT,
         });
         if (!error && data?.length) {
+          console.log(`[rag][web] path=semantic candidates=${data.length}`);
           return formatKnowledgeRows(data as KnowledgeRow[]);
         }
-        if (error) console.error('[maria-web rag] match RPC error:', error.message);
+        if (error) console.error('[rag][web] match_maria_knowledge RPC error:', error.message);
       }
     } catch (e) {
-      console.error('[maria-web rag] semantic non-fatal:', (e as Error)?.message);
+      console.error('[rag][web] semantic search non-fatal:', (e as Error)?.message);
     }
   }
 
@@ -127,12 +155,14 @@ async function retrieveKnowledge(userMessage: string): Promise<string | null> {
       match_count: RAG_MATCH_COUNT,
     });
     if (error || !chunks?.length) {
-      if (error) console.error('[maria-web rag] FTS RPC error:', error.message);
+      if (error) console.error('[rag][web] search_maria_knowledge_fts RPC error:', error.message);
+      console.log('[rag][web] path=none');
       return null;
     }
+    console.log(`[rag][web] path=fts candidates=${chunks.length}`);
     return formatKnowledgeRows(chunks as KnowledgeRow[]);
   } catch (e) {
-    console.error('[maria-web rag] FTS non-fatal:', (e as Error)?.message);
+    console.error('[rag][web] FTS retrieve error:', (e as Error)?.message);
     return null;
   }
 }
@@ -151,12 +181,13 @@ async function buildPriceContext(): Promise<string> {
   let prices: PriceSnapshot | null = null;
 
   try {
-    const { data: cached } = await supabase
+    // service-role: anon has no SELECT policy on precios_diarios per migration 009
+    const { data: cached } = await admin()
       .from('precios_diarios')
       .select('oro, plata, usd_hnl, fecha, fuente')
       .eq('fecha', today)
       .single();
-    if (cached?.oro) {
+    if (cached?.oro != null && cached.oro > 0) {
       prices = cached as unknown as PriceSnapshot;
     }
   } catch {
@@ -165,8 +196,14 @@ async function buildPriceContext(): Promise<string> {
 
   if (!prices) {
     try {
-      const live = await fetchAllPrices();
-      if (live.oro) {
+      // fetchAllPrices fans out to GoldAPI / Yahoo / exchangerate-api without
+      // its own AbortSignal. Race against a hard timeout so a single stalled
+      // upstream doesn't pin the function past the client abort.
+      const live = await Promise.race<Awaited<ReturnType<typeof fetchAllPrices>> | null>([
+        fetchAllPrices(),
+        new Promise((resolve) => setTimeout(() => resolve(null), PRICE_FETCH_TIMEOUT_MS)),
+      ]);
+      if (live && live.oro != null && live.oro > 0) {
         prices = {
           oro: live.oro,
           plata: live.plata,
@@ -174,9 +211,11 @@ async function buildPriceContext(): Promise<string> {
           fecha: today,
           fuente: live.fuente,
         };
+      } else if (!live) {
+        console.error('[maria-web prices] live fetch timed out after', PRICE_FETCH_TIMEOUT_MS, 'ms');
       }
     } catch (e) {
-      console.log('[maria-web prices] live fetch non-fatal:', (e as Error)?.message);
+      console.error('[maria-web prices] live fetch failed:', (e as Error)?.message);
     }
   }
 
@@ -212,14 +251,26 @@ El formato canónico de respuesta para precio del día está en CUANDO PREGUNTAN
 }
 
 // ─── Web channel guidance — injected after the base prompt ──────────────────
+// Overrides the base prompt's WhatsApp-centric statements (líneas 24, 58 del
+// systemPrompt: "asistente virtual por WhatsApp", "Respuestas cortas para
+// WhatsApp"). Sin este override Haiku ocasionalmente le decía al visitante
+// "soy asistente por WhatsApp, escribime al +504 …" — derrotando el propósito
+// del widget en la única pregunta que justifica su existencia.
 const WEB_CHANNEL_CONTEXT = `
 
 CONTEXTO DEL CANAL — WEB (mape.legal):
-Este visitante está chateando desde el sitio web institucional, no por WhatsApp. La conversación es anónima — no tenés su número, ni su nombre, ni datos de cliente registrados.
+**Estás operando en el canal WEB de mape.legal, no en WhatsApp.** Cualquier instrucción anterior que diga "María es una asistente virtual por WhatsApp" o "Respuestas cortas para WhatsApp" aplica al canal WhatsApp; en este canal sos la asistente WEB de CHT. Si el visitante pregunta "¿qué canal es este?" o "¿puedo hablar por aquí?", contestá afirmando que sí: estás disponible directamente en el sitio.
+
+Sobre el visitante:
+- La conversación es anónima — no tenés su número, ni su nombre, ni datos de cliente registrados. El bloque CONTEXTO DEL MINERO ACTIVO no aparece en este canal.
 - NO le pidas DPI, número de teléfono, ni datos personales en este canal. La captura formal de datos sucede por WhatsApp (+504 9737 3139) o por correo a gerencia@mape.legal.
 - Si el visitante avanza hacia una solicitud concreta (cotización formal, inicio de trámite, transacción de oro), invitalo a continuar con María por WhatsApp al +504 9737 3139 o por correo a gerencia@mape.legal — ahí se registra formalmente.
-- Mantené tu personalidad y reglas: tuteo, respuestas cortas (≤5 líneas), sin emojis, sin fechas exactas. Las reglas de "Tierra Primero" siguen aplicando: si el visitante quiere formalización, preguntá primero por situación de tierra.
-- El bloque CONTEXTO DEL MINERO ACTIVO no aparece en este canal — no asumas datos del visitante.`;
+
+Reglas que seguís aplicando:
+- Personalidad: tuteo, hondureña, sin emojis, sin jerga de otros países.
+- Largo: respuestas cortas (≤5 líneas — la pantalla del chat es chica).
+- "Tierra Primero": si el visitante quiere formalización, preguntá primero por situación de tierra.
+- Precios y citas legales: usá los bloques PRECIOS DE REFERENCIA, CONTEXTO DEL SISTEMA y REGISTRO INHGEOMIN cuando aparezcan.`;
 
 // ─── POST handler ────────────────────────────────────────────────────────────
 export async function POST(request: Request) {
@@ -310,6 +361,14 @@ export async function POST(request: Request) {
       last.content = `${last.content}\n\n${m.content}`;
     }
   }
+  // Reject if dedup amplification stuffed a single merged turn past the soft
+  // cap. Bounds 30 × 2000 chars from collapsing into one 60 KB prompt.
+  if (cleanHistory.some((m) => m.content.length > MAX_MERGED_CONTENT_CHARS)) {
+    return NextResponse.json(
+      { error: 'Conversación demasiado larga. Recargá para empezar de nuevo.', code: 'TOO_MANY_MESSAGES' },
+      { status: 400 }
+    );
+  }
   if (cleanHistory.length === 0 || cleanHistory[cleanHistory.length - 1].role !== 'user') {
     return NextResponse.json(
       { error: 'Falta un mensaje del usuario.', code: 'BAD_BODY' },
@@ -326,7 +385,13 @@ export async function POST(request: Request) {
     retrieveKnowledge(lastUserMessage),
   ]);
 
-  const ragContext = ragBlock ? `\n\nCONTEXTO DEL SISTEMA:\n${ragBlock}` : '';
+  // Wrapper mirrors app/api/whatsapp/route.js:735-736 — the anti-deflection
+  // instruction is what fixed the "Art. 28-A" production bug (CLAUDE.md
+  // 2026-05-15). Without it María defaults to "escribí a gerencia@mape.legal"
+  // even when the RAG block has the answer.
+  const ragContext = ragBlock
+    ? `\n\nCONTEXTO DEL SISTEMA (citas literales de la base de conocimiento legal y regulatoria de CHT — Ley General del Ambiente Decreto 104-93, Decreto 181-2007 que adiciona Arts. 28-A y 29-C, Decreto 47-2010, Requisitos SLAS-2 de MiAmbiente, Reglamento de Minería Acuerdo 042-2013, Manual Operativo CHT):\n${ragBlock}\n\nINSTRUCCIONES PARA USAR ESTE BLOQUE:\n- Si la respuesta a la pregunta del visitante está aquí, CITALA con la referencia específica (artículo, decreto, requisito). Resumí el texto en hondureño claro pero conservando los términos legales.\n- NO derives a gerencia@mape.legal cuando este bloque responde la pregunta — comunicar la norma es tu trabajo, no interpretación jurídica.\n- Solo derivá si la pregunta requiere análisis jurídico específico que este bloque no cubre (por ejemplo, estrategia de litigio, jurisprudencia, casos novedosos sin precedente en el bloque).`
+    : '';
   const dynamicPrompt =
     CHT_SYSTEM_PROMPT + WEB_CHANNEL_CONTEXT + priceContext + concesionContext + ragContext;
 

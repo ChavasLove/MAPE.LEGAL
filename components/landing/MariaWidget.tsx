@@ -20,7 +20,11 @@ interface Message {
 }
 
 const STORAGE_KEY = 'maria-web-history';
-const MAX_STORED_MESSAGES = 40;
+// Aligned with the server-side MAX_MESSAGES=30 cap. Stored history is the
+// payload sent on the next turn (plus 1 fresh user message), so keep room.
+// If this drifts above 30 the user gets a server 400 with no in-app remedy
+// because sessionStorage survives reload.
+const MAX_STORED_MESSAGES = 28;
 const SEND_TIMEOUT_MS = 30_000;
 
 // Hard-coded welcome message (display-only — never sent to /api/maria/chat).
@@ -51,13 +55,17 @@ function loadStored(): Message[] | null {
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return null;
     return parsed
-      .filter(
-        (m): m is Message =>
-          !!m &&
-          typeof m === 'object' &&
-          (m as Message).role !== undefined &&
-          typeof (m as Message).content === 'string',
-      )
+      .filter((m): m is Message => {
+        if (!m || typeof m !== 'object') return false;
+        const role = (m as Message).role;
+        const content = (m as Message).content;
+        // Strict role narrowing — a poisoned sessionStorage entry with
+        // role='system' or role=42 would otherwise hydrate, persist, and
+        // get POSTed to the route, which rejects with 400 BAD_BODY and
+        // locks the user out of the chat until they manually clear
+        // storage.
+        return (role === 'user' || role === 'assistant') && typeof content === 'string';
+      })
       .slice(-MAX_STORED_MESSAGES);
   } catch {
     return null;
@@ -97,6 +105,19 @@ export default function MariaWidget({ lang }: MariaWidgetProps) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const stickToBottomRef = useRef(true);
   const fabRef = useRef<HTMLButtonElement | null>(null);
+  // Tracked so we can abort in-flight requests when the component unmounts
+  // (user navigates away mid-request). Without this, the 30 s timer fires
+  // ctrl.abort() on an unmounted instance and the catch block setStates leak.
+  const activeCtrlRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
+
+  // Abort any in-flight request on unmount.
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      activeCtrlRef.current?.abort();
+    };
+  }, []);
 
   // Hydrate from sessionStorage on mount (sessionStorage is browser-only).
   // Same hydrate-on-mount pattern as app/page.tsx:29 — react-hooks/set-state-in-effect
@@ -140,13 +161,15 @@ export default function MariaWidget({ lang }: MariaWidgetProps) {
     return () => window.clearTimeout(id);
   }, [open]);
 
-  // Escape closes; restore focus to the FAB.
+  // Escape closes; restore focus to the FAB. The FAB is conditional on `!open`,
+  // so it's not in the DOM when Escape fires. Defer focus to the next animation
+  // frame so React commits the FAB back first.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setOpen(false);
-        fabRef.current?.focus();
+        requestAnimationFrame(() => fabRef.current?.focus());
       }
     };
     document.addEventListener('keydown', onKey);
@@ -182,7 +205,10 @@ export default function MariaWidget({ lang }: MariaWidgetProps) {
     stickToBottomRef.current = true;
 
     const ctrl = new AbortController();
+    activeCtrlRef.current = ctrl;
     const timeoutId = window.setTimeout(() => ctrl.abort(), SEND_TIMEOUT_MS);
+
+    let rollback = false;
 
     try {
       const res = await fetch('/api/maria/chat', {
@@ -193,6 +219,7 @@ export default function MariaWidget({ lang }: MariaWidgetProps) {
         signal: ctrl.signal,
       });
       window.clearTimeout(timeoutId);
+      if (!mountedRef.current) return;
       const json = (await res.json().catch(() => ({}))) as {
         reply?: string;
         error?: string;
@@ -200,6 +227,7 @@ export default function MariaWidget({ lang }: MariaWidgetProps) {
       };
 
       if (!res.ok) {
+        rollback = true;
         if (res.status === 429) {
           setError(
             t(
@@ -221,6 +249,7 @@ export default function MariaWidget({ lang }: MariaWidgetProps) {
 
       const reply = json.reply?.trim();
       if (!reply) {
+        rollback = true;
         setError(
           t(
             'Respuesta vacía. Probá de nuevo.',
@@ -232,6 +261,8 @@ export default function MariaWidget({ lang }: MariaWidgetProps) {
       setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
     } catch (e) {
       window.clearTimeout(timeoutId);
+      if (!mountedRef.current) return;
+      rollback = true;
       if ((e as Error).name === 'AbortError') {
         setError(
           t(
@@ -248,9 +279,26 @@ export default function MariaWidget({ lang }: MariaWidgetProps) {
         );
       }
     } finally {
+      activeCtrlRef.current = null;
+      if (!mountedRef.current) return;
+      // Roll back the optimistic user message on any error so retries don't
+      // pile onto failed turns. Also restore the input so the user can edit
+      // and resend without retyping — fixing the case where a 429/timeout
+      // would otherwise concatenate with the next attempt server-side.
+      if (rollback) {
+        setMessages((prev) => {
+          const last = prev[prev.length - 1];
+          return last && last.role === 'user' && last.content === content
+            ? prev.slice(0, -1)
+            : prev;
+        });
+        setInput(content);
+      }
       setSending(false);
       // Refocus composer for the next message.
-      window.setTimeout(() => textareaRef.current?.focus(), 50);
+      window.setTimeout(() => {
+        if (mountedRef.current) textareaRef.current?.focus();
+      }, 50);
     }
   }
 
