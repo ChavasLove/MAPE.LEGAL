@@ -1,8 +1,14 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { sendEmail } from '@/services/emailService';
 import { getAdminClient } from '@/services/adminSupabase';
+import { requireRole } from '@/lib/serverAuth';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
+  const auth = await requireRole('admin', 'abogado', 'tecnico_ambiental');
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const body = await req.json();
     const { to, subject, html, text, expediente_id } = body;
@@ -16,7 +22,6 @@ export async function POST(req: NextRequest) {
 
     await sendEmail({ to, subject, html, text });
 
-    // Log notification
     if (expediente_id) {
       const admin = getAdminClient();
       await admin.from('notificaciones').insert({
@@ -31,22 +36,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Error al enviar email';
-
-    if (req.body) {
-      // Best-effort: log failure
-      try {
-        const admin = getAdminClient();
-        const body2 = await req.json().catch(() => ({}));
-        if (body2.expediente_id) {
-          await admin.from('notificaciones').insert({
-            expediente_id: body2.expediente_id,
-            tipo: 'email', estado: 'fallido', error: msg,
-          });
-        }
-      } catch { /* ignore secondary error */ }
-    }
-
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error('[email/send] failed:', error);
+    return NextResponse.json({ error: 'Error al enviar email' }, { status: 500 });
   }
 }
