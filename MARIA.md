@@ -1,11 +1,14 @@
 # Manual Operativo de María — Asistente Virtual CHT
 
-> **Versión:** 1.3
-> **Última actualización:** 2026-05-11
+> **Versión:** 1.4
+> **Última actualización:** 2026-05-24
 > **Aplicación:** este documento es la fuente canónica de las reglas
-> operativas de María (asistente virtual de WhatsApp). El system prompt
-> en `app/api/whatsapp/route.js` debe mantenerse sincronizado con el
-> contenido de las secciones 1–7 y 10.
+> operativas de María. Desde PR #162 (2026-05-24) el system prompt vive en
+> `lib/maria/systemPrompt.ts` (antes inline en `app/api/whatsapp/route.js:39-630`)
+> y se importa tanto desde el webhook WhatsApp como desde el endpoint web
+> `app/api/maria/chat/route.ts`. **Editar la constante en `lib/maria/systemPrompt.ts`
+> actualiza ambos canales a la vez.** El prompt debe mantenerse sincronizado con
+> el contenido de las secciones 1–7 y 10 de este documento.
 > **Versionado:** cualquier actualización futura debe incrementar el
 > número de versión en este encabezado y reflejarse en el system prompt.
 
@@ -304,7 +307,11 @@ Cuando una pregunta del cliente matchea semánticamente con un chunk (umbral cos
 
 ### 11.3 Sincronización con el system prompt
 
-El `CHT_SYSTEM_PROMPT` en `app/api/whatsapp/route.js` (línea 56 + bloque RAG en línea 1316) debe reflejar esta política. Cambios a §11 implican actualizar el prompt en paralelo, y viceversa.
+El `CHT_SYSTEM_PROMPT` vive en **`lib/maria/systemPrompt.ts`** (PR #162, 2026-05-24). Editar ese archivo actualiza simultáneamente:
+- El webhook WhatsApp (`app/api/whatsapp/route.js`, importa el const).
+- El endpoint web (`app/api/maria/chat/route.ts`, importa el const).
+
+El bloque RAG con el wrapper `CONTEXTO DEL SISTEMA (citas literales...)` + `INSTRUCCIONES PARA USAR ESTE BLOQUE` (incluida la directiva `NO derives a gerencia@mape.legal cuando este bloque responde la pregunta`) se construye al ensamblar el `dynamicPrompt` en cada route: `app/api/whatsapp/route.js:~735-736` para el canal WhatsApp y `app/api/maria/chat/route.ts:~370-377` para el canal web. Ambos textos deben permanecer idénticos — la regresión "Artículo 28-A" (CLAUDE.md §Auditoría 2026-05-15) se introduce si solo uno tiene el wrapper. Cambios a §11 implican actualizar el prompt base en `lib/maria/systemPrompt.ts` **y** los dos wrappers en paralelo, y viceversa.
 
 ---
 
