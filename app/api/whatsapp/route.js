@@ -304,10 +304,22 @@ export async function POST(request) {
     }
 
     // --- EXECUTIVE MODE: Willis Yang admin trigger ---
+    // The phrase + passphrase must appear as their own tokens (word-bounded) —
+    // a substring includes() would fire on a quoted reference such as
+    // `tried 'willis yang TENKA-2026' but it didn't work` from a non-admin.
     const ADMIN_PASSPHRASE = 'TENKA-2026';
+    const ADMIN_TRIGGER_RE = /\bwillis\s+yang\b/i;
+    const PASSPHRASE_RE    = /\bTENKA-2026\b/;
     const isAdminCommand =
-      incomingMessage.toLowerCase().includes('willis yang') &&
-      incomingMessage.includes(ADMIN_PASSPHRASE);
+      ADMIN_TRIGGER_RE.test(incomingMessage) &&
+      PASSPHRASE_RE.test(incomingMessage);
+
+    // Redact the passphrase before any DB persistence — conversaciones_whatsapp
+    // rows are visible in admin tooling and indexed by the RAG. Plaintext
+    // copies of TENKA-2026 in conversation history defeat the secrecy of the
+    // gate. Applied to every insert path below (admin reply, onboarding,
+    // normal flow).
+    const safeIncoming = incomingMessage.replace(PASSPHRASE_RE, '[REDACTED]');
 
     // --- ADMIN SUB-COMMANDS (fires before main admin report) ---
     if (incomingMessage.toLowerCase().startsWith('expediente ')) {
@@ -710,7 +722,7 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
       const cmdReply = await interpretAndExecute(broadcastUser, incomingMessage);
       if (cmdReply !== null) {
         await getSupabase().from("conversaciones_whatsapp").insert([
-          { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
+          { numero_whatsapp: fromNumber, role: "user",      content: safeIncoming },
           { numero_whatsapp: fromNumber, role: "assistant", content: cmdReply },
         ]);
         return new Response(
@@ -740,7 +752,7 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
         if (isNewUser || isInProgress) {
           const reply = await handleOnboarding(cleanNumber, incomingMessage);
           await getSupabase().from("conversaciones_whatsapp").insert([
-            { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
+            { numero_whatsapp: fromNumber, role: "user",      content: safeIncoming },
             { numero_whatsapp: fromNumber, role: "assistant", content: reply },
           ]);
           return new Response(
@@ -842,7 +854,7 @@ Responde DIRECTAMENTE a lo que acaba de decir el usuario.`);
     }
 
     const { error: insertError } = await getSupabase().from("conversaciones_whatsapp").insert([
-      { numero_whatsapp: fromNumber, role: "user", content: incomingMessage },
+      { numero_whatsapp: fromNumber, role: "user", content: safeIncoming },
       { numero_whatsapp: fromNumber, role: "assistant", content: assistantReply },
     ]);
     console.log('Insert result:', insertError ? insertError.message : 'success');
@@ -855,9 +867,17 @@ Responde DIRECTAMENTE a lo que acaba de decir el usuario.`);
       'te vamos a contactar'
     ];
 
-    const needsContact = contactTriggers.some(trigger =>
-      assistantReply.toLowerCase().includes(trigger)
-    );
+    // Match each trigger only when it isn't preceded by a Spanish negation
+    // word ("no", "nunca", "tampoco"). Without this guard, María saying
+    // "no te vamos a contactar hasta que confirmes" still fired the Willis
+    // alert because the substring matched.
+    const lowerReply = assistantReply.toLowerCase();
+    const needsContact = contactTriggers.some(trigger => {
+      const idx = lowerReply.indexOf(trigger);
+      if (idx === -1) return false;
+      const prefix = lowerReply.slice(Math.max(0, idx - 30), idx);
+      return !/\b(no|nunca|tampoco)\s+\w*\s*$/.test(prefix);
+    });
 
     if (needsContact) {
       try {
