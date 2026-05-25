@@ -4,9 +4,12 @@ import { getUserByPhone, getOrCreateUserByPhone } from "@/services/userService";
 import { interpretAndExecute } from "@/services/adminCommandService";
 import { getOnboardingState, handleOnboarding } from "@/services/onboardingService";
 import { fetchAllPrices, storePrices, TROY_OUNCE_GRAMS } from "@/services/pricingService";
+import { sanitizeIlikeTerm } from "@/services/concesionesService";
 import { embedQuery, toVectorText } from "@/lib/maria/embeddings";
 import { normalizePhone } from "@/lib/maria/normalizePhone";
 import { CHT_SYSTEM_PROMPT } from "@/lib/maria/systemPrompt";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Conditional init — instantiating these unconditionally at module load would
 // throw during Next.js's page-data-collection build phase when env vars aren't
@@ -638,19 +641,34 @@ El formato canónico de respuesta para precio del día está en CUANDO PREGUNTAN
     // --- Query expedientes linked to this client ---
     let expedienteContext = '';
     if (cliente) {
-      // Sanitize nombre: strip PostgREST or() separator chars to prevent filter injection
-      const safeNombre = cliente.nombre.replace(/[,()]/g, ' ').trim();
-      const { data: exps } = await getSupabase()
-        .from('expedientes')
-        .select(`
-          numero_expediente, tipo, estado, fase_numero, paso, total_pasos,
-          cierre_estimado,
-          hitos(numero, monto, porcentaje, estado),
-          progress_fases(nombre, estado, orden)
-        `)
-        .or(`cliente_id.eq.${cliente.id},cliente.ilike.%${safeNombre}%`)
-        .order('created_at', { ascending: false })
-        .limit(3);
+      // Escape ilike metachars (%_\) and structural chars (,()) — same
+      // canonical sanitizer used by concesionesService for the same
+      // PostgREST .or() composition pattern. The previous regex only
+      // stripped ,() so a nombre like "100%" or "user\_a" matched far
+      // more rows than intended.
+      const safeNombre = sanitizeIlikeTerm(cliente.nombre);
+      // Defensively validate cliente.id as a UUID. Schema makes it a UUID
+      // today but interpolating raw into the .or() string would let any
+      // future PK type change become an injection vector.
+      const idClause   = UUID_RE.test(String(cliente.id))
+        ? `cliente_id.eq.${cliente.id}`
+        : null;
+      const nameClause = safeNombre ? `cliente.ilike.%${safeNombre}%` : null;
+      const orExpr     = [idClause, nameClause].filter(Boolean).join(',');
+
+      const exps = orExpr
+        ? (await getSupabase()
+            .from('expedientes')
+            .select(`
+              numero_expediente, tipo, estado, fase_numero, paso, total_pasos,
+              cierre_estimado,
+              hitos(numero, monto, porcentaje, estado),
+              progress_fases(nombre, estado, orden)
+            `)
+            .or(orExpr)
+            .order('created_at', { ascending: false })
+            .limit(3)).data
+        : null;
 
       if (exps?.length) {
         expedienteContext = buildExpedienteContext(exps);
@@ -782,16 +800,23 @@ Responde DIRECTAMENTE a lo que acaba de decir el usuario.`);
       return { ...msg, content: msg.content.replace(ADMIN_PREFIX_RE, '') };
     });
 
-    // Remove duplicate consecutive assistant messages from history
-    const cleanHistory = sanitizedHistory.filter((msg, i) => {
-      if (i === 0) return true;
-      return !(msg.role === 'assistant' && sanitizedHistory[i-1].role === 'assistant');
-    });
-
-    cleanHistory.push({
-      role: "user",
-      content: incomingMessage,
-    });
+    // Merge consecutive same-role turns. Anthropic rejects either user-user
+    // or assistant-assistant runs with a 400, and the previous filter only
+    // collapsed assistant dupes — so if a prior turn failed before its
+    // assistant reply was persisted, the DB ended `[…, user, user]` and
+    // appending the new user message produced `[…, user, user, user]`,
+    // which became a permanent "tuvimos un problema técnico" loop. Same
+    // merge pattern as app/api/maria/chat/route.ts (web channel).
+    const cleanHistory = [];
+    const turnsToMerge = [...sanitizedHistory, { role: "user", content: incomingMessage }];
+    for (const m of turnsToMerge) {
+      const last = cleanHistory[cleanHistory.length - 1];
+      if (!last || last.role !== m.role) {
+        cleanHistory.push({ role: m.role, content: m.content });
+      } else {
+        last.content = `${last.content}\n\n${m.content}`;
+      }
+    }
 
     if (!anthropic) {
       console.error('[maria] ANTHROPIC_API_KEY missing — cannot call Claude');

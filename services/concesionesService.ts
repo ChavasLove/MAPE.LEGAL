@@ -136,7 +136,7 @@ export async function getConcesionStats(): Promise<ConcesionStats | null> {
 //   - strip the .or() string format's structural chars (`,` `(` `)`) which
 //     would otherwise let an attacker inject extra OR clauses or break the
 //     parser
-function sanitizeIlikeTerm(raw: string): string {
+export function sanitizeIlikeTerm(raw: string): string {
   return raw
     .replace(/[\\%_]/g, '\\$&')
     .replace(/[,()]/g, ' ')
