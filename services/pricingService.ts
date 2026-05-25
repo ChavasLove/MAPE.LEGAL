@@ -9,6 +9,13 @@ export interface PreciosDiarios {
   fetched_at: string;
 }
 
+// External price feeds (GoldAPI / Yahoo / exchangerate-api) intermittently hang;
+// Yahoo's COMEX query in particular can stall past 30s. Without a hard timeout
+// the bare fetch can pin runDailyBroadcast past Vercel's 60s function ceiling
+// — the 8 AM cron then silently misses its window with no broadcast_log entry.
+// 8 s matches PRICE_FETCH_TIMEOUT_MS in app/api/maria/chat/route.ts.
+const FETCH_TIMEOUT_MS = 8000;
+
 // ─── Fuentes con prioridad ────────────────────────────────────────────────────
 
 async function fetchGoldFromGoldAPI(): Promise<number | null> {
@@ -17,7 +24,8 @@ async function fetchGoldFromGoldAPI(): Promise<number | null> {
   try {
     const res = await fetch('https://www.goldapi.io/api/XAU/USD', {
       headers: { 'x-access-token': apiKey, 'Content-Type': 'application/json' },
-      cache: 'no-store',
+      cache:  'no-store',
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (!res.ok) throw new Error(`goldapi ${res.status}`);
     const data = (await res.json()) as { price?: number };
@@ -35,7 +43,8 @@ async function fetchSilverFromGoldAPI(): Promise<number | null> {
   try {
     const res = await fetch('https://www.goldapi.io/api/XAG/USD', {
       headers: { 'x-access-token': apiKey, 'Content-Type': 'application/json' },
-      cache: 'no-store',
+      cache:  'no-store',
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (!res.ok) throw new Error(`goldapi silver ${res.status}`);
     const data = (await res.json()) as { price?: number };
@@ -51,11 +60,13 @@ async function fetchMetalsFromYahoo(): Promise<{ gold: number | null; silver: nu
     const [goldRes, silverRes] = await Promise.allSettled([
       fetch('https://query2.finance.yahoo.com/v8/finance/chart/GC%3DF?interval=1d&range=1d', {
         headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0' },
-        cache: 'no-store',
+        cache:  'no-store',
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       }),
       fetch('https://query2.finance.yahoo.com/v8/finance/chart/SI%3DF?interval=1d&range=1d', {
         headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0' },
-        cache: 'no-store',
+        cache:  'no-store',
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       }),
     ]);
 
@@ -90,7 +101,10 @@ async function fetchExchangeRate(): Promise<number | null> {
     : 'https://api.exchangerate-api.com/v4/latest/USD';
 
   try {
-    const res = await fetch(url, { cache: 'no-store' });
+    const res = await fetch(url, {
+      cache:  'no-store',
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
     if (!res.ok) throw new Error(`exchangerate-api ${res.status}`);
     const data = (await res.json()) as {
       rates?: Record<string, number>;
