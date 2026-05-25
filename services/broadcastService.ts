@@ -237,11 +237,18 @@ export async function sendDailyBroadcast(options: {
 // Retrieve the latest broadcast log entry
 export async function getLastBroadcastLog() {
   const admin = getAdminClient();
-  const { data } = await admin
+  // maybeSingle handles the empty-table case cleanly; .single() emitted
+  // PGRST116 there and the discarded error masked any real DB failure as
+  // "no broadcasts yet".
+  const { data, error } = await admin
     .from('broadcast_log')
     .select('*')
     .order('created_at', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
+  if (error) {
+    console.error('[broadcastService] getLastBroadcastLog failed:', error.message);
+    return null;
+  }
   return data;
 }

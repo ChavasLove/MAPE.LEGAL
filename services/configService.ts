@@ -10,11 +10,19 @@ export interface ConfigEntry {
 
 export async function getConfig(clave: string): Promise<string | null> {
   const admin = getAdminClient();
-  const { data } = await admin
+  // maybeSingle so a missing key returns { data:null, error:null }; .single()
+  // would emit PGRST116 for that case and the previous code discarded the
+  // error object — making a transient DB failure indistinguishable from a
+  // legitimate "no such key" miss.
+  const { data, error } = await admin
     .from('configuracion_sistema')
     .select('valor')
     .eq('clave', clave)
-    .single();
+    .maybeSingle();
+  if (error) {
+    console.error(`[configService] getConfig(${clave}) failed:`, error.message);
+    return null;
+  }
   return data?.valor ?? null;
 }
 
