@@ -16,13 +16,19 @@ const LOGIN_WINDOW_MS   = 15 * 60 * 1000;
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password } = await req.json();
+    const { email: rawEmail, password } = await req.json();
 
-    if (!email || !password) {
+    if (!rawEmail || !password) {
       return NextResponse.json({ error: 'Correo y contraseña son requeridos' }, { status: 400 });
     }
 
-    const rateKey = `login:${clientIpFrom(req)}:${String(email).toLowerCase()}`;
+    // Canonicalize the email before deriving the rate-limit key so an attacker
+    // can't sidestep the per-(IP+email) bucket with cosmetic rotations like
+    // trailing whitespace, mixed case, or alternating capitalization on the
+    // local-part. We still pass the original string to Supabase below — auth
+    // matching is its responsibility, not the limiter's.
+    const email   = String(rawEmail).trim().toLowerCase();
+    const rateKey = `login:${clientIpFrom(req)}:${email}`;
     const rate    = checkRateLimit(rateKey, LOGIN_LIMIT, LOGIN_WINDOW_MS);
     if (!rate.ok) {
       return NextResponse.json(

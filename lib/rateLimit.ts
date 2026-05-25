@@ -30,14 +30,19 @@ export function checkRateLimit(
 ): RateLimitResult {
   const now = Date.now();
 
-  // Sweep expired entries
-  for (const [k, b] of buckets) {
-    if (b.resetAt <= now) buckets.delete(k);
-  }
-
   const existing = buckets.get(key);
   if (!existing || existing.resetAt <= now) {
-    if (buckets.size >= MAX_BUCKETS) evictSoonest();
+    if (buckets.size >= MAX_BUCKETS) {
+      // Approaching the cap — purge expired entries first (cheaper than
+      // walking on every call) and only fall back to soonest-eviction if
+      // the sweep alone didn't free space. With the lookup above treating
+      // expired buckets as misses, leaving them in the map until pressure
+      // hits costs only memory, never correctness.
+      for (const [k, b] of buckets) {
+        if (b.resetAt <= now) buckets.delete(k);
+      }
+      if (buckets.size >= MAX_BUCKETS) evictSoonest();
+    }
     buckets.set(key, { count: 1, resetAt: now + windowMs });
     return { ok: true, remaining: limit - 1, retryAfterSec: 0 };
   }
