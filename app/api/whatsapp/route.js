@@ -871,20 +871,6 @@ Accion requerida: Llamar o escribir al cliente hoy.`;
       }
     }
 
-    // --- Auto-register new client if not found ---
-    if (!cliente && assistantReply.includes('te voy a registrar')) {
-      const nombreDetectado = incomingMessage.trim();
-      if (nombreDetectado.length > 3 && nombreDetectado.length < 60) {
-        await getSupabase().from('clientes').insert([{
-          nombre: nombreDetectado,
-          telefono_whatsapp: cleanNumber,
-          tipo_mineral: 'oro',
-          situacion_tierra: 'arrendatario_sin_titulo'
-        }]);
-        console.log('✅ New client registered:', nombreDetectado);
-      }
-    }
-
     // --- Extract and save structured client data ---
     if (!cliente) {
       const extractionResponse = await anthropic.messages.create({
