@@ -153,23 +153,39 @@ export async function fetchCopperPrice(): Promise<number | null> {
 export async function fetchAllPrices(): Promise<PreciosDiarios> {
   const fetched_at = new Date().toISOString();
 
-  // 1. Intentar GoldAPI primero (más confiable)
-  let oro = await fetchGoldFromGoldAPI();
-  let plata = await fetchSilverFromGoldAPI();
-  let fuente = 'goldapi.io';
+  // Phase 1 — independent upstreams in parallel. Saves ~1-2 s vs the
+  // serial chain on every cold-cache turn and every broadcast cron.
+  const [goldApiGold, goldApiSilver, usd_hnl] = await Promise.all([
+    fetchGoldFromGoldAPI(),
+    fetchSilverFromGoldAPI(),
+    fetchExchangeRate(),
+  ]);
 
-  // 2. Fallback: Yahoo Finance COMEX futures
+  let oro = goldApiGold;
+  let plata = goldApiSilver;
+  // Track exactly which upstreams contributed a non-null metal. The
+  // previous code stamped 'yahoo-finance' whenever Yahoo ran (even if
+  // Yahoo only filled silver and gold actually came from GoldAPI) —
+  // an honest label needs per-metal accounting.
+  const sources = new Set<string>();
+  if (goldApiGold !== null || goldApiSilver !== null) sources.add('goldapi.io');
+
+  // Phase 2 — Yahoo backfill, only for metals GoldAPI didn't supply.
   if (oro === null || plata === null) {
-    console.log('[pricingService] Falling back to Yahoo Finance...');
+    console.log('[pricingService] Falling back to Yahoo Finance for missing metals...');
     const yahoo = await fetchMetalsFromYahoo();
-    if (oro === null) oro = yahoo.gold;
-    if (plata === null) plata = yahoo.silver;
-    fuente = oro !== null ? 'yahoo-finance' : 'failed-all-sources';
+    if (oro === null && yahoo.gold !== null) {
+      oro = yahoo.gold;
+      sources.add('yahoo-finance');
+    }
+    if (plata === null && yahoo.silver !== null) {
+      plata = yahoo.silver;
+      sources.add('yahoo-finance');
+    }
   }
 
-  // 3. FX rate (independiente)
-  const usd_hnl = await fetchExchangeRate();
   const cobre = null;
+  const fuente = sources.size === 0 ? 'failed-all-sources' : [...sources].join(', ');
 
   if (oro === null) {
     console.error('[pricingService] CRITICAL: No gold price from any source.');
