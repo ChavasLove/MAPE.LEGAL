@@ -830,3 +830,11 @@ Resultado de una auditoría multi-agente de los 49 archivos bajo `app/admin/**` 
 
 **Pendientes deliberados (no shipped en PR #159):** verificación en Supabase Studio de si `mensajes_wa` y `clientes.tipo_minero` realmente existen (queries activas las referencian); migración de forms (`usuarios`, `profesionales`, `contenido`) a labels con `htmlFor`+`id` reales (work mecánico grande); pagination real en listas (clientes, minas, subscribers, transactions); reemplazo del grouping client-side en `/api/admin/maria/conversations` por un RPC con `GROUP BY HAVING MAX(created_at)`.
 
+## Claude Code Plugins
+
+Este repo declara [`obra/superpowers`](https://github.com/obra/superpowers) como plugin de Claude Code para todos los colaboradores vía `.claude/settings.json` (`extraKnownMarketplaces` + `enabledPlugins`). La primera vez que abrís MAPE.LEGAL en Claude Code y confiás en la carpeta, CC propone instalar el plugin automáticamente — solo aceptá el prompt. Los skills aparecen bajo el namespace `/superpowers:*` (TDD, debugging, brainstorming, planning, collaboration patterns).
+
+Esto **no toca el runtime de María** — `app/api/whatsapp/route.js`, `app/api/maria/chat/route.ts`, `lib/maria/systemPrompt.ts` y `services/*` quedan intactos. Es solo para el coding agent que edita este repo.
+
+Si no querés el plugin en tu sesión, ejecutá `/plugin disable superpowers@superpowers-dev`. Para reenganchar, `/plugin enable superpowers@superpowers-dev` + `/reload-plugins`.
+
