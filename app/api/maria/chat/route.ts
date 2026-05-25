@@ -15,7 +15,7 @@ import { CHT_SYSTEM_PROMPT } from '@/lib/maria/systemPrompt';
 import { embedQuery, toVectorText } from '@/lib/maria/embeddings';
 import { supabase } from '@/services/supabase';
 import { getAdminClient } from '@/services/adminSupabase';
-import { fetchAllPrices, TROY_OUNCE_GRAMS } from '@/services/pricingService';
+import { fetchAllPrices, storePrices, TROY_OUNCE_GRAMS } from '@/services/pricingService';
 import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
@@ -246,6 +246,13 @@ async function buildPriceContext(): Promise<string> {
           fecha: today,
           fuente: live.fuente,
         };
+        // Cache write-back so subsequent turns hit the DB row instead of
+        // re-fanning out to GoldAPI/Yahoo/exchangerate-api on every cold-cache
+        // turn — without this, an anonymous visitor with the 20-turn budget
+        // could drive ~60 paid upstream calls.
+        storePrices(live).catch((e) =>
+          console.warn('[maria-web prices] cache write failed (non-fatal):', (e as Error)?.message),
+        );
       } else if (!live) {
         console.error('[maria-web prices] live fetch timed out after', PRICE_FETCH_TIMEOUT_MS, 'ms');
       }

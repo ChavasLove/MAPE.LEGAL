@@ -178,9 +178,13 @@ export async function fetchAllPrices(): Promise<PreciosDiarios> {
   return { oro, plata, usd_hnl, cobre, fuente, fetched_at };
 }
 
-export async function fetchAndStorePrices(): Promise<{ id: string; precios: PreciosDiarios }> {
+// Persist an already-fetched PreciosDiarios snapshot. Extracted so callers
+// that have just done their own fetchAllPrices() (María webhook + web widget)
+// can write-back the cache without paying for a second round-trip to
+// GoldAPI/Yahoo/exchangerate-api — the prior pattern fan-out was 2× the
+// upstream calls per cold-cache turn.
+export async function storePrices(precios: PreciosDiarios): Promise<string> {
   const admin = getAdminClient();
-  const precios = await fetchAllPrices();
   const fecha = new Date().toISOString().slice(0, 10);
 
   // Prefer the SECURITY DEFINER RPC (migration 025) — bypasses RLS regardless
@@ -194,7 +198,7 @@ export async function fetchAndStorePrices(): Promise<{ id: string; precios: Prec
     p_fuente:     precios.fuente,
     p_fetched_at: precios.fetched_at,
   });
-  if (!rpcError && rpcId) return { id: rpcId as string, precios };
+  if (!rpcError && rpcId) return rpcId as string;
 
   // Fallback to direct upsert — only reached when migration 025 has not been
   // applied yet. Logged so the operator notices the missing RPC.
@@ -211,7 +215,13 @@ export async function fetchAndStorePrices(): Promise<{ id: string; precios: Prec
     .single();
 
   if (error || !data) throw new Error(`pricingService: store failed — ${error?.message}`);
-  return { id: data.id as string, precios };
+  return data.id as string;
+}
+
+export async function fetchAndStorePrices(): Promise<{ id: string; precios: PreciosDiarios }> {
+  const precios = await fetchAllPrices();
+  const id = await storePrices(precios);
+  return { id, precios };
 }
 
 export async function getLatestPrices(): Promise<(PreciosDiarios & { fecha: string; id: string }) | null> {

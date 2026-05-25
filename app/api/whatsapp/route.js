@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { getUserByPhone, getOrCreateUserByPhone } from "@/services/userService";
 import { interpretAndExecute } from "@/services/adminCommandService";
 import { getOnboardingState, handleOnboarding } from "@/services/onboardingService";
-import { fetchAllPrices, fetchAndStorePrices, TROY_OUNCE_GRAMS } from "@/services/pricingService";
+import { fetchAllPrices, storePrices, TROY_OUNCE_GRAMS } from "@/services/pricingService";
 import { embedQuery, toVectorText } from "@/lib/maria/embeddings";
 import { normalizePhone } from "@/lib/maria/normalizePhone";
 import { CHT_SYSTEM_PROMPT } from "@/lib/maria/systemPrompt";
@@ -592,8 +592,10 @@ Comandos disponibles:
             fuente: live.fuente,
           };
           console.log('Precios fetched live:', `oro=${live.oro} usd_hnl=${live.usd_hnl} fuente=${live.fuente}`);
-          // Best-effort DB cache write — non-fatal
-          fetchAndStorePrices().catch(e => console.log('Price DB cache failed (non-fatal):', e.message));
+          // Best-effort DB cache write from the snapshot we just fetched —
+          // calling fetchAndStorePrices() here would re-run the full upstream
+          // fan-out, doubling the GoldAPI / Yahoo / FX cost per cold-cache turn.
+          storePrices(live).catch(e => console.log('Price DB cache failed (non-fatal):', e.message));
         }
       } catch (e) {
         console.log('Live price fetch failed (non-fatal):', e.message);
