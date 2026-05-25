@@ -838,3 +838,5 @@ Esto **no toca el runtime de María** — `app/api/whatsapp/route.js`, `app/api/
 
 Si no querés el plugin en tu sesión, ejecutá `/plugin disable superpowers@superpowers-dev`. Para reenganchar, `/plugin enable superpowers@superpowers-dev` + `/reload-plugins`.
 
+Para traer skills nuevos cuando upstream publica una versión: `/plugin marketplace update superpowers-dev` + `/reload-plugins`. El auto-update está **off** por default para marketplaces de terceros — los contribuidores no reciben cambios de upstream sin hacer el update explícito.
+
