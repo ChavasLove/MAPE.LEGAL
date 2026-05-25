@@ -1,8 +1,23 @@
 import { NextResponse } from 'next/server';
 import { emailContactoInterno, emailContactoAcuse } from '@/services/emailService';
 import { getAdminClient } from '@/services/adminSupabase';
+import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit';
+
+const CONTACT_LIMIT     = 3;
+const CONTACT_WINDOW_MS = 15 * 60 * 1000;
 
 export async function POST(req: Request) {
+  // Public POST, no auth — without a limit a single host can flood
+  // gerencia@mape.legal with spam and fill the `contactos` table. Cap
+  // at 3 per IP / 15 min, matching the resend-confirmation pattern.
+  const rate = checkRateLimit(`contacto:${clientIpFrom(req)}`, CONTACT_LIMIT, CONTACT_WINDOW_MS);
+  if (!rate.ok) {
+    return NextResponse.json(
+      { error: 'Demasiados envíos. Intenta nuevamente en unos minutos.' },
+      { status: 429, headers: { 'Retry-After': String(rate.retryAfterSec) } }
+    );
+  }
+
   try {
     const { nombre, empresa, correo, mensaje } = await req.json();
 
