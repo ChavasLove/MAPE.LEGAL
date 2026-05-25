@@ -14,17 +14,19 @@ const ROLE_REDIRECT: Record<string, string> = {
 //
 // The /auth/callback client page extracts access_token + refresh_token from
 // the URL fragment Supabase appends after Google auth (implicit-flow style),
-// and posts them here. We validate the JWT, look up the role via the
-// SECURITY DEFINER RPC (lib/userRoleLookup.ts), and set the same cookie set
-// used by /api/auth/login (auth-token, auth-role 30d, auth-refresh 30d,
-// user-email).
+// and posts them here. We validate the access JWT, prove the refresh_token
+// can mint a session, and cross-check that both belong to the same user —
+// otherwise an attacker with a leaked access token (logs/XSS) could pair it
+// with their own refresh token and have us bind a session to the victim's
+// account. Cookies match /api/auth/login: auth-token, auth-role 30d,
+// auth-refresh 30d, user-email.
 //
 // Trigger 015 inserts `user_roles` rows on auth.users INSERT (default
 // 'cliente'). The lookup helper falls back to inserting that default if
 // the row is somehow missing, so the OAuth flow doesn't dead-end.
 export async function POST(req: NextRequest) {
   try {
-    const { access_token, refresh_token, expires_in } = await req.json();
+    const { access_token, refresh_token } = await req.json();
 
     if (!access_token || typeof access_token !== 'string') {
       return NextResponse.json({ error: 'Token de acceso requerido' }, { status: 400 });
@@ -45,14 +47,36 @@ export async function POST(req: NextRequest) {
     const anonKey    = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!.trim();
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!.trim();
 
-    // Validate JWT against Supabase Auth.
+    // 1. Validate the access_token JWT.
     const validator = createClient(url, anonKey, { auth: { persistSession: false } });
     const { data: userRes, error: userErr } = await validator.auth.getUser(access_token);
     if (userErr || !userRes?.user) {
-      console.error('[oauth-session] token validation failed:', userErr?.message);
+      console.error('[oauth-session] access token validation failed:', userErr?.message);
       return NextResponse.json({ error: 'Token inválido o expirado' }, { status: 401 });
     }
-    const user = userRes.user;
+
+    // 2. Validate the refresh_token by actually using it, and confirm it
+    //    belongs to the same user as the access_token. Without this check,
+    //    we'd cookie-set whatever refresh_token the client supplied with no
+    //    proof it's tied to the validated identity.
+    const refresher = createClient(url, anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: refreshed, error: refreshErr } =
+      await refresher.auth.refreshSession({ refresh_token });
+    if (refreshErr || !refreshed?.session) {
+      console.error('[oauth-session] refresh token validation failed:', refreshErr?.message);
+      return NextResponse.json({ error: 'Refresh token inválido o expirado' }, { status: 401 });
+    }
+    if (refreshed.session.user.id !== userRes.user.id) {
+      console.error('[oauth-session] access/refresh user mismatch');
+      return NextResponse.json({ error: 'Tokens no coinciden' }, { status: 401 });
+    }
+
+    // From here on, use the tokens Supabase just returned — they may have
+    // been rotated, and using them avoids trusting the client copies.
+    const session = refreshed.session;
+    const user    = session.user;
 
     const roleClient = createClient(url, serviceKey, {
       auth: { autoRefreshToken: false, persistSession: false },
@@ -78,7 +102,9 @@ export async function POST(req: NextRequest) {
 
     const role         = lookup.role;
     const redirectTo   = ROLE_REDIRECT[role] ?? '/dashboard';
-    const accessMaxAge = Number.isFinite(expires_in) && expires_in > 0 ? Number(expires_in) : 3600;
+    const accessMaxAge = typeof session.expires_in === 'number' && session.expires_in > 0
+      ? session.expires_in
+      : 3600;
 
     const cookieOpts = {
       httpOnly: true as const,
@@ -89,11 +115,11 @@ export async function POST(req: NextRequest) {
     };
 
     const res = NextResponse.json({ ok: true, role, redirectTo });
-    res.cookies.set('auth-token',   access_token,  cookieOpts);
+    res.cookies.set('auth-token',   session.access_token,  cookieOpts);
     // auth-role outlives the access token so the proxy guard can read it
     // between expiry and the next /refresh call.
     res.cookies.set('auth-role',    role, { ...cookieOpts, maxAge: 60 * 60 * 24 * 30 });
-    res.cookies.set('auth-refresh', refresh_token, { ...cookieOpts, maxAge: 60 * 60 * 24 * 30 });
+    res.cookies.set('auth-refresh', session.refresh_token, { ...cookieOpts, maxAge: 60 * 60 * 24 * 30 });
     res.cookies.set('user-email',   user.email ?? '', { ...cookieOpts, httpOnly: false });
 
     return res;
