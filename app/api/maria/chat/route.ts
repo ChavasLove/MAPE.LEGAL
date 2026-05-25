@@ -314,8 +314,54 @@ Reglas que seguís aplicando:
 - "Tierra Primero": si el visitante quiere formalización, preguntá primero por situación de tierra.
 - Precios y citas legales: usá los bloques PRECIOS DE REFERENCIA, CONTEXTO DEL SISTEMA y REGISTRO INHGEOMIN cuando aparezcan.`;
 
+// CSRF defense — Content-Type: application/json triggers a CORS preflight
+// (so cross-site fetches with that header would be blocked browser-side
+// without an OPTIONS handler), but Content-Type: text/plain is a "simple
+// request" that ships straight through. Without an Origin check, evil.com
+// could POST to /api/maria/chat from a visitor's browser and burn our
+// Anthropic / OpenAI / Supabase quota under the victim's IP. Accept only
+// same-origin requests or the configured production host.
+function isAllowedOrigin(req: Request): boolean {
+  const origin  = req.headers.get('origin');
+  const referer = req.headers.get('referer');
+  // No Origin AND no Referer is suspicious for a browser-driven POST —
+  // most legitimate clients (the widget on the landing page) send at least
+  // one. Reject closed.
+  const candidate = origin ?? referer;
+  if (!candidate) return false;
+  let candidateHost: string;
+  try {
+    candidateHost = new URL(candidate).host;
+  } catch {
+    return false;
+  }
+  // Same-origin — the widget on mape.legal fetching mape.legal/api/maria/chat,
+  // or a preview deploy fetching its own preview URL. Covers prod, preview,
+  // and dev uniformly without env config.
+  const host = req.headers.get('host');
+  if (host && candidateHost === host) return true;
+  // Configured production URL — fallback in case the request arrives via a
+  // CDN/proxy whose host differs from the canonical hostname.
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (siteUrl) {
+    try {
+      if (new URL(siteUrl).host === candidateHost) return true;
+    } catch {
+      /* malformed env — fall through to reject */
+    }
+  }
+  return false;
+}
+
 // ─── POST handler ────────────────────────────────────────────────────────────
 export async function POST(request: Request) {
+  if (!isAllowedOrigin(request)) {
+    return NextResponse.json(
+      { error: 'Origen no permitido.', code: 'FORBIDDEN_ORIGIN' },
+      { status: 403 }
+    );
+  }
+
   const ip = clientIpFrom(request);
   const rl = checkRateLimit(`maria-web:${ip}`, RATE_LIMIT_PER_IP, RATE_LIMIT_WINDOW_MS);
   if (!rl.ok) {
