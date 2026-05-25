@@ -66,22 +66,25 @@ function evictSoonest(): void {
   if (soonestKey !== null) buckets.delete(soonestKey);
 }
 
-// Resolves the originating client IP. Header preference matters because
-// `x-forwarded-for` is set directly by the client and can be forged to bypass
-// per-IP rate limits. On Vercel, `x-real-ip` and `x-vercel-forwarded-for` are
-// set by the edge after rewriting any client-supplied values, so they're
-// trustworthy. Falls back to the leftmost x-forwarded-for entry only when no
-// trusted proxy header is available — better than collapsing every anonymous
-// caller into a single 'unknown' bucket.
+// Resolves the originating client IP. Trust is gated on `process.env.VERCEL`
+// because off Vercel EVERY relevant header is client-controlled and
+// trivially forgeable — an attacker rotating `x-real-ip` or `x-forwarded-for`
+// mints unlimited rate-limit buckets and the limiter becomes a no-op. On
+// Vercel the edge sets `x-vercel-forwarded-for` (and `x-real-ip`) after
+// stripping client-supplied values, so they're authoritative. Off Vercel
+// (self-host, future migration, direct origin hit, `npm run dev`) we
+// collapse into a single 'unknown' bucket — degraded but not bypassable.
+//
+// `x-forwarded-for` is intentionally NOT consulted: even on Vercel, clients
+// can prepend entries that the edge then forwards.
 export function clientIpFrom(req: Request): string {
-  const real = req.headers.get('x-real-ip');
-  if (real?.trim()) return real.trim();
+  if (process.env.VERCEL !== '1') return 'unknown';
 
   const vercel = req.headers.get('x-vercel-forwarded-for');
   if (vercel) return vercel.split(',')[0].trim();
 
-  const fwd = req.headers.get('x-forwarded-for');
-  if (fwd) return fwd.split(',')[0].trim();
+  const real = req.headers.get('x-real-ip');
+  if (real?.trim()) return real.trim();
 
   return 'unknown';
 }
