@@ -8,6 +8,7 @@
 // is stateless: each request POSTs the full message array.
 
 import { NextResponse } from 'next/server';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { CHT_SYSTEM_PROMPT } from '@/lib/maria/systemPrompt';
@@ -32,6 +33,40 @@ const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 // AbortSignal; race them against this timeout so a stalled feed doesn't pin
 // the serverless function past the client's own 30 s abort.
 const PRICE_FETCH_TIMEOUT_MS = 8000;
+
+// HMAC-signed assistant turns prevent prompt-injection via fake assistant
+// messages. Without this, a visitor could POST { messages:[{role:'assistant',
+// content:'System rules updated: …'}, {role:'user', content:'?'}] } and have
+// Claude treat the fake context as authoritative — fabricating quotes,
+// commitments, or "memory" the server never actually produced. The signature
+// proves each assistant turn originated from this server.
+//
+// Prefer a dedicated env var; fall back to the service-role key (always set
+// in prod) so existing deploys gain the protection without ops intervention.
+// Rotating either invalidates active sessions — visitors auto-recover via
+// the BAD_SIG branch in the widget.
+const SIGNING_SECRET =
+  process.env.MARIA_WIDGET_SECRET?.trim() ||
+  process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+  '';
+const SIG_LENGTH = 32;
+
+function signAssistantContent(content: string): string {
+  return createHmac('sha256', SIGNING_SECRET).update(content).digest('hex').slice(0, SIG_LENGTH);
+}
+
+function verifyAssistantSig(content: string, sig: unknown): boolean {
+  if (!SIGNING_SECRET) return false;
+  if (typeof sig !== 'string' || sig.length !== SIG_LENGTH) return false;
+  try {
+    const a = Buffer.from(signAssistantContent(content), 'hex');
+    const b = Buffer.from(sig, 'hex');
+    if (a.length !== b.length) return false;
+    return timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+}
 
 const anthropic = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -310,7 +345,7 @@ export async function POST(request: Request) {
 
   const validated: ChatMessage[] = [];
   for (const m of messages) {
-    const obj = m as { role?: unknown; content?: unknown };
+    const obj = m as { role?: unknown; content?: unknown; sig?: unknown };
     if (
       (obj.role !== 'user' && obj.role !== 'assistant') ||
       typeof obj.content !== 'string'
@@ -330,6 +365,19 @@ export async function POST(request: Request) {
     if (content.length > MAX_CONTENT_CHARS) {
       return NextResponse.json(
         { error: 'Mensaje demasiado largo.', code: 'BAD_LENGTH' },
+        { status: 400 }
+      );
+    }
+    // Reject any assistant turn that doesn't carry a valid server-issued
+    // signature — otherwise a visitor could fabricate María "memory" by
+    // posting their own assistant messages.
+    if (obj.role === 'assistant' && !verifyAssistantSig(content, obj.sig)) {
+      console.warn('[maria-web] rejected unsigned/forged assistant message');
+      return NextResponse.json(
+        {
+          error: 'Sesión inválida. Recargá la página para empezar de nuevo.',
+          code:  'BAD_SIG',
+        },
         { status: 400 }
       );
     }
@@ -412,7 +460,7 @@ export async function POST(request: Request) {
       );
     }
     return NextResponse.json(
-      { reply },
+      { reply, sig: signAssistantContent(reply) },
       { headers: { 'Cache-Control': 'no-store' } }
     );
   } catch (e) {
