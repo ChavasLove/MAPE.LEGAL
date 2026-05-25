@@ -4,7 +4,7 @@ import {
   checkWhatsAppTokenHealth,
   WhatsAppApiError,
 } from '@/services/whatsappService';
-import { type PreciosDiarios } from '@/services/pricingService';
+import { type PreciosDiarios, TROY_OUNCE_GRAMS } from '@/services/pricingService';
 import { getActiveSubscribers, type BroadcastRol } from '@/services/userService';
 
 // ─── Generate daily price message — FIXED TEMPLATE ───────────────────────────
@@ -12,9 +12,6 @@ import { getActiveSubscribers, type BroadcastRol } from '@/services/userService'
 // Formato canónico del broadcast diario de las 8 AM Honduras.
 // No llama a Claude — el mensaje es determinístico para garantizar consistencia
 // y evitar alucinaciones de precio.
-
-// 1 troy ounce = 31.1034768 grams (LBMA standard)
-const TROY_OUNCE_GRAMS = 31.1034768;
 
 export async function generateDailyMessage(precios: PreciosDiarios): Promise<string> {
   const now = new Date();

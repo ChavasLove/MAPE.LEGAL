@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { getUserByPhone, getOrCreateUserByPhone } from "@/services/userService";
 import { interpretAndExecute } from "@/services/adminCommandService";
 import { getOnboardingState, handleOnboarding } from "@/services/onboardingService";
-import { fetchAllPrices, fetchAndStorePrices } from "@/services/pricingService";
+import { fetchAllPrices, fetchAndStorePrices, TROY_OUNCE_GRAMS } from "@/services/pricingService";
 import { embedQuery, toVectorText } from "@/lib/maria/embeddings";
 import { normalizePhone } from "@/lib/maria/normalizePhone";
 import { CHT_SYSTEM_PROMPT } from "@/lib/maria/systemPrompt";
@@ -583,7 +583,7 @@ Comandos disponibles:
     });
     const oroLBMA   = preciosHoy?.oro    != null ? `$${fmt(preciosHoy.oro)} USD/oz troy`   : null;
     const oroCompra = (preciosHoy?.oro != null && preciosHoy?.usd_hnl != null)
-      ? `L ${fmt(preciosHoy.oro * 0.80 * preciosHoy.usd_hnl / 31.1035)}/gramo`
+      ? `L ${fmt(preciosHoy.oro * 0.80 * preciosHoy.usd_hnl / TROY_OUNCE_GRAMS)}/gramo`
       : null;
     const plataLBMA = preciosHoy?.plata  != null ? `$${fmt(preciosHoy.plata)} USD/oz troy` : null;
 

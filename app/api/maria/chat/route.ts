@@ -15,7 +15,7 @@ import { CHT_SYSTEM_PROMPT } from '@/lib/maria/systemPrompt';
 import { embedQuery, toVectorText } from '@/lib/maria/embeddings';
 import { supabase } from '@/services/supabase';
 import { getAdminClient } from '@/services/adminSupabase';
-import { fetchAllPrices } from '@/services/pricingService';
+import { fetchAllPrices, TROY_OUNCE_GRAMS } from '@/services/pricingService';
 import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
@@ -263,7 +263,7 @@ async function buildPriceContext(): Promise<string> {
   const oroLBMA = `$${fmt(prices.oro)} USD/oz troy`;
   const oroCompra =
     prices.usd_hnl != null
-      ? `L ${fmt((prices.oro * 0.8 * prices.usd_hnl) / 31.1035)}/gramo`
+      ? `L ${fmt((prices.oro * 0.8 * prices.usd_hnl) / TROY_OUNCE_GRAMS)}/gramo`
       : null;
   const plataLBMA = prices.plata != null ? `$${fmt(prices.plata)} USD/oz troy` : null;
   const horaConsultaHN = new Date().toLocaleTimeString('es-HN', {

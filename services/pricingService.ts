@@ -16,6 +16,12 @@ export interface PreciosDiarios {
 // 8 s matches PRICE_FETCH_TIMEOUT_MS in app/api/maria/chat/route.ts.
 const FETCH_TIMEOUT_MS = 8000;
 
+// 1 troy ounce = 31.1034768 grams (LBMA standard). Single source of truth so
+// the boletín diario, María's WhatsApp reply, and the web widget all quote
+// the same price-per-gram — a 31.1035 round-off elsewhere produces a 0.0008%
+// drift that a client comparing two replies would notice.
+export const TROY_OUNCE_GRAMS = 31.1034768;
+
 // ─── Fuentes con prioridad ────────────────────────────────────────────────────
 
 async function fetchGoldFromGoldAPI(): Promise<number | null> {
