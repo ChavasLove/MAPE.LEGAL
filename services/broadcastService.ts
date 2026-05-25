@@ -154,6 +154,12 @@ export async function sendDailyBroadcast(options: {
   // nested closures, which lets us assign from inside `Promise.all` callbacks
   // and still see the populated value on the read after the loop.
   const authState: { aborted: WhatsAppApiError | null } = { aborted: null };
+  // AbortController cancels in-flight sends the instant any sibling in the
+  // same batch hits an auth error. Without it, Promise.all would still wait
+  // for the 9 remaining 401s in flight to complete — burning Meta quota and
+  // delaying the abort. The signal is passed into sendWhatsAppText (added
+  // for this purpose; back-compat for other callers that omit options).
+  const abortCtrl = new AbortController();
 
   // Send in batches of 10 to avoid rate limits
   const BATCH = 10;
@@ -165,16 +171,20 @@ export async function sendDailyBroadcast(options: {
       batch.map(async (user) => {
         if (authState.aborted) return;
         try {
-          await sendWhatsAppText(user.telefono, mensaje);
+          await sendWhatsAppText(user.telefono, mensaje, { signal: abortCtrl.signal });
           enviados++;
         } catch (e) {
+          // Cancelled because a sibling already hit the auth error and
+          // aborted the controller — not a per-recipient failure.
+          if ((e as Error)?.name === 'AbortError') return;
           // If the token died mid-broadcast (rare but possible), flag the
-          // abort and skip per-recipient bookkeeping — the failure is a
-          // broadcast-level config problem, not a delivery error for this
-          // subscriber. aborted_reason carries the signal; total_errores
-          // stays reserved for genuine per-recipient failures.
+          // abort, cancel siblings, and skip per-recipient bookkeeping —
+          // the failure is a broadcast-level config problem, not a delivery
+          // error for this subscriber. aborted_reason carries the signal;
+          // total_errores stays reserved for genuine per-recipient failures.
           if (e instanceof WhatsAppApiError && e.isAuthError) {
             authState.aborted = e;
+            abortCtrl.abort();
             console.error('[broadcast] auth error mid-broadcast — aborting remaining batches', e);
             return;
           }

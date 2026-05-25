@@ -149,11 +149,16 @@ export async function checkWhatsAppTokenHealth(): Promise<WhatsAppTokenHealth> {
 
 // ─── Core send functions ──────────────────────────────────────────────────────
 
-export async function sendWhatsAppText(to: string, body: string): Promise<string> {
+export async function sendWhatsAppText(
+  to: string,
+  body: string,
+  options: { signal?: AbortSignal } = {}
+): Promise<string> {
   const { token, phoneId } = getConfig();
 
   const res = await fetch(`${META_BASE}/${phoneId}/messages`, {
     method: 'POST',
+    signal: options.signal,
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
