@@ -308,27 +308,50 @@ export async function POST(request) {
 
     // --- ADMIN SUB-COMMANDS (fires before main admin report) ---
     if (incomingMessage.toLowerCase().startsWith('expediente ')) {
-      const expNum = incomingMessage.split(' ')[1];
-      const { data: exp } = await getSupabase()
-        .from('expedientes')
-        .select('*')
-        .eq('id', expNum)
-        .single();
+      // Gate behind admin status — either the inline passphrase OR the
+      // caller's broadcast role. Without this, any WhatsApp number that
+      // typed "expediente <uuid>" could pull the full row (cliente name,
+      // notas, internal IDs) — CLAUDE.md described this subcommand as
+      // "abierto por diseño" but that was a leak.
+      let isAdminCaller = isAdminCommand;
+      if (!isAdminCaller) {
+        try {
+          const callerPhone = normalizePhone(fromNumber);
+          const callerUser  = await getUserByPhone(callerPhone);
+          isAdminCaller = callerUser?.rol === 'admin';
+        } catch {
+          /* non-fatal — falls through to normal María flow below */
+        }
+      }
 
-      const expDetail = exp
-        ? `EXPEDIENTE ${expNum}
+      if (isAdminCaller) {
+        const expNum = incomingMessage.split(' ')[1];
+        // Whitelist columns — defense in depth so a future loosening of the
+        // gate can't accidentally leak new sensitive fields.
+        const { data: exp } = await getSupabase()
+          .from('expedientes')
+          .select('id, cliente, estado, tipo, inicio, paso, notas')
+          .eq('id', expNum)
+          .single();
+
+        const expDetail = exp
+          ? `EXPEDIENTE ${expNum}
 Cliente: ${exp.cliente || 'Sin datos'}
 Estado: ${exp.estado}
 Servicio: ${exp.tipo || 'Sin datos'}
 Inicio: ${exp.inicio?.slice(0, 10) || 'Sin fecha'}
 Paso actual: ${exp.paso || 'Sin datos'}
 Notas: ${exp.notas || 'Sin notas'}`
-        : `Expediente ${expNum} no encontrado.`;
+          : `Expediente ${expNum} no encontrado.`;
 
-      return new Response(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(expDetail)}</Message></Response>`, {
-        status: 200,
-        headers: { 'Content-Type': 'text/xml' },
-      });
+        return new Response(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(expDetail)}</Message></Response>`, {
+          status: 200,
+          headers: { 'Content-Type': 'text/xml' },
+        });
+      }
+      // Non-admin caller — fall through to the normal María flow so a real
+      // visitor saying "expediente 12345 ¿cuándo terminan?" gets a sensible
+      // answer instead of silence or a stray data leak.
     }
 
     if (isAdminCommand) {
