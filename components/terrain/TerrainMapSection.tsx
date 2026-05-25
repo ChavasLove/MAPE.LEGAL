@@ -156,7 +156,11 @@ export default function TerrainMapSection({ lang, t }: Props) {
 
   // Map area height — taller on mobile (the map is the experience) yet
   // capped so portrait phones still expose stats below.
-  const mapHeight: React.CSSProperties['height'] = isMobile ? '72vh' : 560;
+  // dvh (dynamic viewport height) accounts for iOS Safari's address-bar
+  // slide. 72vh measured against the full viewport including chrome, so
+  // the map could run past the visible area when the bar was showing AND
+  // overlap with the bottom sheet (also dvh — see SiteInfoSheet).
+  const mapHeight: React.CSSProperties['height'] = isMobile ? '72dvh' : 560;
 
   return (
     <div style={{ position: 'relative' }}>

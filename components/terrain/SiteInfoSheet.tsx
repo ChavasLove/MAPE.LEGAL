@@ -157,6 +157,24 @@ export default function SiteInfoSheet({
     settleAfterDrag(deltaY, startSnap);
   };
 
+  // System-driven cancel (notification slide-down, multitouch gesture). Bound
+  // to the same element that captured the pointer so releasePointerCapture
+  // targets the right node — the previous wrapper-level handler couldn't
+  // reach the handle and left iOS Safari in a "scroll lock" state where the
+  // page absorbed touches because the captured handle was still claiming
+  // them.
+  const onHandlePointerCancel = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const state = dragStateRef.current;
+    if (!state || state.pointerId !== e.pointerId) return;
+    dragStateRef.current = null;
+    setDragOffset(0);
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+  };
+
   const toggleSnap = () => {
     if (!isMobile) return;
     setSnap((s) => (s === 'full' ? 'peek' : 'full'));
@@ -174,13 +192,6 @@ export default function SiteInfoSheet({
       isMobile={isMobile}
       snap={snap}
       dragOffset={dragOffset}
-      onPointerCancel={(e: ReactPointerEvent<HTMLDivElement>) => {
-        const state = dragStateRef.current;
-        if (state && state.pointerId === e.pointerId) {
-          dragStateRef.current = null;
-          setDragOffset(0);
-        }
-      }}
     >
       {/* ---- drag handle (mobile) / nav bar (desktop) ---- */}
       <Header
@@ -191,6 +202,7 @@ export default function SiteInfoSheet({
         onPointerDown={onHandlePointerDown}
         onPointerMove={onHandlePointerMove}
         onPointerUp={onHandlePointerUp}
+        onPointerCancel={onHandlePointerCancel}
         onHandleClick={toggleSnap}
         onClose={onClose}
         onPrev={onPrev}
@@ -227,23 +239,24 @@ const Wrapper = ({
   snap,
   dragOffset,
   children,
-  onPointerCancel,
 }: {
   ref: React.RefObject<HTMLDivElement | null>;
   isMobile: boolean;
   snap: SheetSnap;
   dragOffset: number;
   children: React.ReactNode;
-  onPointerCancel: (e: ReactPointerEvent<HTMLDivElement>) => void;
 }) => {
   const transform = useMemo(() => {
     if (!isMobile) return undefined;
     if (snap === 'closed') return 'translate3d(0, 100%, 0)';
-    // Convert peek/full to viewport math at render-time. We size the sheet
-    // to max-height 78vh on full; peek slides it down to expose only header.
-    const peekTopOffsetVh = 78 - 16; // sheet bottom-aligned; show ~16vh
+    // Convert peek/full to viewport math at render-time. Sheet height is
+    // 78dvh on full; peek slides it down to expose only the header.
+    // Match the unit (dvh) used by the wrapper height — mixing vh / dvh
+    // here would let the sheet's top edge drift past the viewport when
+    // iOS chrome shows/hides.
+    const peekTopOffsetDvh = 78 - 16; // sheet bottom-aligned; show ~16dvh
     if (snap === 'peek') {
-      return `translate3d(0, calc(${peekTopOffsetVh}vh - ${Math.max(
+      return `translate3d(0, calc(${peekTopOffsetDvh}dvh - ${Math.max(
         0,
         dragOffset
       )}px), 0)`;
@@ -259,7 +272,6 @@ const Wrapper = ({
         ref={ref}
         role="dialog"
         aria-modal={snap === 'full' ? 'true' : 'false'}
-        onPointerCancel={onPointerCancel}
         className="mining-sheet"
         style={{
           position: 'absolute',
@@ -271,8 +283,13 @@ const Wrapper = ({
           borderTopRightRadius: 16,
           borderTop: '1px solid var(--border)',
           boxShadow: '0 -8px 24px rgba(31, 42, 56, 0.12)',
-          maxHeight: '78vh',
-          height: '78vh',
+          // dvh (dynamic viewport height) accounts for iOS Safari's
+          // address-bar slide — 78vh measures against the full viewport
+          // including the bar, so the sheet can run past the visible
+          // area when the bar is showing. dvh adjusts as chrome appears
+          // or disappears.
+          maxHeight: '78dvh',
+          height: '78dvh',
           display: 'flex',
           flexDirection: 'column',
           willChange: 'transform',
@@ -331,6 +348,7 @@ function Header({
   onPointerDown,
   onPointerMove,
   onPointerUp,
+  onPointerCancel,
   onHandleClick,
   onClose,
   onPrev,
@@ -344,6 +362,7 @@ function Header({
   onPointerDown: (e: ReactPointerEvent<HTMLDivElement>) => void;
   onPointerMove: (e: ReactPointerEvent<HTMLDivElement>) => void;
   onPointerUp: (e: ReactPointerEvent<HTMLDivElement>) => void;
+  onPointerCancel: (e: ReactPointerEvent<HTMLDivElement>) => void;
   onHandleClick: () => void;
   onClose: () => void;
   onPrev?: () => void;
@@ -376,6 +395,7 @@ function Header({
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
+          onPointerCancel={onPointerCancel}
           onClick={onHandleClick}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
