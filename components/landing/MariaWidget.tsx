@@ -17,6 +17,10 @@ type Role = 'user' | 'assistant';
 interface Message {
   role: Role;
   content: string;
+  // Server-issued HMAC over the assistant content. Required for the server
+  // to accept the message back on subsequent turns — without it the server
+  // would treat it as a forged/injected assistant turn (BAD_SIG 400).
+  sig?: string;
 }
 
 const STORAGE_KEY = 'maria-web-history';
@@ -65,6 +69,15 @@ function loadStored(): Message[] | null {
         // locks the user out of the chat until they manually clear
         // storage.
         return (role === 'user' || role === 'assistant') && typeof content === 'string';
+      })
+      .map((m): Message => {
+        // Preserve `sig` on assistant turns — the server requires it on the
+        // next turn. Drop any spurious `sig` from user turns (defensive).
+        const base: Message = { role: m.role, content: m.content };
+        if (m.role === 'assistant' && typeof (m as Message).sig === 'string') {
+          base.sig = (m as Message).sig;
+        }
+        return base;
       })
       .slice(-MAX_STORED_MESSAGES);
   } catch {
@@ -195,7 +208,13 @@ export default function MariaWidget({ lang }: MariaWidgetProps) {
     const apiHistory = messages.filter(
       (m, i) => !(i === 0 && m.role === 'assistant' && m.content === WELCOME_MESSAGE.content),
     );
-    const apiMessages = [...apiHistory, userMsg];
+    // Echo each assistant turn's server-issued `sig` back; the server
+    // rejects assistant turns without a valid signature (BAD_SIG).
+    const apiMessages = [...apiHistory, userMsg].map((m) =>
+      m.role === 'assistant' && m.sig
+        ? { role: m.role, content: m.content, sig: m.sig }
+        : { role: m.role, content: m.content },
+    );
 
     // Optimistic UI update.
     setMessages((prev) => [...prev, userMsg]);
@@ -222,6 +241,7 @@ export default function MariaWidget({ lang }: MariaWidgetProps) {
       if (!mountedRef.current) return;
       const json = (await res.json().catch(() => ({}))) as {
         reply?: string;
+        sig?: string;
         error?: string;
         code?: string;
       };
@@ -233,6 +253,23 @@ export default function MariaWidget({ lang }: MariaWidgetProps) {
             t(
               'Estás escribiendo muy rápido. Intentá en un momento.',
               'You are sending messages too fast. Try again in a moment.',
+            ),
+          );
+        } else if (json.code === 'BAD_SIG') {
+          // Stored history has assistant turns the server can't authenticate
+          // (typical after a deploy that rotated the signing secret, or if
+          // sessionStorage was tampered with). Reset to a fresh conversation
+          // so the user's next send works without a manual reload.
+          setMessages([WELCOME_MESSAGE]);
+          try {
+            window.sessionStorage.removeItem(STORAGE_KEY);
+          } catch {
+            /* ignore */
+          }
+          setError(
+            t(
+              'Iniciamos una conversación nueva. Probá enviar tu mensaje otra vez.',
+              'We started a fresh conversation. Try sending your message again.',
             ),
           );
         } else {
@@ -258,7 +295,7 @@ export default function MariaWidget({ lang }: MariaWidgetProps) {
         );
         return;
       }
-      setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
+      setMessages((prev) => [...prev, { role: 'assistant', content: reply, sig: json.sig }]);
     } catch (e) {
       window.clearTimeout(timeoutId);
       if (!mountedRef.current) return;

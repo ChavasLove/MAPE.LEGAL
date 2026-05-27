@@ -79,7 +79,11 @@ function EstablecerPasswordForm() {
     try {
       const { error: updErr } = await client.auth.updateUser({ password });
       if (updErr) {
-        setError(updErr.message ?? 'No se pudo establecer la contraseña.');
+        // Don't echo Supabase's error.message — it can leak internal hints
+        // (auth scheme details, validator names, occasional row hints). The
+        // generic copy is what users need; diagnostics live in the console.
+        console.error('[establecer-password] updateUser failed:', updErr);
+        setError('No se pudo establecer la contraseña. Pide una nueva invitación al administrador.');
         return;
       }
 

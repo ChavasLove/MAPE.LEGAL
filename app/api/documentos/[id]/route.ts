@@ -3,6 +3,9 @@ import { updateDocumentoEstado } from '@/services/dashboardService';
 import { getAdminClient } from '@/services/adminSupabase';
 import { notifyDocumentVerified, notifyDocumentRejected } from '@/modules/notifications';
 import { logAction } from '@/modules/expedientes';
+import { requireRole } from '@/lib/serverAuth';
+
+export const dynamic = 'force-dynamic';
 
 const ESTADOS_VALIDOS = ['faltante', 'pendiente', 'verificado', 'rechazado'];
 
@@ -10,6 +13,9 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireRole('admin', 'abogado', 'tecnico_ambiental');
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { id } = await params;
     const body = await req.json();
@@ -60,7 +66,7 @@ export async function PATCH(
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Failed to update documento';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error('[documentos/[id] PATCH] failed:', error);
+    return NextResponse.json({ error: 'Error al actualizar documento' }, { status: 500 });
   }
 }

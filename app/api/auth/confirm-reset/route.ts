@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getAdminClient } from '@/services/adminSupabase';
+import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit';
 
 // POST /api/auth/confirm-reset — completes a password reset.
 //
@@ -12,7 +13,23 @@ import { getAdminClient } from '@/services/adminSupabase';
 // then update the password with the admin client. Updating via the admin path
 // is more reliable than calling updateUser with a stateless recovery JWT, which
 // requires re-establishing a session and can flake with `persistSession: false`.
+
+const RESET_LIMIT     = 5;
+const RESET_WINDOW_MS = 15 * 60 * 1000;
+
 export async function POST(req: NextRequest) {
+  // Per-IP rate limit — a leaked recovery JWT (~1h validity) is otherwise an
+  // unbounded brute force vector to overwrite the victim's password. Per-IP
+  // alone doesn't stop a single successful POST, but it caps the noise an
+  // attacker can generate from one host before having to rotate.
+  const rate = checkRateLimit(`confirm-reset:${clientIpFrom(req)}`, RESET_LIMIT, RESET_WINDOW_MS);
+  if (!rate.ok) {
+    return NextResponse.json(
+      { error: `Demasiados intentos. Intenta nuevamente en ${Math.ceil(rate.retryAfterSec / 60)} minutos.` },
+      { status: 429, headers: { 'Retry-After': String(rate.retryAfterSec) } }
+    );
+  }
+
   try {
     const { accessToken, password } = await req.json();
 

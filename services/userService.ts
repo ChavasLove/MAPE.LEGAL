@@ -24,12 +24,19 @@ export async function getOrCreateUserByPhone(
   const admin = getAdminClient();
   const telefono = normalizePhone(rawPhone);
 
-  const { data: existing } = await admin
+  // maybeSingle so a missing row returns { data:null, error:null } cleanly.
+  // The previous .single() emitted PGRST116 for that case and the destructure
+  // dropped the error — meaning a real transient DB error looked identical
+  // to "no such user", flowed into the INSERT branch, and tripped a unique
+  // constraint violation on retry instead of surfacing the real cause.
+  const { data: existing, error: lookupErr } = await admin
     .from('usuarios_broadcast')
     .select('*')
     .eq('telefono', telefono)
-    .single();
-
+    .maybeSingle();
+  if (lookupErr) {
+    throw new Error(`userService: lookup failed — ${lookupErr.message}`);
+  }
   if (existing) return existing as UsuarioBroadcast;
 
   const { data: created, error } = await admin

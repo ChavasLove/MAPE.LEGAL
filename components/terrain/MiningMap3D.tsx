@@ -336,14 +336,18 @@ export default function MiningMap3D({
     // Operational visibility — async errors (border 404, glyphs CDN failure,
     // DEM tile fetch issues) surface here, otherwise they'd be swallowed by
     // MapLibre's internal source-manager.
-    instance.on('error', (e) => {
+    // Stored in a const so the cleanup below can `off(...)` it explicitly —
+    // map.remove() disposes internal listeners, but the closure over the
+    // local `instance` keeps the parent component alive across HMR cycles
+    // when MapLibre's worker has queued events not yet drained.
+    const onError = (e: unknown) => {
       // MapLibre's `ErrorEvent` carries `sourceId` at runtime (when the error
-      // is scoped to a source) but the public type omits it; cast through any.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const ev = e as any;
+      // is scoped to a source) but the public type omits it; widen via cast.
+      const ev = e as { sourceId?: string; error?: Error } | undefined;
       const target = ev?.sourceId ? ` (source "${ev.sourceId}")` : '';
       console.warn(`[mining-map] async error${target}`, ev?.error ?? ev);
-    });
+    };
+    instance.on('error', onError);
 
     /* ---- once-styled: terrain + hillshade + sky + data layers ---- */
     instance.on('load', () => {
@@ -657,15 +661,20 @@ export default function MiningMap3D({
       applySelection();
     });
 
-    instance.on('rotate', () => {
+    // Same handler bound to both events — extracted so cleanup can off()
+    // it. Without explicit off(), the closure over `instance` survives
+    // unmount when MapLibre defers the next paint after remove().
+    const onCameraChange = () => {
       onBearingChangeRef.current?.(instance.getBearing(), instance.getPitch());
-    });
-    instance.on('pitch', () => {
-      onBearingChangeRef.current?.(instance.getBearing(), instance.getPitch());
-    });
+    };
+    instance.on('rotate', onCameraChange);
+    instance.on('pitch', onCameraChange);
 
     return () => {
       styleReadyRef.current = false;
+      instance.off('error', onError);
+      instance.off('rotate', onCameraChange);
+      instance.off('pitch', onCameraChange);
       instance.remove();
       map.current = null;
     };

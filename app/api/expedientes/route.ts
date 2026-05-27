@@ -4,20 +4,27 @@ import {
   createDashExpediente,
   type CreateExpedienteInput,
 } from '@/services/dashboardService';
+import { requireRole } from '@/lib/serverAuth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  const auth = await requireRole('admin', 'abogado', 'tecnico_ambiental');
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const expedientes = await getDashExpedientes();
     return NextResponse.json(expedientes);
   } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Failed to fetch expedientes';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error('[expedientes GET] failed:', error);
+    return NextResponse.json({ error: 'Error al cargar expedientes' }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
+  const auth = await requireRole('admin', 'abogado', 'tecnico_ambiental');
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const body = await req.json();
 
@@ -35,7 +42,7 @@ export async function POST(req: Request) {
     const expediente = await createDashExpediente(body as CreateExpedienteInput);
     return NextResponse.json(expediente, { status: 201 });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Failed to create expediente';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error('[expedientes POST] failed:', error);
+    return NextResponse.json({ error: 'Error al crear expediente' }, { status: 500 });
   }
 }

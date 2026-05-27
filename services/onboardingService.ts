@@ -294,11 +294,18 @@ async function finalise(telefono: string, datos: OnboardingDatos): Promise<void>
     }).eq('id', existing.id);
     if (updateErr) console.error('[onboarding] clientes update failed:', updateErr.message);
   } else {
+    // tipo_minero was dropped from the explicit insert: migration 008 sets
+    // it as a NOT NULL column with default 'artesanal', so the default
+    // populates the row when present. If a production schema lacks the
+    // column entirely (migration 021 introduced a competing schema without
+    // it), specifying it caused the whole insert to fail and the user
+    // landed in usuarios_broadcast as a permanent lead with no clientes
+    // row. Same applies to tipo_mineral ('oro' default in 010) and
+    // situacion_tierra (text default null).
     const { error: insertErr } = await admin.from('clientes').insert({
       nombre:            datos.nombre_completo   ?? 'Sin nombre',
       dpi:               datos.numero_identidad  ?? null,
       municipio:         datos.ubicacion_proyecto ?? 'Iriona, Colon',
-      tipo_minero:       'artesanal',
       tipo_mineral:      'oro',
       situacion_tierra:  'por_definir',
       telefono_whatsapp: telefono,

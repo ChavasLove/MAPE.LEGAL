@@ -3,10 +3,13 @@ import { createClient } from "@supabase/supabase-js";
 import { getUserByPhone, getOrCreateUserByPhone } from "@/services/userService";
 import { interpretAndExecute } from "@/services/adminCommandService";
 import { getOnboardingState, handleOnboarding } from "@/services/onboardingService";
-import { fetchAllPrices, fetchAndStorePrices } from "@/services/pricingService";
+import { fetchAllPrices, storePrices, TROY_OUNCE_GRAMS } from "@/services/pricingService";
+import { sanitizeIlikeTerm } from "@/services/concesionesService";
 import { embedQuery, toVectorText } from "@/lib/maria/embeddings";
 import { normalizePhone } from "@/lib/maria/normalizePhone";
 import { CHT_SYSTEM_PROMPT } from "@/lib/maria/systemPrompt";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Conditional init — instantiating these unconditionally at module load would
 // throw during Next.js's page-data-collection build phase when env vars aren't
@@ -301,34 +304,69 @@ export async function POST(request) {
     }
 
     // --- EXECUTIVE MODE: Willis Yang admin trigger ---
+    // The phrase + passphrase must appear as their own tokens (word-bounded) —
+    // a substring includes() would fire on a quoted reference such as
+    // `tried 'willis yang TENKA-2026' but it didn't work` from a non-admin.
     const ADMIN_PASSPHRASE = 'TENKA-2026';
+    const ADMIN_TRIGGER_RE = /\bwillis\s+yang\b/i;
+    const PASSPHRASE_RE    = /\bTENKA-2026\b/;
     const isAdminCommand =
-      incomingMessage.toLowerCase().includes('willis yang') &&
-      incomingMessage.includes(ADMIN_PASSPHRASE);
+      ADMIN_TRIGGER_RE.test(incomingMessage) &&
+      PASSPHRASE_RE.test(incomingMessage);
+
+    // Redact the passphrase before any DB persistence — conversaciones_whatsapp
+    // rows are visible in admin tooling and indexed by the RAG. Plaintext
+    // copies of TENKA-2026 in conversation history defeat the secrecy of the
+    // gate. Applied to every insert path below (admin reply, onboarding,
+    // normal flow).
+    const safeIncoming = incomingMessage.replace(PASSPHRASE_RE, '[REDACTED]');
 
     // --- ADMIN SUB-COMMANDS (fires before main admin report) ---
     if (incomingMessage.toLowerCase().startsWith('expediente ')) {
-      const expNum = incomingMessage.split(' ')[1];
-      const { data: exp } = await getSupabase()
-        .from('expedientes')
-        .select('*')
-        .eq('id', expNum)
-        .single();
+      // Gate behind admin status — either the inline passphrase OR the
+      // caller's broadcast role. Without this, any WhatsApp number that
+      // typed "expediente <uuid>" could pull the full row (cliente name,
+      // notas, internal IDs) — CLAUDE.md described this subcommand as
+      // "abierto por diseño" but that was a leak.
+      let isAdminCaller = isAdminCommand;
+      if (!isAdminCaller) {
+        try {
+          const callerPhone = normalizePhone(fromNumber);
+          const callerUser  = await getUserByPhone(callerPhone);
+          isAdminCaller = callerUser?.rol === 'admin';
+        } catch {
+          /* non-fatal — falls through to normal María flow below */
+        }
+      }
 
-      const expDetail = exp
-        ? `EXPEDIENTE ${expNum}
+      if (isAdminCaller) {
+        const expNum = incomingMessage.split(' ')[1];
+        // Whitelist columns — defense in depth so a future loosening of the
+        // gate can't accidentally leak new sensitive fields.
+        const { data: exp } = await getSupabase()
+          .from('expedientes')
+          .select('id, cliente, estado, tipo, inicio, paso, notas')
+          .eq('id', expNum)
+          .single();
+
+        const expDetail = exp
+          ? `EXPEDIENTE ${expNum}
 Cliente: ${exp.cliente || 'Sin datos'}
 Estado: ${exp.estado}
 Servicio: ${exp.tipo || 'Sin datos'}
 Inicio: ${exp.inicio?.slice(0, 10) || 'Sin fecha'}
 Paso actual: ${exp.paso || 'Sin datos'}
 Notas: ${exp.notas || 'Sin notas'}`
-        : `Expediente ${expNum} no encontrado.`;
+          : `Expediente ${expNum} no encontrado.`;
 
-      return new Response(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(expDetail)}</Message></Response>`, {
-        status: 200,
-        headers: { 'Content-Type': 'text/xml' },
-      });
+        return new Response(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(expDetail)}</Message></Response>`, {
+          status: 200,
+          headers: { 'Content-Type': 'text/xml' },
+        });
+      }
+      // Non-admin caller — fall through to the normal María flow so a real
+      // visitor saying "expediente 12345 ¿cuándo terminan?" gets a sensible
+      // answer instead of silence or a stray data leak.
     }
 
     if (isAdminCommand) {
@@ -569,8 +607,10 @@ Comandos disponibles:
             fuente: live.fuente,
           };
           console.log('Precios fetched live:', `oro=${live.oro} usd_hnl=${live.usd_hnl} fuente=${live.fuente}`);
-          // Best-effort DB cache write — non-fatal
-          fetchAndStorePrices().catch(e => console.log('Price DB cache failed (non-fatal):', e.message));
+          // Best-effort DB cache write from the snapshot we just fetched —
+          // calling fetchAndStorePrices() here would re-run the full upstream
+          // fan-out, doubling the GoldAPI / Yahoo / FX cost per cold-cache turn.
+          storePrices(live).catch(e => console.log('Price DB cache failed (non-fatal):', e.message));
         }
       } catch (e) {
         console.log('Live price fetch failed (non-fatal):', e.message);
@@ -583,7 +623,7 @@ Comandos disponibles:
     });
     const oroLBMA   = preciosHoy?.oro    != null ? `$${fmt(preciosHoy.oro)} USD/oz troy`   : null;
     const oroCompra = (preciosHoy?.oro != null && preciosHoy?.usd_hnl != null)
-      ? `L ${fmt(preciosHoy.oro * 0.80 * preciosHoy.usd_hnl / 31.1035)}/gramo`
+      ? `L ${fmt(preciosHoy.oro * 0.80 * preciosHoy.usd_hnl / TROY_OUNCE_GRAMS)}/gramo`
       : null;
     const plataLBMA = preciosHoy?.plata  != null ? `$${fmt(preciosHoy.plata)} USD/oz troy` : null;
 
@@ -613,19 +653,34 @@ El formato canónico de respuesta para precio del día está en CUANDO PREGUNTAN
     // --- Query expedientes linked to this client ---
     let expedienteContext = '';
     if (cliente) {
-      // Sanitize nombre: strip PostgREST or() separator chars to prevent filter injection
-      const safeNombre = cliente.nombre.replace(/[,()]/g, ' ').trim();
-      const { data: exps } = await getSupabase()
-        .from('expedientes')
-        .select(`
-          numero_expediente, tipo, estado, fase_numero, paso, total_pasos,
-          cierre_estimado,
-          hitos(numero, monto, porcentaje, estado),
-          progress_fases(nombre, estado, orden)
-        `)
-        .or(`cliente_id.eq.${cliente.id},cliente.ilike.%${safeNombre}%`)
-        .order('created_at', { ascending: false })
-        .limit(3);
+      // Escape ilike metachars (%_\) and structural chars (,()) — same
+      // canonical sanitizer used by concesionesService for the same
+      // PostgREST .or() composition pattern. The previous regex only
+      // stripped ,() so a nombre like "100%" or "user\_a" matched far
+      // more rows than intended.
+      const safeNombre = sanitizeIlikeTerm(cliente.nombre);
+      // Defensively validate cliente.id as a UUID. Schema makes it a UUID
+      // today but interpolating raw into the .or() string would let any
+      // future PK type change become an injection vector.
+      const idClause   = UUID_RE.test(String(cliente.id))
+        ? `cliente_id.eq.${cliente.id}`
+        : null;
+      const nameClause = safeNombre ? `cliente.ilike.%${safeNombre}%` : null;
+      const orExpr     = [idClause, nameClause].filter(Boolean).join(',');
+
+      const exps = orExpr
+        ? (await getSupabase()
+            .from('expedientes')
+            .select(`
+              numero_expediente, tipo, estado, fase_numero, paso, total_pasos,
+              cierre_estimado,
+              hitos(numero, monto, porcentaje, estado),
+              progress_fases(nombre, estado, orden)
+            `)
+            .or(orExpr)
+            .order('created_at', { ascending: false })
+            .limit(3)).data
+        : null;
 
       if (exps?.length) {
         expedienteContext = buildExpedienteContext(exps);
@@ -667,7 +722,7 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
       const cmdReply = await interpretAndExecute(broadcastUser, incomingMessage);
       if (cmdReply !== null) {
         await getSupabase().from("conversaciones_whatsapp").insert([
-          { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
+          { numero_whatsapp: fromNumber, role: "user",      content: safeIncoming },
           { numero_whatsapp: fromNumber, role: "assistant", content: cmdReply },
         ]);
         return new Response(
@@ -697,7 +752,7 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
         if (isNewUser || isInProgress) {
           const reply = await handleOnboarding(cleanNumber, incomingMessage);
           await getSupabase().from("conversaciones_whatsapp").insert([
-            { numero_whatsapp: fromNumber, role: "user",      content: incomingMessage },
+            { numero_whatsapp: fromNumber, role: "user",      content: safeIncoming },
             { numero_whatsapp: fromNumber, role: "assistant", content: reply },
           ]);
           return new Response(
@@ -757,16 +812,23 @@ Responde DIRECTAMENTE a lo que acaba de decir el usuario.`);
       return { ...msg, content: msg.content.replace(ADMIN_PREFIX_RE, '') };
     });
 
-    // Remove duplicate consecutive assistant messages from history
-    const cleanHistory = sanitizedHistory.filter((msg, i) => {
-      if (i === 0) return true;
-      return !(msg.role === 'assistant' && sanitizedHistory[i-1].role === 'assistant');
-    });
-
-    cleanHistory.push({
-      role: "user",
-      content: incomingMessage,
-    });
+    // Merge consecutive same-role turns. Anthropic rejects either user-user
+    // or assistant-assistant runs with a 400, and the previous filter only
+    // collapsed assistant dupes — so if a prior turn failed before its
+    // assistant reply was persisted, the DB ended `[…, user, user]` and
+    // appending the new user message produced `[…, user, user, user]`,
+    // which became a permanent "tuvimos un problema técnico" loop. Same
+    // merge pattern as app/api/maria/chat/route.ts (web channel).
+    const cleanHistory = [];
+    const turnsToMerge = [...sanitizedHistory, { role: "user", content: incomingMessage }];
+    for (const m of turnsToMerge) {
+      const last = cleanHistory[cleanHistory.length - 1];
+      if (!last || last.role !== m.role) {
+        cleanHistory.push({ role: m.role, content: m.content });
+      } else {
+        last.content = `${last.content}\n\n${m.content}`;
+      }
+    }
 
     if (!anthropic) {
       console.error('[maria] ANTHROPIC_API_KEY missing — cannot call Claude');
@@ -792,7 +854,7 @@ Responde DIRECTAMENTE a lo que acaba de decir el usuario.`);
     }
 
     const { error: insertError } = await getSupabase().from("conversaciones_whatsapp").insert([
-      { numero_whatsapp: fromNumber, role: "user", content: incomingMessage },
+      { numero_whatsapp: fromNumber, role: "user", content: safeIncoming },
       { numero_whatsapp: fromNumber, role: "assistant", content: assistantReply },
     ]);
     console.log('Insert result:', insertError ? insertError.message : 'success');
@@ -805,9 +867,17 @@ Responde DIRECTAMENTE a lo que acaba de decir el usuario.`);
       'te vamos a contactar'
     ];
 
-    const needsContact = contactTriggers.some(trigger =>
-      assistantReply.toLowerCase().includes(trigger)
-    );
+    // Match each trigger only when it isn't preceded by a Spanish negation
+    // word ("no", "nunca", "tampoco"). Without this guard, María saying
+    // "no te vamos a contactar hasta que confirmes" still fired the Willis
+    // alert because the substring matched.
+    const lowerReply = assistantReply.toLowerCase();
+    const needsContact = contactTriggers.some(trigger => {
+      const idx = lowerReply.indexOf(trigger);
+      if (idx === -1) return false;
+      const prefix = lowerReply.slice(Math.max(0, idx - 30), idx);
+      return !/\b(no|nunca|tampoco)\s+\w*\s*$/.test(prefix);
+    });
 
     if (needsContact) {
       try {
@@ -843,20 +913,6 @@ Accion requerida: Llamar o escribir al cliente hoy.`;
         console.log('Contact alert sent to Willis for:', clientName);
       } catch (alertErr) {
         console.log('Contact alert failed (non-fatal):', alertErr.message);
-      }
-    }
-
-    // --- Auto-register new client if not found ---
-    if (!cliente && assistantReply.includes('te voy a registrar')) {
-      const nombreDetectado = incomingMessage.trim();
-      if (nombreDetectado.length > 3 && nombreDetectado.length < 60) {
-        await getSupabase().from('clientes').insert([{
-          nombre: nombreDetectado,
-          telefono_whatsapp: cleanNumber,
-          tipo_mineral: 'oro',
-          situacion_tierra: 'arrendatario_sin_titulo'
-        }]);
-        console.log('✅ New client registered:', nombreDetectado);
       }
     }
 

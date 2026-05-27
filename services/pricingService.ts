@@ -9,6 +9,19 @@ export interface PreciosDiarios {
   fetched_at: string;
 }
 
+// External price feeds (GoldAPI / Yahoo / exchangerate-api) intermittently hang;
+// Yahoo's COMEX query in particular can stall past 30s. Without a hard timeout
+// the bare fetch can pin runDailyBroadcast past Vercel's 60s function ceiling
+// — the 8 AM cron then silently misses its window with no broadcast_log entry.
+// 8 s matches PRICE_FETCH_TIMEOUT_MS in app/api/maria/chat/route.ts.
+const FETCH_TIMEOUT_MS = 8000;
+
+// 1 troy ounce = 31.1034768 grams (LBMA standard). Single source of truth so
+// the boletín diario, María's WhatsApp reply, and the web widget all quote
+// the same price-per-gram — a 31.1035 round-off elsewhere produces a 0.0008%
+// drift that a client comparing two replies would notice.
+export const TROY_OUNCE_GRAMS = 31.1034768;
+
 // ─── Fuentes con prioridad ────────────────────────────────────────────────────
 
 async function fetchGoldFromGoldAPI(): Promise<number | null> {
@@ -17,7 +30,8 @@ async function fetchGoldFromGoldAPI(): Promise<number | null> {
   try {
     const res = await fetch('https://www.goldapi.io/api/XAU/USD', {
       headers: { 'x-access-token': apiKey, 'Content-Type': 'application/json' },
-      cache: 'no-store',
+      cache:  'no-store',
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (!res.ok) throw new Error(`goldapi ${res.status}`);
     const data = (await res.json()) as { price?: number };
@@ -35,7 +49,8 @@ async function fetchSilverFromGoldAPI(): Promise<number | null> {
   try {
     const res = await fetch('https://www.goldapi.io/api/XAG/USD', {
       headers: { 'x-access-token': apiKey, 'Content-Type': 'application/json' },
-      cache: 'no-store',
+      cache:  'no-store',
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (!res.ok) throw new Error(`goldapi silver ${res.status}`);
     const data = (await res.json()) as { price?: number };
@@ -51,11 +66,13 @@ async function fetchMetalsFromYahoo(): Promise<{ gold: number | null; silver: nu
     const [goldRes, silverRes] = await Promise.allSettled([
       fetch('https://query2.finance.yahoo.com/v8/finance/chart/GC%3DF?interval=1d&range=1d', {
         headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0' },
-        cache: 'no-store',
+        cache:  'no-store',
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       }),
       fetch('https://query2.finance.yahoo.com/v8/finance/chart/SI%3DF?interval=1d&range=1d', {
         headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0' },
-        cache: 'no-store',
+        cache:  'no-store',
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       }),
     ]);
 
@@ -90,7 +107,10 @@ async function fetchExchangeRate(): Promise<number | null> {
     : 'https://api.exchangerate-api.com/v4/latest/USD';
 
   try {
-    const res = await fetch(url, { cache: 'no-store' });
+    const res = await fetch(url, {
+      cache:  'no-store',
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
     if (!res.ok) throw new Error(`exchangerate-api ${res.status}`);
     const data = (await res.json()) as {
       rates?: Record<string, number>;
@@ -133,23 +153,39 @@ export async function fetchCopperPrice(): Promise<number | null> {
 export async function fetchAllPrices(): Promise<PreciosDiarios> {
   const fetched_at = new Date().toISOString();
 
-  // 1. Intentar GoldAPI primero (más confiable)
-  let oro = await fetchGoldFromGoldAPI();
-  let plata = await fetchSilverFromGoldAPI();
-  let fuente = 'goldapi.io';
+  // Phase 1 — independent upstreams in parallel. Saves ~1-2 s vs the
+  // serial chain on every cold-cache turn and every broadcast cron.
+  const [goldApiGold, goldApiSilver, usd_hnl] = await Promise.all([
+    fetchGoldFromGoldAPI(),
+    fetchSilverFromGoldAPI(),
+    fetchExchangeRate(),
+  ]);
 
-  // 2. Fallback: Yahoo Finance COMEX futures
+  let oro = goldApiGold;
+  let plata = goldApiSilver;
+  // Track exactly which upstreams contributed a non-null metal. The
+  // previous code stamped 'yahoo-finance' whenever Yahoo ran (even if
+  // Yahoo only filled silver and gold actually came from GoldAPI) —
+  // an honest label needs per-metal accounting.
+  const sources = new Set<string>();
+  if (goldApiGold !== null || goldApiSilver !== null) sources.add('goldapi.io');
+
+  // Phase 2 — Yahoo backfill, only for metals GoldAPI didn't supply.
   if (oro === null || plata === null) {
-    console.log('[pricingService] Falling back to Yahoo Finance...');
+    console.log('[pricingService] Falling back to Yahoo Finance for missing metals...');
     const yahoo = await fetchMetalsFromYahoo();
-    if (oro === null) oro = yahoo.gold;
-    if (plata === null) plata = yahoo.silver;
-    fuente = oro !== null ? 'yahoo-finance' : 'failed-all-sources';
+    if (oro === null && yahoo.gold !== null) {
+      oro = yahoo.gold;
+      sources.add('yahoo-finance');
+    }
+    if (plata === null && yahoo.silver !== null) {
+      plata = yahoo.silver;
+      sources.add('yahoo-finance');
+    }
   }
 
-  // 3. FX rate (independiente)
-  const usd_hnl = await fetchExchangeRate();
   const cobre = null;
+  const fuente = sources.size === 0 ? 'failed-all-sources' : [...sources].join(', ');
 
   if (oro === null) {
     console.error('[pricingService] CRITICAL: No gold price from any source.');
@@ -158,9 +194,13 @@ export async function fetchAllPrices(): Promise<PreciosDiarios> {
   return { oro, plata, usd_hnl, cobre, fuente, fetched_at };
 }
 
-export async function fetchAndStorePrices(): Promise<{ id: string; precios: PreciosDiarios }> {
+// Persist an already-fetched PreciosDiarios snapshot. Extracted so callers
+// that have just done their own fetchAllPrices() (María webhook + web widget)
+// can write-back the cache without paying for a second round-trip to
+// GoldAPI/Yahoo/exchangerate-api — the prior pattern fan-out was 2× the
+// upstream calls per cold-cache turn.
+export async function storePrices(precios: PreciosDiarios): Promise<string> {
   const admin = getAdminClient();
-  const precios = await fetchAllPrices();
   const fecha = new Date().toISOString().slice(0, 10);
 
   // Prefer the SECURITY DEFINER RPC (migration 025) — bypasses RLS regardless
@@ -174,7 +214,7 @@ export async function fetchAndStorePrices(): Promise<{ id: string; precios: Prec
     p_fuente:     precios.fuente,
     p_fetched_at: precios.fetched_at,
   });
-  if (!rpcError && rpcId) return { id: rpcId as string, precios };
+  if (!rpcError && rpcId) return rpcId as string;
 
   // Fallback to direct upsert — only reached when migration 025 has not been
   // applied yet. Logged so the operator notices the missing RPC.
@@ -191,7 +231,13 @@ export async function fetchAndStorePrices(): Promise<{ id: string; precios: Prec
     .single();
 
   if (error || !data) throw new Error(`pricingService: store failed — ${error?.message}`);
-  return { id: data.id as string, precios };
+  return data.id as string;
+}
+
+export async function fetchAndStorePrices(): Promise<{ id: string; precios: PreciosDiarios }> {
+  const precios = await fetchAllPrices();
+  const id = await storePrices(precios);
+  return { id, precios };
 }
 
 export async function getLatestPrices(): Promise<(PreciosDiarios & { fecha: string; id: string }) | null> {

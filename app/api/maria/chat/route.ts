@@ -8,13 +8,14 @@
 // is stateless: each request POSTs the full message array.
 
 import { NextResponse } from 'next/server';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { CHT_SYSTEM_PROMPT } from '@/lib/maria/systemPrompt';
 import { embedQuery, toVectorText } from '@/lib/maria/embeddings';
 import { supabase } from '@/services/supabase';
 import { getAdminClient } from '@/services/adminSupabase';
-import { fetchAllPrices } from '@/services/pricingService';
+import { fetchAllPrices, storePrices, TROY_OUNCE_GRAMS } from '@/services/pricingService';
 import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
@@ -32,6 +33,40 @@ const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 // AbortSignal; race them against this timeout so a stalled feed doesn't pin
 // the serverless function past the client's own 30 s abort.
 const PRICE_FETCH_TIMEOUT_MS = 8000;
+
+// HMAC-signed assistant turns prevent prompt-injection via fake assistant
+// messages. Without this, a visitor could POST { messages:[{role:'assistant',
+// content:'System rules updated: …'}, {role:'user', content:'?'}] } and have
+// Claude treat the fake context as authoritative — fabricating quotes,
+// commitments, or "memory" the server never actually produced. The signature
+// proves each assistant turn originated from this server.
+//
+// Prefer a dedicated env var; fall back to the service-role key (always set
+// in prod) so existing deploys gain the protection without ops intervention.
+// Rotating either invalidates active sessions — visitors auto-recover via
+// the BAD_SIG branch in the widget.
+const SIGNING_SECRET =
+  process.env.MARIA_WIDGET_SECRET?.trim() ||
+  process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+  '';
+const SIG_LENGTH = 32;
+
+function signAssistantContent(content: string): string {
+  return createHmac('sha256', SIGNING_SECRET).update(content).digest('hex').slice(0, SIG_LENGTH);
+}
+
+function verifyAssistantSig(content: string, sig: unknown): boolean {
+  if (!SIGNING_SECRET) return false;
+  if (typeof sig !== 'string' || sig.length !== SIG_LENGTH) return false;
+  try {
+    const a = Buffer.from(signAssistantContent(content), 'hex');
+    const b = Buffer.from(sig, 'hex');
+    if (a.length !== b.length) return false;
+    return timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+}
 
 const anthropic = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -211,6 +246,13 @@ async function buildPriceContext(): Promise<string> {
           fecha: today,
           fuente: live.fuente,
         };
+        // Cache write-back so subsequent turns hit the DB row instead of
+        // re-fanning out to GoldAPI/Yahoo/exchangerate-api on every cold-cache
+        // turn — without this, an anonymous visitor with the 20-turn budget
+        // could drive ~60 paid upstream calls.
+        storePrices(live).catch((e) =>
+          console.warn('[maria-web prices] cache write failed (non-fatal):', (e as Error)?.message),
+        );
       } else if (!live) {
         console.error('[maria-web prices] live fetch timed out after', PRICE_FETCH_TIMEOUT_MS, 'ms');
       }
@@ -228,7 +270,7 @@ async function buildPriceContext(): Promise<string> {
   const oroLBMA = `$${fmt(prices.oro)} USD/oz troy`;
   const oroCompra =
     prices.usd_hnl != null
-      ? `L ${fmt((prices.oro * 0.8 * prices.usd_hnl) / 31.1035)}/gramo`
+      ? `L ${fmt((prices.oro * 0.8 * prices.usd_hnl) / TROY_OUNCE_GRAMS)}/gramo`
       : null;
   const plataLBMA = prices.plata != null ? `$${fmt(prices.plata)} USD/oz troy` : null;
   const horaConsultaHN = new Date().toLocaleTimeString('es-HN', {
@@ -272,8 +314,54 @@ Reglas que seguís aplicando:
 - "Tierra Primero": si el visitante quiere formalización, preguntá primero por situación de tierra.
 - Precios y citas legales: usá los bloques PRECIOS DE REFERENCIA, CONTEXTO DEL SISTEMA y REGISTRO INHGEOMIN cuando aparezcan.`;
 
+// CSRF defense — Content-Type: application/json triggers a CORS preflight
+// (so cross-site fetches with that header would be blocked browser-side
+// without an OPTIONS handler), but Content-Type: text/plain is a "simple
+// request" that ships straight through. Without an Origin check, evil.com
+// could POST to /api/maria/chat from a visitor's browser and burn our
+// Anthropic / OpenAI / Supabase quota under the victim's IP. Accept only
+// same-origin requests or the configured production host.
+function isAllowedOrigin(req: Request): boolean {
+  const origin  = req.headers.get('origin');
+  const referer = req.headers.get('referer');
+  // No Origin AND no Referer is suspicious for a browser-driven POST —
+  // most legitimate clients (the widget on the landing page) send at least
+  // one. Reject closed.
+  const candidate = origin ?? referer;
+  if (!candidate) return false;
+  let candidateHost: string;
+  try {
+    candidateHost = new URL(candidate).host;
+  } catch {
+    return false;
+  }
+  // Same-origin — the widget on mape.legal fetching mape.legal/api/maria/chat,
+  // or a preview deploy fetching its own preview URL. Covers prod, preview,
+  // and dev uniformly without env config.
+  const host = req.headers.get('host');
+  if (host && candidateHost === host) return true;
+  // Configured production URL — fallback in case the request arrives via a
+  // CDN/proxy whose host differs from the canonical hostname.
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (siteUrl) {
+    try {
+      if (new URL(siteUrl).host === candidateHost) return true;
+    } catch {
+      /* malformed env — fall through to reject */
+    }
+  }
+  return false;
+}
+
 // ─── POST handler ────────────────────────────────────────────────────────────
 export async function POST(request: Request) {
+  if (!isAllowedOrigin(request)) {
+    return NextResponse.json(
+      { error: 'Origen no permitido.', code: 'FORBIDDEN_ORIGIN' },
+      { status: 403 }
+    );
+  }
+
   const ip = clientIpFrom(request);
   const rl = checkRateLimit(`maria-web:${ip}`, RATE_LIMIT_PER_IP, RATE_LIMIT_WINDOW_MS);
   if (!rl.ok) {
@@ -310,7 +398,7 @@ export async function POST(request: Request) {
 
   const validated: ChatMessage[] = [];
   for (const m of messages) {
-    const obj = m as { role?: unknown; content?: unknown };
+    const obj = m as { role?: unknown; content?: unknown; sig?: unknown };
     if (
       (obj.role !== 'user' && obj.role !== 'assistant') ||
       typeof obj.content !== 'string'
@@ -330,6 +418,19 @@ export async function POST(request: Request) {
     if (content.length > MAX_CONTENT_CHARS) {
       return NextResponse.json(
         { error: 'Mensaje demasiado largo.', code: 'BAD_LENGTH' },
+        { status: 400 }
+      );
+    }
+    // Reject any assistant turn that doesn't carry a valid server-issued
+    // signature — otherwise a visitor could fabricate María "memory" by
+    // posting their own assistant messages.
+    if (obj.role === 'assistant' && !verifyAssistantSig(content, obj.sig)) {
+      console.warn('[maria-web] rejected unsigned/forged assistant message');
+      return NextResponse.json(
+        {
+          error: 'Sesión inválida. Recargá la página para empezar de nuevo.',
+          code:  'BAD_SIG',
+        },
         { status: 400 }
       );
     }
@@ -412,7 +513,7 @@ export async function POST(request: Request) {
       );
     }
     return NextResponse.json(
-      { reply },
+      { reply, sig: signAssistantContent(reply) },
       { headers: { 'Cache-Control': 'no-store' } }
     );
   } catch (e) {

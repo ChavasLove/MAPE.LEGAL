@@ -4,7 +4,7 @@ import {
   checkWhatsAppTokenHealth,
   WhatsAppApiError,
 } from '@/services/whatsappService';
-import { type PreciosDiarios } from '@/services/pricingService';
+import { type PreciosDiarios, TROY_OUNCE_GRAMS } from '@/services/pricingService';
 import { getActiveSubscribers, type BroadcastRol } from '@/services/userService';
 
 // ─── Generate daily price message — FIXED TEMPLATE ───────────────────────────
@@ -12,9 +12,6 @@ import { getActiveSubscribers, type BroadcastRol } from '@/services/userService'
 // Formato canónico del broadcast diario de las 8 AM Honduras.
 // No llama a Claude — el mensaje es determinístico para garantizar consistencia
 // y evitar alucinaciones de precio.
-
-// 1 troy ounce = 31.1034768 grams (LBMA standard)
-const TROY_OUNCE_GRAMS = 31.1034768;
 
 export async function generateDailyMessage(precios: PreciosDiarios): Promise<string> {
   const now = new Date();
@@ -157,6 +154,12 @@ export async function sendDailyBroadcast(options: {
   // nested closures, which lets us assign from inside `Promise.all` callbacks
   // and still see the populated value on the read after the loop.
   const authState: { aborted: WhatsAppApiError | null } = { aborted: null };
+  // AbortController cancels in-flight sends the instant any sibling in the
+  // same batch hits an auth error. Without it, Promise.all would still wait
+  // for the 9 remaining 401s in flight to complete — burning Meta quota and
+  // delaying the abort. The signal is passed into sendWhatsAppText (added
+  // for this purpose; back-compat for other callers that omit options).
+  const abortCtrl = new AbortController();
 
   // Send in batches of 10 to avoid rate limits
   const BATCH = 10;
@@ -168,16 +171,20 @@ export async function sendDailyBroadcast(options: {
       batch.map(async (user) => {
         if (authState.aborted) return;
         try {
-          await sendWhatsAppText(user.telefono, mensaje);
+          await sendWhatsAppText(user.telefono, mensaje, { signal: abortCtrl.signal });
           enviados++;
         } catch (e) {
+          // Cancelled because a sibling already hit the auth error and
+          // aborted the controller — not a per-recipient failure.
+          if ((e as Error)?.name === 'AbortError') return;
           // If the token died mid-broadcast (rare but possible), flag the
-          // abort and skip per-recipient bookkeeping — the failure is a
-          // broadcast-level config problem, not a delivery error for this
-          // subscriber. aborted_reason carries the signal; total_errores
-          // stays reserved for genuine per-recipient failures.
+          // abort, cancel siblings, and skip per-recipient bookkeeping —
+          // the failure is a broadcast-level config problem, not a delivery
+          // error for this subscriber. aborted_reason carries the signal;
+          // total_errores stays reserved for genuine per-recipient failures.
           if (e instanceof WhatsAppApiError && e.isAuthError) {
             authState.aborted = e;
+            abortCtrl.abort();
             console.error('[broadcast] auth error mid-broadcast — aborting remaining batches', e);
             return;
           }
@@ -230,11 +237,18 @@ export async function sendDailyBroadcast(options: {
 // Retrieve the latest broadcast log entry
 export async function getLastBroadcastLog() {
   const admin = getAdminClient();
-  const { data } = await admin
+  // maybeSingle handles the empty-table case cleanly; .single() emitted
+  // PGRST116 there and the discarded error masked any real DB failure as
+  // "no broadcasts yet".
+  const { data, error } = await admin
     .from('broadcast_log')
     .select('*')
     .order('created_at', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
+  if (error) {
+    console.error('[broadcastService] getLastBroadcastLog failed:', error.message);
+    return null;
+  }
   return data;
 }
