@@ -282,7 +282,7 @@ const Wrapper = ({
           borderTopLeftRadius: 16,
           borderTopRightRadius: 16,
           borderTop: '1px solid var(--border)',
-          boxShadow: '0 -8px 24px rgba(31, 42, 56, 0.12)',
+          boxShadow: '0 -8px 24px color-mix(in oklch, var(--ink) 12%, transparent)',
           // dvh (dynamic viewport height) accounts for iOS Safari's
           // address-bar slide — 78vh measures against the full viewport
           // including the bar, so the sheet can run past the visible

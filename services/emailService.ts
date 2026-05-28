@@ -45,16 +45,44 @@ export async function sendEmail(payload: EmailPayload): Promise<void> {
     ],
   };
 
-  const res = await fetch(SENDGRID_API, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify(body),
-  });
+  // Retry transient failures (429 rate-limit, 5xx, network/timeout) with
+  // exponential backoff. Without this a single blip lost the email silently —
+  // contact-form submissions and phase/payment notifications never arrived.
+  // Other 4xx (bad payload, auth) are permanent and fail immediately.
+  const MAX_ATTEMPTS = 3;
+  let lastError = '';
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    let res: Response;
+    try {
+      res = await fetch(SENDGRID_API, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body:    JSON.stringify(body),
+        signal:  AbortSignal.timeout(8000),
+      });
+    } catch (e) {
+      lastError = (e as Error)?.message ?? 'network error';
+      if (attempt < MAX_ATTEMPTS) {
+        await new Promise((r) => setTimeout(r, 400 * 2 ** (attempt - 1)));
+        continue;
+      }
+      throw new Error(`SendGrid request failed after ${MAX_ATTEMPTS} attempts: ${lastError}`);
+    }
 
-  if (!res.ok) {
+    if (res.ok) return;
+
+    if (res.status === 429 || res.status >= 500) {
+      lastError = `SendGrid ${res.status}`;
+      if (attempt < MAX_ATTEMPTS) {
+        await new Promise((r) => setTimeout(r, 400 * 2 ** (attempt - 1)));
+        continue;
+      }
+    }
+    // Permanent 4xx, or transient exhausted on the final attempt.
     const err = await res.text();
     throw new Error(`SendGrid ${res.status}: ${err}`);
   }
+  throw new Error(`SendGrid failed after ${MAX_ATTEMPTS} attempts: ${lastError}`);
 }
 
 // ─── Shared HTML shell ────────────────────────────────────────────────────────
