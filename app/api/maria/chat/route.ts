@@ -13,6 +13,14 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { CHT_SYSTEM_PROMPT } from '@/lib/maria/systemPrompt';
 import { embedQuery, toVectorText } from '@/lib/maria/embeddings';
+import {
+  RAG_MATCH_COUNT,
+  RAG_MATCH_THRESHOLD,
+  CONCESION_TRIGGERS,
+  CONCESION_STOPWORDS,
+  formatKnowledgeRows,
+  type KnowledgeRow,
+} from '@/lib/maria/ragShared';
 import { supabase } from '@/services/supabase';
 import { getAdminClient } from '@/services/adminSupabase';
 import { fetchAllPrices, storePrices, TROY_OUNCE_GRAMS } from '@/services/pricingService';
@@ -85,13 +93,13 @@ function admin(): SupabaseClient {
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
 // ─── Concesiones context (anon-safe — RPC is SECURITY DEFINER) ─────────────
-const CONCESION_TRIGGERS = /\b(concesi[oó]n(?:es)?|inhgeomin|permiso\s+(?:de\s+)?(?:exploraci[oó]n|explotaci[oó]n|miner[oa])|registro\s+(?:de\s+)?(?:concesi[oó]n|miner[oa])|otorgad[ao]\s+para|en\s+solicitud|pendiente\s+de\s+aprobaci[oó]n|qui[eé]n\s+tiene\s+(?:la\s+)?concesi[oó]n|empresa\s+miner|d[oó]nde\s+est[aá]\s+ubicad)/i;
+// CONCESION_TRIGGERS / CONCESION_STOPWORDS imported from lib/maria/ragShared
+// so this channel can't drift from the WhatsApp webhook.
 
 async function buildConcesionContext(message: string): Promise<string> {
   if (!CONCESION_TRIGGERS.test(message)) return '';
-  const stopwords = /\b(concesi[oó]n(?:es)?|inhgeomin|permiso|exploraci[oó]n|explotaci[oó]n|miner[oa]?|registro|otorgad[ao]|para|en|solicitud|pendiente|de|aprobaci[oó]n|qui[eé]n|tiene|la|el|empresa|d[oó]nde|est[aá]|ubicad[ao]?|hay|alguna|alguien|los|las|del|al|si|me|por|favor|gracias)\b/gi;
   const cleaned = message
-    .replace(stopwords, ' ')
+    .replace(CONCESION_STOPWORDS, ' ')
     .replace(/[¿?¡!.,;:%_\\]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -134,15 +142,8 @@ La mayoría de los registros marcados "En Solicitud" siguen pendientes de aproba
 }
 
 // ─── RAG retrieval (anon-safe — both RPCs are SECURITY DEFINER) ────────────
-const RAG_MATCH_COUNT = 3;
-const RAG_MATCH_THRESHOLD = 0.7;
-
-type KnowledgeRow = { category: string; title: string; content: string };
-
-function formatKnowledgeRows(rows: KnowledgeRow[]): string | null {
-  if (!Array.isArray(rows) || rows.length === 0) return null;
-  return rows.map((c) => `[${c.category}] ${c.title}: ${c.content}`).join('\n\n');
-}
+// RAG_MATCH_COUNT / RAG_MATCH_THRESHOLD / formatKnowledgeRows / KnowledgeRow
+// imported from lib/maria/ragShared — shared with the WhatsApp webhook.
 
 async function retrieveKnowledge(userMessage: string): Promise<string | null> {
   // Log prefix kept as `[rag]` (channel=web) so operators can grep both
