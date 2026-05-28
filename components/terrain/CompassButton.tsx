@@ -20,8 +20,13 @@ export default function CompassButton({
   lang,
   onClick,
 }: CompassButtonProps) {
-  // Consider the camera "at rest" when the user hasn't rotated it.
-  const atRest = Math.abs(bearing - -18) < 0.5 && Math.abs(pitch - 55) < 0.5;
+  // Consider the camera "at rest" when the user hasn't rotated it. Compare
+  // the shortest angular distance to the default bearing so the check holds
+  // regardless of how the angle is represented (-18 vs 342) — a raw
+  // subtraction would read 360 instead of 0 when the bearing wraps.
+  const DEFAULT_BEARING = -18;
+  const bearingDelta = Math.abs(((bearing - DEFAULT_BEARING + 540) % 360) - 180);
+  const atRest = bearingDelta < 0.5 && Math.abs(pitch - 55) < 0.5;
 
   return (
     <button
