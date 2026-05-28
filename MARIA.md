@@ -356,7 +356,7 @@ El bloque RAG con el wrapper `CONTEXTO DEL SISTEMA (citas literales...)` + `INST
 Path single-click: **`/admin/maria/rag-health`**. Lee la columna *Filas en maria_knowledge*:
 - `Total = 53` (o el número viejo) → seed nunca corrió. Volver al paso 4.
 - `Total = expected, Sin embedding > 0` → seed corrió pero embeddings no. Click "Completar".
-- `Total = expected, Sin embedding = 0`, pero María sigue deflectando → problema de prompt/threshold, no de datos. Revisar `RAG_MATCH_THRESHOLD` (0.7 default), o cambios al system prompt en `app/api/whatsapp/route.js` que pueden estar entrenando a Haiku a deferir.
+- `Total = expected, Sin embedding = 0`, pero María sigue deflectando → problema de prompt/threshold, no de datos. Revisar `RAG_MATCH_THRESHOLD` (0.7 default, en `lib/maria/ragShared.ts` — compartido por el webhook y el web widget), o cambios al system prompt en `lib/maria/systemPrompt.ts` que pueden estar entrenando a Haiku a deferir.
 
 Logs de Vercel filtrados por `[rag]` clasifican el path de cada turno: `semantic candidates=N`, `fts candidates=N`, o `none`. `none` con un keyword obvio significa que el chunk no está seedeado o que el embedding nunca se generó.
 
