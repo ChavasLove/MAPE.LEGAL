@@ -880,3 +880,5 @@ Auditoría multi-agente de 6 superficies paralelas (María webhook, María web w
 
 **Pendientes deliberados (no shipped en esta ronda):** anthropic client a module-scope (request 500s sin gastar rate-limit cuando key falta); mapping de Anthropic 4xx vs 5xx en web widget; focus trap dentro del dialog del widget; mining-data labels ES-only en EN view; hex literal en `SiteInfoSheet.tsx:273`; retry policy en SendGrid 429/5xx; `transformExpediente(row: any)` typing; `CompassButton` bearing modulo; `MapLegend` `<style>` como JSX child; CONCESION_TRIGGERS tightening para skip RPC en intent no-lookup; cross-channel drift de `RAG_MATCH_THRESHOLD` y `formatKnowledgeRows` (duplicados en webhook + web widget). Documentados aquí para que próximas auditorías no los re-descubran.
 
+Para traer skills nuevos cuando upstream publica una versión: `/plugin marketplace update superpowers-dev` + `/reload-plugins`. El auto-update está **off** por default para marketplaces de terceros — los contribuidores no reciben cambios de upstream sin hacer el update explícito.
+
