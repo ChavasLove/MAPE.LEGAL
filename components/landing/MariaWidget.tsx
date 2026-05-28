@@ -118,6 +118,7 @@ export default function MariaWidget({ lang }: MariaWidgetProps) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const stickToBottomRef = useRef(true);
   const fabRef = useRef<HTMLButtonElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
   // Tracked so we can abort in-flight requests when the component unmounts
   // (user navigates away mid-request). Without this, the 30 s timer fires
   // ctrl.abort() on an unmounted instance and the catch block setStates leak.
@@ -187,6 +188,34 @@ export default function MariaWidget({ lang }: MariaWidgetProps) {
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
+
+  // Focus trap — a role="dialog" must contain Tab focus, otherwise Tab from
+  // the textarea escapes into the landing content behind the panel. Wrap
+  // focus from last→first (Tab) and first→last (Shift+Tab).
+  useEffect(() => {
+    if (!open) return;
+    const panel = panelRef.current;
+    if (!panel) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const focusable = panel.querySelectorAll<HTMLElement>(
+        'button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    panel.addEventListener('keydown', onKey);
+    return () => panel.removeEventListener('keydown', onKey);
   }, [open]);
 
   function handleScroll() {
@@ -393,7 +422,9 @@ export default function MariaWidget({ lang }: MariaWidgetProps) {
       {/* Panel */}
       {open && (
         <div
+          ref={panelRef}
           role="dialog"
+          aria-modal="true"
           aria-label={t('Chat con María', 'Chat with María')}
           className="maria-panel"
           style={{

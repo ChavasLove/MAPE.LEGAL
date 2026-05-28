@@ -362,6 +362,18 @@ export async function POST(request: Request) {
     );
   }
 
+  // Config check before any work — if the key is missing the request can't
+  // possibly succeed, so fail fast (503) before spending a rate-limit slot,
+  // parsing the body, or firing the Supabase / OpenAI context fetches. The
+  // client (origin-checked above) just sees "service unavailable".
+  if (!anthropic) {
+    console.error('[maria-web] ANTHROPIC_API_KEY not set');
+    return NextResponse.json(
+      { error: 'Servicio no disponible. Intentá más tarde.', code: 'SERVER_CONFIG' },
+      { status: 503 }
+    );
+  }
+
   const ip = clientIpFrom(request);
   const rl = checkRateLimit(`maria-web:${ip}`, RATE_LIMIT_PER_IP, RATE_LIMIT_WINDOW_MS);
   if (!rl.ok) {
@@ -437,14 +449,6 @@ export async function POST(request: Request) {
     validated.push({ role: obj.role, content });
   }
 
-  if (!anthropic) {
-    console.error('[maria-web] ANTHROPIC_API_KEY not set');
-    return NextResponse.json(
-      { error: 'Servicio no disponible. Intentá más tarde.', code: 'SERVER_CONFIG' },
-      { status: 500 }
-    );
-  }
-
   // Anthropic requires the first message in the array to be 'user'.
   // Drop any leading 'assistant' messages defensively (the client should
   // never send the welcome message, but be tolerant).
@@ -517,10 +521,20 @@ export async function POST(request: Request) {
       { headers: { 'Cache-Control': 'no-store' } }
     );
   } catch (e) {
-    console.error('[maria-web] anthropic call failed:', (e as Error)?.message);
+    const status = (e as { status?: number })?.status;
+    console.error('[maria-web] anthropic call failed:', status ?? '?', (e as Error)?.message);
+    // A 4xx from Anthropic (e.g. context too large from a crafted payload,
+    // malformed request) won't succeed on retry — surface as 400 so the
+    // client stops instead of looping. 5xx / network is transient → 502.
+    if (typeof status === 'number' && status >= 400 && status < 500) {
+      return NextResponse.json(
+        { error: 'No pude procesar ese mensaje. Probá reformularlo.', code: 'BAD_REQUEST' },
+        { status: 400 }
+      );
+    }
     return NextResponse.json(
       { error: 'No pude responder ahora mismo. Probá de nuevo en unos minutos.', code: 'UPSTREAM' },
-      { status: 500 }
+      { status: 502 }
     );
   }
 }
