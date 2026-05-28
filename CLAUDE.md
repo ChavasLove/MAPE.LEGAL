@@ -830,9 +830,9 @@ Resultado de una auditoría multi-agente de los 49 archivos bajo `app/admin/**` 
 
 **Pendientes deliberados (no shipped en PR #159):** verificación en Supabase Studio de si `mensajes_wa` y `clientes.tipo_minero` realmente existen (queries activas las referencian); migración de forms (`usuarios`, `profesionales`, `contenido`) a labels con `htmlFor`+`id` reales (work mecánico grande); pagination real en listas (clientes, minas, subscribers, transactions); reemplazo del grouping client-side en `/api/admin/maria/conversations` por un RPC con `GROUP BY HAVING MAX(created_at)`.
 
-### Auditoría completa del codebase (branch `claude/relaxed-sagan-Z1e7L`, 2026-05-27)
+### Auditoría completa del codebase (PR #167 + #170, mergeadas 2026-05-27)
 
-Auditoría multi-agente de 6 superficies paralelas (María webhook, María web widget, auth flow, services + broadcast, terrain map, pending-items inventory) sobre los archivos que PR #159 no había tocado. 20 commits temáticos, todos con `npx tsc --noEmit` y `npm run build` limpios. Cierra las 12 Critical, 13/17 High, y 4 Medium del reporte. **Las invariantes de PR #159 se mantienen y se extienden con las que siguen:**
+Auditoría multi-agente de 6 superficies paralelas (María webhook, María web widget, auth flow, services + broadcast, terrain map, pending-items inventory) sobre los archivos que PR #159 no había tocado. 25 commits temáticos en dos tandas (PR #167 = 12 Critical + 13 High + 4 Medium; PR #170 = 4 Medium de follow-up + docs), todos con `npx tsc --noEmit` y `npm run build` limpios. Cierra las 12 Critical, 15/17 High, y 8 Medium del reporte (H7 y H15 documentados como no-issues). **Las invariantes de PR #159 se mantienen y se extienden con las que siguen:**
 
 **16. `requireRole(...)` en todas las rutas dashboard, no solo `/api/admin/*`.** PR #159 cerró `/api/whatsapp/send` y `/api/debug/prices`. Esta ronda cerró `/api/email/send`, `/api/expedientes`, `/api/expedientes/[id]`, `/api/expedientes/[id]/transition`, `/api/expedientes/[id]/next-actions`, `/api/documentos/[id]` — todas eran cookie-only via proxy. Cualquier handler que no llama `requireRole` confía en la presencia del cookie pero no en su firma JWT. Commits `384d361`, `2f7f855`.
 
