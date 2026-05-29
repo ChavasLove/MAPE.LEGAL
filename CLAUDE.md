@@ -460,6 +460,7 @@ TWILIO_WHATSAPP_FROM           # whatsapp:+14155238886 (sandbox) o sender aproba
 GOLDAPI_KEY                    # goldapi.io — precios oro/plata/cobre (free tier disponible)
 EXCHANGE_RATE_API_KEY          # exchangerate-api.com v6 (opcional; sin clave usa tier gratuito)
 CRON_SECRET                    # Header Bearer para proteger /api/broadcast/run. Vercel Cron lo inyecta automáticamente como Authorization: Bearer en el GET
+MISTRAL_API_KEY                # OCR de PDFs del Mercado de Proyectos (services/marketplace/processing.ts, modelo mistral-ocr-latest). Sin esta key la subida funciona pero el OCR queda en 'failed'
 ```
 
 ## Sistema de Broadcast Diario (`jobs/`, `services/broadcastService.ts`)
@@ -635,6 +636,18 @@ Base de datos pública de **587 concesiones mineras** en Honduras transcritas de
 
 ### María — guardrail crítico
 El bloque inyectado a María dice literalmente "*La mayoría de los registros marcados 'En Solicitud' siguen pendientes de aprobación; no afirmes que ya está aprobada una concesión que figura como solicitud_pendiente.*" — esto evita que María afirme que una concesión está aprobada cuando realmente está pendiente. **Si modificás el helper, mantené este guardrail.**
+
+## Mercado de Proyectos — Biblioteca de Documentos (`app/admin/mercado`, `/api/admin/marketplace/*`, 2026-05-28)
+
+Gestión de documentos para "junior ventures" mineras: subir PDFs (reportes 43-101, permisos, geología, ambiental, financiero, mapas), OCR, chunk + embed para búsqueda híbrida, y browse/descarga. **Fase 1 = admin-only**: todo vive bajo `/admin/mercado` y `/api/admin/marketplace/*`, gateado por el layout admin (`app/admin/layout.tsx`) y `requireRole('admin')` en cada handler. Por estar todo bajo `/admin` y `/api/admin`, **`proxy.ts` no necesitó cambios** y todo el acceso a datos pasa por el cliente service-role.
+
+- **Migración 026** (`supabase/migrations/026_marketplace_documents.sql`) — 6 tablas (`projects`, `project_documents`, `document_chunks` con `vector(1536)` + ivfflat, `document_tables`, `investor_project_access`, `document_access_log`), trigger FTS sobre `document_chunks.search_vector`, y 2 RPCs `SECURITY DEFINER owner postgres`: `search_document_chunks(...)` (híbrido semántico+FTS) y `get_parent_document_chunks(...)`. **RLS Fase 1: solo policies `<t>_service_all` (FOR ALL TO service_role)** — el `service_role` de este proyecto no tiene BYPASSRLS (mismo patrón que 024/025). Las policies de lectura pública/registrada/inversionista quedan **diferidas** hasta que se construyan esas superficies. Depende de la extensión `vector` de 024.
+- **Storage** — bucket privado `project-documents` (100 MB/archivo, solo `application/pdf`), creado en la sección final de la migración 026 + policy `marketplace_objects_service_all` sobre `storage.objects`. Subida vía cliente service-role; descarga vía signed URL (1h) generada server-side tras `requireRole('admin')`.
+- **Procesamiento** = ruta Next.js (NO edge functions — el repo no tiene `supabase` CLI). `services/marketplace/processing.ts:processDocument(id)`: firma un signed URL (10 min) → Mistral OCR (`document_url`, sin base64) → guarda `ocr_text`/`page_count` → `chunkText` (`lib/marketplace/chunking.ts`) → `embedBatch` + `toVectorText` (reusa `lib/maria/embeddings.ts`) → inserta `document_chunks`. Idempotente (borra chunks previos en reproceso). Disparado por el cliente tras la subida (`POST .../documents/[id]/process`) y por el botón "Reprocesar" — NO fire-and-forget desde la ruta de subida (serverless congela tras responder).
+- **Rutas** (`force-dynamic`, `requireRole('admin')`): `GET/POST /api/admin/marketplace/projects`, `GET .../projects/[projectId]`, `GET/POST .../projects/[projectId]/documents` (POST = multipart, primer handler con `formData()` del repo), `GET .../projects/[projectId]/search` (híbrido + fallback FTS), `POST .../documents/[documentId]/process` (`maxDuration=300`), `GET .../documents/[documentId]/download`.
+- **UI** (inline tokens del Color Manual, NO clases Tailwind `bg-[--token]`): `/admin/mercado` (lista + crear), `/admin/mercado/[projectId]` (categorías + búsqueda + descarga + reproceso + subida), `components/marketplace/DocumentUpload.tsx`. Nav en `app/admin/layout.tsx` (ícono `Briefcase`).
+- **Activación manual (Vercel NO la hace):** (1) aplicar `026_*.sql` en Supabase Studio (incluye el bucket); (2) setear `MISTRAL_API_KEY` en `.env.local` + Vercel; (3) `node scripts/seed-marketplace-sample.mjs` para un proyecto de ejemplo (los docs sembrados son placeholders sin archivo — descarga/OCR fallan sobre ellos; una subida real ejercita el pipeline completo).
+- **Fuera de scope Fase 1 (deuda documentada):** rol "inversionista" + superficies público/registrado; extracción estructurada a `document_tables` (tabla creada, vacía); watermarking (`watermark_id` sin uso); docs grandes que excedan el límite serverless (script de reproceso como fallback futuro).
 
 ## Auditoría — deuda técnica conocida (2026-05-03, parcialmente resuelta 2026-05-09)
 
