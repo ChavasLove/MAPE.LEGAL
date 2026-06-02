@@ -192,3 +192,12 @@ export async function updateSchedule(
   }
   await setConfigs({ broadcast_time: time });
 }
+
+// Reads the configured daily broadcast time (Honduras local, HH:MM 24h).
+// Returns null when unset or malformed so the caller can apply its own default.
+// The cron schedule in vercel.json is only a frequent tick; this value is the
+// actual send time, gated at runtime in /api/broadcast/run.
+export async function getBroadcastTime(): Promise<string | null> {
+  const v = await getConfig('broadcast_time');
+  return v && /^\d{2}:\d{2}$/.test(v) ? v : null;
+}
