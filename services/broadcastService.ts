@@ -7,6 +7,30 @@ import {
 import { type PreciosDiarios, TROY_OUNCE_GRAMS } from '@/services/pricingService';
 import { getActiveSubscribers, type BroadcastRol } from '@/services/userService';
 
+// ─── Honduras local time ──────────────────────────────────────────────────────
+//
+// Honduras is UTC-6 year-round (no DST). Compute the local date + time via Intl
+// so the broadcast "day" is stable regardless of the server's timezone. This is
+// the single source of truth for "today" shared by the broadcast_log writer
+// (below) and the schedule gate in app/api/broadcast/run/route.ts. hourCycle
+// 'h23' guarantees 00–23 (avoids the "24:00" midnight edge case).
+export function hondurasNow(): { date: string; hhmm: string } {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Tegucigalpa',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(new Date());
+  const get = (t: string) => parts.find(p => p.type === t)?.value ?? '';
+  return {
+    date: `${get('year')}-${get('month')}-${get('day')}`,
+    hhmm: `${get('hour')}:${get('minute')}`,
+  };
+}
+
+export function hondurasDate(): string {
+  return hondurasNow().date;
+}
+
 // ─── Generate daily price message — FIXED TEMPLATE ───────────────────────────
 //
 // Formato canónico del broadcast diario de las 8 AM Honduras.
@@ -127,7 +151,7 @@ export async function sendDailyBroadcast(options: {
     console.error(detail);
 
     await admin.from('broadcast_log').insert({
-      fecha: new Date().toISOString().slice(0, 10),
+      fecha: hondurasDate(),
       precio_id,
       mensaje_texto: mensaje,
       total_enviados: 0,
@@ -213,7 +237,7 @@ export async function sendDailyBroadcast(options: {
 
   // Log the broadcast run
   await admin.from('broadcast_log').insert({
-    fecha: new Date().toISOString().slice(0, 10),
+    fecha: hondurasDate(),
     precio_id,
     mensaje_texto: mensaje,
     total_enviados: enviados,

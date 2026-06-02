@@ -16,6 +16,18 @@ import {
   formatKnowledgeRows,
 } from "@/lib/maria/ragShared";
 
+// A single inbound turn chains several network awaits before it can reply:
+// Supabase reads + retrieveKnowledge (OpenAI embed, ~5s × retries) + the Claude
+// Haiku call + a second Haiku extraction call for unregistered users. Under the
+// default Vercel timeout the invocation can be killed mid-flight — it never
+// reaches the outer catch, so Twilio gets nothing and the user sees silence.
+// Pin the Node runtime (handler uses Buffer + the Anthropic/Supabase SDKs),
+// force-dynamic (a webhook must never be statically cached), and give the
+// function generous headroom. Mirrors app/api/maria/chat/route.ts.
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Conditional init — instantiating these unconditionally at module load would
@@ -29,10 +41,20 @@ const anthropic = process.env.ANTHROPIC_API_KEY
 let _supabase = null;
 function getSupabase() {
   if (!_supabase) {
-    _supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    // Name the missing var explicitly. Otherwise createClient throws an opaque
+    // "supabaseUrl is required" that the outer catch reports as a generic error,
+    // hiding which env var is actually missing in Vercel. The thrown error is
+    // tagged so the outer catch can classify it as a config (not DB) failure.
+    if (!url || !key) {
+      const missing = [!url && 'NEXT_PUBLIC_SUPABASE_URL', !key && 'SUPABASE_SERVICE_ROLE_KEY']
+        .filter(Boolean).join(', ');
+      const err = new Error(`[maria] CONFIG ERROR — missing env: ${missing}`);
+      err.code = 'MARIA_CONFIG';
+      throw err;
+    }
+    _supabase = createClient(url, key);
   }
   return _supabase;
 }
@@ -294,6 +316,10 @@ export async function POST(request) {
     const incomingMessage = formData.get("Body") || '';
     const fromNumber = formData.get("From") || '';
 
+    // First log line of every request states env health (presence only, never
+    // values) so "María is down" is instantly attributable from Vercel logs.
+    console.log(`[maria] handler start anthropic=${!!anthropic} url=${!!process.env.NEXT_PUBLIC_SUPABASE_URL} svc=${!!process.env.SUPABASE_SERVICE_ROLE_KEY} openai=${!!process.env.OPENAI_API_KEY}`);
+
     // Media messages (images, voice notes) arrive with no Body text
     if (!incomingMessage.trim()) {
       return new Response(
@@ -346,7 +372,7 @@ export async function POST(request) {
           .from('expedientes')
           .select('id, cliente, estado, tipo, inicio, paso, notas')
           .eq('id', expNum)
-          .single();
+          .maybeSingle();
 
         const expDetail = exp
           ? `EXPEDIENTE ${expNum}
@@ -556,7 +582,7 @@ Comandos disponibles:
       .from('clientes')
       .select('id, nombre, situacion_tierra, municipio, tipo_mineral, dpi, telefono_whatsapp')
       .eq('telefono_whatsapp', cleanNumber)
-      .single();
+      .maybeSingle();
 
     console.log('Cliente found:', cliente ? cliente.nombre : 'Unknown');
 
@@ -953,7 +979,7 @@ Si algún dato no está claramente mencionado, deja null.`
             .from('clientes')
             .select('id')
             .eq('telefono_whatsapp', cleanNumber)
-            .single();
+            .maybeSingle();
 
           if (!existing) {
             const { error: clientInsertError } = await getSupabase()
@@ -1020,10 +1046,29 @@ Si algún dato no está claramente mencionado, deja null.`
     });
 
   } catch (error) {
-    console.error("❌ Webhook error:", error);
+    // Classify the failure so Vercel logs name the cause instead of one opaque
+    // dump. The user-facing TwiML stays friendly; the diagnosis lives in logs.
+    const code = error?.code;
+    const msg = error?.message || String(error);
+    let isConfig = false;
+    if (code === 'MARIA_CONFIG') {
+      isConfig = true;
+      console.error('[maria] FATAL config error — webhook cannot serve:', msg);
+    } else if (error?.status || /anthropic|overloaded|rate.?limit|claude/i.test(msg)) {
+      console.error('[maria] CLAUDE error:', error?.status ?? '', msg);
+    } else if (code?.startsWith?.('PGRST') || /supabase|postgrest|fetch failed|database/i.test(msg)) {
+      console.error('[maria] DB error:', code ?? '', msg);
+    } else {
+      console.error('[maria] UNCLASSIFIED webhook error:', msg, error?.stack);
+    }
+    // Config failures are an operational story ("we're briefly down"), so reuse
+    // the maintenance copy; everything else gets the generic retry message.
+    const userMessage = isConfig
+      ? 'Estoy en mantenimiento un momento. Escribime de nuevo en unos minutos.'
+      : 'Lo sentimos, tuvimos un problema técnico. Por favor intenta de nuevo.';
     const errorResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Message>Lo sentimos, tuvimos un problema técnico. Por favor intenta de nuevo.</Message>
+  <Message>${esc(userMessage)}</Message>
 </Response>`;
     return new Response(errorResponse, {
       status: 200,
