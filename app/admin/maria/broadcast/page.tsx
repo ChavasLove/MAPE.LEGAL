@@ -250,7 +250,7 @@ export default function BroadcastPage() {
         <div>
           <h1 className="text-2xl" style={{ color: 'var(--ink)' }}>Broadcast diario</h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--slate)' }}>
-            Reporte automático de precios para suscriptores · {config?.broadcast_time ?? '08:00'} Honduras
+            Reporte automático de precios para suscriptores · 8:00 AM Honduras
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -369,7 +369,7 @@ export default function BroadcastPage() {
           {/* Horario */}
           <Card
             title="Horario"
-            subtitle="La hora se controla aquí (zona Honduras, UTC−6). El cron de Vercel revisa cada 15 minutos y envía el boletín a partir de esta hora, una sola vez al día."
+            subtitle="El boletín se envía una vez al día a las 08:00 (hora Honduras), según el cron diario de Vercel. En el plan actual la hora es fija; para programarla a otra hora se requiere el plan Pro (cron sub-diario)."
           >
             <div className="flex items-center gap-3">
               <Clock size={18} strokeWidth={1.5} style={{ color: 'var(--slate)' }} aria-hidden="true" />
