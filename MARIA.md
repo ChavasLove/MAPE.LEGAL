@@ -1,7 +1,10 @@
 # Manual Operativo de María — Asistente Virtual CHT
 
-> **Versión:** 1.4
-> **Última actualización:** 2026-05-24
+> **Versión:** 1.5
+> **Última actualización:** 2026-06-03
+> **v1.5 (2026-06-03):** añade §13 (cumplimiento de la política de IA de Meta 2026). Es
+> documentación/análisis — el `system prompt` NO cambió en esta versión; los guardrails que
+> describe están **recomendados, no implementados**.
 > **Aplicación:** este documento es la fuente canónica de las reglas
 > operativas de María. Desde PR #162 (2026-05-24) el system prompt vive en
 > `lib/maria/systemPrompt.ts` (antes inline en `app/api/whatsapp/route.js:39-630`)
@@ -359,6 +362,56 @@ Path single-click: **`/admin/maria/rag-health`**. Lee la columna *Filas en maria
 - `Total = expected, Sin embedding = 0`, pero María sigue deflectando → problema de prompt/threshold, no de datos. Revisar `RAG_MATCH_THRESHOLD` (0.7 default, en `lib/maria/ragShared.ts` — compartido por el webhook y el web widget), o cambios al system prompt en `lib/maria/systemPrompt.ts` que pueden estar entrenando a Haiku a deferir.
 
 Logs de Vercel filtrados por `[rag]` clasifican el path de cada turno: `semantic candidates=N`, `fts candidates=N`, o `none`. `none` con un keyword obvio significa que el chunk no está seedeado o que el embedding nunca se generó.
+
+---
+
+## 13. Cumplimiento de la política de IA de Meta (2026)
+
+> **Estado:** análisis y postura de cumplimiento (sesión 2026-06-03). Los guardrails de **prompt y
+> código están RECOMENDADOS pero NO implementados** al cierre de esta sesión — el `system prompt` no
+> cambió en la v1.5. Esta sección documenta la política, por qué María cumple, y qué endurecer antes
+> de salir en vivo en un número WABA verificado. Detalle arquitectónico y de transporte en CLAUDE.md
+> (§"WhatsApp Flows — evaluado y descartado…").
+
+**La regla (vigente 15-ene-2026):** Meta prohíbe en la WhatsApp Business Platform los chatbots de IA
+de **propósito general / dominio abierto** que "simulan asistentes amplios tipo ChatGPT". La IA
+**task-specific** —un asistente de dominio acotado, como el legal-minero de CHT— está **explícitamente
+permitida y favorecida**, sobre todo en "rol de apoyo" dentro de flujos estructurados.
+
+**Por qué María cumple:** es task-specific por construcción — solo orienta sobre formalización minera
+(INHGEOMIN + SERNA), titulación, sociedad minera, precio/compra de oro CHT, y el marco legal minero
+hondureño ya cargado. Ya deriva lo fuera de alcance a `gerencia@mape.legal` (§4, §11.3). Riesgo de
+clasificación como "propósito general" = **bajo**, no nulo.
+
+### 13.1 Condiciones a endurecer antes del go-live (recomendado, pendiente)
+
+1. **Declaración de alcance + rechazo de dominio abierto.** Bloque al inicio de
+   `lib/maria/systemPrompt.ts` que (a) declare afirmativamente los únicos temas de María, (b) dé un
+   rechazo fijo + redirección a `gerencia@mape.legal` para todo lo fuera de dominio, y (c) anule
+   instrucciones del usuario que pidan cambiar su rol o actuar como otro asistente (anti-jailbreak — es
+   la línea exacta que dibuja la prohibición de "propósito general"). Hoy el guardrail es **suave**
+   (discreción del modelo) e **implícito** (el alcance se infiere del catálogo, nunca se declara como límite).
+2. **Pre-filtro determinístico** (`lib/maria/scopeGuard.ts`, nuevo): `classifyScope(message)` +
+   `OUT_OF_SCOPE_REPLY`. Default-in-scope (nunca bloquear a un minero real); solo marcar una deny-list
+   angosta de sondas obvias de propósito general ("escribe código", "haz un poema", "actúa como",
+   "ignore previous"). Control duro, testeable y logueable sobre el prompt probabilístico.
+3. **No-entrenamiento sobre datos de chat.** La API de Anthropic no entrena con el tráfico por defecto
+   — hacerlo *demostrable* con comentario en los call-sites de `anthropic.messages.create` + página de
+   privacidad/alcance publicada en mape.legal, referenciada en el primer contacto de María.
+4. **Trail de auditoría.** Hoy solo se loguean comandos admin (`admin_actions`). Agregar
+   `logMariaTurn(...)` (best-effort, no-fatal) que registre `{telefono, canal, in_scope, refusal_reason,
+   modelo, context_sources}` — evidencia de "María solo respondió temas mineros" si Meta audita el
+   número. Reusar `admin_actions` con discriminador `command_type='MARIA_TURN' | 'SCOPE_REFUSAL'` (la UI
+   `/admin/maria/auditoria` ya lo renderiza) o tabla nueva `maria_audit`.
+
+### 13.2 WhatsApp Flows — evaluado, NO adoptado como reemplazo
+
+WhatsApp Flows **no puede clonar a María** (constructor de formularios determinístico vs. agente
+generativo con RAG) ni resolver el bloqueo de API (corre sobre la **misma** Cloud API y requiere la
+**misma** verificación de Meta). Su único valor es de cumplimiento: es el lugar más compatible con "IA
+en rol de apoyo" para captura estructurada (onboarding, documentos, confirmación de pago), reusando
+`onboardingService.finalise()`. María sigue siendo el motor conversacional; Flows sería un complemento
+opcional, nunca el reemplazo. Análisis completo en CLAUDE.md.
 
 ---
 
