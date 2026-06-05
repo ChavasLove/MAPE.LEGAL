@@ -1,9 +1,14 @@
 # Manual Operativo de María — Asistente Virtual CHT
 
-> **Versión:** 1.5
-> **Última actualización:** 2026-06-03
+> **Versión:** 1.6
+> **Última actualización:** 2026-06-05
+> **v1.6 (2026-06-05, PR #176):** añade el bloque `ALCANCE Y AVISO LEGAL` al system prompt
+> (`lib/maria/systemPrompt.ts`) — disclaimer "no soy abogada / esto no sustituye asesoría legal
+> formal" en la primera respuesta legal/regulatoria/de pagos. Cumple **parcialmente** §13.1 item 1
+> (declaración de alcance + aviso). El pre-filtro determinístico (§13.1 item 2) y el trail de
+> auditoría de turnos (§13.1 item 4) siguen pendientes.
 > **v1.5 (2026-06-03):** añade §13 (cumplimiento de la política de IA de Meta 2026). Es
-> documentación/análisis — el `system prompt` NO cambió en esta versión; los guardrails que
+> documentación/análisis — el `system prompt` NO cambió en esa versión; los guardrails que
 > describe están **recomendados, no implementados**.
 > **Aplicación:** este documento es la fuente canónica de las reglas
 > operativas de María. Desde PR #162 (2026-05-24) el system prompt vive en
@@ -367,10 +372,12 @@ Logs de Vercel filtrados por `[rag]` clasifican el path de cada turno: `semantic
 
 ## 13. Cumplimiento de la política de IA de Meta (2026)
 
-> **Estado:** análisis y postura de cumplimiento (sesión 2026-06-03). Los guardrails de **prompt y
-> código están RECOMENDADOS pero NO implementados** al cierre de esta sesión — el `system prompt` no
-> cambió en la v1.5. Esta sección documenta la política, por qué María cumple, y qué endurecer antes
-> de salir en vivo en un número WABA verificado. Detalle arquitectónico y de transporte en CLAUDE.md
+> **Estado:** análisis y postura de cumplimiento (sesión 2026-06-03). En la v1.5 los guardrails de
+> **prompt y código estaban RECOMENDADOS pero NO implementados**. **Update v1.6 (PR #176):** el bloque
+> de alcance/aviso legal del item 1 de §13.1 YA está en el prompt (disclaimer "no soy abogada"); el
+> pre-filtro determinístico (item 2) y el trail de auditoría de turnos (item 4) siguen pendientes. Esta
+> sección documenta la política, por qué María cumple, y qué endurecer antes de salir en vivo en un
+> número WABA verificado. Detalle arquitectónico y de transporte en CLAUDE.md
 > (§"WhatsApp Flows — evaluado y descartado…").
 
 **La regla (vigente 15-ene-2026):** Meta prohíbe en la WhatsApp Business Platform los chatbots de IA
@@ -385,12 +392,13 @@ clasificación como "propósito general" = **bajo**, no nulo.
 
 ### 13.1 Condiciones a endurecer antes del go-live (recomendado, pendiente)
 
-1. **Declaración de alcance + rechazo de dominio abierto.** Bloque al inicio de
-   `lib/maria/systemPrompt.ts` que (a) declare afirmativamente los únicos temas de María, (b) dé un
-   rechazo fijo + redirección a `gerencia@mape.legal` para todo lo fuera de dominio, y (c) anule
-   instrucciones del usuario que pidan cambiar su rol o actuar como otro asistente (anti-jailbreak — es
-   la línea exacta que dibuja la prohibición de "propósito general"). Hoy el guardrail es **suave**
-   (discreción del modelo) e **implícito** (el alcance se infiere del catálogo, nunca se declara como límite).
+1. **Declaración de alcance + rechazo de dominio abierto.** **Parcial (PR #176):** el bloque
+   `ALCANCE Y AVISO LEGAL` en `lib/maria/systemPrompt.ts` ya (a) declara que María es orientadora —no
+   abogada— con un disclaimer en la primera respuesta legal/regulatoria/de pagos, y mantiene el alcance
+   derivando lo fuera de dominio a `gerencia@mape.legal`. **Falta** endurecer (b) el rechazo fijo de
+   dominio abierto y (c) el anti-jailbreak explícito (anular instrucciones que pidan cambiar el rol o
+   actuar como otro asistente — la línea exacta que dibuja la prohibición de "propósito general"). El
+   pre-filtro determinístico del item 2 es el control duro que falta.
 2. **Pre-filtro determinístico** (`lib/maria/scopeGuard.ts`, nuevo): `classifyScope(message)` +
    `OUT_OF_SCOPE_REPLY`. Default-in-scope (nunca bloquear a un minero real); solo marcar una deny-list
    angosta de sondas obvias de propósito general ("escribe código", "haz un poema", "actúa como",
