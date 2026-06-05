@@ -10,7 +10,11 @@
 // proxy) and emit channel-specific log prefixes.
 
 export const RAG_MATCH_COUNT = 3;
-export const RAG_MATCH_THRESHOLD = 0.7;
+// 0.5, not 0.7: migration 024's own comment notes 0.7 is "demasiado restrictivo"
+// for Spanish legal text and recommends lowering to 0.5 if recall suffers. Higher
+// thresholds silently dropped relevant chunks (e.g. "Artículo 28-A"), making María
+// deflect to gerencia@mape.legal on questions the RAG could actually answer.
+export const RAG_MATCH_THRESHOLD = 0.5;
 
 // Fires the concesiones lookup. Only the `i` flag (no `g`), so `.test()` is
 // stateless and safe to share across calls.

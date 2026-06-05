@@ -7,6 +7,7 @@ import { fetchAllPrices, storePrices, TROY_OUNCE_GRAMS } from "@/services/pricin
 import { sanitizeIlikeTerm } from "@/services/concesionesService";
 import { embedQuery, toVectorText } from "@/lib/maria/embeddings";
 import { normalizePhone } from "@/lib/maria/normalizePhone";
+import { validateTwilioSignature } from "@/lib/webhookSignatures";
 import { CHT_SYSTEM_PROMPT } from "@/lib/maria/systemPrompt";
 import {
   RAG_MATCH_COUNT,
@@ -310,6 +311,18 @@ async function retrieveKnowledge(supabaseClient, userMessage) {
 
 
 
+// Reconstruct the exact URL Twilio signed. Prefer NEXT_PUBLIC_SITE_URL so it
+// matches the webhook URL configured in the Twilio console; fall back to proxy
+// headers. The webhook carries no query string, so search is empty in practice.
+function twilioRequestUrl(request) {
+  const { pathname, search } = new URL(request.url);
+  const base = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, '');
+  if (base) return `${base}${pathname}${search}`;
+  const proto = request.headers.get('x-forwarded-proto') || 'https';
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || '';
+  return `${proto}://${host}${pathname}${search}`;
+}
+
 export async function POST(request) {
   try {
     const formData = await request.formData();
@@ -319,6 +332,30 @@ export async function POST(request) {
     // First log line of every request states env health (presence only, never
     // values) so "María is down" is instantly attributable from Vercel logs.
     console.log(`[maria] handler start anthropic=${!!anthropic} url=${!!process.env.NEXT_PUBLIC_SUPABASE_URL} svc=${!!process.env.SUPABASE_SERVICE_ROLE_KEY} openai=${!!process.env.OPENAI_API_KEY}`);
+
+    // Verify the POST genuinely came from Twilio before trusting its contents.
+    // Enforced when TWILIO_AUTH_TOKEN is set; disable with
+    // TWILIO_VALIDATE_SIGNATURE='false'. Roll out safely with
+    // TWILIO_SIGNATURE_LOG_ONLY='true' (logs mismatches without rejecting) until
+    // Vercel logs confirm the reconstructed URL matches, then remove the flag.
+    const twilioToken = process.env.TWILIO_AUTH_TOKEN;
+    if (twilioToken && process.env.TWILIO_VALIDATE_SIGNATURE !== 'false') {
+      const sigParams = {};
+      for (const [k, v] of formData.entries()) sigParams[k] = typeof v === 'string' ? v : '';
+      const signatureOk = validateTwilioSignature({
+        authToken: twilioToken,
+        signature: request.headers.get('x-twilio-signature'),
+        url: twilioRequestUrl(request),
+        params: sigParams,
+      });
+      if (!signatureOk) {
+        const logOnly = process.env.TWILIO_SIGNATURE_LOG_ONLY === 'true';
+        console.warn(`[maria] twilio signature mismatch logOnly=${logOnly} url=${twilioRequestUrl(request)}`);
+        if (!logOnly) {
+          return new Response('Firma inválida', { status: 403 });
+        }
+      }
+    }
 
     // Media messages (images, voice notes) arrive with no Body text
     if (!incomingMessage.trim()) {
@@ -1010,12 +1047,15 @@ Si algún dato no está claramente mencionado, deja null.`
     }
 
     if (assistantReply.includes("Listo") && assistantReply.includes("Confirmas")) {
+      // Non-fatal: a Supabase blip here must not propagate to the outer catch,
+      // which would replace María's reply with "tuvimos un problema técnico".
+      // Mirrors the .catch() on the new-expediente insert below.
       await getSupabase().from("transacciones_pendientes").insert([{
         numero_whatsapp: fromNumber,
         mensaje_original: incomingMessage,
         respuesta_asistente: assistantReply,
         estado: "pendiente_confirmacion",
-      }]);
+      }]).catch(err => console.log('Transacción pendiente insert (non-fatal):', err.message));
     }
 
     // --- Detect new expediente intake pattern ---

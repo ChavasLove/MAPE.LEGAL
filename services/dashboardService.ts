@@ -249,10 +249,14 @@ export async function createDashExpediente(
   // Each insert is checked: a silent failure here used to return a "successful"
   // expediente that the dashboard then rendered with missing milestones,
   // documents, or progress phases, with no audit trail of what went wrong.
+  // Formalización minera: L 1,600,000 en 3 hitos 40/40/20 (ver MARIA.md §3 y
+  // lib/maria/systemPrompt.ts). Antes este bloque usaba 30/40/30 (320K/480K/800K),
+  // desincronizado del prompt canónico — cada expediente nuevo nacía con el
+  // calendario de pagos equivocado.
   const { error: hitosErr } = await supabase.from('hitos').insert([
-    { expediente_id: eid, numero: 1, monto: 320000, porcentaje: 30, trigger_evento: 'Firma del contrato',           estado: 'pendiente' },
-    { expediente_id: eid, numero: 2, monto: 480000, porcentaje: 40, trigger_evento: 'Constancia INHGEOMIN emitida', estado: 'bloqueado' },
-    { expediente_id: eid, numero: 3, monto: 800000, porcentaje: 30, trigger_evento: 'Lic. ambiental + permiso',     estado: 'bloqueado' },
+    { expediente_id: eid, numero: 1, monto: 640000, porcentaje: 40, trigger_evento: 'Anticipo a la firma del contrato',      estado: 'pendiente' },
+    { expediente_id: eid, numero: 2, monto: 640000, porcentaje: 40, trigger_evento: 'Ingreso del expediente a SERNA',        estado: 'bloqueado' },
+    { expediente_id: eid, numero: 3, monto: 320000, porcentaje: 20, trigger_evento: 'Permiso INHGEOMIN + licencia ambiental', estado: 'bloqueado' },
   ]);
   if (hitosErr) throw hitosErr;
 

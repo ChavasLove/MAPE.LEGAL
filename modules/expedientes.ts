@@ -75,7 +75,30 @@ export async function advancePhase(
   const faseAnteriorId     = expediente?.fase_actual_id ?? null;
   const faseAnteriorNumero = expediente?.fase_numero ?? null;
 
-  // Close the current fase record in history
+  // Advance the expediente with an optimistic-concurrency guard: the UPDATE only
+  // matches while fase_actual_id is still what we just read. Two concurrent
+  // /transition calls therefore cannot both win — the loser matches 0 rows and
+  // aborts cleanly instead of corrupting fase_actual_id / fase_numero /
+  // expediente_fases. Keep the dashboard column fase_numero in sync by mirroring
+  // the destination fase.orden.
+  let advanceQuery = supabase
+    .from('expedientes')
+    .update({ fase_actual_id: chosen.fase.id, fase_numero: chosen.fase.orden })
+    .eq('id', expedienteId);
+  advanceQuery = faseAnteriorId === null
+    ? advanceQuery.is('fase_actual_id', null)
+    : advanceQuery.eq('fase_actual_id', faseAnteriorId);
+
+  const { data: updated, error } = await advanceQuery.select().maybeSingle();
+
+  if (error) throw error;
+  if (!updated) {
+    // 0 rows matched: another transition advanced this expediente between our
+    // read and our write. Abort rather than double-advance.
+    throw new Error('El expediente fue modificado por otra operación. Recargá y reintentá.');
+  }
+
+  // We own the advance now — close the previous fase's open history record.
   if (faseAnteriorId) {
     await supabase
       .from('expediente_fases')
@@ -85,17 +108,6 @@ export async function advancePhase(
       .is('salida_en', null);
   }
 
-  // Advance expediente — keep dashboard column fase_numero in sync with the
-  // workflow column fase_actual_id by mirroring the destination fase.orden.
-  const { data: updated, error } = await supabase
-    .from('expedientes')
-    .update({ fase_actual_id: chosen.fase.id, fase_numero: chosen.fase.orden })
-    .eq('id', expedienteId)
-    .select()
-    .single();
-
-  if (error || !updated) throw error ?? new Error('La actualización del expediente falló');
-
   // Open new fase history record — revert expediente update if this fails
   const { error: historyError } = await supabase.from('expediente_fases').insert({
     expediente_id: expedienteId,
@@ -104,11 +116,13 @@ export async function advancePhase(
   });
 
   if (historyError) {
-    // Restore both columns to keep fase_numero ↔ fase_actual_id in sync
+    // Restore both columns to keep fase_numero ↔ fase_actual_id in sync. Guard
+    // on the fase we just set so we don't clobber a newer concurrent advance.
     await supabase
       .from('expedientes')
       .update({ fase_actual_id: faseAnteriorId, fase_numero: faseAnteriorNumero })
-      .eq('id', expedienteId);
+      .eq('id', expedienteId)
+      .eq('fase_actual_id', chosen.fase.id);
     throw new Error('Error al registrar historial de fase — operación revertida');
   }
 
