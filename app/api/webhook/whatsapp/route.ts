@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { parseWebhookMessages } from '@/services/whatsappService';
 import { supabase } from '@/services/supabase';
+import { validateMetaSignature } from '@/lib/webhookSignatures';
 
 // GET: webhook verification handshake by Meta
 export async function GET(req: NextRequest) {
@@ -21,7 +22,29 @@ export async function GET(req: NextRequest) {
 // POST: incoming messages and status updates from Meta
 export async function POST(req: NextRequest) {
   try {
-    const payload = await req.json();
+    // Read the raw body once: the X-Hub-Signature-256 HMAC must be computed over
+    // the bytes exactly as received, not a re-serialized JSON.
+    const raw = await req.text();
+
+    // Enforce Meta's signature when WHATSAPP_APP_SECRET is configured. Left
+    // unset, validation is skipped (logged) so the currently-working media flow
+    // keeps running until the secret is intentionally added.
+    const appSecret = process.env.WHATSAPP_APP_SECRET;
+    if (appSecret) {
+      const ok = validateMetaSignature({
+        appSecret,
+        signatureHeader: req.headers.get('x-hub-signature-256'),
+        rawBody: raw,
+      });
+      if (!ok) {
+        console.warn('[meta-webhook] signature validation failed — rejecting');
+        return NextResponse.json({ error: 'invalid signature' }, { status: 401 });
+      }
+    } else {
+      console.warn('[meta-webhook] WHATSAPP_APP_SECRET not set — skipping signature validation');
+    }
+
+    const payload = JSON.parse(raw);
     const messages = parseWebhookMessages(payload);
 
     for (const msg of messages) {
