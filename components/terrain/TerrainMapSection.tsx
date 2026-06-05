@@ -185,8 +185,8 @@ export default function TerrainMapSection({ lang, t }: Props) {
         </h2>
         <p className="section-sub" style={{ maxWidth: 720 }}>
           {t(
-            'Mapa topográfico 3D de los distritos mineros del país: operaciones activas, yacimientos en pausa, sitios en disputa y zonas con presencia histórica. Cada uno de estos territorios concentra mineros artesanales y de pequeña escala que son los clientes naturales del proceso de formalización con CHT.',
-            "A 3D topographic map of Honduras' mining districts: active operations, paused deposits, contested sites, and areas with historical presence. Each of these territories concentrates artisanal and small-scale miners — the natural clients for CHT's formalization process."
+            'Mapa topográfico 3D de los distritos mineros del país: operaciones activas, yacimientos en pausa, sitios en disputa y zonas con presencia histórica. Cada uno de estos territorios concentra mineros artesanales y de pequeña escala que son los clientes naturales del proceso de formalización con MAPE LEGAL.',
+            "A 3D topographic map of Honduras' mining districts: active operations, paused deposits, contested sites, and areas with historical presence. Each of these territories concentrates artisanal and small-scale miners — the natural clients for MAPE LEGAL's formalization process."
           )}
         </p>
       </div>

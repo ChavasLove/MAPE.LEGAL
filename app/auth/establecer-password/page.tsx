@@ -125,7 +125,7 @@ function EstablecerPasswordForm() {
             Configura tu contraseña
           </h1>
           <p className="text-sm mt-1 font-sans text-center" style={{ color: '#5E6B7B' }}>
-            {email ? email : 'MAPE.LEGAL · Corporación Hondureña Tenka'}
+            {email ? email : 'MAPE.LEGAL'}
           </p>
         </div>
 

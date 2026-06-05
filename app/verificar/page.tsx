@@ -133,7 +133,7 @@ export default function VerificarEntryPage() {
             }}
           >
             Esta verificación consulta el registro público de certificados
-            emitidos por CHT. Los datos personales del productor y los montos
+            emitidos por MAPE LEGAL. Los datos personales del productor y los montos
             de la transacción no son públicos.
           </p>
         </div>
@@ -143,7 +143,7 @@ export default function VerificarEntryPage() {
         <TopoBand variant="dark" position="band" />
         <div className="logo">MAPE LEGAL</div>
         <div className="copy">
-          © 2026 Corporación Hondureña Tenka, S.A.
+          © 2026 MAPE LEGAL
         </div>
         <div className="links">
           <Link href="/">Inicio</Link>

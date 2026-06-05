@@ -81,7 +81,7 @@ export async function generateDailyMessage(precios: PreciosDiarios): Promise<str
   }
 
   // Every data line is a `* ` bullet — matches MARIA.md §8 (canonical price
-  // format requires 4 obligatory bullets: LBMA, CHT compra 80%, Tipo de
+  // format requires 4 obligatory bullets: LBMA, MAPE LEGAL compra 80%, Tipo de
   // cambio USD/LPS, Actualizado). Footer lines are unprefixed so they read
   // as a separator from the data section.
   const tcLine = tc > 0 ? `L ${tc.toFixed(2)} por USD` : 'N/D';

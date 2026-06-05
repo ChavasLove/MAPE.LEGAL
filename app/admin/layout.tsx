@@ -79,7 +79,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div className="flex items-center gap-3 px-6 py-5 border-b" style={{ borderColor: sidebarHairline }}>
           <Image
             src="/images/MAPE LEGAL LOGO 1.JPG"
-            alt="CHT"
+            alt="MAPE LEGAL"
             width={80}
             height={32}
             className="h-8 w-auto"

@@ -45,7 +45,7 @@ const STATE_STYLE: Record<Estado, { color: string; label: string; description: s
   revocado: {
     color: 'var(--red)',
     label: 'Revocado',
-    description: 'Este certificado fue revocado por CHT y no debe considerarse válido.',
+    description: 'Este certificado fue revocado por MAPE LEGAL y no debe considerarse válido.',
   },
   expirado: {
     color: 'var(--amber)',
@@ -79,7 +79,7 @@ function ShellFooter() {
     <footer style={{ position: 'relative' }}>
       <TopoBand variant="dark" position="band" />
       <div className="logo">MAPE LEGAL</div>
-      <div className="copy">© 2026 Corporación Hondureña Tenka, S.A.</div>
+      <div className="copy">© 2026 MAPE LEGAL</div>
       <div className="links">
         <Link href="/verificar">Verificar otro</Link>
         <Link href="/#cumplimiento">Cumplimiento</Link>
@@ -314,13 +314,13 @@ export default async function VerificarResultPage({
                 <StatePill estado={'expirado' as Estado} />
               </div>
               <p style={{ fontSize: 15, color: 'var(--t1)', lineHeight: 1.6 }}>
-                No se encontró ningún certificado emitido por CHT con el
+                No se encontró ningún certificado emitido por MAPE LEGAL con el
                 número{' '}
                 <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
                   {numero || '(vacío)'}
                 </span>
                 . Verifique el número impreso en el documento físico o
-                contacte a CHT.
+                contacte a MAPE LEGAL.
               </p>
             </div>
           )}
@@ -335,7 +335,7 @@ export default async function VerificarResultPage({
             }}
           >
             Esta verificación consulta el registro público de certificados
-            emitidos por CHT. Los datos personales del productor y los montos
+            emitidos por MAPE LEGAL. Los datos personales del productor y los montos
             de la transacción no son públicos.
           </p>
 

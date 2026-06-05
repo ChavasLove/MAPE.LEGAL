@@ -285,7 +285,7 @@ async function buildPriceContext(): Promise<string> {
 
   return `\n\nPRECIOS DE REFERENCIA (${prices.fecha ?? 'hoy'} — ${frescuraLabel}):
 - Oro LBMA: ${oroLBMA}
-- Precio de compra CHT (80% LBMA): ${oroCompra ?? 'el equipo confirma hoy'}
+- Precio de compra MAPE LEGAL (80% LBMA): ${oroCompra ?? 'el equipo confirma hoy'}
 - Plata LBMA: ${plataLBMA ?? 'no disponible'}
 - Tipo de cambio: ${tipoCambio ?? 'no disponible'}
 - Frescura: ${frescuraLabel}
@@ -302,7 +302,7 @@ El formato canónico de respuesta para precio del día está en CUANDO PREGUNTAN
 const WEB_CHANNEL_CONTEXT = `
 
 CONTEXTO DEL CANAL — WEB (mape.legal):
-**Estás operando en el canal WEB de mape.legal, no en WhatsApp.** Cualquier instrucción anterior que diga "María es una asistente virtual por WhatsApp" o "Respuestas cortas para WhatsApp" aplica al canal WhatsApp; en este canal sos la asistente WEB de CHT. Si el visitante pregunta "¿qué canal es este?" o "¿puedo hablar por aquí?", contestá afirmando que sí: estás disponible directamente en el sitio.
+**Estás operando en el canal WEB de mape.legal, no en WhatsApp.** Cualquier instrucción anterior que diga "María es una asistente virtual por WhatsApp" o "Respuestas cortas para WhatsApp" aplica al canal WhatsApp; en este canal sos la asistente WEB de MAPE LEGAL. Si el visitante pregunta "¿qué canal es este?" o "¿puedo hablar por aquí?", contestá afirmando que sí: estás disponible directamente en el sitio.
 
 Sobre el visitante:
 - La conversación es anónima — no tenés su número, ni su nombre, ni datos de cliente registrados. El bloque CONTEXTO DEL MINERO ACTIVO no aparece en este canal.
@@ -496,7 +496,7 @@ export async function POST(request: Request) {
   // 2026-05-15). Without it María defaults to "escribí a gerencia@mape.legal"
   // even when the RAG block has the answer.
   const ragContext = ragBlock
-    ? `\n\nCONTEXTO DEL SISTEMA (citas literales de la base de conocimiento legal y regulatoria de CHT — Ley General del Ambiente Decreto 104-93, Decreto 181-2007 que adiciona Arts. 28-A y 29-C, Decreto 47-2010, Requisitos SLAS-2 de MiAmbiente, Reglamento de Minería Acuerdo 042-2013, Manual Operativo CHT):\n${ragBlock}\n\nINSTRUCCIONES PARA USAR ESTE BLOQUE:\n- Si la respuesta a la pregunta del visitante está aquí, CITALA con la referencia específica (artículo, decreto, requisito). Resumí el texto en hondureño claro pero conservando los términos legales.\n- NO derives a gerencia@mape.legal cuando este bloque responde la pregunta — comunicar la norma es tu trabajo, no interpretación jurídica.\n- Solo derivá si la pregunta requiere análisis jurídico específico que este bloque no cubre (por ejemplo, estrategia de litigio, jurisprudencia, casos novedosos sin precedente en el bloque).`
+    ? `\n\nCONTEXTO DEL SISTEMA (citas literales de la base de conocimiento legal y regulatoria de MAPE LEGAL — Ley General del Ambiente Decreto 104-93, Decreto 181-2007 que adiciona Arts. 28-A y 29-C, Decreto 47-2010, Requisitos SLAS-2 de MiAmbiente, Reglamento de Minería Acuerdo 042-2013, Manual Operativo MAPE LEGAL):\n${ragBlock}\n\nINSTRUCCIONES PARA USAR ESTE BLOQUE:\n- Si la respuesta a la pregunta del visitante está aquí, CITALA con la referencia específica (artículo, decreto, requisito). Resumí el texto en hondureño claro pero conservando los términos legales.\n- NO derives a gerencia@mape.legal cuando este bloque responde la pregunta — comunicar la norma es tu trabajo, no interpretación jurídica.\n- Solo derivá si la pregunta requiere análisis jurídico específico que este bloque no cubre (por ejemplo, estrategia de litigio, jurisprudencia, casos novedosos sin precedente en el bloque).`
     : '';
   const dynamicPrompt =
     CHT_SYSTEM_PROMPT + WEB_CHANNEL_CONTEXT + priceContext + concesionContext + ragContext;

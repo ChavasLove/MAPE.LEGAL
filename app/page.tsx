@@ -164,18 +164,18 @@ export default function LandingPage() {
         <TopoBand variant="light" position="overlay" />
         <div className="hero-content" style={{ position: 'relative', maxWidth: 820 }}>
           <div className="hero-eyebrow">
-            Corporación Hondureña Tenka, S.A.
+            {t('Trazabilidad legal del oro · Honduras', 'Legal traceability of gold · Honduras')}
           </div>
           <h1 className="hero-title">
             {t(
-              'CHT formaliza oro artesanal hondureño y certifica su origen.',
-              'CHT formalizes artisanal Honduran gold and certifies its origin.'
+              'MAPE LEGAL formaliza oro artesanal hondureño y certifica su origen.',
+              'MAPE LEGAL formalizes artisanal Honduran gold and certifies its origin.'
             )}
           </h1>
           <p className="hero-sub" style={{ maxWidth: 680 }}>
             {t(
-              'MAPE LEGAL es la capa documental de esa operación: ampara cada unidad minera bajo la Ley General de Minería de Honduras y emite certificados de origen que el comprador puede verificar.',
-              "MAPE LEGAL is the documentary layer of that operation: it covers each mining unit under Honduras' General Mining Law and issues certificates of origin the buyer can verify."
+              'Amparamos cada unidad minera bajo la Ley General de Minería de Honduras y emitimos certificados de origen que el comprador puede verificar.',
+              "We cover each mining unit under Honduras' General Mining Law and issue certificates of origin the buyer can verify."
             )}
           </p>
         </div>
@@ -200,8 +200,8 @@ export default function LandingPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             <p style={{ fontSize: 16, color: 'var(--t2)', lineHeight: 1.7 }}>
               {t(
-                'CHT es una empresa hondureña que formaliza unidades de minería artesanal y de pequeña escala (MAPE). Acompañamos al productor desde el expediente de INHGEOMIN hasta la venta de oro certificado en la cadena formal.',
-                'CHT is a Honduran company that formalizes artisanal and small-scale mining (MAPE) units. We accompany the producer from the INHGEOMIN file through the sale of certified gold into the formal supply chain.'
+                'MAPE LEGAL es una operación hondureña que formaliza unidades de minería artesanal y de pequeña escala (MAPE). Acompañamos al productor desde el expediente de INHGEOMIN hasta la venta de oro certificado en la cadena formal.',
+                'MAPE LEGAL is a Honduran operation that formalizes artisanal and small-scale mining (MAPE) units. We accompany the producer from the INHGEOMIN file through the sale of certified gold into the formal supply chain.'
               )}
             </p>
             <p style={{ fontSize: 16, color: 'var(--t2)', lineHeight: 1.7 }}>
@@ -212,8 +212,8 @@ export default function LandingPage() {
             </p>
             <p style={{ fontSize: 16, color: 'var(--t2)', lineHeight: 1.7 }}>
               {t(
-                'Todo lo que aparece en este sitio existe en papel: expediente legal, contrato firmado y certificado de origen emitido por CHT. Las cifras agregadas y los certificados publicados aquí son la única divulgación pública de la operación.',
-                "Everything you see on this site exists on paper: a legal file, a signed contract and a certificate of origin issued by CHT. The aggregate figures and certificates published here are this operation's only public disclosure."
+                'Todo lo que aparece en este sitio existe en papel: expediente legal, contrato firmado y certificado de origen emitido por MAPE LEGAL. Las cifras agregadas y los certificados publicados aquí son la única divulgación pública de la operación.',
+                "Everything you see on this site exists on paper: a legal file, a signed contract and a certificate of origin issued by MAPE LEGAL. The aggregate figures and certificates published here are this operation's only public disclosure."
               )}
             </p>
           </div>
@@ -245,12 +245,12 @@ export default function LandingPage() {
       >
         <div className="section-label">{t('Cumplimiento', 'Compliance')}</div>
         <h2 className="section-title">
-          {t('Bajo qué reglas opera CHT.', 'The rules CHT operates under.')}
+          {t('Bajo qué reglas opera MAPE LEGAL.', 'The rules MAPE LEGAL operates under.')}
         </h2>
         <p className="section-sub" style={{ maxWidth: 680 }}>
           {t(
-            'CHT responde a cuatro marcos a la vez: la ley nacional, el derecho de consulta indígena, los estándares OCDE de cadena de suministro y un registro auditable. Cada expediente minero los cruza todos.',
-            'CHT answers to four frameworks at once: national law, indigenous consultation rights, OECD supply-chain due diligence, and an auditable record. Every mining file crosses all four.'
+            'MAPE LEGAL responde a cuatro marcos a la vez: la ley nacional, el derecho de consulta indígena, los estándares OCDE de cadena de suministro y un registro auditable. Cada expediente minero los cruza todos.',
+            'MAPE LEGAL answers to four frameworks at once: national law, indigenous consultation rights, OECD supply-chain due diligence, and an auditable record. Every mining file crosses all four.'
           )}
         </p>
         <div
@@ -302,8 +302,8 @@ export default function LandingPage() {
               ),
               titleEs: 'Auditoría y registro',
               titleEn: 'Audit and record-keeping',
-              bodyEs: 'Cada transacción y cada certificado existen por triplicado: copia firmada para el productor, copia para CHT y número público verificable en este sitio. El registro no se reescribe.',
-              bodyEn: 'Every transaction and every certificate exists in triplicate: a signed copy for the producer, a copy for CHT, and a publicly verifiable number on this site. The record is not rewritten.',
+              bodyEs: 'Cada transacción y cada certificado existen por triplicado: copia firmada para el productor, copia para MAPE LEGAL y número público verificable en este sitio. El registro no se reescribe.',
+              bodyEn: 'Every transaction and every certificate exists in triplicate: a signed copy for the producer, a copy for MAPE LEGAL, and a publicly verifiable number on this site. The record is not rewritten.',
             },
           ].map((card) => (
             <div
@@ -435,7 +435,7 @@ export default function LandingPage() {
                   letterSpacing: '0.04em',
                 }}
               >
-                CHT
+                MAPE LEGAL
               </div>
             </div>
             <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -684,7 +684,7 @@ export default function LandingPage() {
         <TopoBand variant="dark" position="band" />
         <div className="logo">MAPE LEGAL</div>
         <div className="copy">
-          © 2026 Corporación Hondureña Tenka, S.A. — {t('Todos los derechos reservados.', 'All rights reserved.')} {t('Tegucigalpa, Honduras.', 'Tegucigalpa, Honduras.')}
+          © 2026 MAPE LEGAL — {t('Todos los derechos reservados.', 'All rights reserved.')} {t('Tegucigalpa, Honduras.', 'Tegucigalpa, Honduras.')}
           <span style={{ display: 'block', marginTop: 4, color: 'rgba(255,255,255,0.45)', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
             {t('Actualizado el:', 'Site last updated:')} {SITE_LAST_UPDATED_ISO}
           </span>

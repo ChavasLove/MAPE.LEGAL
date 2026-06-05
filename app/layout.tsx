@@ -26,7 +26,7 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://mape.legal";
 const siteTitle =
   "MAPE LEGAL — Trazabilidad legal del oro de minería artesanal en Honduras";
 const siteDescription =
-  "Infraestructura de evidencia legal con la que Corporación Hondureña Tenka formaliza unidades mineras artesanales y emite certificados de origen verificables bajo la Ley de Minería de Honduras y la Guía de Debida Diligencia de la OCDE.";
+  "Infraestructura de evidencia legal con la que MAPE LEGAL formaliza unidades mineras artesanales y emite certificados de origen verificables bajo la Ley de Minería de Honduras y la Guía de Debida Diligencia de la OCDE.";
 const ogImage = "/images/RIVER AND MOUNTAINS.png";
 
 export const viewport: Viewport = {
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
   },
   description: siteDescription,
   applicationName: "MAPE LEGAL",
-  authors: [{ name: "Corporación Hondureña Tenka, S.A." }],
+  authors: [{ name: "MAPE LEGAL" }],
   keywords: [
     "MAPE",
     "minería artesanal",
@@ -80,7 +80,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: siteTitle,
     description:
-      "Infraestructura de evidencia legal de Corporación Hondureña Tenka.",
+      "Infraestructura de evidencia legal de MAPE LEGAL.",
     images: [ogImage],
   },
   robots: {
