@@ -36,7 +36,7 @@ insert into contenido_cms (seccion, campo, valor, tipo) values
   ('hero',      'subtitulo',     'Guiamos a mineros artesanales a través del proceso legal completo con certeza y transparencia.', 'texto'),
   ('hero',      'cta_primario',  'Iniciar trámite',                                              'texto'),
   ('hero',      'cta_secundario','Ver servicios',                                                'texto'),
-  ('nosotros',  'titulo',        'Corporación Hondureña Tenka',                                  'texto'),
+  ('nosotros',  'titulo',        'MAPE LEGAL',                                                   'texto'),
   ('nosotros',  'descripcion',   'Somos el primer operador privado autorizado en Honduras para gestionar permisos mineros MAPE de principio a fin.', 'texto'),
   ('contacto',  'direccion',     'Tegucigalpa, Honduras',                                        'texto'),
   ('contacto',  'email',         'gerencia@mape.legal',                                         'texto')

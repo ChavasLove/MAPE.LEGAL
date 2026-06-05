@@ -99,7 +99,7 @@ function emailShell(content: string): string {
         <tr>
           <td style="background:#1F2A38;border-radius:12px 12px 0 0;padding:28px 40px">
             <p style="margin:0;color:#D8C3A5;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:600">
-              Corporación Hondureña Tenka
+              Trazabilidad legal del oro
             </p>
             <p style="margin:6px 0 0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.5px">
               MAPE.LEGAL
@@ -116,7 +116,7 @@ function emailShell(content: string): string {
         <tr>
           <td style="background:#FAF9F5;border:1px solid #E2E0D8;border-top:none;border-radius:0 0 12px 12px;padding:20px 40px;text-align:center">
             <p style="margin:0;color:#A3A8AB;font-size:12px">
-              MAPE.LEGAL · Corporación Hondureña Tenka, S.A. de C.V.<br>
+              MAPE.LEGAL<br>
               Honduras · <a href="mailto:gerencia@mape.legal" style="color:#A3A8AB">gerencia@mape.legal</a>
             </p>
           </td>
@@ -141,7 +141,7 @@ export function emailExpedienteAvance(
       <p>Su expediente <strong>${esc(expId)}</strong> ha avanzado a la fase <strong>${esc(faseNueva)}</strong>.</p>
       <p>Para consultas, responda a este correo o contáctenos por WhatsApp.</p>
       <br>
-      <p style="color:#5E6B7B;font-size:13px">— MAPE.LEGAL · Corporación Hondureña Tenka, S.A.</p>
+      <p style="color:#5E6B7B;font-size:13px">— MAPE.LEGAL</p>
     `,
   });
 }
@@ -158,7 +158,7 @@ export function emailDocumentoRechazado(
       ${motivo ? `<p>Motivo: ${esc(motivo)}</p>` : ''}
       <p>Por favor envíe una versión corregida o contáctenos para asistencia.</p>
       <br>
-      <p style="color:#5E6B7B;font-size:13px">— MAPE.LEGAL · Corporación Hondureña Tenka, S.A.</p>
+      <p style="color:#5E6B7B;font-size:13px">— MAPE.LEGAL</p>
     `,
   });
 }
@@ -179,7 +179,7 @@ export function emailHitoPago(
       </ul>
       <p>Por favor coordine el pago con su abogado asignado.</p>
       <br>
-      <p style="color:#5E6B7B;font-size:13px">— MAPE.LEGAL · Corporación Hondureña Tenka, S.A.</p>
+      <p style="color:#5E6B7B;font-size:13px">— MAPE.LEGAL</p>
     `,
   });
 }
@@ -282,7 +282,7 @@ export function emailContactoAcuse(
         </p>
       </div>
       <p style="margin:0;color:#A3A8AB;font-size:13px">
-        — Equipo MAPE.LEGAL · Corporación Hondureña Tenka
+        — Equipo MAPE.LEGAL
       </p>
     `),
   });

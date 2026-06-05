@@ -653,8 +653,8 @@ function Body({
       <a
         href={`https://wa.me/50497373139?text=${encodeURIComponent(
           lang === 'es'
-            ? `Buenas, soy minero artesanal en la zona de ${site.nameEs} (${site.department}, ${site.municipality}). Quisiera información sobre formalización con CHT.`
-            : `Hi, I'm an artisanal miner working near ${site.name} (${site.department}, ${site.municipality}). I'd like information about formalizing with CHT.`
+            ? `Buenas, soy minero artesanal en la zona de ${site.nameEs} (${site.department}, ${site.municipality}). Quisiera información sobre formalización con MAPE LEGAL.`
+            : `Hi, I'm an artisanal miner working near ${site.name} (${site.department}, ${site.municipality}). I'd like information about formalizing with MAPE LEGAL.`
         )}`}
         target="_blank"
         rel="noopener noreferrer"
@@ -682,8 +682,8 @@ function Body({
         }}
       >
         {lang === 'es'
-          ? '¿Operas en esta zona? Inicia trámite con CHT'
-          : 'Mining in this district? Begin a process with CHT'}
+          ? '¿Operas en esta zona? Inicia trámite con MAPE LEGAL'
+          : 'Mining in this district? Begin a process with MAPE LEGAL'}
       </a>
       <p
         style={{

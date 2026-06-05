@@ -35,15 +35,15 @@ const SEND_TIMEOUT_MS = 30_000;
 // Capability list per user request: visitors see what María can do up front.
 const WELCOME_MESSAGE: Message = {
   role: 'assistant',
-  content: `¡Hola! Soy María, asistente de Corporación Hondureña Tenka.
+  content: `¡Hola! Soy María, asistente de MAPE LEGAL.
 
 Te ayudo con consultas sobre minería formal en Honduras. Puedo:
 
 • Cotizar formalización minera, titulación de tierra y contrato de sociedad minera.
-• Consultar el precio del oro y la plata del día (LBMA + tipo de cambio + precio de compra de CHT).
+• Consultar el precio del oro y la plata del día (LBMA + tipo de cambio + precio de compra de MAPE LEGAL).
 • Explicar pasos del Manual Operativo, requisitos ambientales (Ley 104-93, SLAS-2) y el Reglamento Minero (Acuerdo 042-2013).
 • Buscar concesiones en el registro público INHGEOMIN (587 registros).
-• Conectarte con el equipo CHT por WhatsApp o correo.
+• Conectarte con el equipo de MAPE LEGAL por WhatsApp o correo.
 
 ¿En qué te ayudo hoy?`,
 };
@@ -495,7 +495,7 @@ export default function MariaWidget({ lang }: MariaWidgetProps) {
                     marginTop: 2,
                   }}
                 >
-                  {t('Asistente · CHT', 'Assistant · CHT')}
+                  {t('Asistente · MAPE LEGAL', 'Assistant · MAPE LEGAL')}
                 </div>
               </div>
             </div>

@@ -107,7 +107,7 @@ function buildQuestion(estado: OnboardingEstado, datos: OnboardingDatos): string
   const nombre = datos.nombre_completo?.split(' ')[0];
   switch (estado) {
     case 'ASK_NAME':
-      return 'Hola, soy Maria de CHT. Para atenderte mejor, digame tu nombre completo.';
+      return 'Hola, soy Maria de MAPE LEGAL. Para atenderte mejor, digame tu nombre completo.';
     case 'ASK_ID':
       return `Mucho gusto${nombre ? `, ${nombre}` : ''}. Compartime tu numero de identidad (DPI).`;
     case 'ASK_LOCATION':

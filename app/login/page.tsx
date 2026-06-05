@@ -241,7 +241,7 @@ function LoginForm() {
               Acceso al sistema
             </h1>
             <p className="text-sm mt-2 text-center" style={{ color: C.textMuted }}>
-              MAPE.LEGAL · Corporación Hondureña Tenka
+              MAPE.LEGAL
             </p>
           </div>
 
@@ -440,7 +440,7 @@ function LoginForm() {
               <span className="text-xs font-medium" style={{ color: C.textMuted }}>Sistema operativo</span>
             </div>
             <p className="text-center text-xs" style={{ color: C.textLight }}>
-              Acceso restringido · Solo personal autorizado de CHT
+              Acceso restringido · Solo personal autorizado de MAPE LEGAL
             </p>
           </div>
         </div>

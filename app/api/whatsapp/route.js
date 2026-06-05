@@ -104,7 +104,7 @@ const MANUAL_TRIGGERS = /\bpaso\s+\d+\b|primer\s+paso|siguiente\s+paso|pr[oó]xi
 
 const FIRST_STEP_TRIGGERS  = /primer\s+paso|c[oó]mo\s+(empiezo|empezar|inicio|iniciar)|por\s+d[oó]nde\s+(empiezo|empezar|inicio|iniciar)/i;
 
-// Detect which of the three CHT processes the conversation is about, so we can
+// Detect which of the three MAPE LEGAL processes the conversation is about, so we can
 // scope the documentos_referencia query (the table now stores all three:
 // formalizacion 1-38, titulacion 1-9, sociedad 1-7).
 function detectProceso(haystack) {
@@ -542,7 +542,7 @@ Obtenido: ${fetchedAtStr}${!isToday ? '\n⚠️ ALERTA: Precio no actualizado ho
       }
 
       const report1 =
-`CHT EXECUTIVE REPORT
+`MAPE LEGAL EXECUTIVE REPORT
 ${now.toLocaleString('es-HN', { timeZone: 'America/Tegucigalpa' })}
 ━━━━━━━━━━━━━━━━━━━━
 MARIA / WHATSAPP
@@ -704,12 +704,12 @@ Comandos disponibles:
     const priceContext = preciosHoy
       ? `\n\nPRECIOS DE REFERENCIA (${preciosHoy.fecha ?? 'hoy'}${frescuraLabel ? ` — ${frescuraLabel}` : ''}):
 - Oro LBMA: ${oroLBMA ?? 'no disponible'}
-- Precio de compra CHT (80% LBMA): ${oroCompra ?? 'el equipo confirma hoy'}
+- Precio de compra MAPE LEGAL (80% LBMA): ${oroCompra ?? 'el equipo confirma hoy'}
 - Plata LBMA: ${plataLBMA ?? 'no disponible'}
 - Tipo de cambio: ${tipoCambio ?? 'no disponible'}
 - Frescura: ${frescuraLabel || 'no disponible'}
 ${preciosHoy.fuente ? `- Fuente: ${preciosHoy.fuente}` : ''}
-El formato canónico de respuesta para precio del día está en CUANDO PREGUNTAN POR EL PRECIO DEL ORO — síguelo al pie de la letra (4 viñetas: LBMA + CHT compra + Tipo de cambio USD/LPS + Actualizado, luego Finacoop + www.mape.legal). El timestamp ("Actualizado") y el tipo de cambio USD/LPS son OBLIGATORIOS en cada respuesta de precio.`
+El formato canónico de respuesta para precio del día está en CUANDO PREGUNTAN POR EL PRECIO DEL ORO — síguelo al pie de la letra (4 viñetas: LBMA + MAPE LEGAL compra + Tipo de cambio USD/LPS + Actualizado, luego Finacoop + www.mape.legal). El timestamp ("Actualizado") y el tipo de cambio USD/LPS son OBLIGATORIOS en cada respuesta de precio.`
       : `\n\nPRECIOS DE REFERENCIA: No hay datos de precios cargados hoy. Si el cliente pregunta por precio de compra del oro, di: "Hoy no tengo el precio cargado en el sistema. Para precio actualizado escribí a gerencia@mape.legal."`;
 
     // --- Query expedientes linked to this client ---
@@ -850,7 +850,7 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
     // --- RAG: retrieve top-3 relevant chunks from maria_knowledge ---
     const knowledgeContext = await retrieveKnowledge(getSupabase(), incomingMessage);
     const ragBlock = knowledgeContext
-      ? `\n\nCONTEXTO DEL SISTEMA (citas literales de la base de conocimiento legal y regulatoria de CHT — Ley General del Ambiente Decreto 104-93, Decreto 181-2007 que adiciona Arts. 28-A y 29-C, Decreto 47-2010, Requisitos SLAS-2 de MiAmbiente, Reglamento de Minería Acuerdo 042-2013, Manual Operativo CHT):\n${knowledgeContext}\n\nINSTRUCCIONES PARA USAR ESTE BLOQUE:\n- Si la respuesta a la pregunta del cliente está aquí, CITALA con la referencia específica (artículo, decreto, requisito). Resumí el texto en hondureño claro pero conservando los términos legales.\n- NO derives a gerencia@mape.legal cuando este bloque responde la pregunta — comunicar la norma es tu trabajo, no interpretación jurídica.\n- Solo derivá si la pregunta requiere análisis jurídico específico que este bloque no cubre (por ejemplo, estrategia de litigio, jurisprudencia, casos novedosos sin precedente en el bloque).`
+      ? `\n\nCONTEXTO DEL SISTEMA (citas literales de la base de conocimiento legal y regulatoria de MAPE LEGAL — Ley General del Ambiente Decreto 104-93, Decreto 181-2007 que adiciona Arts. 28-A y 29-C, Decreto 47-2010, Requisitos SLAS-2 de MiAmbiente, Reglamento de Minería Acuerdo 042-2013, Manual Operativo MAPE LEGAL):\n${knowledgeContext}\n\nINSTRUCCIONES PARA USAR ESTE BLOQUE:\n- Si la respuesta a la pregunta del cliente está aquí, CITALA con la referencia específica (artículo, decreto, requisito). Resumí el texto en hondureño claro pero conservando los términos legales.\n- NO derives a gerencia@mape.legal cuando este bloque responde la pregunta — comunicar la norma es tu trabajo, no interpretación jurídica.\n- Solo derivá si la pregunta requiere análisis jurídico específico que este bloque no cubre (por ejemplo, estrategia de litigio, jurisprudencia, casos novedosos sin precedente en el bloque).`
       : '';
 
     const dynamicPrompt = CHT_SYSTEM_PROMPT + priceContext + clienteContext + expedienteContext + manualContext + concesionContext + ragBlock + (isNewConversation
@@ -950,7 +950,7 @@ Responde DIRECTAMENTE a lo que acaba de decir el usuario.`);
 
         const clientName = cliente?.nombre || 'Cliente no registrado';
         const alertMessage =
-`ALERTA CHT — Solicitud de contacto
+`ALERTA MAPE LEGAL — Solicitud de contacto
 Cliente: ${clientName}
 Numero: ${fromNumber.replace('whatsapp:', '')}
 Mensaje: "${incomingMessage}"
@@ -1118,5 +1118,5 @@ Si algún dato no está claramente mencionado, deja null.`
 }
 
 export async function GET() {
-  return new Response("CHT WhatsApp Webhook activo ✅", { status: 200 });
+  return new Response("MAPE LEGAL WhatsApp Webhook activo ✅", { status: 200 });
 }

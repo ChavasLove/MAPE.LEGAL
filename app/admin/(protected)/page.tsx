@@ -54,7 +54,7 @@ export default function AdminPage() {
       <div className="mb-8">
         <h1 className="text-3xl mb-1" style={{ color: 'var(--ink)' }}>Panel de administración</h1>
         <p className="text-sm" style={{ color: 'var(--slate)' }}>
-          MAPE.LEGAL · Corporación Hondureña Tenka
+          MAPE.LEGAL
         </p>
       </div>
 
