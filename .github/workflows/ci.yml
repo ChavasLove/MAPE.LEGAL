@@ -1,0 +1,52 @@
+name: CI
+
+# Catches the production-break class this repo has hit repeatedly (a stale import,
+# a dropped variable, an icon crossing the RSC boundary): tsc + next build run on
+# every PR and push, exactly what would have caught PR #100 / #104 / #125 before
+# they reached Vercel.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Lint · Typecheck · Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Informational only: the repo has known strict-mode lint findings
+      # (react-hooks/set-state-in-effect, etc.) documented as non-blocking
+      # false positives. Surfaced here without gating so the hard checks below
+      # stay meaningful. Drop continue-on-error once the lint baseline is clean.
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+        env:
+          # The app instantiates Supabase/Anthropic lazily, so the build must
+          # succeed without real secrets (this is enforced by convention — see
+          # CLAUDE.md §Framework). Placeholders cover any NEXT_PUBLIC_* read at
+          # build time so page-data collection never sees an empty string.
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          NEXT_PUBLIC_SITE_URL: https://mape.legal
