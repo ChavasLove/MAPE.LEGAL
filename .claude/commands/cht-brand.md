@@ -1,7 +1,7 @@
-# CHT Brand Context — Skill de Identidad Corporativa
+# MAPE LEGAL Brand Context — Skill de Identidad Corporativa
 
-**Trigger:** Cualquier mención de CHT, mape.legal, Tenka, expediente minero Honduras,
-o solicitud de crear algo "en el estilo de CHT".
+**Trigger:** Cualquier mención de MAPE LEGAL, mape.legal, expediente minero Honduras,
+o solicitud de crear algo "en el estilo de MAPE LEGAL".
 
 **Ver también:** `DESIGN.md` (tokens de diseño completos) · `CLAUDE.md` (arquitectura) · `docs/ai-context.md` (reglas de idioma en código)
 
@@ -19,8 +19,8 @@ o solicitud de crear algo "en el estilo de CHT".
 
 | Campo | Valor |
 |---|---|
-| Nombre legal | Corporación Hondureña Tenka, S.A. |
-| Marca comercial | CHT |
+| Nombre institucional | MAPE LEGAL |
+| Marca comercial | MAPE LEGAL |
 | Sub-marca digital | mape.legal |
 | Descriptor | Consultoría Estratégica |
 | Tagline principal | "Legalizamos tu proyecto minero." |
@@ -41,7 +41,7 @@ o solicitud de crear algo "en el estilo de CHT".
 - "Acompañamiento integral hasta el permiso."
 - "Tu permiso, paso a paso."
 
-**CHT NO dice:**
+**MAPE LEGAL NO dice:**
 - Plazos fijos sin condicionarlos a la documentación del cliente.
 - Que gestiona documentos que son EXCLUSIVO CLIENTE.
 - Precios sin el contexto del hito correspondiente.
@@ -54,13 +54,13 @@ o solicitud de crear algo "en el estilo de CHT".
 Moneda:    Lempiras (L) — nunca USD salvo conversión BCH explícita
 Fecha:     DD/MM/YYYY
 Zona:      America/Tegucigalpa (UTC-6)
-Código:    CHT-IR-NNN  (ej. CHT-IR-028)
+Código:    EXP-YYYY-NNNN  (ej. EXP-2026-0028)
 ```
 
 **Estructura de expediente:**
 ```ts
 Expediente {
-  codigo:           "CHT-IR-028"
+  codigo:           "EXP-2026-0028"
   cliente:          "Minería La Esperanza"
   ubicacion:        "Iriona, Colón"
   faseActual:       "Fase 2 - Evaluación Ambiental"
@@ -74,15 +74,15 @@ Expediente {
 
 ---
 
-## 3. Contexto Operativo — Manual Operativo CHT 2026
+## 3. Contexto Operativo — Manual Operativo MAPE LEGAL 2026
 
 ### Roles del sistema
 
 | Rol | Responsabilidades clave |
 |---|---|
-| Abogado CHT | Trámites ante INHGEOMIN, SERNA, Alcaldía y Notaría |
-| Técnico Ambiental CHT (PSA) | Herramienta técnica, inspecciones, seguimiento SLAS-2 |
-| Administración CHT | Gestión del sistema, facturación, coordinación |
+| Abogado MAPE LEGAL | Trámites ante INHGEOMIN, SERNA, Alcaldía y Notaría |
+| Técnico Ambiental MAPE LEGAL (PSA) | Herramienta técnica, inspecciones, seguimiento SLAS-2 |
+| Administración MAPE LEGAL | Gestión del sistema, facturación, coordinación |
 | CLIENTE — EXCLUSIVO | Documentos personales, pagos directos, garantía bancaria |
 
 ---
@@ -150,13 +150,13 @@ Plazo total estimado: **6–14 meses**
 
 ---
 
-## 4. Principios Operativos CHT
+## 4. Principios Operativos MAPE LEGAL
 
 ```
 01 — Ningún avance sin expediente completo.
 02 — El sistema es la memoria del equipo.
 03 — El cliente es informado, no sorprendido.
-04 — CHT asesora — no sustituye al cliente.
+04 — MAPE LEGAL asesora — no sustituye al cliente.
 05 — La garantía condicionada es sagrada.
 06 — Las fechas críticas no se negocian.
 ```
@@ -165,7 +165,7 @@ Plazo total estimado: **6–14 meses**
 
 ## 5. Vocabulario Clave
 
-| Término | Significado en contexto CHT |
+| Término | Significado en contexto MAPE LEGAL |
 |---|---|
 | Expediente | Carpeta digital+física de un cliente en el sistema |
 | INHGEOMIN | Instituto Hondureño de Geología y Minas |
@@ -181,5 +181,5 @@ Plazo total estimado: **6–14 meses**
 | DECA | Dirección de Evaluación y Control Ambiental |
 | Fondo Rotatorio DECA | Cuenta BANADESA Nº 02001-000131-0 |
 | Hito | Punto de cobro condicionado a un entregable verificado |
-| EXCLUSIVO CLIENTE | Paso que CHT asesora pero NO ejecuta |
+| EXCLUSIVO CLIENTE | Paso que MAPE LEGAL asesora pero NO ejecuta |
 | Constancia de Solicitud | Documento habilitante de INHGEOMIN para iniciar trámite SERNA |

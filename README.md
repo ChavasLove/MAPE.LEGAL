@@ -2,7 +2,7 @@
 
 **Versión 1.1 — Piloto Iriona 2026**
 Última actualización: 9 de mayo de 2026
-Propietario: Corporación Hondureña Tenka, S.A. (CHT)
+Propietario: MAPE LEGAL
 Administrador Único: Willis Yang
 Dominio: mape.legal · App privada en Vercel + Supabase
 
@@ -183,7 +183,7 @@ Para tonos derivados usa **`color-mix(in oklch, var(--ink) 80%, white)`** — nu
 
 ## 1. VISIÓN Y PROPÓSITO
 
-MAPE.LEGAL es la plataforma digital interna de CHT que actúa como **motor de evidencia legal de origen mineral** para minería artesanal y de pequeña escala en Honduras.
+MAPE.LEGAL es la plataforma digital que actúa como **motor de evidencia legal de origen mineral** para minería artesanal y de pequeña escala en Honduras.
 
 Su propósito es generar, almacenar y certificar evidencia legalmente defendible de que el oro proviene de operaciones formalizadas conforme a la **Ley de Minería, Reglamento MAPE (Acuerdo 042-2013), ILO 169, SLAS-2** y estándares internacionales (CRAFT / Fairmined / RJC).
 
@@ -193,7 +193,7 @@ Su propósito es generar, almacenar y certificar evidencia legalmente defendible
 
 ## 2. CONTEXTO DE NEGOCIO
 
-- **CHT** = Corporación Hondureña Tenka, S.A.
+- **MAPE LEGAL** = marca institucional del proyecto
 - **Fundador:** Willis Yang (Administrador Único)
 - **Socio 50%:** Ricardo Alfredo Montes Nájera
 
@@ -269,12 +269,12 @@ Su propósito es generar, almacenar y certificar evidencia legalmente defendible
 | `legalidad_items` | Snapshot de 5 componentes de legalidad por expediente |
 | `clientes` | Entidad minero/cliente, vinculable a auth.users |
 | `minas` | Sitio minero con coordenadas UTM, área, tipo |
-| `contratos` | Contrato CHT ↔ cliente por expediente |
+| `contratos` | Contrato MAPE LEGAL ↔ cliente por expediente |
 | `indice_legalidad` | Índice de legalidad por mina (5 componentes, 0–100 pts) |
 | `transacciones_oro` | Ventas de oro con tasa BCH; totals generados automáticamente |
 | `conversaciones_whatsapp` | Historial del bot María por número |
 | `transacciones_pendientes` | Confirmaciones pendientes del bot |
-| `perfiles_profesionales` | Abogados y técnicos ambientales CHT |
+| `perfiles_profesionales` | Abogados y técnicos ambientales de MAPE LEGAL |
 | `concesiones_mineras_registro` | **Registro público INHGEOMIN** — 587 concesiones (125 explotación otorgada + 170 exploración otorgada + 292 en solicitud, mayoría pendientes). Tres `categoria` canónicas; RLS público read, admin write. Vista `concesiones_mineras_publicas` para anon. RPCs `search_concesion_minera` (trigram) + `concesiones_minera_stats` (KPIs) son SECURITY DEFINER → consumibles desde anon-key. Seedea con `node scripts/seed-concesiones-mineras.mjs`. |
 | `user_roles` | Roles de usuarios del sistema (admin/abogado/tecnico/cliente) |
 | `roles` | Catálogo dinámico de roles con permisos JSON |
@@ -339,8 +339,8 @@ Su propósito es generar, almacenar y certificar evidencia legalmente defendible
 Webhook Twilio en `app/api/whatsapp/route.js` conecta WhatsApp con Claude AI.
 
 - **Modelo**: `claude-haiku-4-5-20251001`
-- **Persona**: María, asistente CHT — español hondureño, tuteo, ≤5 líneas por mensaje, cero emojis
-- **Conocimiento**: Servicios CHT + Reglamento Ley Minería Honduras (Acuerdo 042-2013)
+- **Persona**: María, asistente MAPE LEGAL — español hondureño, tuteo, ≤5 líneas por mensaje, cero emojis
+- **Conocimiento**: Servicios de MAPE LEGAL + Reglamento Ley Minería Honduras (Acuerdo 042-2013)
 - **Historial**: últimos 20 mensajes de `conversaciones_whatsapp` por número
 - **Contexto dinámico**: inyecta datos del cliente conocido; suprime re-saludos en conversaciones en curso
 - **Auto-registro**: extrae nombre y municipio de la conversación y registra en `clientes`
@@ -390,7 +390,7 @@ POST /api/expedientes/:id/transition
 - [x] Auto-registro de clientes desde conversación WhatsApp
 - [x] Tablas piloto core: clientes, minas, contratos, indice_legalidad, transacciones_oro
 - [x] RLS activo en todas las tablas (005–009)
-- [x] Sistema de diseño CHT en DESIGN.md — tokens en globals.css
+- [x] Sistema de diseño MAPE LEGAL en DESIGN.md — tokens en globals.css
 - [x] Landing page completa — 8 componentes, imágenes, Open Graph
 - [x] Phase 1 — Realineación de superficie pública (2026-05-10)
   - Landing institucional reemplaza la página de ventas
