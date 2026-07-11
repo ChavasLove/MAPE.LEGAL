@@ -97,7 +97,7 @@ Use `contratos` to join `expedientes` ↔ `clientes` when a proper relation is n
 - No direct database queries from UI components
 - No business logic in frontend
 - No hardcoded states or transitions
-- No generic Tailwind colors (`green-*`, `gray-*`, `slate-*`) — use CHT tokens from DESIGN.md
+- No generic Tailwind colors (`green-*`, `gray-*`, `slate-*`) — use MAPE LEGAL tokens from DESIGN.md
 
 ## Architecture Rules
 - UI (`app/`) only calls services or API routes

@@ -76,7 +76,7 @@
 - [x] Phase history tracking (`expediente_fases` with `entrada_en` / `salida_en`)
 - [x] Bilingual naming convention (Spanish DB/domain, English code logic)
 - [x] Decision endpoint `GET /api/expedientes/:id/next-actions`
-- [x] CHT design system enforcement — all UI components (2026-04-26)
+- [x] MAPE LEGAL design system enforcement — all UI components (2026-04-26)
   - Fonts: Playfair Display + Inter (replaces Geist)
   - Color tokens: complete `--cht-*` + Tailwind `@theme` system in `globals.css`
   - All generic Tailwind colors purged from 11 landing components + 2 UI primitives

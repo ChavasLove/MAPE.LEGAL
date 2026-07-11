@@ -3,7 +3,7 @@
 **Architecture Review, Dashboard Gaps, Permit System Critique & Bug Analysis**
 
 - **Project:** MAPE.LEGAL v1.1 — Piloto Iriona 2026
-- **Owner:** Corporación Hondureña Tenka, S.A. (CHT)
+- **Owner:** MAPE LEGAL
 - **Date:** May 3, 2026
 - **Analysts:** 4 parallel specialist agents (Architecture, Dashboard, Permit System, Bug Hunter)
 - **Files Reviewed:** 67+ source files, 11 database migrations, full schema

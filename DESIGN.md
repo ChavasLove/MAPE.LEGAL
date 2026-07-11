@@ -1,6 +1,6 @@
 # MAPE LEGAL — Color Manual & Design System (Obligatorio)
 
-**Corporación Hondureña Tenka · MAPE.LEGAL**
+**MAPE.LEGAL**
 Source of truth para toda decisión de color, tipografía y componente. La fuente canónica está en [`README.md`](./README.md) (sección *Color Manual v1.0*) y en `app/globals.css`.
 
 > **Hard rule:** No invented hex outside this document or `app/globals.css`. Si un color que necesitas no está aquí, no existe — abre PR para agregarlo.

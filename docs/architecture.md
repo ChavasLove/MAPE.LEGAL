@@ -1,7 +1,7 @@
 # System Architecture
 
 ## Description
-MAPE.LEGAL — legal mining management platform (CHT / MAPE).
+MAPE.LEGAL — legal mining management platform (MAPE).
 Manages mining formalization processes in Honduras, tracking each project as an `expediente` (case file) through legal and operational phases, and certifying the legal origin of gold for commercialization.
 
 ## Stack
@@ -87,7 +87,7 @@ Manages mining formalization processes in Honduras, tracking each project as an 
 |---|---|
 | `clientes` | Minero entity; optionally linked to auth.users |
 | `minas` | Mining site with UTM coordinates, area, mineral type |
-| `contratos` | Service contract CHT ↔ client per expediente |
+| `contratos` | Service contract MAPE LEGAL ↔ client per expediente |
 | `indice_legalidad` | Per-mine legality index, 5 components × 20 pts = 100 max |
 | `transacciones_oro` | Gold sales; `total_usd` and `total_hnl` are generated columns |
 
