@@ -14,6 +14,7 @@ const NAV_LINKS: Array<{ href: string; es: string; en: string }> = [
   { href: '#identidad', es: 'Identidad', en: 'About' },
   { href: '#cumplimiento', es: 'Cumplimiento', en: 'Compliance' },
   { href: '#archivos-mineros', es: 'Mapa Minero', en: 'Mining Map' },
+  { href: '/equipos', es: 'Equipos', en: 'Equipment' },
   { href: '#contacto', es: 'Contacto', en: 'Contact' },
 ]
 
