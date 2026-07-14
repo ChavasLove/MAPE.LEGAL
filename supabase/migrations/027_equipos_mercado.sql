@@ -159,8 +159,11 @@ BEGIN
   WHERE e.activo = true
     AND (p_categoria IS NULL OR e.categoria = p_categoria)
     AND (p_precio_min IS NULL OR e.precio_min_usd >= p_precio_min)
-    AND (p_precio_max IS NULL OR (e.precio_max_usd IS NOT NULL AND e.precio_max_usd <= p_precio_max) OR
-         (e.precio_max_usd IS NULL AND e.precio_min_usd <= p_precio_max))
+    -- "Within budget" = the product's STARTING price fits the buyer's max.
+    -- Comparing against precio_max_usd excluded range-priced products whose
+    -- entry price was affordable while including flat-priced ones at the same
+    -- starting price — inconsistent results for identical budgets.
+    AND (p_precio_max IS NULL OR e.precio_min_usd <= p_precio_max)
     AND (
       p_query IS NULL
       OR p_query = ''
@@ -190,8 +193,11 @@ BEGIN
   WHERE e.activo = true
     AND (p_categoria IS NULL OR e.categoria = p_categoria)
     AND (p_precio_min IS NULL OR e.precio_min_usd >= p_precio_min)
-    AND (p_precio_max IS NULL OR (e.precio_max_usd IS NOT NULL AND e.precio_max_usd <= p_precio_max) OR
-         (e.precio_max_usd IS NULL AND e.precio_min_usd <= p_precio_max))
+    -- "Within budget" = the product's STARTING price fits the buyer's max.
+    -- Comparing against precio_max_usd excluded range-priced products whose
+    -- entry price was affordable while including flat-priced ones at the same
+    -- starting price — inconsistent results for identical budgets.
+    AND (p_precio_max IS NULL OR e.precio_min_usd <= p_precio_max)
     AND (
       p_query IS NULL
       OR p_query = ''

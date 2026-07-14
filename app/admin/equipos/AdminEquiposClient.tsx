@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Plus, Pencil, Trash2, ArrowLeft, X, AlertCircle } from 'lucide-react';
+import { Plus, Pencil, Trash2, ArrowLeft, X, AlertCircle, RotateCcw } from 'lucide-react';
 import type { EquipoMercado, EquipoCategoria } from '@/lib/types/equipo';
 import { CATEGORIA_LABELS } from '@/lib/types/equipo';
 
@@ -38,6 +38,10 @@ export function AdminEquiposClient({ initialEquipos, total: initialTotal }: Prop
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  // Separate channel for list-refresh failures — resetForm() clears `error`,
+  // so a refresh problem after a successful save must not ride on it
+  // (invariante PR #159 §13: nunca tragar errores en silencio en UI admin).
+  const [listError, setListError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Row-level lock — disables action buttons while a request is in flight so a
   // double click can't fire two concurrent mutations (invariante PR #159 §12).
@@ -52,11 +56,24 @@ export function AdminEquiposClient({ initialEquipos, total: initialTotal }: Prop
   };
 
   const refreshList = async () => {
-    const res = await fetch('/api/admin/equipos');
-    if (!res.ok) return;
-    const data = await res.json();
-    setEquipos(data.equipos ?? []);
-    setTotal(data.total ?? 0);
+    try {
+      const res = await fetch('/api/admin/equipos');
+      if (!res.ok) {
+        setListError(
+          res.status === 401
+            ? 'Tu sesión expiró — la operación pudo haberse guardado, pero la lista no se actualizó. Recargá la página.'
+            : 'La operación se guardó, pero no se pudo actualizar la lista. Recargá la página.'
+        );
+        return;
+      }
+      const data = await res.json();
+      setEquipos(data.equipos ?? []);
+      setTotal(data.total ?? 0);
+      setListError('');
+    } catch (err) {
+      console.error('[admin/equipos] refresh failed:', err);
+      setListError('No se pudo actualizar la lista. Recargá la página.');
+    }
   };
 
   const handleEdit = (equipo: EquipoMercado) => {
@@ -86,8 +103,22 @@ export function AdminEquiposClient({ initialEquipos, total: initialTotal }: Prop
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
     setError('');
+
+    // Client-side guard: FormField has no required attr, and NaN would
+    // serialize to JSON null and bounce off the server as a 400.
+    const precioMinNum = Number.parseInt(form.precio_min_usd, 10);
+    if (!Number.isInteger(precioMinNum) || precioMinNum <= 0) {
+      setError('Precio mín USD debe ser un número entero mayor a 0.');
+      return;
+    }
+    const precioMaxNum = form.precio_max_usd ? Number.parseInt(form.precio_max_usd, 10) : null;
+    if (precioMaxNum !== null && (!Number.isInteger(precioMaxNum) || precioMaxNum < precioMinNum)) {
+      setError('Precio máx USD debe ser un entero mayor o igual al precio mínimo.');
+      return;
+    }
+
+    setIsSubmitting(true);
 
     try {
       const url = editingId ? `/api/admin/equipos/${editingId}` : '/api/admin/equipos';
@@ -95,8 +126,11 @@ export function AdminEquiposClient({ initialEquipos, total: initialTotal }: Prop
 
       const body = {
         ...form,
-        precio_min_usd: Number.parseInt(form.precio_min_usd, 10),
-        precio_max_usd: form.precio_max_usd ? Number.parseInt(form.precio_max_usd, 10) : undefined,
+        precio_min_usd: precioMinNum,
+        // null (not undefined) so clearing the field actually persists —
+        // JSON.stringify drops undefined and the PATCH whitelist never
+        // sees the key, silently keeping the stale range.
+        precio_max_usd: precioMaxNum,
         moq: Number.parseInt(form.moq, 10) || 1,
         orden: Number.parseInt(form.orden, 10) || 0,
       };
@@ -124,7 +158,7 @@ export function AdminEquiposClient({ initialEquipos, total: initialTotal }: Prop
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Desactivar este equipo? Dejará de mostrarse en el catálogo público.')) return;
+    if (!confirm('¿Desactivar este equipo? Dejará de mostrarse en el catálogo público. Podés reactivarlo después desde esta tabla.')) return;
 
     setBusyId(id);
     try {
@@ -138,6 +172,31 @@ export function AdminEquiposClient({ initialEquipos, total: initialTotal }: Prop
       await refreshList();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al eliminar');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  // Counterpart of the soft-delete: without this, an accidentally deactivated
+  // row was a dead-end (edit form never sends `activo`, and re-creating the
+  // product 409s on the UNIQUE slug still owned by the inactive row).
+  const handleReactivate = async (id: string) => {
+    setBusyId(id);
+    try {
+      const res = await fetch(`/api/admin/equipos/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ activo: true }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Error al reactivar');
+      }
+
+      await refreshList();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al reactivar');
     } finally {
       setBusyId(null);
     }
@@ -188,6 +247,22 @@ export function AdminEquiposClient({ initialEquipos, total: initialTotal }: Prop
         >
           <AlertCircle size={16} />
           {error}
+        </div>
+      )}
+
+      {/* List-refresh failure — the mutation may have succeeded, only the
+          re-fetch failed, so this must survive resetForm()'s error clear */}
+      {listError && (
+        <div
+          role="alert"
+          className="mb-4 p-3 rounded-lg flex items-center gap-2 text-sm"
+          style={{
+            background: 'color-mix(in oklch, var(--amber) 14%, white)',
+            color: 'var(--amber)',
+          }}
+        >
+          <AlertCircle size={16} />
+          {listError}
         </div>
       )}
 
@@ -535,15 +610,28 @@ export function AdminEquiposClient({ initialEquipos, total: initialTotal }: Prop
                     >
                       <Pencil size={14} />
                     </button>
-                    <button
-                      onClick={() => handleDelete(equipo.id)}
-                      disabled={busyId === equipo.id}
-                      aria-label={`Desactivar ${equipo.nombre}`}
-                      className="p-1.5 rounded hover:bg-[var(--bg-soft)] transition-colors disabled:opacity-50"
-                      style={{ color: 'var(--red)' }}
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    {equipo.activo ? (
+                      <button
+                        onClick={() => handleDelete(equipo.id)}
+                        disabled={busyId === equipo.id}
+                        aria-label={`Desactivar ${equipo.nombre}`}
+                        className="p-1.5 rounded hover:bg-[var(--bg-soft)] transition-colors disabled:opacity-50"
+                        style={{ color: 'var(--red)' }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleReactivate(equipo.id)}
+                        disabled={busyId === equipo.id}
+                        aria-label={`Reactivar ${equipo.nombre}`}
+                        title="Reactivar"
+                        className="p-1.5 rounded hover:bg-[var(--bg-soft)] transition-colors disabled:opacity-50"
+                        style={{ color: 'var(--green)' }}
+                      >
+                        <RotateCcw size={14} />
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>

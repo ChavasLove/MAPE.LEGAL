@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireRole } from '@/lib/serverAuth';
 import { listEquiposAdmin, createEquipo, type CreateEquipoInput } from '@/services/equiposService';
-import { CATEGORIA_LABELS } from '@/lib/types/equipo';
+import { CATEGORIA_LABELS, ALLOWED_IMAGE_HOSTS, isAllowedImageUrl } from '@/lib/types/equipo';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,9 +48,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!body.precio_min_usd || body.precio_min_usd <= 0) {
+    if (!Number.isInteger(body.precio_min_usd) || body.precio_min_usd <= 0) {
       return NextResponse.json(
-        { error: 'precio_min_usd debe ser mayor a 0' },
+        { error: 'precio_min_usd debe ser un entero mayor a 0' },
+        { status: 400 }
+      );
+    }
+
+    // Validate the range here → friendly 400 instead of DB CHECK 23514 → 500
+    if (
+      body.precio_max_usd != null &&
+      (!Number.isInteger(body.precio_max_usd) || body.precio_max_usd < body.precio_min_usd)
+    ) {
+      return NextResponse.json(
+        { error: 'precio_max_usd debe ser un entero mayor o igual a precio_min_usd' },
+        { status: 400 }
+      );
+    }
+
+    const galeria: unknown[] = Array.isArray(body.galeria_urls) ? body.galeria_urls : [];
+    const badImage = [body.imagen_url, ...galeria].find(
+      (u) => typeof u !== 'string' || !isAllowedImageUrl(u)
+    );
+    if (badImage !== undefined) {
+      return NextResponse.json(
+        { error: `Las imágenes deben ser URLs https de: ${ALLOWED_IMAGE_HOSTS.join(', ')}. next/image rechaza otros hosts.` },
         { status: 400 }
       );
     }
