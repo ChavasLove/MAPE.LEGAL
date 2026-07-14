@@ -10,6 +10,7 @@
 
 import { supabase } from '@/services/supabase';
 import { getAdminClient } from '@/services/adminSupabase';
+import { sanitizeIlikeTerm } from '@/services/concesionesService';
 import type {
   EquipoMercado,
   EquipoSearchResult,
@@ -25,13 +26,23 @@ export async function searchEquipos(
   limit = 50,
   offset = 0
 ): Promise<{ equipos: EquipoSearchResult[]; total: number }> {
-  const { data, error } = await supabase.rpc('search_equipos_mercado', {
-    p_query:      filters.query || null,
+  // Cap + escape ilike metachars (% _ \) before the RPC's ILIKE fallback —
+  // same sanitizeIlikeTerm invariant as concesiones/María (PR #159/#167 §29).
+  // Without this, q='%' matches every row and defeats the filter.
+  const rawQuery = (filters.query ?? '').slice(0, 100);
+  const safeQuery = rawQuery ? sanitizeIlikeTerm(rawQuery) : '';
+
+  const rpcParams = {
+    p_query:      safeQuery || null,
     p_categoria:  filters.categoria || null,
     p_precio_min: filters.precioMin ?? null,
     p_precio_max: filters.precioMax ?? null,
-    p_limit:      limit,
-    p_offset:     offset,
+  };
+
+  const { data, error } = await supabase.rpc('search_equipos_mercado', {
+    ...rpcParams,
+    p_limit:  limit,
+    p_offset: offset,
   });
 
   if (error) {
@@ -40,7 +51,21 @@ export async function searchEquipos(
   }
 
   const equipos = (data || []) as EquipoSearchResult[];
-  const total = equipos.length > 0 ? Number(equipos[0].total_count) : 0;
+  let total = equipos.length > 0 ? Number(equipos[0].total_count) : 0;
+
+  // The RPC carries total_count on returned rows only — a page past the end
+  // returns 0 rows, which used to collapse total to 0 for paginating
+  // consumers. Probe page 0 (1 row) to recover the real total in that case.
+  if (equipos.length === 0 && offset > 0) {
+    const probe = await supabase.rpc('search_equipos_mercado', {
+      ...rpcParams,
+      p_limit:  1,
+      p_offset: 0,
+    });
+    if (!probe.error && probe.data?.length) {
+      total = Number((probe.data[0] as EquipoSearchResult).total_count);
+    }
+  }
 
   return { equipos, total };
 }
@@ -79,7 +104,8 @@ export interface CreateEquipoInput {
   categoria: EquipoCategoria;
   proveedor: string;
   precio_min_usd: number;
-  precio_max_usd?: number;
+  // null clears the stored max (single fixed price); undefined leaves it as-is
+  precio_max_usd?: number | null;
   moq?: number;
   unidad_moq?: string;
   capacidad?: string;

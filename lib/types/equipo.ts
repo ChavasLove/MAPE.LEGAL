@@ -91,3 +91,17 @@ export interface EquipoSearchResponse {
   equipos: EquipoSearchResult[];
   total: number;
 }
+
+// Must stay in sync with images.remotePatterns in next.config.ts — next/image
+// refuses hosts outside that list (broken image in prod, render throw in dev),
+// so admin writes validate against the same allowlist at save time.
+export const ALLOWED_IMAGE_HOSTS = ['image.made-in-china.com'] as const;
+
+export function isAllowedImageUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'https:' && (ALLOWED_IMAGE_HOSTS as readonly string[]).includes(u.hostname);
+  } catch {
+    return false;
+  }
+}

@@ -30,7 +30,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function EquipoDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  const equipo = await getEquipoBySlug(slug);
+
+  // Degrade to 404 instead of a hard 500 when the RPC errors (migration 027
+  // not applied, transient Supabase failure) — same public-surface philosophy
+  // as the catalog page's non-fatal catch.
+  let equipo = null;
+  try {
+    equipo = await getEquipoBySlug(slug);
+  } catch (err) {
+    console.error('[equipos/slug] non-fatal — detail unavailable (migration 027 applied?):', err);
+  }
 
   if (!equipo) {
     notFound();

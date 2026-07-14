@@ -42,7 +42,10 @@ export function EquiposCatalogClient({
     (updates: Partial<EquipoFilters>) => {
       const params = new URLSearchParams(searchParams.toString());
 
-      if (updates.query !== undefined) {
+      // Presence check ('key' in updates), not value check — applyFilters
+      // passes `query: undefined` for an emptied box, and that must DELETE
+      // the stale ?q= param, not leave the old search active.
+      if ('query' in updates) {
         if (updates.query) params.set('q', updates.query);
         else params.delete('q');
       }
