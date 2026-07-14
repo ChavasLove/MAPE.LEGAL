@@ -228,7 +228,7 @@ Su propósito es generar, almacenar y certificar evidencia legalmente defendible
 
 ---
 
-## 4. ESQUEMA DE BASE DE DATOS (23 migraciones)
+## 4. ESQUEMA DE BASE DE DATOS (27 migraciones)
 
 | Migración | Contenido |
 |---|---|
@@ -254,6 +254,10 @@ Su propósito es generar, almacenar y certificar evidencia legalmente defendible
 | 021 | Esquema ER de tareas (refactor) |
 | 022 | Plantilla de 54 pasos de expediente |
 | **023** | **`concesiones_mineras_registro` + vista pública + RPCs SECURITY DEFINER (`search_concesion_minera`, `concesiones_minera_stats`). 587 filas transcritas del registro INHGEOMIN (3 PDFs).** |
+| 024 | `maria_knowledge` (RAG semántico): extensión `vector`, columna embedding `vector(1536)`, índices ivfflat + gin FTS, RPCs `match_maria_knowledge` + `search_maria_knowledge_fts` |
+| 025 | Desbloqueo del cache de `precios_diarios`: policy `service_all_precios_diarios` idempotente + RPC `upsert_precios_diarios` SECURITY DEFINER |
+| 026 | Mercado de Proyectos: `projects`, `project_documents`, `document_chunks` (vector 1536), `document_tables`, `investor_project_access`, `document_access_log` + RPCs de búsqueda híbrida + bucket `project-documents` |
+| **027** | **`equipos_mercado` (catálogo de maquinaria de lavado de oro): CHECK de 10 categorías, FTS español, soft-delete `activo`, RLS pública/admin/service_role + RPCs SECURITY DEFINER `search_equipos_mercado`, `get_equipo_by_slug`, `equipos_categoria_stats`. 12 productos seed.** |
 
 **Tablas principales:**
 
@@ -300,7 +304,10 @@ Su propósito es generar, almacenar y certificar evidencia legalmente defendible
 | `/admin/config` | admin | ✅ Configuración del sistema |
 | `/admin/profesionales` | admin | ✅ Perfiles profesionales |
 | `/admin/concesiones` | admin | ✅ Registro INHGEOMIN — 587 concesiones (KPIs, filtros, tabla paginada) |
+| `/admin/equipos` | admin | ✅ CRUD del catálogo de equipos (Mercado de Equipos) |
 | `/registro` | Público | ✅ Búsqueda pública en vivo del registro INHGEOMIN |
+| `/equipos` | Público | ✅ Catálogo de maquinaria de lavado de oro (filtros + búsqueda) |
+| `/equipos/[slug]` | Público | ✅ Detalle de producto + CTA WhatsApp |
 | `/verificar/[numero]` | Público | ✅ Verificación de certificados de origen |
 | `/dashboard` | abogado / tecnico / admin | ✅ Dashboard operativo |
 | `/dashboard/expedientes` | abogado / tecnico / admin | ✅ Lista de expedientes |
@@ -328,6 +335,10 @@ Su propósito es generar, almacenar y certificar evidencia legalmente defendible
 | `/api/admin/concesiones/stats` | GET | KPIs del registro INHGEOMIN |
 | `/api/admin/concesiones/[id]` | GET / PATCH | Detalle + edición (sin DELETE) |
 | `/api/concesiones/buscar` | GET | **Pública** — RPC `search_concesion_minera` con cache 60s + SWR 5min |
+| `/api/equipos` | GET | **Pública** — búsqueda de equipos (rate-limit 60/5min, cache 60s + SWR 5min) |
+| `/api/equipos/categorias` | GET | **Pública** — conteos por categoría (cache 300s) |
+| `/api/admin/equipos` | GET / POST | Lista + creación de equipos (GET admin/abogado/tecnico, POST admin/abogado) |
+| `/api/admin/equipos/[id]` | PATCH / DELETE | Edición + soft-delete (`activo=false`); reactivación vía `PATCH { activo: true }` |
 | `/api/admin/roles` | GET / POST | Gestión de roles |
 | `/api/admin/usuarios` | GET / POST | Gestión de usuarios |
 | `/api/prices` | GET | Precios LBMA en tiempo real |
