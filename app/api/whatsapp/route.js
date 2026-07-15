@@ -535,7 +535,7 @@ Notas: ${exp.notas || 'Sin notas'}`
           : 'fecha de obtención desconocida';
         preciosSection =
 `${isToday ? 'PRECIO ORO HOY' : `ULTIMO REGISTRO (${precioLatest.fecha})`}
-LBMA: $${precioLatest.oro ?? 'N/D'} USD/oz
+Oro internacional: $${precioLatest.oro ?? 'N/D'} USD/oz
 Tasa: L ${precioLatest.usd_hnl ?? 'N/D'}/USD
 Fuente: ${precioLatest.fuente ?? 'N/D'}
 Obtenido: ${fetchedAtStr}${!isToday ? '\n⚠️ ALERTA: Precio no actualizado hoy. Revisar cron de broadcast.' : ''}`;
@@ -703,13 +703,13 @@ Comandos disponibles:
     const tipoCambio = preciosHoy?.usd_hnl != null ? `L ${fmt(preciosHoy.usd_hnl)}/USD` : null;
     const priceContext = preciosHoy
       ? `\n\nPRECIOS DE REFERENCIA (${preciosHoy.fecha ?? 'hoy'}${frescuraLabel ? ` — ${frescuraLabel}` : ''}):
-- Oro LBMA: ${oroLBMA ?? 'no disponible'}
-- Precio de compra MAPE LEGAL (80% LBMA): ${oroCompra ?? 'el equipo confirma hoy'}
-- Plata LBMA: ${plataLBMA ?? 'no disponible'}
+- Oro internacional: ${oroLBMA ?? 'no disponible'}
+- Precio de compra MAPE LEGAL (80% del precio internacional): ${oroCompra ?? 'el equipo confirma hoy'}
+- Plata internacional: ${plataLBMA ?? 'no disponible'}
 - Tipo de cambio: ${tipoCambio ?? 'no disponible'}
 - Frescura: ${frescuraLabel || 'no disponible'}
 ${preciosHoy.fuente ? `- Fuente: ${preciosHoy.fuente}` : ''}
-El formato canónico de respuesta para precio del día está en CUANDO PREGUNTAN POR EL PRECIO DEL ORO — síguelo al pie de la letra (4 viñetas: LBMA + MAPE LEGAL compra + Tipo de cambio USD/LPS + Actualizado, luego Finacoop + www.mape.legal). El timestamp ("Actualizado") y el tipo de cambio USD/LPS son OBLIGATORIOS en cada respuesta de precio.`
+El formato canónico de respuesta para precio del día está en CUANDO PREGUNTAN POR EL PRECIO DEL ORO — síguelo al pie de la letra (4 viñetas: precio internacional + MAPE LEGAL compra + Tipo de cambio USD/LPS + Actualizado, luego Finacoop + www.mape.legal). El timestamp ("Actualizado") y el tipo de cambio USD/LPS son OBLIGATORIOS en cada respuesta de precio.`
       : `\n\nPRECIOS DE REFERENCIA: No hay datos de precios cargados hoy. Si el cliente pregunta por precio de compra del oro, di: "Hoy no tengo el precio cargado en el sistema. Para precio actualizado escribí a gerencia@mape.legal."`;
 
     // --- Query expedientes linked to this client ---

@@ -199,7 +199,7 @@ Su propósito es generar, almacenar y certificar evidencia legalmente defendible
 
 **Modelo de ingresos:**
 1. Servicios de formalización — paquete ancla L 1.600.000 + titulaciones + contratos de sociedad minera
-2. Margen de comercialización de oro — compra a mineros 80% LBMA → venta a Chiopa Industrias 85% LBMA
+2. Margen de comercialización de oro — compra a mineros 80% del precio internacional → venta a Chiopa Industrias 85% del precio internacional
 
 **Piloto 2026:** Asociación de Mineros de Iriona, Colón (~60 mineros)
 
@@ -330,7 +330,7 @@ Su propósito es generar, almacenar y certificar evidencia legalmente defendible
 | `/api/concesiones/buscar` | GET | **Pública** — RPC `search_concesion_minera` con cache 60s + SWR 5min |
 | `/api/admin/roles` | GET / POST | Gestión de roles |
 | `/api/admin/usuarios` | GET / POST | Gestión de usuarios |
-| `/api/prices` | GET | Precios LBMA en tiempo real |
+| `/api/prices` | GET | Precios internacionales del oro en tiempo real |
 
 ---
 
