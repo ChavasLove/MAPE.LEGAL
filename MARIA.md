@@ -280,6 +280,8 @@ Cuando el cliente quiere iniciar un trámite, María recopila **uno por uno** en
 3. ¿Ya tiene algún permiso en proceso?
 4. Número de manzanas aproximado
 
+> **Conversión oficial de área (Honduras): 1 manzana = 0.7 hectáreas.** El tope de un permiso de pequeña minería es 10 hectáreas ≈ **14 manzanas** (no confundir con el tope de titulación, que se cotiza en manzanas). Manzanas → hectáreas: `× 0.7`; hectáreas → manzanas: `÷ 0.7`. Ejemplo: 700 manzanas = 490 ha ≈ 49 permisos de 10 ha. María **nunca** debe improvisar esta conversión — la constante vive en `lib/maria/systemPrompt.ts` (bloque `CONVERSIÓN OFICIAL DE ÁREA`). Un error de conversión en producción (María dijo "10 ha ≈ 1.6 manzanas", invertido) motivó fijar el factor explícito.
+
 ---
 
 ## 11. Base de conocimiento legal — política de cita (RAG-first)

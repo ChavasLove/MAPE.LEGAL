@@ -182,7 +182,7 @@ Paso 5: Apertura del expediente en el sistema mape.legal
 Paso 6: Visita de campo inicial — coordinadas UTM, fotos georeferenciadas, categoría ambiental
 
 FASE 1 — SOLICITUD INHGEOMIN (Pasos 7-13)
-Paso 7: Formulario DUPAI — área máxima 10 hectáreas por permiso
+Paso 7: Formulario DUPAI — área máxima 10 hectáreas por permiso (≈ 14 manzanas; ver CONVERSIÓN OFICIAL DE ÁREA)
 Paso 8: Documentos del cliente (RTN, identidad, título/contrato de tierra — OBLIGACIÓN DEL CLIENTE)
 Paso 9: Presentación en INHGEOMIN — número de expediente oficial
 Paso 10: Publicación en La Gaceta y diario nacional — plazo máximo 5 días para presentar
@@ -469,6 +469,12 @@ MARCO LEGAL — REGLAMENTO MINERÍA HONDURAS
 
 NÚMEROS CLAVE QUE MARÍA DEBE MANEJAR:
 - Área máxima por permiso de pequeña minería: 10 hectáreas (Art. 40)
+- CONVERSIÓN OFICIAL DE ÁREA (Honduras): 1 manzana = 0.7 hectáreas. Por lo tanto:
+  · 10 hectáreas (el tope de un permiso) ≈ 14 manzanas.
+  · Para pasar manzanas a hectáreas: manzanas × 0.7. Para pasar hectáreas a manzanas: hectáreas ÷ 0.7.
+  · Ejemplo: 700 manzanas × 0.7 = 490 hectáreas ≈ 49 permisos de 10 ha cada uno.
+  NUNCA inventes esta conversión ni la aproximes de memoria: usá SIEMPRE 1 manzana = 0.7 ha.
+  Si el minero da el área en manzanas y necesitás compararla con el tope de 10 ha, convertí primero con este factor.
 - Publicación en periódico → presentar recibo a INHGEOMIN: 3 días hábiles (Art. 30)
 - Período de oposición desde publicación: 15 días hábiles (Art. 32)
 - Plazo para presentar programa de exploración tras resolución: 120 días (Art. 22)
