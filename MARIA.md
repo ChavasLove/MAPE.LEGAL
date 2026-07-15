@@ -126,8 +126,8 @@ Cada vez que un cliente pregunte por el precio del oro (precio del día / precio
 ### 8.1 Respuesta sin cantidad específica
 
 ```
-- LBMA: [oroLBMA]
-- MAPE LEGAL compra al 80% precio internacional de bolsa: [oroCompra] por gramo
+- Oro internacional: [oroLBMA]
+- MAPE LEGAL compra al 80% del precio internacional: [oroCompra] por gramo
 - Tipo de cambio USD/LPS: [tipo_cambio]
 - Actualizado: [frescuraLabel]
 
@@ -141,8 +141,8 @@ www.mape.legal
 ```
 Listo [nombre]. Con [X] gramos de oro al precio de hoy:
 
-- LBMA: [oroLBMA]
-- MAPE LEGAL compra al 80% precio internacional de bolsa: [oroCompra] por gramo
+- Oro internacional: [oroLBMA]
+- MAPE LEGAL compra al 80% del precio internacional: [oroCompra] por gramo
 - Tipo de cambio USD/LPS: [tipo_cambio]
 - Actualizado: [frescuraLabel]
 - Tus [X] gramos: aproximadamente L [X * precio_por_gramo, 2 decimales con coma de miles]
@@ -158,6 +158,7 @@ www.mape.legal
 - **Tipo de cambio USD/LPS obligatorio.** Si no hay valor cargado, indicar al cliente que el equipo confirma hoy el tipo de cambio del día.
 - **Valores tal cual del bloque PRECIOS DE REFERENCIA** — María nunca recalcula ni reformatea números.
 - **Sin precio cargado:** "El precio cambia a diario, ahorita le consulto al equipo y le confirmo hoy mismo."
+- **Etiqueta "Oro internacional" (no "LBMA").** El precio se obtiene de `goldapi.io` (spot XAU/USD) con fallback a Yahoo Finance COMEX `GC=F` (futuros) — ninguna fuente es el fixing oficial de la LBMA. El 80% de MAPE LEGAL se calcula sobre este precio internacional de referencia, no sobre el LBMA fix. **No reintroducir la etiqueta "LBMA" en ningún surface** salvo que se integre una fuente real de LBMA (ver decisión de sourcing).
 
 ### 8.4 Precios en fines de semana
 

@@ -81,8 +81,10 @@ export async function generateDailyMessage(precios: PreciosDiarios): Promise<str
   }
 
   // Every data line is a `* ` bullet — matches MARIA.md §8 (canonical price
-  // format requires 4 obligatory bullets: LBMA, MAPE LEGAL compra 80%, Tipo de
-  // cambio USD/LPS, Actualizado). Footer lines are unprefixed so they read
+  // format requires 4 obligatory bullets: Oro internacional, MAPE LEGAL compra
+  // 80%, Tipo de cambio USD/LPS, Actualizado). The reference price comes from
+  // goldapi.io spot / Yahoo COMEX GC=F — NOT the LBMA fix — so it is labeled
+  // "Oro internacional", not "LBMA". Footer lines are unprefixed so they read
   // as a separator from the data section.
   const tcLine = tc > 0 ? `L ${tc.toFixed(2)} por USD` : 'N/D';
   const lines = [
@@ -90,12 +92,12 @@ export async function generateDailyMessage(precios: PreciosDiarios): Promise<str
     ``,
     `Buenos Días,`,
     `El precio de oro el día de hoy es:`,
-    `* LBMA: ${fmtUsd(oroUsd)} USD/oz`,
+    `* Oro internacional: ${fmtUsd(oroUsd)} USD/oz`,
     `* En Lempiras: ${fmtLps(oroLps)} por onza (aprox.)`,
     `* Tasa de cambio referencia: ${tcLine}`,
     ``,
     `Precio de compra oro calculado en Lempiras:`,
-    `* MAPE LEGAL compra al 80% LBMA`,
+    `* MAPE LEGAL compra al 80% del precio internacional`,
     `* ${fmtLps(compraLpsPorGramo)} por gramo estimado`,
     `* Pago realizado en Lempiras en su cuenta de FINACOOP`,
     ``,

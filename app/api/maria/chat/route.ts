@@ -284,9 +284,9 @@ async function buildPriceContext(): Promise<string> {
   const tipoCambio = prices.usd_hnl != null ? `L ${fmt(prices.usd_hnl)}/USD` : null;
 
   return `\n\nPRECIOS DE REFERENCIA (${prices.fecha ?? 'hoy'} — ${frescuraLabel}):
-- Oro LBMA: ${oroLBMA}
-- Precio de compra MAPE LEGAL (80% LBMA): ${oroCompra ?? 'el equipo confirma hoy'}
-- Plata LBMA: ${plataLBMA ?? 'no disponible'}
+- Oro internacional: ${oroLBMA}
+- Precio de compra MAPE LEGAL (80% del precio internacional): ${oroCompra ?? 'el equipo confirma hoy'}
+- Plata internacional: ${plataLBMA ?? 'no disponible'}
 - Tipo de cambio: ${tipoCambio ?? 'no disponible'}
 - Frescura: ${frescuraLabel}
 ${prices.fuente ? `- Fuente: ${prices.fuente}` : ''}
