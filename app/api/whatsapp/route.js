@@ -311,16 +311,25 @@ async function retrieveKnowledge(supabaseClient, userMessage) {
 
 
 
-// Reconstruct the exact URL Twilio signed. Prefer NEXT_PUBLIC_SITE_URL so it
-// matches the webhook URL configured in the Twilio console; fall back to proxy
-// headers. The webhook carries no query string, so search is empty in practice.
-function twilioRequestUrl(request) {
-  const { pathname, search } = new URL(request.url);
+// Reconstruct the URL(s) Twilio may have signed. Twilio signs the exact webhook
+// URL configured in its console, which we cannot know with certainty from behind
+// Vercel's proxy (custom domain vs *.vercel.app, www vs apex, Messaging Service
+// callback, header rewrites). A single guessed URL is fragile — one mismatch and
+// every legitimate request fails the check. So we build every plausible
+// reconstruction and accept the request if ANY of them validates. Order: the
+// configured site URL first (should match the console), then the forwarded-host
+// proxy URL, then the raw request URL. The webhook carries no query string, so
+// search is empty in practice.
+function twilioCandidateUrls(request) {
+  const { pathname, search, href } = new URL(request.url);
+  const urls = [];
   const base = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, '');
-  if (base) return `${base}${pathname}${search}`;
+  if (base) urls.push(`${base}${pathname}${search}`);
   const proto = request.headers.get('x-forwarded-proto') || 'https';
   const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || '';
-  return `${proto}://${host}${pathname}${search}`;
+  if (host) urls.push(`${proto}://${host}${pathname}${search}`);
+  urls.push(href);
+  return [...new Set(urls)];
 }
 
 export async function POST(request) {
@@ -334,24 +343,33 @@ export async function POST(request) {
     console.log(`[maria] handler start anthropic=${!!anthropic} url=${!!process.env.NEXT_PUBLIC_SUPABASE_URL} svc=${!!process.env.SUPABASE_SERVICE_ROLE_KEY} openai=${!!process.env.OPENAI_API_KEY}`);
 
     // Verify the POST genuinely came from Twilio before trusting its contents.
-    // Enforced when TWILIO_AUTH_TOKEN is set; disable with
-    // TWILIO_VALIDATE_SIGNATURE='false'. Roll out safely with
-    // TWILIO_SIGNATURE_LOG_ONLY='true' (logs mismatches without rejecting) until
-    // Vercel logs confirm the reconstructed URL matches, then remove the flag.
+    //
+    // Enforcement is OPT-IN, not the default. A signature check that fails
+    // closed on a URL we can only *guess* (see twilioCandidateUrls) is a
+    // foot-gun: one URL/token mismatch black-holes every inbound message with a
+    // 403 and no TwiML — María just goes silent for everyone. That is exactly
+    // what happened after this check shipped. So:
+    //   - TWILIO_VALIDATE_SIGNATURE='false'  → skip the check entirely (kill switch)
+    //   - TWILIO_VALIDATE_SIGNATURE='true'   → hard-reject mismatches with 403 (enforce)
+    //   - unset / anything else (default)    → validate + log mismatches, but LET
+    //                                          THE TURN THROUGH (never a 403)
+    //   - TWILIO_SIGNATURE_LOG_ONLY='true'   → force log-only even when enforcing
+    // Flip to 'true' only after Vercel logs show the candidate URLs matching.
     const twilioToken = process.env.TWILIO_AUTH_TOKEN;
     if (twilioToken && process.env.TWILIO_VALIDATE_SIGNATURE !== 'false') {
       const sigParams = {};
       for (const [k, v] of formData.entries()) sigParams[k] = typeof v === 'string' ? v : '';
-      const signatureOk = validateTwilioSignature({
-        authToken: twilioToken,
-        signature: request.headers.get('x-twilio-signature'),
-        url: twilioRequestUrl(request),
-        params: sigParams,
-      });
+      const signature = request.headers.get('x-twilio-signature');
+      const candidates = twilioCandidateUrls(request);
+      const signatureOk = !!signature && candidates.some(url =>
+        validateTwilioSignature({ authToken: twilioToken, signature, url, params: sigParams })
+      );
       if (!signatureOk) {
-        const logOnly = process.env.TWILIO_SIGNATURE_LOG_ONLY === 'true';
-        console.warn(`[maria] twilio signature mismatch logOnly=${logOnly} url=${twilioRequestUrl(request)}`);
-        if (!logOnly) {
+        const enforce =
+          process.env.TWILIO_VALIDATE_SIGNATURE === 'true' &&
+          process.env.TWILIO_SIGNATURE_LOG_ONLY !== 'true';
+        console.warn(`[maria] twilio signature mismatch enforce=${enforce} hasSig=${!!signature} candidates=${candidates.join(' | ')}`);
+        if (enforce) {
           return new Response('Firma inválida', { status: 403 });
         }
       }
