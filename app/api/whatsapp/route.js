@@ -61,7 +61,12 @@ function getSupabase() {
 }
 
 function esc(s) {
-  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // Strip XML-1.0-illegal control chars first (they stay illegal even when
+  // entity-escaped) so a stray control byte in Claude's reply can't produce
+  // TwiML that Twilio refuses to parse — which would show the user nothing.
+  return String(s ?? '')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 // User intents that bypass the onboarding gate so substantive questions don't
@@ -259,7 +264,13 @@ async function retrieveKnowledge(supabaseClient, userMessage) {
   // 1. Semantic search (preferred — captures intent across synonyms).
   if (hasEmbeddings) {
     try {
-      const queryEmbedding = await embedQuery(userMessage);
+      // Bound the embed on this latency-sensitive path. embedQuery is 5s ×
+      // (1+2 retries) ≈ 15s worst case; race it so a slow OpenAI call falls
+      // through to the fast FTS fallback well inside Twilio's deadline.
+      const queryEmbedding = await Promise.race([
+        embedQuery(userMessage),
+        new Promise(resolve => setTimeout(() => resolve(null), 4000)),
+      ]);
       if (queryEmbedding) {
         // pgvector requires the text form `[f1,f2,...]` as RPC arg. Passing
         // a raw JS array makes supabase-js JSON-encode it as a JSON array;
@@ -619,14 +630,21 @@ Comandos disponibles:
 
     console.log(`📩 Message from ${fromNumber}: ${incomingMessage}`);
 
-    const { data: history } = await getSupabase()
+    // Fetch the LATEST 40 messages, not the oldest. `ascending: true` +
+    // limit(40) anchored the window at the very first rows, so any thread
+    // longer than 40 messages fed María the oldest turns forever — she lost
+    // recent context and re-greeted (CLAUDE.md specifies "últimos 40 mensajes").
+    // It also pinned any leading assistant/empty row in the window permanently,
+    // turning the Anthropic "first message must be user" rule into a stuck 400
+    // loop. Fetch descending, then reverse back to chronological order.
+    const { data: historyDesc } = await getSupabase()
       .from("conversaciones_whatsapp")
       .select("role, content")
       .eq("numero_whatsapp", fromNumber)
-      .order("created_at", { ascending: true })
+      .order("created_at", { ascending: false })
       .limit(40);
 
-    const conversationHistory = history || [];
+    const conversationHistory = (historyDesc || []).reverse();
     console.log('History found:', conversationHistory.length, 'messages');
 
     // --- Look up miner in clientes table ---
@@ -676,8 +694,17 @@ Comandos disponibles:
 
     if (!preciosHoy) {
       try {
-        const live = await fetchAllPrices();
-        if (live.oro) {
+        // Race the upstream fan-out against a tight budget. fetchAllPrices can
+        // take ~16s worst case (FX 8s + Yahoo backfill 8s); on Twilio's ~15s
+        // webhook deadline that alone starves the rest of the pipeline and the
+        // user gets nothing. If it doesn't resolve in time we proceed without a
+        // live price (the prompt handles "no disponible") and let the broadcast
+        // cron refresh the cache out-of-band.
+        const live = await Promise.race([
+          fetchAllPrices(),
+          new Promise(resolve => setTimeout(() => resolve(null), 4000)),
+        ]);
+        if (live?.oro) {
           preciosHoy = {
             oro: live.oro,
             plata: live.plata,
@@ -799,7 +826,14 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
 
     // --- Admin command interception (runs BEFORE Claude) ---
     if (isAdmin && broadcastUser) {
-      const cmdReply = await interpretAndExecute(broadcastUser, incomingMessage);
+      let cmdReply = null;
+      try {
+        cmdReply = await interpretAndExecute(broadcastUser, incomingMessage);
+      } catch (e) {
+        // Non-fatal — fall through to the normal María flow rather than letting
+        // an admin-command parse error reach the outer catch as "problema técnico".
+        console.error('[maria] admin command failed (non-fatal):', e?.message);
+      }
       if (cmdReply !== null) {
         await getSupabase().from("conversaciones_whatsapp").insert([
           { numero_whatsapp: fromNumber, role: "user",      content: safeIncoming },
@@ -824,7 +858,9 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
     // them to free chat. Their onboarding row stays untouched so they can
     // resume later when they send a non-escape message.
     const wantsEscape = ONBOARDING_ESCAPE_PATTERNS.test(incomingMessage);
-    if (!isAdmin && !wantsEscape) {
+    // Registered clients never need onboarding — skip the extra onboarding_states
+    // round-trip (and its possible repair upsert) on their hot path entirely.
+    if (!isAdmin && !wantsEscape && !cliente) {
       try {
         const onboardingState = await getOnboardingState(cleanNumber);
         const isNewUser     = !cliente && onboardingState === null;
@@ -856,17 +892,17 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
       .slice(-6)
       .map(m => `${m.role}: ${m.content}`)
       .join('\n');
-    const manualContext = await buildManualContext(incomingMessage, getSupabase(), recentHistoryText);
-
-    // --- Concesiones INHGEOMIN — registro público (keyword-triggered) ---
-    // Cuando el cliente pregunta por una concesión específica, una empresa, o
-    // "¿quién tiene el permiso de X?", inyectamos hasta 5 filas del registro
-    // INHGEOMIN. La mayoría siguen siendo solicitudes pendientes — el bloque
-    // instruye a María a no afirmar aprobación cuando el estado es solicitud.
-    const concesionContext = await buildConcesionContext(incomingMessage, getSupabase());
-
-    // --- RAG: retrieve top-3 relevant chunks from maria_knowledge ---
-    const knowledgeContext = await retrieveKnowledge(getSupabase(), incomingMessage);
+    // Manual, concesiones and RAG lookups are independent — run them in
+    // parallel (and each is bounded internally) instead of chaining three
+    // sequential round-trips on the response path. Concesiones + RAG comment:
+    // cuando el cliente pregunta por una concesión, inyectamos hasta 5 filas del
+    // registro INHGEOMIN; la mayoría siguen pendientes — el bloque instruye a
+    // María a no afirmar aprobación cuando el estado es solicitud.
+    const [manualContext, concesionContext, knowledgeContext] = await Promise.all([
+      buildManualContext(incomingMessage, getSupabase(), recentHistoryText),
+      buildConcesionContext(incomingMessage, getSupabase()),
+      retrieveKnowledge(getSupabase(), incomingMessage),
+    ]);
     const ragBlock = knowledgeContext
       ? `\n\nCONTEXTO DEL SISTEMA (citas literales de la base de conocimiento legal y regulatoria de MAPE LEGAL — Ley General del Ambiente Decreto 104-93, Decreto 181-2007 que adiciona Arts. 28-A y 29-C, Decreto 47-2010, Requisitos SLAS-2 de MiAmbiente, Reglamento de Minería Acuerdo 042-2013, Manual Operativo MAPE LEGAL):\n${knowledgeContext}\n\nINSTRUCCIONES PARA USAR ESTE BLOQUE:\n- Si la respuesta a la pregunta del cliente está aquí, CITALA con la referencia específica (artículo, decreto, requisito). Resumí el texto en hondureño claro pero conservando los términos legales.\n- NO derives a gerencia@mape.legal cuando este bloque responde la pregunta — comunicar la norma es tu trabajo, no interpretación jurídica.\n- Solo derivá si la pregunta requiere análisis jurídico específico que este bloque no cubre (por ejemplo, estrategia de litigio, jurisprudencia, casos novedosos sin precedente en el bloque).`
       : '';
@@ -887,10 +923,25 @@ Responde DIRECTAMENTE a lo que acaba de decir el usuario.`);
     // the model would parrot the bracket convention and could leak the admin
     // email to the customer over WhatsApp on the next turn.
     const ADMIN_PREFIX_RE = /^\[Admin · [^\]]+\]\s*/;
-    const sanitizedHistory = conversationHistory.map(msg => {
-      if (msg.role !== 'assistant') return msg;
-      return { ...msg, content: msg.content.replace(ADMIN_PREFIX_RE, '') };
-    });
+    const sanitizedHistory = conversationHistory
+      .map(msg => {
+        // Guard null content (legacy/manual rows) — `.replace` on null throws
+        // and the outer catch would surface it as "problema técnico".
+        let content = msg.content ?? '';
+        if (msg.role === 'assistant') content = content.replace(ADMIN_PREFIX_RE, '');
+        return { role: msg.role, content };
+      })
+      // Anthropic rejects empty content blocks — drop rows that are empty after
+      // stripping (e.g. an admin message that was only the "[Admin · …]" prefix).
+      .filter(msg => msg.content.trim() !== '');
+    // Anthropic also requires the FIRST message to be role 'user'. Drop any
+    // leading assistant turns — e.g. an admin take-over that messaged this
+    // number before the person ever wrote — so the array always starts with a
+    // user turn. Without this the request 400s on every turn (the web widget
+    // has the same guard at app/api/maria/chat/route.ts).
+    while (sanitizedHistory.length && sanitizedHistory[0].role !== 'user') {
+      sanitizedHistory.shift();
+    }
 
     // Merge consecutive same-role turns. Anthropic rejects either user-user
     // or assistant-assistant runs with a 400, and the previous filter only
@@ -918,14 +969,28 @@ Responde DIRECTAMENTE a lo que acaba de decir el usuario.`);
       );
     }
 
-    const claudeResponse = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 500,
-      system: dynamicPrompt,
-      messages: cleanHistory,
-    });
+    // Bound the call so it can't blow past Twilio's ~15s webhook deadline.
+    // Without an explicit timeout the Anthropic SDK defaults to a ~10-minute
+    // floor with 2 auto-retries; a single slow/overloaded turn then runs long
+    // enough that Vercel kills the function before the outer catch can emit
+    // fallback TwiML — Twilio gets nothing and the user sees silence. maxRetries
+    // 0: on failure we fail fast to the friendly error TwiML (still a reply,
+    // inside budget) rather than risk an overrun from a retry.
+    const claudeResponse = await anthropic.messages.create(
+      {
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 500,
+        system: dynamicPrompt,
+        messages: cleanHistory,
+      },
+      { timeout: 10000, maxRetries: 0 }
+    );
 
-    let assistantReply = claudeResponse.content?.[0]?.text ?? 'Lo siento, no pude procesar tu mensaje en este momento.';
+    // Use `|| ''` + trim (not `??`): Claude can return an empty text block on a
+    // clean stop. Persisting an empty assistant row would make the NEXT turn
+    // send an empty content block to Anthropic → 400 → "problema técnico".
+    let assistantReply = (claudeResponse.content?.[0]?.text || '').trim()
+      || 'Lo siento, no pude procesar tu mensaje en este momento.';
     console.log(`🤖 Claude responds: ${assistantReply}`);
 
     // --- Auto-create broadcast user if not yet registered ---
@@ -998,7 +1063,15 @@ Accion requerida: Llamar o escribir al cliente hoy.`;
 
     // --- Extract and save structured client data ---
     if (!cliente) {
-      const extractionResponse = await anthropic.messages.create({
+      // Best-effort data enrichment. The reply was already generated and saved
+      // above, so a throw here (Haiku overload / rate-limit / network) must NOT
+      // reach the outer catch and replace the good answer with "problema
+      // técnico". Wrapped + bounded so it can't crash the turn or overrun the
+      // Twilio deadline on the rare unregistered message that reaches here.
+      let extractionResponse = null;
+      try {
+        extractionResponse = await anthropic.messages.create(
+          {
         model: "claude-haiku-4-5-20251001",
         max_tokens: 200,
         messages: [{
@@ -1017,9 +1090,14 @@ Responde ÚNICAMENTE en JSON válido, sin texto adicional:
 
 Si algún dato no está claramente mencionado, deja null.`
         }]
-      });
+          },
+          { timeout: 6000, maxRetries: 0 }
+        );
+      } catch (e) {
+        console.log('Extraction call failed (non-fatal):', e?.message);
+      }
 
-      try {
+      if (extractionResponse) try {
         // Strip markdown code blocks if Claude wraps the JSON
         let rawText = extractionResponse.content?.[0]?.text ?? '';
         rawText = rawText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
