@@ -23,7 +23,7 @@ import {
 } from '@/lib/maria/ragShared';
 import { supabase } from '@/services/supabase';
 import { getAdminClient } from '@/services/adminSupabase';
-import { fetchAllPrices, storePrices, TROY_OUNCE_GRAMS } from '@/services/pricingService';
+import { fetchAllPrices, storePrices, mapeGoldBuyLpsPerGram } from '@/services/pricingService';
 import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
@@ -269,10 +269,8 @@ async function buildPriceContext(): Promise<string> {
   const fmt = (n: number, d = 2) =>
     Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
   const oroLBMA = `$${fmt(prices.oro)} USD/oz troy`;
-  const oroCompra =
-    prices.usd_hnl != null
-      ? `L ${fmt((prices.oro * 0.8 * prices.usd_hnl) / TROY_OUNCE_GRAMS)}/gramo`
-      : null;
+  const oroCompraLps = mapeGoldBuyLpsPerGram(prices.oro, prices.usd_hnl);
+  const oroCompra = oroCompraLps != null ? `L ${fmt(oroCompraLps)}/gramo` : null;
   const plataLBMA = prices.plata != null ? `$${fmt(prices.plata)} USD/oz troy` : null;
   const horaConsultaHN = new Date().toLocaleTimeString('es-HN', {
     timeZone: 'America/Tegucigalpa',
