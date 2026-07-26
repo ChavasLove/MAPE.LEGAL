@@ -44,6 +44,10 @@ const SHADOW_SM = '0 2px 6px rgba(31,42,56,0.05)';
 
 interface Props {
   lang: 'es' | 'en';
+  // When false, the primary card omits the "80% of the international price"
+  // wording and shows only the computed Lempiras/gram amount. Used on the home
+  // page embed where the buy factor is not disclosed publicly.
+  showBuyFactor?: boolean;
 }
 
 function fmtNum(n: number | null | undefined, decimals = 2): string {
@@ -65,7 +69,7 @@ function fmtDate(iso: string, lang: 'es' | 'en'): string {
   });
 }
 
-export default function LivePricesWidget({ lang }: Props) {
+export default function LivePricesWidget({ lang, showBuyFactor = true }: Props) {
   const t = useCallback(
     (es: string, en: string) => (lang === 'es' ? es : en),
     [lang],
@@ -294,10 +298,15 @@ export default function LivePricesWidget({ lang }: Props) {
                 fontFamily: 'var(--font-body)',
               }}
             >
-              {t(
-                `Equivale al ${Math.round((data?.mape_factor ?? 0.8) * 100)}% del precio internacional del oro. Pago en Lempiras en su cuenta de FINACOOP.`,
-                `${Math.round((data?.mape_factor ?? 0.8) * 100)}% of the international gold price. Paid in Lempiras to your FINACOOP account.`,
-              )}
+              {showBuyFactor
+                ? t(
+                    `Equivale al ${Math.round((data?.mape_factor ?? 0.8) * 100)}% del precio internacional del oro. Pago en Lempiras en su cuenta de FINACOOP.`,
+                    `${Math.round((data?.mape_factor ?? 0.8) * 100)}% of the international gold price. Paid in Lempiras to your FINACOOP account.`,
+                  )
+                : t(
+                    'Precio de compra en Lempiras. Pago en su cuenta de FINACOOP.',
+                    'Purchase price in Lempiras. Paid to your FINACOOP account.',
+                  )}
             </p>
           </div>
 
