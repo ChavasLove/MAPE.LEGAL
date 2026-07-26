@@ -90,8 +90,8 @@ export default function PriceTickerBar({ lang }: Props) {
       value: data?.oro_compra_lps_gramo != null ? `L ${fmt(data.oro_compra_lps_gramo, 0)}/g` : '—',
       accent: true,
     },
-    { label: t('Oro', 'Gold'), value: data?.oro_usd_oz != null ? `$${fmt(data.oro_usd_oz, 0)}/oz` : '—' },
-    { label: t('Plata', 'Silver'), value: data?.plata_usd_oz != null ? `$${fmt(data.plata_usd_oz, 2)}/oz` : '—' },
+    { label: t('Oro LBMA', 'LBMA gold'), value: data?.oro_usd_oz != null ? `$${fmt(data.oro_usd_oz, 0)}/oz` : '—' },
+    { label: t('Plata LBMA', 'LBMA silver'), value: data?.plata_usd_oz != null ? `$${fmt(data.plata_usd_oz, 2)}/oz` : '—' },
     { label: 'USD', value: data?.usd_hnl != null ? `L ${fmt(data.usd_hnl, 2)}` : '—' },
     {
       label: t('Diésel', 'Diesel'),
