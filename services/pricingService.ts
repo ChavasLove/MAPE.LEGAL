@@ -22,6 +22,25 @@ const FETCH_TIMEOUT_MS = 8000;
 // drift that a client comparing two replies would notice.
 export const TROY_OUNCE_GRAMS = 31.1034768;
 
+// MAPE LEGAL buys gold at 80% of the international reference price. Single source
+// of truth so the boletín diario, María (WhatsApp + web) and the /precios widget
+// all quote the same purchase price — a divergent factor or troy-ounce constant
+// here is exactly the drift the codebase already guards against.
+export const MAPE_GOLD_BUY_FACTOR = 0.8;
+
+/**
+ * MAPE LEGAL gold purchase price in Lempiras per gram.
+ * = international USD/oz × 80% × USD/HNL ÷ troy-ounce-grams.
+ * Returns null when either input is missing or non-positive.
+ */
+export function mapeGoldBuyLpsPerGram(
+  oroUsdOz: number | null | undefined,
+  usdHnl: number | null | undefined,
+): number | null {
+  if (!oroUsdOz || oroUsdOz <= 0 || !usdHnl || usdHnl <= 0) return null;
+  return (oroUsdOz * MAPE_GOLD_BUY_FACTOR * usdHnl) / TROY_OUNCE_GRAMS;
+}
+
 // ─── Fuentes con prioridad ────────────────────────────────────────────────────
 
 async function fetchGoldFromGoldAPI(): Promise<number | null> {

@@ -3,7 +3,7 @@ import Image from 'next/image';
 import {
   Users, UserCheck, LayoutDashboard, LogOut, Shield, FileText, Settings, LayoutGrid,
   MessageSquare, UserPlus, Coins, Radio, Terminal, Bot, KeyRound, Mountain, Sparkles,
-  Briefcase, Wrench,
+  Briefcase, Wrench, Fuel,
 } from 'lucide-react';
 import { getServerAuth } from '@/lib/serverAuth';
 import SidebarNav from '@/components/dashboard/SidebarNav';
@@ -27,6 +27,7 @@ const adminItems = [
   { href: '/admin/concesiones',    label: 'Concesiones',    icon: <Mountain        {...ICON} />              },
   { href: '/admin/mercado',        label: 'Mercado',        icon: <Briefcase       {...ICON} />              },
   { href: '/admin/equipos',        label: 'Equipos Mercado', icon: <Wrench          {...ICON} />              },
+  { href: '/admin/precios',        label: 'Precios / Diésel', icon: <Fuel           {...ICON} />              },
   { href: '/admin/config',         label: 'Configuración',  icon: <Settings        {...ICON} />              },
 ];
 

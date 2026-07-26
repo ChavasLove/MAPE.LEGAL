@@ -4,7 +4,7 @@ import {
   checkWhatsAppTokenHealth,
   WhatsAppApiError,
 } from '@/services/whatsappService';
-import { type PreciosDiarios, TROY_OUNCE_GRAMS } from '@/services/pricingService';
+import { type PreciosDiarios, mapeGoldBuyLpsPerGram } from '@/services/pricingService';
 import { getActiveSubscribers, type BroadcastRol } from '@/services/userService';
 
 // ─── Honduras local time ──────────────────────────────────────────────────────
@@ -52,7 +52,7 @@ export async function generateDailyMessage(precios: PreciosDiarios): Promise<str
   const tc = precios.usd_hnl ?? 0;
   const oroUsd = precios.oro ?? 0;
   const oroLps = oroUsd && tc ? oroUsd * tc : 0;
-  const compraLpsPorGramo = oroLps ? (oroLps * 0.8) / TROY_OUNCE_GRAMS : 0;
+  const compraLpsPorGramo = mapeGoldBuyLpsPerGram(oroUsd, tc) ?? 0;
   const fuente = precios.fuente && precios.fuente !== 'failed-all-sources' ? precios.fuente : 'yahoo-finance';
 
   const fmtLps = (n: number) =>
