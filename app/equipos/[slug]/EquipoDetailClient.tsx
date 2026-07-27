@@ -54,15 +54,17 @@ export function EquipoDetailClient({ equipo }: Props) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
           {/* Image Gallery */}
           <div>
+            {/* object-contain, never cover: la galería incluye láminas de
+                especificaciones 16:9 — un cover las recorta y mutila el texto */}
             <div
-              className="relative aspect-square rounded-xl overflow-hidden"
+              className="relative aspect-[4/3] rounded-xl overflow-hidden"
               style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}
             >
               <Image
                 src={selectedImage}
                 alt={equipo.nombre}
                 fill
-                className="object-cover"
+                className="object-contain"
                 sizes="(max-width: 1024px) 100vw, 50vw"
                 priority
               />
@@ -83,7 +85,8 @@ export function EquipoDetailClient({ equipo }: Props) {
                       src={img}
                       alt={`${equipo.nombre} ${i + 1}`}
                       fill
-                      className="object-cover"
+                      className="object-contain"
+                      style={{ background: 'var(--bg)' }}
                       sizes="80px"
                     />
                   </button>
@@ -125,7 +128,8 @@ export function EquipoDetailClient({ equipo }: Props) {
                 {precioDisplay}
               </p>
               <p className="mt-1 text-sm" style={{ color: 'var(--slate)' }}>
-                MOQ: {equipo.moq} {equipo.unidad_moq} &middot; Precio FOB
+                MOQ: {equipo.moq} {equipo.unidad_moq} &middot; Precio{' '}
+                {equipo.especificaciones?.['Incoterm'] ?? 'FOB'}
               </p>
             </div>
 
