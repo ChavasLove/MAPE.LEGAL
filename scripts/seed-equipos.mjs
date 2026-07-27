@@ -32,7 +32,51 @@ const adminSupabase = createClient(supabaseUrl, serviceRoleKey, {
 
 const IMG = 'https://image.made-in-china.com';
 
+// First-party images live under public/images/equipos/<slug>/ — site-relative
+// paths need no next.config.ts remotePatterns entry and pass isAllowedImageUrl.
+const IMG_LOCAL = '/images/equipos';
+
 const EQUIPOS = [
+  {
+    slug: 'planta-lavado-oro-aluvial-100tph',
+    nombre: 'Planta de Lavado de Oro Aluvial 100 TPH',
+    descripcion_corta: 'Planta completa de recuperacion gravimetrica para gravas auriferas con arcilla pegajosa. Del mineral aluvial al lingote dore. Precio CIF Honduras.',
+    descripcion: 'Planta de lavado de oro aluvial con capacidad de 100 toneladas por hora, disenada para material con contenido de arcilla pegajosa: el trommel lavador rompe la arcilla y libera el oro antes de la clasificacion, seguido de concentracion gravimetrica en dos etapas. Circuito completo: tolva grizzly de 25 m3 (retira bolones > 300 mm), alimentador vibratorio de rejilla (clasifica a ~70 mm), trommel lavador modelo 1500 (sobretamano 3-70 mm sale por cinta; bajotamano 0-3 mm pasa como pulpa a concentracion), concentrador centrifugo STLB80 para recuperacion primaria, dos mesas vibradoras 6S-4500 para limpieza final del concentrado, dos esclusas con tapa sobre las colas del centrifugo que capturan el oro residual, y horno de fundicion que convierte el concentrado final en lingotes dore listos para despacho. Precio de venta CIF Honduras (flete y seguro incluidos hasta puerto hondureno).',
+    categoria: 'planta_lavado_oro',
+    proveedor: 'MAPE LEGAL — Importacion directa',
+    precio_min_usd: 118000,
+    precio_max_usd: null,
+    moq: 1,
+    unidad_moq: 'Set',
+    capacidad: '100 toneladas/hora',
+    potencia: null,
+    peso: null,
+    dimensiones: null,
+    imagen_url: `${IMG_LOCAL}/planta-lavado-oro-aluvial-100tph/01.jpeg`,
+    galeria_urls: [
+      `${IMG_LOCAL}/planta-lavado-oro-aluvial-100tph/02.jpeg`,
+      `${IMG_LOCAL}/planta-lavado-oro-aluvial-100tph/03.jpeg`,
+      `${IMG_LOCAL}/planta-lavado-oro-aluvial-100tph/04.jpeg`,
+      `${IMG_LOCAL}/planta-lavado-oro-aluvial-100tph/05.jpeg`,
+      `${IMG_LOCAL}/planta-lavado-oro-aluvial-100tph/06.jpeg`,
+      `${IMG_LOCAL}/planta-lavado-oro-aluvial-100tph/07.jpeg`,
+      `${IMG_LOCAL}/planta-lavado-oro-aluvial-100tph/08.jpeg`,
+    ],
+    especificaciones: {
+      'Mineral': 'Oro aluvial con arcilla pegajosa',
+      'Recuperacion de oro objetivo': '>= 80%',
+      'Tolva grizzly': '25 m3 · retira bolones > 300 mm',
+      'Alimentador vibratorio': 'Clasifica a ~70 mm',
+      'Trommel lavador': 'Modelo 1500 · 70-100 TPH',
+      'Concentrador centrifugo': 'STLB80 x 1 · 10-20 TPH',
+      'Mesas vibradoras': '6S-4500 x 2',
+      'Esclusas con tapa': '2 x 30 TPH · 1 m x 6 m x 0.3 m (colas del centrifugo)',
+      'Horno de fundicion': 'Concentrado final a lingote dore',
+      'Incoterm': 'CIF Honduras',
+    },
+    destacado: true,
+    orden: 0,
+  },
   {
     slug: 'planta-lavado-oro-movil-50tph',
     nombre: 'Planta de Lavado de Oro Movil 50TPH',

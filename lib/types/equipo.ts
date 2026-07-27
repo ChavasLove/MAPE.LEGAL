@@ -95,9 +95,12 @@ export interface EquipoSearchResponse {
 // Must stay in sync with images.remotePatterns in next.config.ts — next/image
 // refuses hosts outside that list (broken image in prod, render throw in dev),
 // so admin writes validate against the same allowlist at save time.
+// Site-relative paths (/images/...) are first-party assets under public/ and
+// need no remotePatterns entry — next/image serves them directly.
 export const ALLOWED_IMAGE_HOSTS = ['image.made-in-china.com'] as const;
 
 export function isAllowedImageUrl(url: string): boolean {
+  if (url.startsWith('/images/')) return true;
   try {
     const u = new URL(url);
     return u.protocol === 'https:' && (ALLOWED_IMAGE_HOSTS as readonly string[]).includes(u.hostname);
