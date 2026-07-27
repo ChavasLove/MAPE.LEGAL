@@ -1,7 +1,7 @@
 'use client';
 
 // Admin editor for Honduras fuel prices (precios_combustibles). Diesel and the
-// other SEN-set fuels are edited here; the gold/silver/FX metals are live feeds
+// other SEN-set fuels are edited here; the gold/FX metals are live feeds
 // (precios_diarios) and shown read-only. Update the fuel prices every Monday
 // when the new SEN structure takes effect.
 
@@ -143,14 +143,15 @@ export default function AdminPreciosClient({ initialCombustibles, metals }: Prop
     }
   };
 
-  const metalRows = useMemo(
-    () => [
+  const metalRows = useMemo(() => {
+    const oroLpsOz =
+      metals?.oro != null && metals?.usd_hnl != null ? metals.oro * metals.usd_hnl : null;
+    return [
       { label: 'Oro internacional', value: metals?.oro != null ? `$${fmt(metals.oro)} USD/oz` : '—' },
-      { label: 'Plata internacional', value: metals?.plata != null ? `$${fmt(metals.plata)} USD/oz` : '—' },
+      { label: 'Oro en Lempiras', value: oroLpsOz != null ? `L ${fmt(oroLpsOz, 0)}/oz` : '—' },
       { label: 'Tipo de cambio', value: metals?.usd_hnl != null ? `L ${fmt(metals.usd_hnl, 4)}/USD` : '—' },
-    ],
-    [metals],
-  );
+    ];
+  }, [metals]);
 
   return (
     <div style={{ maxWidth: 900 }}>
@@ -158,7 +159,7 @@ export default function AdminPreciosClient({ initialCombustibles, metals }: Prop
       <p style={{ color: 'var(--t2)', fontSize: 15, lineHeight: 1.6, marginBottom: 24, maxWidth: 640 }}>
         El diésel y los demás combustibles se administran aquí (precio oficial de la SEN, fijado
         semanalmente). Actualiza el precio cada lunes cuando entra en vigor la nueva estructura. Los
-        metales (oro, plata, tipo de cambio) son feeds en vivo y no se editan.
+        metales (oro, tipo de cambio) son feeds en vivo y no se editan.
       </p>
 
       {/* Live metals — read only */}
