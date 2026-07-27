@@ -90,7 +90,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     ];
     if (imageCandidates.some((u) => typeof u !== 'string' || !isAllowedImageUrl(u))) {
       return NextResponse.json(
-        { error: `Las imágenes deben ser URLs https de: ${ALLOWED_IMAGE_HOSTS.join(', ')}. next/image rechaza otros hosts.` },
+        { error: `Las imágenes deben ser rutas del sitio (/images/...) o URLs https de: ${ALLOWED_IMAGE_HOSTS.join(', ')}. next/image rechaza otros hosts.` },
         { status: 400 }
       );
     }

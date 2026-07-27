@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     );
     if (badImage !== undefined) {
       return NextResponse.json(
-        { error: `Las imágenes deben ser URLs https de: ${ALLOWED_IMAGE_HOSTS.join(', ')}. next/image rechaza otros hosts.` },
+        { error: `Las imágenes deben ser rutas del sitio (/images/...) o URLs https de: ${ALLOWED_IMAGE_HOSTS.join(', ')}. next/image rechaza otros hosts.` },
         { status: 400 }
       );
     }

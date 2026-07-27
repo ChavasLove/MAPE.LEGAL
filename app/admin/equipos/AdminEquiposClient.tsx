@@ -460,7 +460,7 @@ export function AdminEquiposClient({ initialEquipos, total: initialTotal }: Prop
                 label="URL Imagen principal*"
                 value={form.imagen_url}
                 onChange={(v) => setForm({ ...form, imagen_url: v })}
-                placeholder="https://..."
+                placeholder="https://... o /images/equipos/..."
               />
 
               <div className="flex gap-3 pt-2">
