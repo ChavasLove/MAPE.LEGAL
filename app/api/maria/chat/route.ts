@@ -23,7 +23,7 @@ import {
 } from '@/lib/maria/ragShared';
 import { supabase } from '@/services/supabase';
 import { getAdminClient } from '@/services/adminSupabase';
-import { fetchAllPrices, storePrices, mapeGoldBuyLpsPerGram } from '@/services/pricingService';
+import { fetchAllPrices, storePrices, mapeGoldBuyLpsPerGram, effectivePriceDate } from '@/services/pricingService';
 import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
@@ -213,7 +213,10 @@ interface PriceSnapshot {
 }
 
 async function buildPriceContext(): Promise<string> {
-  const today = new Date().toISOString().slice(0, 10);
+  // Key by the 8 AM Honduras window (same as storePrices / the /precios widget)
+  // so María quotes the frozen daily snapshot — reading by raw UTC date would
+  // miss the row all evening and re-fetch, overwriting the frozen 8 AM price.
+  const priceDate = effectivePriceDate();
   let prices: PriceSnapshot | null = null;
 
   try {
@@ -221,7 +224,7 @@ async function buildPriceContext(): Promise<string> {
     const { data: cached } = await admin()
       .from('precios_diarios')
       .select('oro, plata, usd_hnl, fecha, fuente')
-      .eq('fecha', today)
+      .eq('fecha', priceDate)
       .single();
     if (cached?.oro != null && cached.oro > 0) {
       prices = cached as unknown as PriceSnapshot;
@@ -244,14 +247,15 @@ async function buildPriceContext(): Promise<string> {
           oro: live.oro,
           plata: live.plata,
           usd_hnl: live.usd_hnl,
-          fecha: today,
+          fecha: priceDate,
           fuente: live.fuente,
         };
         // Cache write-back so subsequent turns hit the DB row instead of
         // re-fanning out to GoldAPI/Yahoo/exchangerate-api on every cold-cache
         // turn — without this, an anonymous visitor with the 20-turn budget
-        // could drive ~60 paid upstream calls.
-        storePrices(live).catch((e) =>
+        // could drive ~60 paid upstream calls. Keyed to the 8 AM window so it
+        // lands on (and freezes) the same row the widget serves.
+        storePrices(live, priceDate).catch((e) =>
           console.warn('[maria-web prices] cache write failed (non-fatal):', (e as Error)?.message),
         );
       } else if (!live) {

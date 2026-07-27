@@ -29,6 +29,7 @@ interface LivePrices {
   fetched_at: string | null;
   fuente: string | null;
   consultado_hn: string;
+  actualizado_hn: string | null;
   mape_factor: number;
   oro_usd_oz: number | null;
   usd_hnl: number | null;
@@ -354,12 +355,19 @@ export default function LivePricesWidget({ lang }: Props) {
               color: 'var(--t3)',
             }}
           >
-            {data?.consultado_hn && (
+            {(data?.actualizado_hn || data?.consultado_hn) && (
               <span>
-                {t('Actualizado:', 'Updated:')} {data.consultado_hn} {t('(Honduras)', '(Honduras)')}
-                {data.fuente ? ` · ${t('Fuente', 'Source')}: ${data.fuente}` : ''}
+                {t('Precio capturado:', 'Price captured:')}{' '}
+                {data?.actualizado_hn ?? data?.consultado_hn} {t('(Honduras)', '(Honduras)')}
+                {data?.fuente ? ` · ${t('Fuente', 'Source')}: ${data.fuente}` : ''}
               </span>
             )}
+            <span>
+              {t(
+                'El precio del oro se actualiza una vez al día, a las 8:00 a.m. (Honduras), y se mantiene fijo durante el día para su verificación.',
+                'The gold price updates once a day, at 8:00 a.m. (Honduras), and stays fixed through the day for verification.',
+              )}
+            </span>
             <span>
               {t(
                 'Oro: precio internacional de referencia (LBMA). Los mercados cierran los fines de semana; el valor se actualiza el lunes.',

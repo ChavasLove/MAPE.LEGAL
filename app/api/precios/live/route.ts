@@ -4,6 +4,7 @@ import {
   fetchAllPrices,
   storePrices,
   mapeGoldBuyLpsPerGram,
+  effectivePriceDate,
   MAPE_GOLD_BUY_FACTOR,
 } from '@/services/pricingService';
 import { getCombustibles } from '@/services/combustiblesService';
@@ -11,10 +12,17 @@ import { type Combustible } from '@/lib/types/combustible';
 import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit';
 
 // Public, unauthenticated snapshot for the live-prices widget (/precios) and any
-// other surface that wants the same numbers María quotes. Reads live gold/silver/FX
-// from precios_diarios (service-role — anon has no SELECT on that table per
-// migration 009), does a timeout-bounded live fetch + cache write-back when the
-// day's row is missing, and joins the SEN-set diesel/fuel prices.
+// other surface that wants the same numbers María quotes. Reads gold/FX from
+// precios_diarios (service-role — anon has no SELECT on that table per migration
+// 009), and joins the SEN-set diesel/fuel prices.
+//
+// PRICE FREEZE — the gold snapshot updates once per day at 08:00 Honduras. The
+// row is keyed by effectivePriceDate() (the 8 AM window). When that row already
+// exists the price is served as-is and NEVER re-fetched, so it stays frozen for
+// the whole 08:00→08:00 window. Only when the window's row is missing (cron
+// didn't run, or first visitor of the day) does one timeout-bounded live fetch
+// capture the snapshot and write it back. The response carries the real capture
+// timestamp (fetched_at) so the number is verifiable.
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -59,9 +67,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // UTC date — matches storePrices()'s cache key so the read never misses the
-    // row it wrote near a Honduras-midnight boundary.
-    const today = new Date().toISOString().slice(0, 10);
+    // The 8 AM Honduras window this request belongs to. storePrices() keys the
+    // row by the same value, so a hit here means the snapshot is already frozen.
+    const priceDate = effectivePriceDate();
 
     let row: PriceRow | null = null;
 
@@ -70,7 +78,7 @@ export async function GET(request: NextRequest) {
       const { data } = await admin
         .from('precios_diarios')
         .select('oro, plata, usd_hnl, fecha, fuente, fetched_at')
-        .eq('fecha', today)
+        .eq('fecha', priceDate)
         .maybeSingle();
       if (data && num(data.oro) && num(data.oro)! > 0) {
         row = data as unknown as PriceRow;
@@ -79,8 +87,10 @@ export async function GET(request: NextRequest) {
       console.error('[api/precios/live] cache read failed:', (e as Error)?.message);
     }
 
-    // Cold cache → live fetch bounded by a hard timeout, then write-back so the
-    // next caller hits the DB row instead of re-fanning out to the upstreams.
+    // Window's row missing → the daily snapshot hasn't been captured yet (cron
+    // didn't run, or this is the first visitor after 08:00). Capture it ONCE:
+    // a timeout-bounded live fetch, then write-back keyed to this window so every
+    // later request in the window reads the frozen row instead of re-fetching.
     if (!row) {
       try {
         const live = await Promise.race<Awaited<ReturnType<typeof fetchAllPrices>> | null>([
@@ -92,11 +102,11 @@ export async function GET(request: NextRequest) {
             oro: live.oro,
             plata: live.plata,
             usd_hnl: live.usd_hnl,
-            fecha: today,
+            fecha: priceDate,
             fuente: live.fuente,
             fetched_at: live.fetched_at,
           };
-          storePrices(live).catch((e) =>
+          storePrices(live, priceDate).catch((e) =>
             console.warn('[api/precios/live] cache write failed (non-fatal):', (e as Error)?.message),
           );
         } else if (!live) {
@@ -122,18 +132,30 @@ export async function GET(request: NextRequest) {
     const oro_lps_oz = oro != null && usd_hnl != null ? oro * usd_hnl : null;
     const oro_compra_lps_gramo = mapeGoldBuyLpsPerGram(oro, usd_hnl);
 
-    const consultado_hn = new Date().toLocaleString('es-HN', {
-      timeZone: 'America/Tegucigalpa',
-      day: '2-digit', month: 'short', year: 'numeric',
-      hour: '2-digit', minute: '2-digit', hour12: true,
-    });
+    const hnStamp = (iso: string) =>
+      new Date(iso).toLocaleString('es-HN', {
+        timeZone: 'America/Tegucigalpa',
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: true,
+      });
+
+    // When you're viewing (query time).
+    const consultado_hn = hnStamp(new Date().toISOString());
+    // Verification timestamp — when the snapshot was actually captured from the
+    // upstream (precios_diarios.fetched_at), formatted in Honduras time. This is
+    // the number a buyer/miner can trust: it's the daily 8 AM capture, not now.
+    const actualizado_hn =
+      row?.fetched_at && !Number.isNaN(new Date(row.fetched_at).getTime())
+        ? hnStamp(row.fetched_at)
+        : null;
 
     return NextResponse.json(
       {
-        fecha: row?.fecha ?? today,
+        fecha: row?.fecha ?? priceDate,
         fetched_at: row?.fetched_at ?? null,
         fuente: row?.fuente ?? null,
         consultado_hn,
+        actualizado_hn,
         mape_factor: MAPE_GOLD_BUY_FACTOR,
         oro_usd_oz: oro,
         plata_usd_oz: plata,
