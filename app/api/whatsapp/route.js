@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { getUserByPhone, getOrCreateUserByPhone } from "@/services/userService";
 import { interpretAndExecute } from "@/services/adminCommandService";
 import { getOnboardingState, handleOnboarding } from "@/services/onboardingService";
-import { fetchAllPrices, storePrices, TROY_OUNCE_GRAMS } from "@/services/pricingService";
+import { fetchAllPrices, storePrices, effectivePriceDate, TROY_OUNCE_GRAMS } from "@/services/pricingService";
 import { sanitizeIlikeTerm } from "@/services/concesionesService";
 import { embedQuery, toVectorText } from "@/lib/maria/embeddings";
 import { normalizePhone } from "@/lib/maria/normalizePhone";
@@ -677,14 +677,17 @@ Comandos disponibles:
         : `\n- Perfil completo: no — faltan: ${faltantes.join(', ')}`;
     }
 
-    // --- Fetch gold/silver prices: cache-first, then live API ---
+    // --- Fetch gold prices: cache-first, then live API ---
+    // Key by the 8 AM Honduras window (same as storePrices / the /precios widget)
+    // so María quotes the frozen daily snapshot instead of a raw-UTC-date miss
+    // that would re-fetch and overwrite the frozen price every evening.
     let preciosHoy = null;
-    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const priceDate = effectivePriceDate();
     try {
       const { data: cached } = await getSupabase()
         .from('precios_diarios')
         .select('oro, plata, usd_hnl, fecha, fetched_at, fuente')
-        .eq('fecha', today)
+        .eq('fecha', priceDate)
         .single();
       if (cached?.oro) {
         preciosHoy = cached;
@@ -709,7 +712,7 @@ Comandos disponibles:
             oro: live.oro,
             plata: live.plata,
             usd_hnl: live.usd_hnl,
-            fecha: today,
+            fecha: priceDate,
             fetched_at: live.fetched_at,
             fuente: live.fuente,
           };
@@ -717,7 +720,8 @@ Comandos disponibles:
           // Best-effort DB cache write from the snapshot we just fetched —
           // calling fetchAndStorePrices() here would re-run the full upstream
           // fan-out, doubling the GoldAPI / Yahoo / FX cost per cold-cache turn.
-          storePrices(live).catch(e => console.log('Price DB cache failed (non-fatal):', e.message));
+          // Keyed to the 8 AM window so it freezes the same row the widget serves.
+          storePrices(live, priceDate).catch(e => console.log('Price DB cache failed (non-fatal):', e.message));
         }
       } catch (e) {
         console.log('Live price fetch failed (non-fatal):', e.message);

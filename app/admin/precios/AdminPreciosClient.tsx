@@ -153,6 +153,18 @@ export default function AdminPreciosClient({ initialCombustibles, metals }: Prop
     ];
   }, [metals]);
 
+  // Verification timestamp — when the metals snapshot was captured upstream.
+  const capturadoHn = useMemo(() => {
+    if (!metals?.fetched_at) return null;
+    const d = new Date(metals.fetched_at);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toLocaleString('es-HN', {
+      timeZone: 'America/Tegucigalpa',
+      day: '2-digit', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', hour12: true,
+    });
+  }, [metals]);
+
   return (
     <div style={{ maxWidth: 900 }}>
       <h1 style={{ fontSize: 28, color: 'var(--ink)', marginBottom: 6 }}>Precios · Diésel y combustibles</h1>
@@ -193,7 +205,11 @@ export default function AdminPreciosClient({ initialCombustibles, metals }: Prop
         </div>
         <div style={{ marginTop: 12, fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--t3)' }}>
           {metals?.fecha ? `Registro del ${metals.fecha}` : 'Sin registro de metales cargado.'}
+          {capturadoHn ? ` · Capturado ${capturadoHn} (Honduras)` : ''}
           {metals?.fuente ? ` · Fuente: ${metals.fuente}` : ''}
+        </div>
+        <div style={{ marginTop: 4, fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--t3)' }}>
+          El precio del oro se captura una vez al día, a las 8:00 a.m. (Honduras).
         </div>
       </div>
 
