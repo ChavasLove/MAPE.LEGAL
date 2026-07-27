@@ -5,7 +5,7 @@ import Link from 'next/link'
 import TopoBand from '@/components/decor/TopoBand'
 import TerrainMapSection from '@/components/terrain/TerrainMapSection'
 import MariaWidget from '@/components/landing/MariaWidget'
-import LivePricesWidget from '@/components/precios/LivePricesWidget'
+import PriceTickerBar, { TICKER_HEIGHT } from '@/components/precios/PriceTickerBar'
 
 type Lang = 'es' | 'en'
 
@@ -95,8 +95,11 @@ export default function LandingPage() {
 
   return (
     <>
-      {/* NAV */}
-      <nav className="nav" ref={navRef}>
+      {/* PRICE TICKER — first thing visible, sticky above the nav */}
+      <PriceTickerBar lang={lang} />
+
+      {/* NAV — sticky below the ticker (top offset = ticker height) */}
+      <nav className="nav" ref={navRef} style={{ top: TICKER_HEIGHT }}>
         <Link href="/" className="nav-logo">
           <span className="nav-logo-text">MAPE LEGAL</span>
         </Link>
@@ -130,7 +133,7 @@ export default function LandingPage() {
         </button>
       </nav>
       {navOpen && (
-        <div id="nav-mobile-panel" className="nav-mobile-panel" ref={panelRef}>
+        <div id="nav-mobile-panel" className="nav-mobile-panel" ref={panelRef} style={{ top: TICKER_HEIGHT + 64 }}>
           {NAV_LINKS.map((link) => (
             <a
               key={link.href}
@@ -586,57 +589,6 @@ export default function LandingPage() {
         }}
       >
         <TerrainMapSection lang={lang} t={t} />
-      </section>
-
-      {/* PRECIOS — widget en vivo (oro, plata, tipo de cambio, diésel) */}
-      <section
-        id="precios-hoy"
-        className="mape-section"
-        style={{
-          background: 'var(--bg-soft)',
-          borderBottom: '1px solid var(--border)',
-        }}
-      >
-        <div className="section-label">{t('Precios del día', 'Today’s prices')}</div>
-        <h2 className="section-title">
-          {t('Precio de compra de oro, ', 'Gold purchase price, ')}
-          <em>{t('hoy.', 'today.')}</em>
-        </h2>
-        <p
-          style={{
-            marginTop: 16,
-            maxWidth: 640,
-            fontSize: 16,
-            lineHeight: 1.6,
-            color: 'var(--t2)',
-          }}
-        >
-          {t(
-            'Precio internacional del oro y la plata, cuánto paga MAPE LEGAL por gramo en Lempiras, el tipo de cambio del día y el diésel en Honduras.',
-            'International gold and silver prices, what MAPE LEGAL pays per gram in Lempiras, today’s exchange rate, and Honduras diesel.',
-          )}
-        </p>
-        <div style={{ marginTop: 28, maxWidth: 960 }}>
-          <LivePricesWidget lang={lang} showBuyFactor={false} />
-        </div>
-        <div style={{ marginTop: 18 }}>
-          <Link
-            href="/precios"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              fontFamily: 'var(--font-mono)',
-              fontSize: 13,
-              fontWeight: 600,
-              letterSpacing: '0.04em',
-              color: 'var(--moss)',
-              textDecoration: 'none',
-            }}
-          >
-            {t('Ver la página completa de precios', 'See the full prices page')} →
-          </Link>
-        </div>
       </section>
 
       {/* CONTACTO */}
