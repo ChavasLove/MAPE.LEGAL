@@ -2,9 +2,10 @@
 
 // Minimalist price ticker — a thin sticky bar at the very top of the home page,
 // the first thing a visitor sees. Single line: MAPE gold buy price (L/gram),
-// international gold & silver, USD/LPS, and Honduras diesel. Horizontally
-// scrollable on small screens. The buy factor (80%) is never shown — only the
-// computed Lempiras amount. Data from /api/precios/live (polled, hidden-guarded).
+// international gold (USD/oz), gold in Lempiras per troy ounce, USD/LPS, and
+// Honduras diesel. Horizontally scrollable on small screens. The buy factor
+// (80%) is never shown — only the computed Lempiras amount. Data from
+// /api/precios/live (polled, hidden-guarded).
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -15,7 +16,7 @@ export const TICKER_HEIGHT = 36;
 
 interface LivePrices {
   oro_usd_oz: number | null;
-  plata_usd_oz: number | null;
+  oro_lps_oz: number | null;
   usd_hnl: number | null;
   oro_compra_lps_gramo: number | null;
   diesel: { precio_hnl: number; unidad: string } | null;
@@ -91,7 +92,7 @@ export default function PriceTickerBar({ lang }: Props) {
       accent: true,
     },
     { label: t('Oro LBMA', 'LBMA gold'), value: data?.oro_usd_oz != null ? `$${fmt(data.oro_usd_oz, 0)}/oz` : '—' },
-    { label: t('Plata LBMA', 'LBMA silver'), value: data?.plata_usd_oz != null ? `$${fmt(data.plata_usd_oz, 2)}/oz` : '—' },
+    { label: t('Oro Lps', 'Gold Lps'), value: data?.oro_lps_oz != null ? `L ${fmt(data.oro_lps_oz, 0)}/oz` : '—' },
     { label: 'USD', value: data?.usd_hnl != null ? `L ${fmt(data.usd_hnl, 2)}` : '—' },
     {
       label: t('Diésel', 'Diesel'),

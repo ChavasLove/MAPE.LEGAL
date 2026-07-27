@@ -4,8 +4,9 @@
 //
 // Fetches /api/precios/live on mount, then polls every 60 s (skipping the tick
 // while the tab is hidden) and refetches when the tab regains focus. Shows the
-// international gold/silver reference prices, the MAPE LEGAL gold purchase price
-// in Lempiras/gram, the USD/LPS rate, and the SEN-set Honduras diesel price.
+// international gold reference price, the gold price in Lempiras per troy ounce,
+// the MAPE LEGAL gold purchase price in Lempiras/gram, the USD/LPS rate, and the
+// SEN-set Honduras diesel price.
 //
 // Prices are numbers; chrome (labels, notes) respects the ES/EN toggle via the
 // `lang` prop. No continuous animations per DESIGN.md — the "live" dot is static.
@@ -30,7 +31,6 @@ interface LivePrices {
   consultado_hn: string;
   mape_factor: number;
   oro_usd_oz: number | null;
-  plata_usd_oz: number | null;
   usd_hnl: number | null;
   oro_lps_oz: number | null;
   oro_compra_lps_gramo: number | null;
@@ -313,9 +313,9 @@ export default function LivePricesWidget({ lang }: Props) {
               unit={t('USD / onza troy', 'USD / troy oz')}
             />
             <MetricCard
-              eyebrow={t('Plata LBMA', 'LBMA silver')}
-              value={data?.plata_usd_oz != null ? `$${fmtNum(data.plata_usd_oz)}` : '—'}
-              unit={t('USD / onza troy', 'USD / troy oz')}
+              eyebrow={t('Oro en Lempiras', 'Gold in Lempiras')}
+              value={data?.oro_lps_oz != null ? `L ${fmtNum(data.oro_lps_oz, 0)}` : '—'}
+              unit={t('LPS / onza troy', 'LPS / troy oz')}
             />
             <MetricCard
               eyebrow={t('Tipo de cambio', 'Exchange rate')}
@@ -362,8 +362,8 @@ export default function LivePricesWidget({ lang }: Props) {
             )}
             <span>
               {t(
-                'Oro y plata: precio internacional de referencia (LBMA). Los mercados cierran los fines de semana; el valor se actualiza el lunes.',
-                'Gold and silver: international reference price (LBMA). Markets close on weekends; values update Monday.',
+                'Oro: precio internacional de referencia (LBMA). Los mercados cierran los fines de semana; el valor se actualiza el lunes.',
+                'Gold: international reference price (LBMA). Markets close on weekends; values update Monday.',
               )}
             </span>
             <span>
