@@ -92,18 +92,37 @@ export interface EquipoSearchResponse {
   total: number;
 }
 
+// El catálogo público es una vitrina, no un marketplace masivo: nunca más de
+// 3 equipos activos a la vez. Enforced server-side en POST/PATCH admin.
+export const MAX_EQUIPOS_ACTIVOS = 3;
+
 // Must stay in sync with images.remotePatterns in next.config.ts — next/image
 // refuses hosts outside that list (broken image in prod, render throw in dev),
 // so admin writes validate against the same allowlist at save time.
 // Site-relative paths (/images/...) are first-party assets under public/ and
 // need no remotePatterns entry — next/image serves them directly.
+// Supabase Storage (bucket público `equipos-imagenes`, migración 029) se
+// permite derivando el host de NEXT_PUBLIC_SUPABASE_URL.
 export const ALLOWED_IMAGE_HOSTS = ['image.made-in-china.com'] as const;
+
+function supabaseStorageHost(): string | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!url) return null;
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+}
 
 export function isAllowedImageUrl(url: string): boolean {
   if (url.startsWith('/images/')) return true;
   try {
     const u = new URL(url);
-    return u.protocol === 'https:' && (ALLOWED_IMAGE_HOSTS as readonly string[]).includes(u.hostname);
+    if (u.protocol !== 'https:') return false;
+    if ((ALLOWED_IMAGE_HOSTS as readonly string[]).includes(u.hostname)) return true;
+    const storageHost = supabaseStorageHost();
+    return storageHost !== null && u.hostname === storageHost;
   } catch {
     return false;
   }
