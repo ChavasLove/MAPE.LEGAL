@@ -147,6 +147,7 @@ export default function EquiposPage() {
               fill
               className="object-contain"
               sizes="(max-width: 768px) 100vw, 50vw"
+              quality={90}
               priority
             />
           </div>
