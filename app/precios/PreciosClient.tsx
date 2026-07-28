@@ -78,14 +78,14 @@ export default function PreciosClient() {
       >
         <TopoBand variant="light" position="overlay" />
         <div style={{ position: 'relative', maxWidth: 960, margin: '0 auto' }}>
-          <div className="section-label">{t('Precios en vivo', 'Live prices')}</div>
+          <div className="section-label">{t('Precios del día', 'Daily prices')}</div>
           <h1
             className="section-title"
             style={{ maxWidth: 720 }}
           >
             {t(
-              'Precio del oro, la plata y el diésel, ',
-              'Gold, silver and diesel prices, ',
+              'Precio del oro y del diésel, ',
+              'Gold and diesel prices, ',
             )}
             <em>{t('hoy en Honduras.', 'today in Honduras.')}</em>
           </h1>
@@ -99,8 +99,8 @@ export default function PreciosClient() {
             }}
           >
             {t(
-              'Consulta el precio internacional del oro y la plata, cuánto paga MAPE LEGAL por gramo en Lempiras, el tipo de cambio del día y el precio oficial del diésel. Pensado para el minero artesanal.',
-              'Check the international gold and silver price, what MAPE LEGAL pays per gram in Lempiras, today’s exchange rate, and the official diesel price. Built for the artisanal miner.',
+              'Consulta el precio internacional del oro, cuánto paga MAPE.LEGAL por gramo en Lempiras, el tipo de cambio del día y el precio oficial del diésel. Actualizado diariamente.',
+              'Check the international gold price, what MAPE.LEGAL pays per gram in Lempiras, today’s exchange rate, and the official diesel price. Updated daily.',
             )}
           </p>
 
@@ -138,8 +138,8 @@ export default function PreciosClient() {
               </div>
               <div style={{ fontSize: 14, color: 'var(--t2)', lineHeight: 1.5 }}>
                 {t(
-                  'Escribinos por WhatsApp y coordinamos la compra con pago en Lempiras vía FINACOOP.',
-                  'Message us on WhatsApp and we’ll arrange the purchase, paid in Lempiras via FINACOOP.',
+                  'Escribinos por WhatsApp y coordinamos la compra con pago en Lempiras vía cooperativa financiera aliada.',
+                  'Message us on WhatsApp and we’ll arrange the purchase, paid in Lempiras via an allied financial cooperative.',
                 )}
               </div>
             </div>

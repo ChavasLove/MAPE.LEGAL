@@ -149,7 +149,7 @@ export default function PriceTickerBar({ lang }: Props) {
               color: 'var(--slate-lt)',
             }}
           >
-            {error ? t('Precios', 'Prices') : t('En vivo', 'Live')}
+            {error ? t('Precios', 'Prices') : t('Del día', 'Daily')}
           </span>
         </span>
 
