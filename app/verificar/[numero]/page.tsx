@@ -67,7 +67,7 @@ function ShellNav() {
       </Link>
       <div className="nav-links">
         <Link href="/" className="nav-link">Inicio</Link>
-        <Link href="/#cumplimiento" className="nav-link">Cumplimiento</Link>
+        <Link href="/pequena-mineria" className="nav-link">Pequeña minería</Link>
         <Link href="/#contacto" className="nav-link">Contacto</Link>
       </div>
     </nav>
@@ -82,7 +82,7 @@ function ShellFooter() {
       <div className="copy">© 2026 MAPE LEGAL</div>
       <div className="links">
         <Link href="/verificar">Verificar otro</Link>
-        <Link href="/#cumplimiento">Cumplimiento</Link>
+        <Link href="/pequena-mineria">Pequeña minería</Link>
         <Link href="/#contacto">Contacto</Link>
       </div>
     </footer>

@@ -43,8 +43,8 @@ export const CERTIFICADO_ORIGEN_NOTA =
 /** Versión abreviada para el pie de página; enlaza a /aviso-legal. */
 export const CERTIFICADO_ORIGEN_NOTA_BREVE =
   'El Certificado de Origen lo emite el titular del derecho minero y lo ' +
-  'avala la Autoridad Minera o Municipal (Art. 35, Regl. Especial MAPE). ' +
-  'MAPE.LEGAL no es autoridad emisora.'
+  'autentica y avala la Autoridad Minera o Municipal (Art. 35, Regl. ' +
+  'Especial MAPE). MAPE.LEGAL no es autoridad emisora.'
 
 /** OBLIGATORIA — registro de comercializador de CHT. */
 export const REGISTRO_COMERCIALIZADOR =
@@ -209,8 +209,9 @@ export const AVISO_NATURALEZA_INFORMATIVA =
   'El contenido de este sitio tiene carácter informativo general sobre ' +
   'el marco normativo minero de Honduras. No constituye asesoría legal ' +
   'para un caso concreto, y la sola visita o consulta de este sitio no ' +
-  'crea una relación abogado–cliente con ' + RAZON_SOCIAL + ' ni con los ' +
-  'profesionales que colaboran con ella.'
+  'crea una relación profesional de servicios legales con ' + RAZON_SOCIAL +
+  ' ni una relación abogado–cliente con los profesionales que colaboran ' +
+  'con ella.'
 
 export const AVISO_RESOLUCIONES =
   'La resolución de toda solicitud de derecho minero es potestad de la ' +

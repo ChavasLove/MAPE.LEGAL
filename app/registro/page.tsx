@@ -29,7 +29,7 @@ export default function RegistroPage() {
         </Link>
         <div className="nav-links">
           <Link href="/" className="nav-link">Inicio</Link>
-          <Link href="/#cumplimiento" className="nav-link">Cumplimiento</Link>
+          <Link href="/pequena-mineria" className="nav-link">Pequeña minería</Link>
           <Link href="/verificar" className="nav-link">Verificación</Link>
           <Link href="/#contacto" className="nav-link">Contacto</Link>
         </div>

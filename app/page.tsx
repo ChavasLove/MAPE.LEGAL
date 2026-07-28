@@ -22,9 +22,14 @@ export const metadata: Metadata = {
     'Acompañamiento legal, ambiental y técnico para obtener el permiso de pequeña minería ante INHGEOMIN: expediente, licencia ambiental, trazabilidad y certificado de origen del oro en Honduras.',
   alternates: { canonical: '/' },
   openGraph: {
+    // El merge de metadata de Next es shallow por segmento: sin `images`/
+    // `locale`/`type` aquí, el override borra el og:image del layout.
+    type: 'website',
+    locale: 'es_HN',
     title: 'Legalización de permisos de pequeña minería de oro en Honduras',
     description:
       'Del expediente ante INHGEOMIN a la trazabilidad del oro: pequeña minería legal en Honduras.',
+    images: [{ url: '/images/RIVER AND MOUNTAINS.png', width: 1200, height: 630, alt: 'MAPE LEGAL — territorio' }],
   },
 }
 
@@ -64,7 +69,7 @@ const CLASIFICACION = [
     categoria: 'Minería artesanal',
     cita: 'Art. 89, Ley General de Minería',
     cuerpo:
-      'Las técnicas exclusivamente manuales corresponden al régimen artesanal: permiso municipal dentro de un área delimitada por la autoridad.',
+      'Las técnicas exclusivamente manuales corresponden al régimen artesanal: permiso municipal dentro de un área delimitada. El criterio es la técnica, no el lugar — si usa bomba o equipo mecánico, aunque trabaje en cauce, su régimen es pequeña minería.',
     href: '/#contacto',
     linkLabel: 'Consultar su caso',
   },
@@ -135,7 +140,7 @@ export default function LandingPage() {
           }}
         />
         <TopoBand variant="light" position="overlay" />
-        <div className="hero-content" style={{ position: 'relative', maxWidth: 860 }}>
+        <div style={{ position: 'relative', maxWidth: 860 }}>
           <div className="hero-eyebrow">Pequeña minería · Honduras</div>
           <h1 className="hero-title">
             Legalización de permisos de pequeña minería de oro en Honduras.
@@ -159,7 +164,7 @@ export default function LandingPage() {
       <section
         id="clasificacion"
         className="mape-section"
-        style={{ background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)' }}
+        style={{ background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', scrollMarginTop: 116 }}
       >
         <div className="section-label">Clasificación</div>
         <h2 className="section-title">¿Qué tipo de operación tiene usted?</h2>
@@ -185,7 +190,7 @@ export default function LandingPage() {
               <div
                 style={{
                   fontFamily: 'var(--font-mono)',
-                  fontSize: 11,
+                  fontSize: 12,
                   color: 'var(--slate)',
                 }}
               >
@@ -215,7 +220,7 @@ export default function LandingPage() {
       <section
         id="servicios"
         className="mape-section"
-        style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}
+        style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)', scrollMarginTop: 116 }}
       >
         <div className="section-label">Qué hace CHT</div>
         <h2 className="section-title">Del expediente a la trazabilidad del oro.</h2>
@@ -276,7 +281,7 @@ export default function LandingPage() {
       <section
         id="brecha"
         className="mape-section"
-        style={{ background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)' }}
+        style={{ background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', scrollMarginTop: 116 }}
       >
         <div className="section-label">La brecha regulatoria</div>
         <h2 className="section-title">
@@ -287,7 +292,7 @@ export default function LandingPage() {
             La Ley General de Minería distingue dos regímenes. La minería artesanal usa
             técnicas exclusivamente manuales y se autoriza por permiso municipal dentro
             de áreas delimitadas (Art. 89). La pequeña minería usa medios mecánicos
-            sencillos —tromel, zaranda, bombas— y requiere permiso ante INHGEOMIN
+            sencillos —tromel, zaranda, bomba— y requiere permiso ante INHGEOMIN
             (Arts. 86–87 de la Ley; Art. 4 del Reglamento Especial MAPE).
           </p>
           <p style={{ fontSize: 16, color: 'var(--t2)', lineHeight: 1.7 }}>
@@ -320,7 +325,7 @@ export default function LandingPage() {
       <section
         id="contacto"
         className="mape-section"
-        style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}
+        style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)', scrollMarginTop: 116 }}
       >
         <div className="section-label">Contacto</div>
         <h2 className="section-title">Cómo escribirnos.</h2>

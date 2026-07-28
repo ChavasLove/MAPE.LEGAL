@@ -76,6 +76,10 @@ const RULES = [
   { re: /naciones\s+unidas/i, label: 'mención de Naciones Unidas — prohibida hasta instrucción expresa' },
   { re: /united\s+nations/i, label: 'mención de United Nations — prohibida hasta instrucción expresa' },
 
+  // Institución financiera: no se nombra en superficies públicas hasta que
+  // el convenio esté firmado — usar "cooperativa financiera aliada".
+  { re: /finacoop/i, label: 'FINACOOP — usar "cooperativa financiera aliada" hasta convenio firmado' },
+
   // Entidades no constituidas / marca no registrada
   { re: /asociaci[óo]n\s+de\s+mineros\s+mape/i, label: '"Asociación de Mineros MAPE" — entidad no constituida' },
   { re: /[™®]/, label: 'símbolo ™/® — la marca no está registrada ante DGPI' },

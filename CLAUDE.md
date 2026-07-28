@@ -288,10 +288,22 @@ Baseline 2026-07-28: 10 violaciones preexistentes (familia "en vivo" en `/precio
 - `app/sitemap.ts` + `app/robots.ts` (disallow `/admin`, `/dashboard`, `/portal`, `/api`, `/login`, `/auth`). JSON-LD `Organization` en `app/layout.tsx` con los datos de `copy-legal.ts`.
 - `/precios`, `/equipos`, `/verificar` conservan su UI bilingüe previa; solo se corrigieron términos prohibidos y la mención de plata en metadata de `/precios` (retirada de superficies en PR #190).
 
+### Fixes post-review multi-agente (2026-07-28, misma rama)
+Tres revisores paralelos (correctness / lenguaje minero-legal / móvil) sobre el diff de Fase 2C. Correcciones aplicadas — invariantes a respetar en superficies públicas nuevas:
+- **Anclas vs nav sticky**: regla global `section[id] { scroll-margin-top: 96px }` en `globals.css`; las secciones de la landing (bajo ticker 36px + nav 64px) overridean inline a 116. `scroll-margin-top` solo actúa en el **elemento target** del scroll — ponerlo en el `<h2>` hijo es un no-op.
+- **`.nav-mobile-panel` es `position: fixed`** (era absolute sin ancestro posicionado → con la página scrolleada el panel abría fuera de pantalla y el `focus()` saltaba al tope). `.nav-toggle` subió a 44×44.
+- **Los overrides de `openGraph` por página deben incluir `images`/`locale`/`type`**: el merge de metadata de Next es shallow por segmento — `openGraph: { title, description }` en una página **borra** el `og:image` del layout (verificado en el HTML del build).
+- Links `/#cumplimiento` de `/verificar`, `/verificar/[numero]` y `/registro` → `/pequena-mineria` (la landing 2C eliminó los ids `identidad|cumplimiento|verificacion|archivos-mineros`; los vigentes son `clasificacion|servicios|brecha|contacto`).
+- `/precios` usa `SiteFooter` (la página que publica el precio de compra lleva las notas legales del footer); su copy de compra dice marca "MAPE LEGAL" (no "MAPE.LEGAL" plataforma).
+- `check:copy` corre en CI (`.github/workflows/ci.yml`, gating) y tiene regla anti-regresión `finacoop`.
+- `/pequena-mineria`: índice móvil `<details>` bajo `lg` (el aside lateral es `hidden lg:block`); eyebrow "CHT hace" en `--moss` (no `--green` — 11px sobre card blanca no pasa AA); requisito del plano corregido a "coordenadas UTM, datum NAD27 (Centroamérica)".
+- La card artesanal de la landing aclara que **el criterio es la técnica, no el lugar** (bomba en cauce = pequeña minería).
+
 ### Pendiente de decisión (Willis)
 - Mantener o retirar la sección "estado de cuenta por transacción" de `/comercializacion` hasta que el documento exista (Fase 2B) — publicada como formato, crea compromiso verificable.
 - Versión EN del contenido nuevo (requiere revisión legal de las formulaciones traducidas).
 - PR de la rama `claude/mape-legal-fase-2c-szms8u` redactado pero **no abierto** (instrucción expresa pendiente).
+- **Del review legal (no aplicado por ser formulaciones del encargo o hechos a verificar):** `POLITICA_PRECIO` promete "referencia LBMA" pero el feed real es goldapi/Yahoo (alinear formulación o fuente de datos); `REGISTRO_COMERCIALIZADOR` afirma en presente la inscripción ante INHGEOMIN y la declaración trimestral — **verificar factualmente antes del deploy**; confirmar que el certificado demo `CO-2026-0001-DEMO` existe en producción (el seed 020 se salta si `minas`/`expedientes` están vacíos); h1 "Legalización de permisos" y CTA "Verificar si califico" son texto del encargo (imprecisiones señaladas por review); atribución de compra "MAPE LEGAL" (marca) vs "CHT" (comprador registrado) en widgets/María.
 
 ## Verificación pública de Certificados de Origen
 

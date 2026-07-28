@@ -18,9 +18,12 @@ export const metadata: Metadata = {
     'El oro sin cadena de custodia documentada queda fuera de las cadenas de suministro con debida diligencia. Qué exige un comprador aguas abajo y cómo el certificado de origen del oro de Honduras se verifica públicamente.',
   alternates: { canonical: '/mercados' },
   openGraph: {
+    type: 'website',
+    locale: 'es_HN',
     title: 'Acceso a mercados que exigen certificación de origen · MAPE.LEGAL',
     description:
       'Certificación de origen verificable para oro de pequeña minería en Honduras: la llave hacia cadenas de suministro con debida diligencia.',
+    images: [{ url: '/images/RIVER AND MOUNTAINS.png', width: 1200, height: 630, alt: 'MAPE LEGAL — territorio' }],
   },
 }
 
@@ -34,7 +37,6 @@ const SECTION_TITLE: React.CSSProperties = {
   color: 'var(--ink)',
   letterSpacing: '-0.01em',
   lineHeight: 1.25,
-  scrollMarginTop: 96,
 }
 
 const BODY: React.CSSProperties = { fontSize: 16, color: 'var(--t2)', lineHeight: 1.7 }
@@ -51,7 +53,7 @@ const EXIGENCIAS_COMPRADOR = [
   'Identificación del titular y de su derecho minero.',
   'Coordenadas del sitio de extracción.',
   'Evidencia fotográfica georreferenciada de la operación.',
-  'Certificado de Origen avalado por la autoridad.',
+  'Certificado de Origen avalado por la Autoridad Minera o Municipal.',
   'Registro documental de la transacción.',
 ] as const
 
