@@ -1,6 +1,6 @@
 'use client';
 
-// Live prices widget — public tool aimed at gold miners.
+// Daily prices widget — public tool aimed at gold miners.
 //
 // Fetches /api/precios/live on mount, then polls every 60 s (skipping the tick
 // while the tab is hidden) and refetches when the tab regains focus. Shows the
@@ -9,7 +9,7 @@
 // SEN-set Honduras diesel price.
 //
 // Prices are numbers; chrome (labels, notes) respects the ES/EN toggle via the
-// `lang` prop. No continuous animations per DESIGN.md — the "live" dot is static.
+// `lang` prop. No continuous animations per DESIGN.md — the status dot is static.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
@@ -183,7 +183,7 @@ export default function LivePricesWidget({ lang }: Props) {
               ? t('Sin conexión', 'Offline')
               : loading
                 ? t('Cargando…', 'Loading…')
-                : t('En vivo', 'Live')}
+                : t('Precio del día', 'Daily price')}
           </span>
         </div>
         <button
@@ -294,8 +294,8 @@ export default function LivePricesWidget({ lang }: Props) {
               }}
             >
               {t(
-                'Precio de compra en Lempiras. Pago en su cuenta de FINACOOP.',
-                'Purchase price in Lempiras. Paid to your FINACOOP account.',
+                'Precio de compra en Lempiras. Pago en su cuenta de cooperativa financiera aliada.',
+                'Purchase price in Lempiras. Paid to your account at an allied financial cooperative.',
               )}
             </p>
           </div>

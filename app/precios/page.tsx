@@ -2,14 +2,14 @@ import type { Metadata } from 'next';
 import PreciosClient from './PreciosClient';
 
 export const metadata: Metadata = {
-  title: 'Precios del oro, plata y diésel',
+  title: 'Precio del oro y del diésel en Honduras — actualizado diariamente',
   description:
-    'Precios en vivo del oro y la plata, precio de compra de oro de MAPE LEGAL en Lempiras, tipo de cambio USD/LPS y precio del diésel en Honduras. Para mineros artesanales y de pequeña escala.',
+    'Precio del oro actualizado diariamente, precio de compra de oro de MAPE.LEGAL en Lempiras por gramo, tipo de cambio oficial del BCH y precio del diésel en Honduras.',
   alternates: { canonical: '/precios' },
   openGraph: {
-    title: 'Precios del oro, plata y diésel · MAPE LEGAL',
+    title: 'Precio del oro y del diésel · MAPE.LEGAL',
     description:
-      'Oro y plata en vivo, precio de compra MAPE LEGAL en Lempiras/gramo, tipo de cambio USD/LPS y diésel Honduras.',
+      'Precio del oro actualizado diariamente, precio de compra en Lempiras/gramo, tipo de cambio BCH y diésel Honduras.',
   },
 };
 
