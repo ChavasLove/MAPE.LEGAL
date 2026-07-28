@@ -357,7 +357,7 @@ Webhook Twilio en `app/api/whatsapp/route.js` conecta WhatsApp con Claude AI.
 - **Auto-registro**: extrae nombre y municipio de la conversación y registra en `clientes`
 - **Dedup**: filtra mensajes assistant consecutivos antes de enviar a Claude
 - **Trigger de transacción**: "✅ Listo" + "Confirmas" → inserta en `transacciones_pendientes`
-- **Modo admin**: `willis yang` + `TENKA-2026` → reporte ejecutivo de 3 mensajes
+- **Modo admin**: `willis yang` + passphrase (`MARIA_ADMIN_PASSPHRASE` en env; requiere además `rol='admin'` en `usuarios_broadcast`) → reporte ejecutivo de 3 mensajes
 - **Contact forwarding**: respuestas con promesa de callback → alerta WhatsApp a Willis (+504 3210 0683)
 
 ---

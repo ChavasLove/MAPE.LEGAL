@@ -295,7 +295,7 @@ María tiene acceso a una base de conocimiento embebida en `public.maria_knowled
 - **Manual Operativo MAPE LEGAL 2026** — 38 pasos de formalización + 9 de titulación + 7 de sociedad
 - **Reglamento de Minería de Honduras** — Acuerdo 042-2013 (cuerpos clave embebidos en el system prompt; el resto vía RAG)
 
-Cuando una pregunta del cliente matchea semánticamente con un chunk (umbral cosine ≥ 0.7, top-3), el sistema inyecta el contenido al prompt como bloque `CONTEXTO DEL SISTEMA`.
+Cuando una pregunta del cliente matchea semánticamente con un chunk (umbral cosine ≥ 0.5, top-3 — bajado de 0.7 en PR #176 porque 0.7 descartaba chunks legales relevantes), el sistema inyecta el contenido al prompt como bloque `CONTEXTO DEL SISTEMA`.
 
 ### 11.1 Reglas obligatorias
 
@@ -367,7 +367,7 @@ El bloque RAG con el wrapper `CONTEXTO DEL SISTEMA (citas literales...)` + `INST
 Path single-click: **`/admin/maria/rag-health`**. Lee la columna *Filas en maria_knowledge*:
 - `Total = 53` (o el número viejo) → seed nunca corrió. Volver al paso 4.
 - `Total = expected, Sin embedding > 0` → seed corrió pero embeddings no. Click "Completar".
-- `Total = expected, Sin embedding = 0`, pero María sigue deflectando → problema de prompt/threshold, no de datos. Revisar `RAG_MATCH_THRESHOLD` (0.7 default, en `lib/maria/ragShared.ts` — compartido por el webhook y el web widget), o cambios al system prompt en `lib/maria/systemPrompt.ts` que pueden estar entrenando a Haiku a deferir.
+- `Total = expected, Sin embedding = 0`, pero María sigue deflectando → problema de prompt/threshold, no de datos. Revisar `RAG_MATCH_THRESHOLD` (0.5 default desde PR #176, en `lib/maria/ragShared.ts` — compartido por el webhook y el web widget), o cambios al system prompt en `lib/maria/systemPrompt.ts` que pueden estar entrenando a Haiku a deferir.
 
 Logs de Vercel filtrados por `[rag]` clasifican el path de cada turno: `semantic candidates=N`, `fts candidates=N`, o `none`. `none` con un keyword obvio significa que el chunk no está seedeado o que el embedding nunca se generó.
 

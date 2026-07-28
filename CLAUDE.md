@@ -520,6 +520,8 @@ TWILIO_AUTH_TOKEN              # Consola Twilio — contact forwarding a Willis
 TWILIO_WHATSAPP_FROM           # whatsapp:+14155238886 (sandbox) o sender aprobado
 TWILIO_VALIDATE_SIGNATURE      # (opcional, PR #176) 'false' desactiva la validación de X-Twilio-Signature en /api/whatsapp. Default: activa cuando TWILIO_AUTH_TOKEN está set
 TWILIO_SIGNATURE_LOG_ONLY      # (opcional, PR #176) 'true' loguea mismatches sin rechazar — usar en el primer deploy para confirmar la reconstrucción de URL, luego quitar para enforce (403)
+MARIA_ADMIN_PASSPHRASE         # Passphrase del modo ejecutivo de María (2026-07-29 — antes hardcodeada). Sin ella el modo ejecutivo queda desactivado (fail-closed). La passphrase sola nunca basta: el emisor debe ser rol admin en usuarios_broadcast
+MARIA_WIDGET_SECRET            # (opcional) Secreto HMAC de los turnos assistant del widget web (PR #167). Fallback: SUPABASE_SERVICE_ROLE_KEY
 # ── Sistema de broadcast (nuevas) ────────────────────────────────────────────
 GOLDAPI_KEY                    # goldapi.io — precios oro/plata/cobre (free tier disponible)
 EXCHANGE_RATE_API_KEY          # exchangerate-api.com v6 (opcional; sin clave usa tier gratuito)
@@ -560,11 +562,14 @@ Los User access tokens de Meta caducan a 60 días; cuando ocurre, el broadcast d
 - **Fix recomendado en Meta**: regenerar el `WHATSAPP_TOKEN` como **System User access token** (`Business Manager → Business Settings → System Users → Generate New Token`, scope `whatsapp_business_messaging` + `whatsapp_business_management`, expiración "Never"). Los tokens de la consola de desarrollador caducan en 24h o 60 días — solo el de System User es estable para crons.
 
 ## Modo Admin — María WhatsApp
-Trigger: mensaje contiene `willis yang` + `TENKA-2026` (passphrase en código, línea ~295 de `route.js`).
+
+> **Hardening 2026-07-29 (review de seguridad externo, hallazgos S1/S5 verificados):** la passphrase **ya no vive en el código** — se lee de la env var `MARIA_ADMIN_PASSPHRASE` (sin la var, el modo ejecutivo queda **desactivado**, fail-closed; el valor histórico `TENKA-2026` estuvo commiteado en git y debe considerarse quemado — setear un valor nuevo en Vercel). Además **la passphrase sola nunca basta**: el número emisor debe tener `rol='admin'` en `usuarios_broadcast` (los números son spoofeables mientras el enforcement de firma Twilio siga staged). Un intento con passphrase correcta desde número no-admin se loggea (`[maria] executive-mode passphrase from non-admin number`) y cae al flujo normal sin revelar que el gate existe. En el mismo pase se arregló el **bug S5**: el reporte ejecutivo destructuraba 9 resultados de un `Promise.all` de 8 promesas (`precioRes` undefined → TypeError garantizado en cada invocación); ahora la 9ª query (`precios_diarios` latest) existe.
+
+Trigger: mensaje contiene `willis yang` + la passphrase de `MARIA_ADMIN_PASSPHRASE`, **y** el emisor es admin de broadcast.
 - Primer check en el POST handler, antes de cualquier query o llamada a Claude
 - Devuelve 3 mensajes WhatsApp: actividad+clientes / expedientes+transacciones / facturación+regulaciones
-- 8 queries Supabase en paralelo via `Promise.all`
-- Sub-comando `expediente [id]`: retorna detalle sin passphrase (abierto por diseño)
+- 9 queries Supabase en paralelo via `Promise.all` (la 9ª es el último registro de `precios_diarios`)
+- Sub-comando `expediente [id]`: gated a admin (passphrase O `usuarios_broadcast.rol='admin'`, PR #167 invariante 32) con whitelist de columnas
 - Contact forwarding: reply con `te va a llamar`, `te contactamos`, `nos comunicamos`, o `te vamos a contactar` → alerta Twilio a Willis (+504 3210 0683), no-fatal
 - Todo contenido dinámico en TwiML pasa por `esc()` (escapa `&`, `<`, `>`)
 - `incomingMessage` y `fromNumber` con fallback a `''` (previene crash en mensajes de medios)
