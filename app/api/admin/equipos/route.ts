@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireRole } from '@/lib/serverAuth';
-import { listEquiposAdmin, createEquipo, type CreateEquipoInput } from '@/services/equiposService';
-import { CATEGORIA_LABELS, ALLOWED_IMAGE_HOSTS, isAllowedImageUrl } from '@/lib/types/equipo';
+import { listEquiposAdmin, createEquipo, countEquiposActivos, type CreateEquipoInput } from '@/services/equiposService';
+import { CATEGORIA_LABELS, ALLOWED_IMAGE_HOSTS, MAX_EQUIPOS_ACTIVOS, isAllowedImageUrl } from '@/lib/types/equipo';
 
 export const dynamic = 'force-dynamic';
 
@@ -82,6 +82,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'El slug solo puede contener letras minúsculas, números y guiones' },
         { status: 400 }
+      );
+    }
+
+    // La vitrina pública admite un máximo de MAX_EQUIPOS_ACTIVOS equipos a la
+    // vez (los equipos nuevos nacen activos por default de la tabla).
+    const activos = await countEquiposActivos();
+    if (activos >= MAX_EQUIPOS_ACTIVOS) {
+      return NextResponse.json(
+        { error: `La vitrina ya tiene ${MAX_EQUIPOS_ACTIVOS} equipos activos (máximo permitido). Desactivá uno antes de agregar otro.` },
+        { status: 409 }
       );
     }
 

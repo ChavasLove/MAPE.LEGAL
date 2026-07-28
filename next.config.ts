@@ -13,6 +13,13 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'image.made-in-china.com',
       },
+      // Supabase Storage — bucket público `equipos-imagenes` (migración 029),
+      // láminas/fotos subidas desde /admin/equipos.
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
     ],
   },
 };
