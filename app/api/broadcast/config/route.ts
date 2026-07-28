@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { requireRole } from '@/lib/serverAuth';
 import {
   getDailyReportConfig,
   enableMetric,
@@ -8,20 +9,27 @@ import {
   type ReportMetric,
 } from '@/services/configService';
 
-// GET /api/broadcast/config — full metric configuration
+// GET /api/broadcast/config — full metric configuration.
+// Handler-level auth (invariante PR #159/#167): antes era cookie-only vía
+// proxy — un `curl` con cookies inventadas podía leer y MUTAR la config del
+// broadcast. La versión admin canónica vive en /api/admin/broadcast/config.
 export async function GET() {
+  const auth = await requireRole('admin');
+  if (auth instanceof NextResponse) return auth;
   try {
     const config = await getDailyReportConfig();
     return NextResponse.json(config);
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error('[broadcast/config] GET failed:', e);
+    return NextResponse.json({ error: 'Error al leer la configuración' }, { status: 500 });
   }
 }
 
 // PATCH /api/broadcast/config
 // Body: { metric, action: 'enable'|'disable'|'set_currency'|'update', currency?, patch?, updated_by? }
 export async function PATCH(req: NextRequest) {
+  const auth = await requireRole('admin');
+  if (auth instanceof NextResponse) return auth;
   try {
     const body = await req.json() as {
       metric: ReportMetric;
@@ -62,7 +70,7 @@ export async function PATCH(req: NextRequest) {
     const updated = await getDailyReportConfig();
     return NextResponse.json(updated);
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error('[broadcast/config] PATCH failed:', e);
+    return NextResponse.json({ error: 'Error al actualizar la configuración' }, { status: 500 });
   }
 }

@@ -166,7 +166,15 @@ async function retrieveKnowledge(userMessage: string): Promise<string | null> {
 
   if (hasEmbeddings) {
     try {
-      const queryEmbedding = await embedQuery(userMessage);
+      // Mismo bound de 4s que el webhook: embedQuery ya tiene timeout+retries
+      // internos, pero el peor caso acumulado excede lo razonable para un
+      // visitante esperando el widget — al vencer, cae al FTS determinístico.
+      const queryEmbedding = await Promise.race<
+        Awaited<ReturnType<typeof embedQuery>> | null
+      >([
+        embedQuery(userMessage),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
+      ]);
       if (queryEmbedding) {
         const vecText = toVectorText(queryEmbedding);
         const { data, error } = await supabase.rpc('match_maria_knowledge', {

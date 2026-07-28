@@ -13,7 +13,10 @@ export const dynamic = 'force-dynamic';
 // Allow up to 60s — embedding 50 rows + 50 updates can take 5-15s; give margin.
 export const maxDuration = 60;
 
-// TEMPORARY ENDPOINT — delete after the first successful run in production.
+// OPERATIVE ENDPOINT (originally shipped as temporary; kept deliberately).
+// The /admin/maria/rag-health UI depends on it for its three backfill buttons
+// (canary / complete / force re-embed) — deleting it would break that panel.
+// It is admin-gated via requireRole('admin') below.
 //
 // Backfills embeddings on public.maria_knowledge for every row where
 // `embedding IS NULL`. Mirrors `scripts/embed-maria-knowledge.mjs` but runs

@@ -6,7 +6,8 @@
  *
  *   node scripts/seed-super-admin.mjs
  *
- * Requires: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in env.
+ * Requires in env: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
+ * SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD (≥12 chars).
  * Safe to re-run — skips creation if the email already exists, only
  * upserts the role entry.
  */
@@ -25,9 +26,22 @@ const admin = createClient(url, key, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-const EMAIL    = 'cachivo@gmail.com';
-const PASSWORD = 'jackjack';
+// Credentials come from env — NEVER hardcode them here. A password committed
+// to git is public forever (the repo history retains it even after removal);
+// if the previous hardcoded credentials ever ran against production, rotate
+// that account's password in Supabase Auth immediately.
+const EMAIL    = process.env.SEED_ADMIN_EMAIL;
+const PASSWORD = process.env.SEED_ADMIN_PASSWORD;
 const ROL      = 'admin';
+
+if (!EMAIL || !PASSWORD) {
+  console.error('[seed] Missing SEED_ADMIN_EMAIL or SEED_ADMIN_PASSWORD in env');
+  process.exit(1);
+}
+if (PASSWORD.length < 12) {
+  console.error('[seed] SEED_ADMIN_PASSWORD must be at least 12 characters');
+  process.exit(1);
+}
 
 async function run() {
   // Check if user already exists
