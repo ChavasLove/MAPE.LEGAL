@@ -211,6 +211,8 @@ Chat público de María embebido en la landing (`mape.legal`). FAB pill bottom-r
 
 ## Landing page
 
+> **Update 2026-07-28 (Fase 2C, rama `claude/mape-legal-fase-2c-szms8u`): landing reposicionada hacia pequeña minería.** `app/page.tsx` fue reescrita como **server component ES-only** con la estructura: `PriceTickerBar` · `PublicNav` · Hero (h1 "Legalización de permisos de pequeña minería de oro en Honduras", CTAs "Verificar si califico" → `/pequena-mineria` y "Verificar un certificado" → `/verificar`) · Franja de clasificación (`#clasificacion`, 3 tarjetas de autoidentificación: tromel/zaranda/bomba → pequeña minería; solo manual → artesanal; tierra sin título → titulación/sociedad) · Qué hace CHT (`#servicios`, 4 bloques + `CERTIFICADO_ORIGEN_NOTA` permanente) · Brecha regulatoria (`#brecha`) · Contacto (`#contacto`) · `SiteFooter` + `<MariaWidget lang="es">`. El toggle ES/EN, el mapa `TerrainMapSection`, las cards OCDE/Convenio 169 y la tarjeta ilustrativa de certificado **salieron de la landing** (los componentes siguen en el repo, sin uso en `/`). Nav canónica (5 ítems, `components/landing/PublicNav.tsx`): Pequeña minería · Comercialización · Mercados · Verificar certificado · Contacto. Ver §Contenido público Fase 2C abajo — incluye las restricciones duras de copy y el gate `npm run check:copy`. Los párrafos "Estado real (Phase 1…)" siguientes describen la landing anterior y quedan como historia.
+
 **Estado real (Phase 1, 2026-05-10; overhaul móvil 2026-05-11; humanizer copy pass 2026-05-20; chat widget María 2026-05-24, PR #162):** la landing activa es `app/page.tsx` (~700 líneas, autocontenido, repositionada como **superficie institucional**, no de ventas). Estructura: Nav · Hero · Identidad (`#identidad`) · Cumplimiento (`#cumplimiento`) · Verificación (`#verificacion`) · Archivos Mineros (`#archivos-mineros`) · Contacto (`#contacto`) · Footer + `<MariaWidget>` flotante. **No hay formulario de contacto, ni CTAs hacia clientes** — los clientes entran por María (WhatsApp **o el chat web** desde 2026-05-24) y relaciones directas. Los datos institucionales son reales: WhatsApp `+504 9737 3139`, correo `gerencia@mape.legal`, oficina Nexcrea (Tegucigalpa). Bilingüe ES/EN vía helper `t(es, en)` y `localStorage('ml_lang')`.
 
 Los 15 archivos de `components/landing/*` fueron **eliminados en Phase 1** (ver commit `chore(landing): remove orphan components/landing/*`). Cualquier cambio de UI ahora va a `app/page.tsx`.
@@ -230,6 +232,8 @@ Los 15 archivos de `components/landing/*` fueron **eliminados en Phase 1** (ver 
 
 **Pendiente (no shipped en PR #157):** alinear el `h1` y microcopy de `app/verificar/page.tsx` y `app/verificar/[numero]/page.tsx` con la nueva voz de la sección Verificación; aplicar las mismas reglas a las strings dentro de `components/terrain/TerrainMapSection.tsx` (legend / sheet / CTA) cuando se haga ese pass.
 
+> **Update 2026-07-28 (Fase 2C):** estas reglas de voz siguen vigentes, con dos precisiones. (a) El ejemplo "los pagos pasan por Finacoop" ya no aplica al sitio público — hasta que el convenio esté firmado, toda superficie pública dice **"cooperativa financiera aliada"** (regla §Contenido público Fase 2C). (b) El contenido nuevo de Fase 2C es **ES-only**; la regla "EN secundario" queda diferida a revisión legal de las formulaciones traducidas.
+
 **Componente decorativo activo**: `components/decor/TopoBand.tsx` — SVG de líneas topográficas usado como watermark embossed en hero y footer (`app/page.tsx`) y como fondo del login (`app/login/page.tsx`). Variantes `light` / `dark` × posiciones `overlay` (full-bleed) / `band` (48px en top edge). `aria-hidden`, `pointer-events: none`, opacidad 0.06 (light, color `--ink` `#1F2A38`) / 0.18 (dark, color `--moss` `#2F5D50`). No interactivo, no animado — quiet nod al territorio hondureño.
 
 ### Imágenes disponibles en `public/images/`
@@ -247,6 +251,47 @@ Los 15 archivos de `components/landing/*` fueron **eliminados en Phase 1** (ver 
 ### Imágenes referenciadas pero **inexistentes** (no agregar nuevos refs)
 - ~~`LOGO CHT.png` — referenciado en `Hero.tsx:34` (huérfano)~~ — resuelto en Phase 1: `Hero.tsx` eliminado.
 - ~~`Map.png` — referenciado en `Problem.tsx:83` (huérfano)~~ — resuelto en Phase 1: `Problem.tsx` eliminado.
+
+## Contenido público Fase 2C — copy legal, rutas institucionales y check:copy (2026-07-28)
+
+Reposicionamiento del sitio público hacia **legalización de permisos de pequeña minería** (Art. 4 Regl. Especial MAPE; Arts. 86–87 Ley General de Minería) + **comercialización condicionada de oro**. Solo presentación: sin cambios de schema, auth, `proxy.ts` ni webhook de María.
+
+### Fuente única de copy legal — `lib/content/copy-legal.ts`
+- **Regla arquitectónica: ningún componente escribe texto legal en línea.** Todo texto con consecuencia jurídica se importa de este módulo (objetivo: revisión legal externa sobre un solo archivo).
+- Formulaciones **obligatorias verbatim** (no parafrasear sin revisión legal): `CERTIFICADO_ORIGEN_NOTA` (+ `_BREVE` para el footer), `REGISTRO_COMERCIALIZADOR`, `CONDICION_COMPRA`, `POLITICA_PRECIO` (80% referencia LBMA / TC BCH / "actualizado diariamente"), `MERCADOS_ACCESO`, `LIBERTAD_VENTA`. Además `RAZON_SOCIAL` (Corporación Hondureña Tenka, S.A.), `AVISO_PLATAFORMA`, `DOMICILIO_LINES`, `CONTACTO`, `AVISO_NATURALEZA_INFORMATIVA`, `AVISO_RESOLUCIONES`.
+- `CITAS_LEGALES`: registro tipado `{ norma, articulo, sintesis }` — LGM Arts. 37, 38, 45, 75, 86–87, 89; Regl. MAPE Arts. 4, 5, 6, 31, 32, 33, 34, 35, 37. Citar siempre desde aquí, no strings sueltos.
+- Nota: `POLITICA_PRECIO` dice "referencia LBMA" por formulación obligatoria del encargo, aunque el feed técnico real es goldapi/Yahoo (por eso María y el widget etiquetan "Oro internacional"). Si legal decide alinear, se cambia solo en este archivo.
+
+### Verificador de términos prohibidos — `npm run check:copy`
+`scripts/check-copy-compliance.mjs` escanea `app/`, `components/`, `lib/content/` (excluye `app/api`, `app/admin`, `app/dashboard`, `app/portal` — superficies autenticadas/servidor; `app/api/whatsapp` es además intocable) y **falla con exit 1** ante cualquier término prohibido. **Correrlo antes de mergear cualquier copy público nuevo.** Prohibiciones clave (tabla completa en el script):
+- exclusividad / "mercados exclusivos" / "venta exclusiva" / "compramos todo su oro" — la comercialización es libre (Art. 37 LGM)
+- "validado/avalado por INHGEOMIN", "alianza con INHGEOMIN" — no existe instrumento formal
+- "precio en vivo" / "en vivo" / "tiempo real" — la cadencia real es diaria; usar "del día" / "actualizado diariamente"
+- garantías de permiso/aprobación/resultado — la resolución es potestad de la Autoridad Minera. El regex tiene lookbehind de negación: "**no** garantiza resultados" es copy requerido y pasa
+- "anticipos contra producción", "financiamiento con respaldo en oro", "adelanto sobre entrega" — doctrina anti-enganche (el crédito vive en la cooperativa, no en CHT)
+- "período preoperativo" / "puede trabajar mientras se tramita" — no existe autorización tácita (Art. 34 Regl. MAPE)
+- PNUD / Naciones Unidas / "Asociación de Mineros MAPE" / símbolos ™ ® — sin instrumento formalizado / entidad no constituida / marca no registrada
+- **FINACOOP no se nombra en superficies públicas** hasta convenio firmado — usar "cooperativa financiera aliada". (El system prompt de María en `lib/maria/` aún la nombra; pertenece a Fase 0, fuera del scan.)
+
+Baseline 2026-07-28: 10 violaciones preexistentes (familia "en vivo" en `/precios` y widgets) corregidas en la misma rama.
+
+### Rutas institucionales nuevas (todas server components, ES-only, metadata propia)
+| Ruta | Contenido |
+|---|---|
+| `/pequena-mineria` | Núcleo del sitio. Anclas laterales: ¿le aplica? (medios mecánicos = pequeña minería + advertencia de declaración incorrecta) · qué se obtiene (permiso hasta 10 ha, Art. 45) · 12 requisitos del expediente (Art. 6 Regl.) · rutas A (coexistencia, Arts. 32–33) / B (modificación, Art. 31) / C (grupo organizado, Art. 5) sin promesas de plazo · qué hace CHT y qué no ("no otorga permisos, no acelera resoluciones, no garantiza resultados, no compra mineral sin derecho minero") · lo lícito antes del permiso (Art. 37 Regl.) · recuperación metalúrgica **sin cifras** hasta medición propia · CTA |
+| `/comercializacion` | Condiciones publicadas, no oferta. `LIBERTAD_VENTA` prominente arriba · `POLITICA_PRECIO` + sin comisiones/cargos/descuentos automáticos · `CONDICION_COMPRA` + Arts. 34 Regl. / 38 LGM (la verificación de origen es obligación legal del comprador) · pago mismo día en lempiras vía cooperativa financiera aliada · formato del estado de cuenta por transacción · deducciones solo con autorización escrita, revocable y con tope |
+| `/mercados` | h1 = `MERCADOS_ACCESO` ("Acceso a mercados que exigen certificación de origen" — **nunca** "mercados exclusivos"). Marco de debida diligencia · qué exige un comprador aguas abajo · cómo lo produce MAPE.LEGAL · enlace al demo `CO-2026-0001-DEMO` · nota: el acceso depende del cumplimiento del operador, no de relación preferente con CHT. Sin nombrar compradores/refinadores/programas hasta que existan instrumentos firmados |
+| `/aviso-legal` | Naturaleza informativa, sin relación abogado–cliente por la visita, notas legales completas y tabla de `CITAS_LEGALES` |
+
+### Componentes compartidos y SEO
+- `components/landing/PublicNav.tsx` (client, hamburger; prop `belowTicker` para el offset del ticker en `/`) y `components/landing/SiteFooter.tsx` (server: razón social, domicilio, `REGISTRO_COMERCIALIZADOR`, `CERTIFICADO_ORIGEN_NOTA_BREVE` → `/aviso-legal`, `AVISO_PLATAFORMA`). Toda página institucional nueva debe usarlos — no duplicar nav/footer inline.
+- `app/sitemap.ts` + `app/robots.ts` (disallow `/admin`, `/dashboard`, `/portal`, `/api`, `/login`, `/auth`). JSON-LD `Organization` en `app/layout.tsx` con los datos de `copy-legal.ts`.
+- `/precios`, `/equipos`, `/verificar` conservan su UI bilingüe previa; solo se corrigieron términos prohibidos y la mención de plata en metadata de `/precios` (retirada de superficies en PR #190).
+
+### Pendiente de decisión (Willis)
+- Mantener o retirar la sección "estado de cuenta por transacción" de `/comercializacion` hasta que el documento exista (Fase 2B) — publicada como formato, crea compromiso verificable.
+- Versión EN del contenido nuevo (requiere revisión legal de las formulaciones traducidas).
+- PR de la rama `claude/mape-legal-fase-2c-szms8u` redactado pero **no abierto** (instrucción expresa pendiente).
 
 ## Verificación pública de Certificados de Origen
 
@@ -405,6 +450,8 @@ Hallazgos del code-review multi-angle del PR de migración a carta topográfica.
 
 **Estado (Phase 1, 2026-05-10):** `app/layout.tsx` declara `metadataBase` (resuelto contra `NEXT_PUBLIC_SITE_URL`, fallback `https://mape.legal`), `title` con `template '%s · MAPE LEGAL'`, `description`, `applicationName`, `authors`, `keywords`, `alternates.canonical`, `openGraph` (locale `es_HN` + `alternateLocale: 'en_US'`, og:image `/images/RIVER AND MOUNTAINS.png` 1200×630), `twitter.summary_large_image`, y `robots` con `googleBot` tuning. Las páginas pueden sobreescribir título y descripción específicos vía `export const metadata`.
 - `app/page.tsx` puede sobreescribir `openGraph` con título y descripción específicos
+
+> **Update 2026-07-28 (Fase 2C):** título/description/keywords canónicos del layout reposicionados a pequeña minería (términos objetivo: "permiso de pequeña minería Honduras", "cómo legalizar una mina de oro en Honduras", "requisitos INHGEOMIN pequeña minería", "certificado de origen oro Honduras", "licencia ambiental minería Honduras"). Nuevos: `app/sitemap.ts`, `app/robots.ts`, y JSON-LD `Organization` (Corporación Hondureña Tenka, S.A. + domicilio + contacto, datos desde `lib/content/copy-legal.ts`) inyectado en el `<body>` del layout. Cada ruta institucional nueva exporta su propia `metadata` con canonical.
 
 ## Admin inicial
 Script de seed para crear el super admin: `scripts/seed-super-admin.mjs`
