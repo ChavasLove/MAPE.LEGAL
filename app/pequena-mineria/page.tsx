@@ -18,9 +18,12 @@ export const metadata: Metadata = {
     'Cómo legalizar una mina de oro en Honduras: requisitos INHGEOMIN del permiso de pequeña minería (Art. 6, Reglamento Especial MAPE), licencia ambiental, y las tres rutas legales de acceso al derecho minero.',
   alternates: { canonical: '/pequena-mineria' },
   openGraph: {
+    type: 'website',
+    locale: 'es_HN',
     title: 'Permiso de pequeña minería en Honduras · MAPE.LEGAL',
     description:
       'Requisitos del expediente ante INHGEOMIN, licencia ambiental y rutas legales para el operador con tromel, zaranda o bomba.',
+    images: [{ url: '/images/RIVER AND MOUNTAINS.png', width: 1200, height: 630, alt: 'MAPE LEGAL — territorio' }],
   },
 }
 
@@ -46,7 +49,7 @@ const REQUISITOS = [
   'Tecnología de recuperación prevista.',
   'Plan de cierre conforme al Manual de Buenas Prácticas y plan de seguridad.',
   'Presupuesto y cronograma de operación.',
-  'Plano del área a escala 1:20,000 en coordenadas UTM NAD27, zona central.',
+  'Plano del área a escala 1:20,000 en coordenadas UTM, datum NAD27 (Centroamérica).',
   'Ubicación del plantel de acopio o beneficio.',
   'Licencia ambiental cuando proceda, y título de propiedad del predio o autorización registrada del dueño.',
 ] as const
@@ -82,7 +85,6 @@ const SECTION_TITLE: React.CSSProperties = {
   color: 'var(--ink)',
   letterSpacing: '-0.01em',
   lineHeight: 1.25,
-  scrollMarginTop: 96,
 }
 
 const BODY: React.CSSProperties = { fontSize: 16, color: 'var(--t2)', lineHeight: 1.7 }
@@ -106,7 +108,7 @@ export default function PequenaMineriaPage() {
           El permiso de pequeña minería, paso a paso.
         </h1>
         <p className="section-sub" style={{ maxWidth: 680 }}>
-          Si su operación usa tromel, zaranda o bombas, la ley la clasifica como
+          Si su operación usa tromel, zaranda o bomba, la ley la clasifica como
           pequeña minería. Esta página reúne el criterio de clasificación, los
           requisitos del expediente ante INHGEOMIN y las rutas legales de acceso al
           derecho minero.
@@ -139,6 +141,49 @@ export default function PequenaMineriaPage() {
           </aside>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 56, maxWidth: 760 }}>
+            {/* Índice móvil — el aside lateral desaparece bajo lg; <details>
+                da salto a secciones sin JS */}
+            <details
+              className="lg:hidden"
+              style={{
+                background: 'var(--bg)',
+                border: '1px solid var(--border)',
+                borderRadius: 12,
+                padding: '14px 18px',
+              }}
+            >
+              <summary
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  letterSpacing: '0.14em',
+                  textTransform: 'uppercase',
+                  color: 'var(--earth)',
+                  cursor: 'pointer',
+                }}
+              >
+                En esta página
+              </summary>
+              <nav style={{ display: 'flex', flexDirection: 'column', marginTop: 8 }}>
+                {ANCLAS.map((a) => (
+                  <a
+                    key={a.href}
+                    href={a.href}
+                    style={{
+                      fontSize: 15,
+                      color: 'var(--t2)',
+                      textDecoration: 'none',
+                      padding: '10px 0',
+                      borderBottom: '1px solid var(--border)',
+                    }}
+                  >
+                    {a.label}
+                  </a>
+                ))}
+              </nav>
+            </details>
+
             {/* 1 — ¿ESTO LE APLICA? */}
             <section id="aplica" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <h2 style={SECTION_TITLE}>¿Esto le aplica?</h2>
@@ -190,7 +235,7 @@ export default function PequenaMineriaPage() {
                 El {CITAS_LEGALES.regArt6.articulo} del Reglamento Especial MAPE define el
                 contenido de la solicitud. Presentado como lista verificable:
               </p>
-              <ol style={{ display: 'flex', flexDirection: 'column', gap: 10, counterReset: 'req', paddingLeft: 0, listStyle: 'none' }}>
+              <ol style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingLeft: 0, listStyle: 'none' }}>
                 {REQUISITOS.map((req, i) => (
                   <li
                     key={req}
@@ -255,7 +300,7 @@ export default function PequenaMineriaPage() {
                         {ruta.titulo}
                       </h3>
                     </div>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--slate)', marginTop: 4 }}>
                       {ruta.cita}
                     </div>
                     <p style={{ fontSize: 14, color: 'var(--t2)', lineHeight: 1.7, marginTop: 8 }}>
@@ -278,7 +323,9 @@ export default function PequenaMineriaPage() {
                       fontWeight: 600,
                       letterSpacing: '0.14em',
                       textTransform: 'uppercase',
-                      color: 'var(--green)',
+                      // --moss, no --green: 11px en --green sobre card blanca
+                      // queda bajo 4.5:1 (AA); --moss es AAA sobre claros
+                      color: 'var(--moss)',
                       marginBottom: 10,
                     }}
                   >

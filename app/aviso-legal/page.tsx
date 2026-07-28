@@ -107,7 +107,7 @@ export default function AvisoLegalPage() {
           <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <h2 style={SECTION_TITLE}>Fundamento normativo citado en este sitio.</h2>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 560 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
                 <thead>
                   <tr>
                     {['Norma', 'Artículo', 'Síntesis'].map((th) => (
@@ -133,7 +133,7 @@ export default function AvisoLegalPage() {
                 <tbody>
                   {Object.entries(CITAS_LEGALES).map(([key, cita]) => (
                     <tr key={key} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '10px 14px', fontSize: 13, color: 'var(--t1)', background: 'var(--bg)', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '10px 14px', fontSize: 13, color: 'var(--t1)', background: 'var(--bg)' }}>
                         {cita.norma}
                       </td>
                       <td style={{ padding: '10px 14px', fontSize: 13, color: 'var(--t1)', background: 'var(--bg)', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>

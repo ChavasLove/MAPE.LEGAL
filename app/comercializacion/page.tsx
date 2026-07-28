@@ -22,9 +22,12 @@ export const metadata: Metadata = {
     'Condiciones publicadas de compraventa de oro de pequeña minería en Honduras: un solo precio de referencia actualizado diariamente, certificado de origen del oro por transacción y pago bancarizado en lempiras.',
   alternates: { canonical: '/comercializacion' },
   openGraph: {
+    type: 'website',
+    locale: 'es_HN',
     title: 'Condiciones de compra de oro · MAPE.LEGAL',
     description:
       'Precio publicado, certificado de origen por transacción y pago bancarizado. La verificación de origen es una obligación legal del comprador.',
+    images: [{ url: '/images/RIVER AND MOUNTAINS.png', width: 1200, height: 630, alt: 'MAPE LEGAL — territorio' }],
   },
 }
 
@@ -35,7 +38,6 @@ const SECTION_TITLE: React.CSSProperties = {
   color: 'var(--ink)',
   letterSpacing: '-0.01em',
   lineHeight: 1.25,
-  scrollMarginTop: 96,
 }
 
 const BODY: React.CSSProperties = { fontSize: 16, color: 'var(--t2)', lineHeight: 1.7 }

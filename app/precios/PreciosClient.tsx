@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import TopoBand from '@/components/decor/TopoBand';
 import MariaWidget from '@/components/landing/MariaWidget';
+import SiteFooter from '@/components/landing/SiteFooter';
 import LivePricesWidget from '@/components/precios/LivePricesWidget';
 
 type Lang = 'es' | 'en';
@@ -99,8 +100,8 @@ export default function PreciosClient() {
             }}
           >
             {t(
-              'Consulta el precio internacional del oro, cuánto paga MAPE.LEGAL por gramo en Lempiras, el tipo de cambio del día y el precio oficial del diésel. Actualizado diariamente.',
-              'Check the international gold price, what MAPE.LEGAL pays per gram in Lempiras, today’s exchange rate, and the official diesel price. Updated daily.',
+              'Consulta el precio internacional del oro, cuánto paga MAPE LEGAL por gramo en Lempiras, el tipo de cambio del día y el precio oficial del diésel. Actualizado diariamente.',
+              'Check the international gold price, what MAPE LEGAL pays per gram in Lempiras, today’s exchange rate, and the official diesel price. Updated daily.',
             )}
           </p>
 
@@ -168,21 +169,10 @@ export default function PreciosClient() {
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer style={{ position: 'relative' }}>
-        <TopoBand variant="dark" position="band" />
-        <div className="logo">MAPE LEGAL</div>
-        <div className="copy">
-          © 2026 MAPE LEGAL —{' '}
-          {t('Todos los derechos reservados.', 'All rights reserved.')}{' '}
-          {t('Tegucigalpa, Honduras.', 'Tegucigalpa, Honduras.')}
-        </div>
-        <div className="links">
-          <Link href="/">{t('Inicio', 'Home')}</Link>
-          <Link href="/verificar">{t('Verificar certificado', 'Verify certificate')}</Link>
-          <a href="mailto:gerencia@mape.legal">{t('Contacto', 'Contact')}</a>
-        </div>
-      </footer>
+      {/* FOOTER — el compartido: la página que publica el precio de compra
+          debe llevar las notas legales (registro de comercializador, nota
+          del Certificado de Origen, aviso de plataforma). ES-only. */}
+      <SiteFooter />
 
       {/* María — chat widget */}
       <MariaWidget lang={lang} />

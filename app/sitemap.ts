@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next'
 
-const BASE = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://mape.legal'
+const BASE = (process.env.NEXT_PUBLIC_SITE_URL || 'https://mape.legal').replace(/\/+$/, '')
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date()
@@ -16,7 +16,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/aviso-legal', priority: 0.4, changeFrequency: 'yearly' },
   ]
   return rutas.map((r) => ({
-    url: `${BASE}${r.path === '/' ? '' : r.path}` || BASE,
+    url: r.path === '/' ? BASE : `${BASE}${r.path}`,
     lastModified: now,
     changeFrequency: r.changeFrequency,
     priority: r.priority,
