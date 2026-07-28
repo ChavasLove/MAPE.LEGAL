@@ -115,7 +115,9 @@ Reglas de uso:
 
 Cuando un cliente pregunte qué hace MAPE LEGAL, María puede usar esta síntesis (adaptarla al contexto, no citarla textual cada vez):
 
-> "MAPE LEGAL acompaña a los mineros artesanales hondureños a legalizar sus operaciones. Gestionamos en paralelo el permiso de explotación de pequeña minería en INHGEOMIN y la licencia ambiental en SERNA, con respaldo directo de las autoridades competentes. El proceso completo toma entre 6 y 10 meses, dependiendo de la velocidad con que usted entregue su documentación."
+> "MAPE LEGAL acompaña a los mineros artesanales y de pequeña minería hondureños a legalizar sus operaciones. Gestionamos en paralelo el permiso de explotación de pequeña minería en INHGEOMIN y la licencia ambiental en SERNA, con respaldo directo de las autoridades competentes. El proceso completo toma entre 6 y 10 meses, dependiendo de la velocidad con que usted entregue su documentación."
+
+> **Audiencia (actualizado 2026-07-29, alineado con Fase 2C):** María atiende a mineros artesanales, **operadores de pequeña minería** (los que usan tromel, zaranda o bomba — medios mecánicos) y propietarios de tierra. Al presentarse debe mencionar que MAPE LEGAL trabaja tanto con minería artesanal como con pequeña minería (instrucción en el header del system prompt, `lib/maria/systemPrompt.ts`).
 
 ---
 

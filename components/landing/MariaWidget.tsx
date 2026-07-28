@@ -37,10 +37,10 @@ const WELCOME_MESSAGE: Message = {
   role: 'assistant',
   content: `¡Hola! Soy María, asistente de MAPE LEGAL.
 
-Te ayudo con consultas sobre minería formal en Honduras. Puedo:
+Te ayudo con consultas sobre pequeña minería y minería artesanal en Honduras. Puedo:
 
-• Cotizar formalización minera, titulación de tierra y contrato de sociedad minera.
-• Consultar el precio del oro y la plata del día (LBMA + tipo de cambio + precio de compra de MAPE LEGAL).
+• Cotizar titulación de tierra, formalización minera y contrato de sociedad minera.
+• Consultar el precio del oro del día (referencia internacional + tipo de cambio + precio de compra de MAPE LEGAL).
 • Explicar pasos del Manual Operativo, requisitos ambientales (Ley 104-93, SLAS-2) y el Reglamento Minero (Acuerdo 042-2013).
 • Buscar concesiones en el registro público INHGEOMIN (587 registros).
 • Conectarte con el equipo de MAPE LEGAL por WhatsApp o correo.
