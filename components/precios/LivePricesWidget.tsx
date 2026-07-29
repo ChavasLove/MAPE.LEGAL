@@ -312,16 +312,19 @@ export default function LivePricesWidget({ lang }: Props) {
               eyebrow={t('Oro LBMA', 'LBMA gold')}
               value={data?.oro_usd_oz != null ? `$${fmtNum(data.oro_usd_oz)}` : '—'}
               unit={t('USD / onza troy', 'USD / troy oz')}
+              detail={t('Diario · 8:00 a.m.', 'Daily · 8:00 a.m.')}
             />
             <MetricCard
               eyebrow={t('Oro en Lempiras', 'Gold in Lempiras')}
               value={data?.oro_lps_oz != null ? `L ${fmtNum(data.oro_lps_oz, 0)}` : '—'}
               unit={t('LPS / onza troy', 'LPS / troy oz')}
+              detail={t('Oro × tipo de cambio', 'Gold × exchange rate')}
             />
             <MetricCard
               eyebrow={t('Tipo de cambio', 'Exchange rate')}
               value={data?.usd_hnl != null ? `L ${fmtNum(data.usd_hnl, 4)}` : '—'}
               unit={t('por USD', 'per USD')}
+              detail={t('Diario · 8:00 a.m.', 'Daily · 8:00 a.m.')}
             />
             <MetricCard
               eyebrow={t('Diésel Honduras', 'Honduras diesel')}
@@ -334,52 +337,113 @@ export default function LivePricesWidget({ lang }: Props) {
               detail={
                 data?.diesel != null
                   ? t(
-                      `Vigente ${fmtDate(data.diesel.vigente_desde, 'es')} · ${data.diesel.zona}`,
-                      `From ${fmtDate(data.diesel.vigente_desde, 'en')} · ${data.diesel.zona}`,
+                      `SEN · semanal · vigente ${fmtDate(data.diesel.vigente_desde, 'es')} · ${data.diesel.zona}`,
+                      `SEN · weekly · from ${fmtDate(data.diesel.vigente_desde, 'en')} · ${data.diesel.zona}`,
                     )
-                  : undefined
+                  : t('SEN · semanal', 'SEN · weekly')
               }
             />
           </div>
 
-          {/* Meta */}
+          {/* Fuentes y actualización — per-indicator provenance. Each number on
+              this page states where it comes from and how often it changes, so
+              a miner or buyer can verify it instead of trusting it blindly. */}
           <div
             style={{
               marginTop: 18,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 6,
-              fontFamily: 'var(--font-mono)',
-              fontSize: 11,
-              lineHeight: 1.5,
-              color: 'var(--t3)',
+              background: 'var(--bg)',
+              border: '1px solid var(--border)',
+              borderRadius: 12,
+              boxShadow: SHADOW_SM,
+              padding: 'clamp(16px, 3vw, 22px)',
             }}
           >
-            {(data?.actualizado_hn || data?.consultado_hn) && (
-              <span>
-                {t('Precio capturado:', 'Price captured:')}{' '}
-                {data?.actualizado_hn ?? data?.consultado_hn} {t('(Honduras)', '(Honduras)')}
-                {data?.fuente ? ` · ${t('Fuente', 'Source')}: ${data.fuente}` : ''}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                justifyContent: 'space-between',
+                gap: 12,
+                flexWrap: 'wrap',
+                marginBottom: 14,
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  letterSpacing: '0.14em',
+                  textTransform: 'uppercase',
+                  color: 'var(--slate)',
+                }}
+              >
+                {t('Fuentes y actualización', 'Sources & update schedule')}
               </span>
-            )}
-            <span>
-              {t(
-                'El precio del oro se actualiza una vez al día, a las 8:00 a.m. (Honduras), y se mantiene fijo durante el día para su verificación.',
-                'The gold price updates once a day, at 8:00 a.m. (Honduras), and stays fixed through the day for verification.',
+              {(data?.actualizado_hn || data?.consultado_hn) && (
+                <span
+                  style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--t3)' }}
+                >
+                  {t('Última captura:', 'Last capture:')}{' '}
+                  {data?.actualizado_hn ?? data?.consultado_hn} {t('(Honduras)', '(Honduras)')}
+                </span>
               )}
-            </span>
-            <span>
-              {t(
-                'Oro: precio internacional de referencia (LBMA). Los mercados cierran los fines de semana; el valor se actualiza el lunes.',
-                'Gold: international reference price (LBMA). Markets close on weekends; values update Monday.',
-              )}
-            </span>
-            <span>
-              {t(
-                'Diésel y combustibles: precio oficial de la Secretaría de Energía (SEN), fijado semanalmente.',
-                'Diesel and fuels: official Secretaría de Energía (SEN) price, set weekly.',
-              )}
-            </span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <SourceRow
+                label={t('Compra de oro MAPE LEGAL (L/gramo)', 'MAPE LEGAL gold purchase (L/gram)')}
+                fuente={t(
+                  'Cálculo verificable: 80% del precio internacional del oro, convertido a Lempiras por gramo (1 onza troy = 31.1035 g).',
+                  'Verifiable calculation: 80% of the international gold price, converted to Lempiras per gram (1 troy oz = 31.1035 g).',
+                )}
+                frecuencia={t(
+                  'Se fija una vez al día, a las 8:00 a.m. (Honduras), y no cambia durante el día.',
+                  'Set once a day at 8:00 a.m. (Honduras); it does not change during the day.',
+                )}
+              />
+              <SourceRow
+                label={t('Oro internacional (USD/onza troy)', 'International gold (USD/troy oz)')}
+                fuente={
+                  t(
+                    'Precio internacional de referencia (LBMA).',
+                    'International reference price (LBMA).',
+                  ) + (data?.fuente ? ` ${t('Feed técnico', 'Technical feed')}: ${data.fuente}.` : '')
+                }
+                frecuencia={t(
+                  'Captura diaria a las 8:00 a.m. (Honduras). Los mercados cierran los fines de semana: sábado y domingo se conserva el cierre del viernes.',
+                  'Captured daily at 8:00 a.m. (Honduras). Markets close on weekends: Saturday and Sunday keep Friday’s close.',
+                )}
+              />
+              <SourceRow
+                label={t('Tipo de cambio USD/LPS', 'USD/LPS exchange rate')}
+                fuente={t(
+                  'Tipo de cambio de referencia (BCH).',
+                  'Reference exchange rate (BCH).',
+                )}
+                frecuencia={t(
+                  'Captura diaria a las 8:00 a.m. (Honduras).',
+                  'Captured daily at 8:00 a.m. (Honduras).',
+                )}
+              />
+              <SourceRow
+                label={t('Diésel y combustibles (L/galón)', 'Diesel & fuels (L/gallon)')}
+                fuente={t(
+                  'Precio oficial de la Secretaría de Energía (SEN) de Honduras.',
+                  'Official price from Honduras’ Secretaría de Energía (SEN).',
+                )}
+                frecuencia={
+                  t(
+                    'Fijado semanalmente por decreto; entra en vigor cada lunes.',
+                    'Set weekly by decree; takes effect every Monday.',
+                  ) +
+                  (data?.diesel != null
+                    ? ` ${t('Vigente desde el', 'In effect since')} ${fmtDate(data.diesel.vigente_desde, lang)}.`
+                    : '')
+                }
+                last
+              />
+            </div>
           </div>
         </>
       )}
@@ -443,6 +507,49 @@ function MetricCard({
           {detail}
         </div>
       )}
+    </div>
+  );
+}
+
+// One provenance row of the "Fuentes y actualización" block: indicator name,
+// where the number comes from, and how often it changes.
+function SourceRow({
+  label,
+  fuente,
+  frecuencia,
+  last,
+}: {
+  label: string;
+  fuente: string;
+  frecuencia: string;
+  last?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        padding: '12px 0',
+        borderBottom: last ? 'none' : '1px solid var(--border)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 4,
+      }}
+    >
+      <span
+        style={{
+          fontFamily: 'var(--font-body)',
+          fontSize: 14,
+          fontWeight: 600,
+          color: 'var(--ink)',
+        }}
+      >
+        {label}
+      </span>
+      <span style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--t2)', fontFamily: 'var(--font-body)' }}>
+        {fuente}
+      </span>
+      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, lineHeight: 1.5, color: 'var(--t3)' }}>
+        {frecuencia}
+      </span>
     </div>
   );
 }
