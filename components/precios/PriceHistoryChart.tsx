@@ -112,6 +112,21 @@ function parseFecha(fecha: string): Date {
   return new Date(`${fecha}T00:00:00`);
 }
 
+// Axis tick dates are built by hand, not via toLocaleDateString: engines
+// disagree on the short form (iOS Safari renders es-HN as "29 de jul de 26",
+// ~2× wider than "29 jul 26"), and tick layout needs a predictable width.
+const TICK_MONTHS: Record<Lang, string[]> = {
+  es: ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'],
+  en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+};
+
+function fmtTickDate(fecha: string, lang: Lang, withYear: boolean): string {
+  const d = parseFecha(fecha);
+  if (Number.isNaN(d.getTime())) return fecha;
+  const base = `${String(d.getDate()).padStart(2, '0')} ${TICK_MONTHS[lang][d.getMonth()]}`;
+  return withYear ? `${base} ${String(d.getFullYear() % 100).padStart(2, '0')}` : base;
+}
+
 function fmtDateShort(fecha: string, lang: Lang, withYear: boolean): string {
   const d = parseFecha(fecha);
   if (Number.isNaN(d.getTime())) return fecha;
@@ -236,6 +251,8 @@ export default function PriceHistoryChart({ lang }: Props) {
     return withValue.filter((p) => parseFecha(p.fecha).getTime() >= cutoff);
   }, [points, metric, range]);
 
+  const withYear = range.days > 180 || !Number.isFinite(range.days);
+
   const geom = useMemo(() => {
     if (slice.length < 2 || chartWidth < 120) return null;
     const values = slice.map((p) => metric.value(p) as number);
@@ -257,14 +274,46 @@ export default function PriceHistoryChart({ lang }: Props) {
     const linePath = px.map((pt, i) => `${i === 0 ? 'M' : 'L'}${pt.cx.toFixed(1)},${pt.cy.toFixed(1)}`).join('');
     const baseline = PAD.top + innerH;
     const areaPath = `${linePath}L${px[px.length - 1].cx.toFixed(1)},${baseline}L${px[0].cx.toFixed(1)},${baseline}Z`;
-    // ~4 x labels, evenly spread across the data indices.
-    const labelCount = Math.min(4, slice.length);
-    const xLabels = Array.from({ length: labelCount }, (_, k) => {
-      const idx = Math.round((k * (slice.length - 1)) / Math.max(labelCount - 1, 1));
-      return { idx, cx: px[idx].cx };
-    });
+    // X labels — chosen by PIXEL position, not index. The record is sparse and
+    // unevenly spaced in time (a dense stretch, then gaps), so spreading label
+    // *indices* evenly bunches several labels onto nearly the same x when their
+    // points cluster in time — they render on top of each other. Instead: aim
+    // at evenly spaced pixel targets, snap each to the nearest data point, and
+    // drop any middle label that would collide with an already-kept one. The
+    // count also adapts to the plot width so narrow phones get 2 labels, not 4.
+    const labelW = withYear ? 66 : 44; // "29 jul 26" / "29 jul" at 10px mono
+    const labelCount = Math.max(2, Math.min(5, Math.floor(innerW / (labelW * 1.5 + 8)) + 1));
+    const firstPt = px[0];
+    const lastPt = px[px.length - 1];
+    let xLabels: Array<{ idx: number; cx: number }> = [{ idx: 0, cx: firstPt.cx }];
+    for (let k = 1; k < labelCount - 1; k++) {
+      const targetX = firstPt.cx + (k * (lastPt.cx - firstPt.cx)) / (labelCount - 1);
+      let bestI = 0;
+      let bestD = Infinity;
+      for (const pt of px) {
+        const d = Math.abs(pt.cx - targetX);
+        if (d < bestD) {
+          bestD = d;
+          bestI = pt.i;
+        }
+      }
+      if (bestI === 0 || bestI === px.length - 1) continue;
+      const cand = px[bestI];
+      const prev = xLabels[xLabels.length - 1];
+      // The first label is start-anchored (extends right ~labelW); middles are
+      // centered (±labelW/2); the last is end-anchored (extends left ~labelW).
+      const prevRightEdge = prev.idx === 0 ? prev.cx + labelW : prev.cx + labelW / 2;
+      const fitsPrev = cand.cx - labelW / 2 >= prevRightEdge + 8;
+      const fitsLast = cand.cx + labelW / 2 <= lastPt.cx - labelW - 8;
+      if (fitsPrev && fitsLast) xLabels.push({ idx: bestI, cx: cand.cx });
+    }
+    xLabels.push({ idx: slice.length - 1, cx: lastPt.cx });
+    // Ultra-narrow guard: if even the two endpoint labels collide, keep the end.
+    if (xLabels.length === 2 && xLabels[1].cx - xLabels[0].cx < labelW * 2 + 8) {
+      xLabels = [xLabels[1]];
+    }
     return { ticks, step, px, linePath, areaPath, baseline, xLabels };
-  }, [slice, metric, chartWidth]);
+  }, [slice, metric, chartWidth, withYear]);
 
   const stats = useMemo(() => {
     if (slice.length < 2) return null;
@@ -275,8 +324,6 @@ export default function PriceHistoryChart({ lang }: Props) {
     const pct = first !== 0 ? (delta / first) * 100 : 0;
     return { delta, pct, min: Math.min(...values), max: Math.max(...values) };
   }, [slice, metric]);
-
-  const withYear = range.days > 180 || !Number.isFinite(range.days);
 
   // Crosshair: snap the pointer to the nearest data x.
   const handlePointer = useCallback(
@@ -331,7 +378,7 @@ export default function PriceHistoryChart({ lang }: Props) {
       ? {
           position: 'absolute',
           top: Math.max(activeGeom.cy - 64, 4),
-          left: Math.min(Math.max(activeGeom.cx + 12, 8), chartWidth - 168),
+          left: Math.max(Math.min(Math.max(activeGeom.cx + 12, 8), chartWidth - 168), 4),
           pointerEvents: 'none',
           zIndex: 2,
         }
@@ -591,7 +638,7 @@ export default function PriceHistoryChart({ lang }: Props) {
                     textAnchor={idx === 0 ? 'start' : idx === slice.length - 1 ? 'end' : 'middle'}
                     style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--t3)' }}
                   >
-                    {fmtDateShort(slice[idx].fecha, lang, withYear)}
+                    {fmtTickDate(slice[idx].fecha, lang, withYear)}
                   </text>
                 ))}
 
