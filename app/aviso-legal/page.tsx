@@ -15,7 +15,6 @@ import {
   LIBERTAD_VENTA,
   POLITICA_PRECIO,
   RAZON_SOCIAL,
-  REGISTRO_COMERCIALIZADOR,
 } from '@/lib/content/copy-legal'
 
 export const metadata: Metadata = {
@@ -39,7 +38,6 @@ const BODY: React.CSSProperties = { fontSize: 15, color: 'var(--t2)', lineHeight
 
 const NOTAS: Array<{ titulo: string; texto: string }> = [
   { titulo: 'Certificado de Origen', texto: CERTIFICADO_ORIGEN_NOTA },
-  { titulo: 'Registro de Comercializador', texto: REGISTRO_COMERCIALIZADOR },
   { titulo: 'Condición de compra', texto: CONDICION_COMPRA },
   { titulo: 'Política de precio', texto: POLITICA_PRECIO },
   { titulo: 'Libertad de venta', texto: LIBERTAD_VENTA },

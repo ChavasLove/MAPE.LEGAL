@@ -29,7 +29,7 @@ interface FuelLine {
   fuente: string;
 }
 
-interface LivePrices {
+export interface LivePrices {
   fecha: string;
   fetched_at: string | null;
   fuente: string | null;
@@ -50,6 +50,9 @@ const SHADOW_SM = '0 2px 6px rgba(31,42,56,0.05)';
 
 interface Props {
   lang: 'es' | 'en';
+  // Bubbles each successful snapshot up to the parent so the page can feed the
+  // relocated "Fuentes y actualización" panel without a second fetch/poll.
+  onData?: (data: LivePrices) => void;
 }
 
 function fmtNum(n: number | null | undefined, decimals = 2): string {
@@ -71,7 +74,7 @@ function fmtDate(iso: string, lang: 'es' | 'en'): string {
   });
 }
 
-export default function LivePricesWidget({ lang }: Props) {
+export default function LivePricesWidget({ lang, onData }: Props) {
   const t = useCallback(
     (es: string, en: string) => (lang === 'es' ? es : en),
     [lang],
@@ -84,6 +87,14 @@ export default function LivePricesWidget({ lang }: Props) {
 
   const mountedRef = useRef(true);
   const ctrlRef = useRef<AbortController | null>(null);
+
+  // Ref keeps `load` stable even if the parent passes an inline callback —
+  // otherwise a new onData identity each render would re-arm the mount/poll
+  // effects and refetch in a loop.
+  const onDataRef = useRef<Props['onData']>(undefined);
+  useEffect(() => {
+    onDataRef.current = onData;
+  }, [onData]);
 
   const load = useCallback(async () => {
     ctrlRef.current?.abort();
@@ -100,6 +111,7 @@ export default function LivePricesWidget({ lang }: Props) {
       if (!mountedRef.current) return;
       setData(json);
       setError(false);
+      onDataRef.current?.(json);
     } catch {
       if (!mountedRef.current) return;
       // Flag the error. The render keeps any previously loaded snapshot visible
@@ -352,51 +364,68 @@ export default function LivePricesWidget({ lang }: Props) {
               }
             />
           </div>
+        </>
+      )}
+    </div>
+  );
+}
 
-          {/* Fuentes y actualización — per-indicator provenance. Each number on
-              this page states where it comes from and how often it changes, so
-              a miner or buyer can verify it instead of trusting it blindly. */}
-          <div
-            style={{
-              marginTop: 18,
-              background: 'var(--bg)',
-              border: '1px solid var(--border)',
-              borderRadius: 12,
-              boxShadow: SHADOW_SM,
-              padding: 'clamp(16px, 3vw, 22px)',
-            }}
+// Fuentes y actualización — per-indicator provenance. Each number on the page
+// states where it comes from and how often it changes, so a miner or buyer can
+// verify it instead of trusting it blindly. Rendered by the page at the bottom
+// (below chart and CTA); receives the snapshot bubbled up via the widget's
+// onData so it never fetches on its own. With `data` still null it renders the
+// static provenance text without timestamps.
+export function PriceSourcesPanel({
+  lang,
+  data,
+}: {
+  lang: 'es' | 'en';
+  data: LivePrices | null;
+}) {
+  const t = (es: string, en: string) => (lang === 'es' ? es : en);
+
+  return (
+    <div
+      style={{
+        background: 'var(--bg)',
+        border: '1px solid var(--border)',
+        borderRadius: 12,
+        boxShadow: SHADOW_SM,
+        padding: 'clamp(16px, 3vw, 22px)',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          gap: 12,
+          flexWrap: 'wrap',
+          marginBottom: 14,
+        }}
+      >
+        <span
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            color: 'var(--slate)',
+          }}
+        >
+          {t('Fuentes y actualización', 'Sources & update schedule')}
+        </span>
+        {(data?.actualizado_hn || data?.consultado_hn) && (
+          <span
+            style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--t3)' }}
           >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'baseline',
-                justifyContent: 'space-between',
-                gap: 12,
-                flexWrap: 'wrap',
-                marginBottom: 14,
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  letterSpacing: '0.14em',
-                  textTransform: 'uppercase',
-                  color: 'var(--slate)',
-                }}
-              >
-                {t('Fuentes y actualización', 'Sources & update schedule')}
-              </span>
-              {(data?.actualizado_hn || data?.consultado_hn) && (
-                <span
-                  style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--t3)' }}
-                >
-                  {t('Última captura:', 'Last capture:')}{' '}
-                  {data?.actualizado_hn ?? data?.consultado_hn} {t('(Honduras)', '(Honduras)')}
-                </span>
-              )}
-            </div>
+            {t('Última captura:', 'Last capture:')}{' '}
+            {data?.actualizado_hn ?? data?.consultado_hn} {t('(Honduras)', '(Honduras)')}
+          </span>
+        )}
+      </div>
 
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <SourceRow
@@ -454,10 +483,7 @@ export default function LivePricesWidget({ lang }: Props) {
                 }
                 last
               />
-            </div>
-          </div>
-        </>
-      )}
+      </div>
     </div>
   );
 }
