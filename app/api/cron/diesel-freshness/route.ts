@@ -74,9 +74,18 @@ export async function GET(req: NextRequest) {
       .maybeSingle();
 
     if (error) {
-      // Table missing (migration 028 not applied) lands here too — that IS a
-      // staleness condition worth alerting on, not a silent skip.
       console.error('[diesel-freshness] read failed:', error);
+      // 42P01 undefined_table = migration 028 not applied — that IS a staleness
+      // condition worth alerting on (fall through with row=null → sin_registro).
+      // Any other read error is likely a transient DB blip: emailing "sin
+      // registro" would be a false alarm, so report the failure and let
+      // tomorrow's tick retry instead.
+      if ((error as { code?: string }).code !== '42P01') {
+        return NextResponse.json(
+          { ok: false, error: 'Error al leer precios_combustibles' },
+          { status: 500 },
+        );
+      }
     }
 
     const row = (data ?? null) as DieselRow | null;
