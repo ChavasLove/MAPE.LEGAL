@@ -46,7 +46,12 @@ export const CERTIFICADO_ORIGEN_NOTA_BREVE =
   'autentica y avala la Autoridad Minera o Municipal (Art. 35, Regl. ' +
   'Especial MAPE). MAPE.LEGAL no es autoridad emisora.'
 
-/** OBLIGATORIA — registro de comercializador de CHT. */
+/**
+ * RETIRADA de todas las superficies públicas (2026-07-29, recomendación del
+ * abogado): la formulación afirma en presente la inscripción ante INHGEOMIN y
+ * la declaración trimestral, hechos aún no verificados. No renderizar hasta
+ * contar con verificación factual y aprobación legal expresa.
+ */
 export const REGISTRO_COMERCIALIZADOR =
   `${RAZON_SOCIAL} opera con Registro de Comercializador ante INHGEOMIN ` +
   'y presenta declaración trimestral de volúmenes (Art. 37, Ley General ' +

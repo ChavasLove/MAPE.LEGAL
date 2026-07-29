@@ -7,7 +7,6 @@ import {
   RAZON_SOCIAL,
   AVISO_PLATAFORMA,
   DOMICILIO_LINES,
-  REGISTRO_COMERCIALIZADOR,
   CERTIFICADO_ORIGEN_NOTA_BREVE,
 } from '@/lib/content/copy-legal'
 
@@ -58,9 +57,6 @@ export default function SiteFooter() {
           >
             Notas legales
           </div>
-          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6 }}>
-            {REGISTRO_COMERCIALIZADOR}
-          </p>
           <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6 }}>
             {CERTIFICADO_ORIGEN_NOTA_BREVE}{' '}
             <Link href="/aviso-legal" style={{ color: 'var(--sand)', fontSize: 12 }}>
