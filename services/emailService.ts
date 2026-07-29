@@ -425,3 +425,57 @@ export function emailInvitacionUsuario(
     `),
   });
 }
+
+export type DieselStaleMotivo = 'sin_registro' | 'oculto' | 'desactualizado';
+
+/**
+ * Recordatorio interno: el precio del diésel publicado en /precios no
+ * corresponde a la estructura SEN de la semana en curso. Lo dispara el cron
+ * diario /api/cron/diesel-freshness — se repite cada día hasta que el operador
+ * actualice el valor en /admin/precios.
+ */
+export function emailDieselDesactualizado(
+  motivo: DieselStaleMotivo,
+  vigenteDesde: string | null,
+  lunesSemana: string
+): Promise<void> {
+  const detalle =
+    motivo === 'sin_registro'
+      ? 'No existe registro de diésel en <strong>precios_combustibles</strong> (¿migración 028 aplicada? ¿fila borrada?).'
+      : motivo === 'oculto'
+        ? 'El registro de diésel existe pero está marcado como <strong>no visible al público</strong> — el sitio muestra "—".'
+        : `El precio vigente es del <strong>${esc(vigenteDesde ?? '—')}</strong>, pero la estructura SEN de esta semana entró en vigor el lunes <strong>${esc(lunesSemana)}</strong>.`;
+
+  return sendEmail({
+    to:      'gerencia@mape.legal',
+    subject: 'Recordatorio — actualizar el precio del diésel en mape.legal',
+    html: emailShell(`
+      <p style="margin:0 0 6px;color:#5E6B7B;font-size:12px;text-transform:uppercase;letter-spacing:1px;font-weight:600">
+        Verificación diaria de precios
+      </p>
+      <h2 style="margin:0 0 24px;color:#1F2A38;font-size:20px">El precio del diésel necesita actualizarse</h2>
+
+      <p style="margin:0 0 16px;color:#5E6B7B;font-size:15px;line-height:1.6">
+        ${detalle}
+      </p>
+      <p style="margin:0 0 28px;color:#5E6B7B;font-size:15px;line-height:1.6">
+        La SEN publica la nueva estructura cada lunes (6:00 a.m.). Mientras no se
+        actualice, la página pública de precios muestra un valor con fecha de
+        vigencia vencida. Este recordatorio se repetirá a diario hasta que el
+        valor quede al día.
+      </p>
+
+      <div style="text-align:center;margin-bottom:28px">
+        <a href="https://www.mape.legal/admin/precios"
+           style="display:inline-block;background:#1F2A38;color:#ffffff;text-decoration:none;
+                  font-size:15px;font-weight:700;padding:14px 32px;border-radius:8px">
+          Actualizar en /admin/precios →
+        </a>
+      </div>
+
+      <p style="margin:0;color:#A3A8AB;font-size:13px">
+        Fuente oficial: Secretaría de Energía (SEN) — estructura semanal de precios de combustibles.
+      </p>
+    `),
+  });
+}
