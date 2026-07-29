@@ -57,11 +57,20 @@ export const CONDICION_COMPRA =
   'CHT compra únicamente a titulares de derecho minero vigente, con ' +
   'Certificado de Origen válido por transacción.'
 
-/** OBLIGATORIA — política de precio publicada. */
+/**
+ * OBLIGATORIA — política de precio publicada.
+ *
+ * Reformulada por el encargo "Precio de Referencia" (2026-07-29): se retira
+ * la expresión del precio como porcentaje congelado ("80%") — el factor de
+ * comercialización vive ahora en la Política de Precios versionada, con
+ * cláusula de revisión — y se califica el gramo como oro fino (R5).
+ */
 export const POLITICA_PRECIO =
-  'Un solo precio publicado: 80% de la referencia LBMA, convertido al ' +
-  'tipo de cambio oficial del BCH, actualizado diariamente. Sin ' +
-  'comisiones adicionales sobre la misma onza.'
+  'Un solo precio de referencia publicado, expresado en lempiras por ' +
+  'gramo de oro fino, fijado una vez al día con fórmula verificable: ' +
+  'referencia LBMA, tipo de cambio del BCH y factor de comercialización ' +
+  'conforme a la Política de Precios vigente. Sin comisiones adicionales ' +
+  'sobre la misma onza.'
 
 /**
  * OBLIGATORIA — encuadre de acceso a mercados. La exigencia proviene del
@@ -202,6 +211,78 @@ export const CITAS_LEGALES = {
 } as const satisfies Record<string, CitaLegal>
 
 export type CitaLegalKey = keyof typeof CITAS_LEGALES
+
+/* ── Precio de Referencia (/precio y /politica-de-precios) ──────────── */
+/*
+ * Bloques del encargo "Precio de Referencia" (2026-07-29). Los marcados
+ * TEXTO LEGAL — LITERAL se transcriben carácter por carácter del script de
+ * ejecución: prohibido parafrasear, resumir o traducir sin revisión legal.
+ */
+
+/** Fórmula publicada del Precio de Referencia (Bloque 2 de /precio). */
+export const PRECIO_REF_FORMULA =
+  'Precio (L/gramo de oro fino) = ( Referencia LBMA en USD por onza troy ' +
+  '÷ 31.1035 ) × Factor de comercialización × Tipo de cambio de ' +
+  'referencia del BCH'
+
+/** Etiqueta del factor de comercialización en el Bloque 2 de /precio. */
+export function factorVigenteNota(version: string): string {
+  return (
+    `Factor de comercialización vigente conforme a la Política de Precios ` +
+    `v${version}. Sujeto a revisión según la cláusula 4 de dicha política.`
+  )
+}
+
+/** TEXTO LEGAL — LITERAL. Bloque 3 de /precio: aplicación sobre oro fino. */
+export const PRECIO_REF_APLICACION_ORO_FINO =
+  'El precio se aplica sobre el contenido de oro fino, no sobre el peso ' +
+  'bruto del material entregado. La ley del material se determina ' +
+  'mediante el método declarado en la Política de Precios vigente, ' +
+  'practicado en presencia del vendedor o de su representante. El ' +
+  'vendedor tiene derecho a solicitar contramuestra y a que ésta sea ' +
+  'analizada por un tercero, conforme al procedimiento establecido en ' +
+  'dicha política.'
+
+/** TEXTO LEGAL — LITERAL. Bloque 4 de /precio: título de requisitos. */
+export const PRECIO_REF_REQUISITOS_TITULO =
+  'Requisitos para vender mineral a Corporación Hondureña Tenka, S.A.'
+
+/** TEXTO LEGAL — LITERAL. Bloque 4 de /precio: los tres requisitos, en orden. */
+export const PRECIO_REF_REQUISITOS_ITEMS = [
+  'Registro de Comercializador vigente, extendido por INHGEOMIN a nombre ' +
+    'del vendedor.',
+  'Certificado de Origen válido correspondiente al lote ofrecido.',
+  'Identificación de la mina o cantera de procedencia del mineral.',
+] as const
+
+/** TEXTO LEGAL — LITERAL. Bloque 4 de /precio: cierre (Art. 38). */
+export const PRECIO_REF_REQUISITOS_CIERRE =
+  'El comprador está obligado a verificar el origen de las sustancias ' +
+  'minerales, conforme al Artículo 38 de la Ley de Minería. Corporación ' +
+  'Hondureña Tenka, S.A. no adquiere mineral cuyo origen no pueda ' +
+  'acreditarse documentalmente.'
+
+/** TEXTO LEGAL — LITERAL. Bloque 5 de /precio: título. */
+export const PRECIO_REF_NATURALEZA_TITULO = 'Naturaleza de esta publicación'
+
+/** TEXTO LEGAL — LITERAL. Bloque 5 de /precio: naturaleza jurídica. */
+export const PRECIO_REF_NATURALEZA =
+  'Esta publicación tiene carácter informativo y no constituye oferta de ' +
+  'compra. Corporación Hondureña Tenka, S.A. no queda obligada a adquirir ' +
+  'mineral por la sola publicación de este precio de referencia. Toda ' +
+  'operación se perfecciona mediante contrato individual de compraventa, ' +
+  'previa verificación del origen del mineral y de la elegibilidad del ' +
+  'vendedor conforme a los requisitos señalados.'
+
+/** TEXTO LEGAL — LITERAL. Cláusula 4 de la Política de Precios: revisión. */
+export const PRECIO_REF_CLAUSULA_REVISION =
+  'El factor de comercialización podrá ser revisado por Corporación ' +
+  'Hondureña Tenka, S.A. cuando varíen de manera sostenida los costos de ' +
+  'ensaye, transporte, seguridad, financiamiento o las condiciones de la ' +
+  'relación con la refinería de destino. Toda revisión se publicará como ' +
+  'una nueva versión de esta política, con al menos quince (15) días ' +
+  'calendario de anticipación a su entrada en vigencia. Las versiones ' +
+  'anteriores permanecerán accesibles públicamente.'
 
 /* ── Aviso legal del sitio (/aviso-legal) ───────────────────────────── */
 

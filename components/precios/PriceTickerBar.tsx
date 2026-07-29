@@ -1,11 +1,12 @@
 'use client';
 
 // Minimalist price ticker — a thin sticky bar at the very top of the home page,
-// the first thing a visitor sees. Single line: MAPE gold buy price (L/gram),
-// international gold (USD/oz), gold in Lempiras per troy ounce, USD/LPS, and
-// Honduras diesel. Horizontally scrollable on small screens. The buy factor
-// (80%) is never shown — only the computed Lempiras amount. Data from
-// /api/precios/live (polled, hidden-guarded).
+// the first thing a visitor sees. Single line: MAPE.LEGAL reference price
+// (L/gram of fine gold), international gold (USD/oz), gold in Lempiras per troy
+// ounce, USD/LPS, and Honduras diesel. Horizontally scrollable on small
+// screens. The commercialization factor is never shown here — only the computed
+// Lempiras amount; the formula lives at /precio. Data from /api/precios/live
+// (polled, hidden-guarded).
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -87,8 +88,8 @@ export default function PriceTickerBar({ lang }: Props) {
 
   const items: Array<{ label: string; value: string; accent?: boolean }> = [
     {
-      label: t('Compra oro', 'Gold buy'),
-      value: data?.oro_compra_lps_gramo != null ? `L ${fmt(data.oro_compra_lps_gramo, 0)}/g` : '—',
+      label: t('Referencia oro', 'Gold reference'),
+      value: data?.oro_compra_lps_gramo != null ? `L ${fmt(data.oro_compra_lps_gramo, 0)}/g fino` : '—',
       accent: true,
     },
     { label: t('Oro LBMA', 'LBMA gold'), value: data?.oro_usd_oz != null ? `$${fmt(data.oro_usd_oz, 0)}/oz` : '—' },

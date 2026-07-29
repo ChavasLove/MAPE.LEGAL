@@ -47,8 +47,8 @@ type T = (es: string, en: string) => string;
 const METRICS: MetricDef[] = [
   {
     key: 'compra',
-    label: (t) => t('Compra MAPE LEGAL', 'MAPE LEGAL buy price'),
-    unit: (t) => t('L por gramo', 'L per gram'),
+    label: (t) => t('Referencia MAPE.LEGAL', 'MAPE.LEGAL reference'),
+    unit: (t) => t('L por gramo de oro fino', 'L per gram of fine gold'),
     prefix: 'L ',
     decimals: 2,
     value: (p) => p.oro_compra_lps_gramo,

@@ -11,6 +11,10 @@ export const METODO_ENSAYE = "PENDIENTE DE DEFINICIÓN";
 
 export const VERSION_POLITICA_PRECIOS = "1.0";
 
+// Fecha de entrada en vigencia de la versión actual de la Política de
+// Precios (YYYY-MM-DD). Se publica en /politica-de-precios §9.
+export const FECHA_VIGENCIA_POLITICA = "2026-07-29";
+
 // Factor de comercialización vigente conforme a la Política de Precios
 // v1.0 (0.80 = 80%). Precarga del panel de fijación diaria y dato publicado
 // en /politica-de-precios. Su revisión se rige por la cláusula 4 de la

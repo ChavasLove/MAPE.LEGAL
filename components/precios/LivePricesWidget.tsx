@@ -5,13 +5,17 @@
 // Fetches /api/precios/live on mount, then polls every 60 s (skipping the tick
 // while the tab is hidden) and refetches when the tab regains focus. Shows the
 // international gold reference price, the gold price in Lempiras per troy ounce,
-// the MAPE LEGAL gold purchase price in Lempiras/gram, the USD/LPS rate, and the
-// SEN-set Honduras diesel price.
+// the MAPE.LEGAL reference price in Lempiras per gram of fine gold, the USD/LPS
+// rate, and the SEN-set Honduras diesel price. The reference-price concept
+// (fórmula + requisitos + política versionada) lives at /precio — this card
+// links there instead of framing the number as a standing purchase offer
+// (encargo Precio de Referencia, 2026-07-29).
 //
 // Prices are numbers; chrome (labels, notes) respects the ES/EN toggle via the
 // `lang` prop. No continuous animations per DESIGN.md — the status dot is static.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { RefreshCw } from 'lucide-react';
 import { type TipoCombustible } from '@/lib/types/combustible';
 
@@ -233,7 +237,7 @@ export default function LivePricesWidget({ lang }: Props) {
         <PriceSkeleton />
       ) : (
         <>
-          {/* Primary — MAPE LEGAL gold purchase price */}
+          {/* Primary — MAPE.LEGAL reference price (L / gram of fine gold) */}
           <div
             style={{
               background: 'color-mix(in oklch, var(--moss) 7%, white)',
@@ -255,7 +259,7 @@ export default function LivePricesWidget({ lang }: Props) {
                 marginBottom: 10,
               }}
             >
-              {t('MAPE LEGAL compra oro', 'MAPE LEGAL buys gold at')}
+              {t('Precio de referencia MAPE.LEGAL', 'MAPE.LEGAL reference price')}
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
               <span
@@ -280,7 +284,7 @@ export default function LivePricesWidget({ lang }: Props) {
                     color: 'var(--slate)',
                   }}
                 >
-                  {t('por gramo', 'per gram')}
+                  {t('por gramo de oro fino', 'per gram of fine gold')}
                 </span>
               )}
             </div>
@@ -294,9 +298,12 @@ export default function LivePricesWidget({ lang }: Props) {
               }}
             >
               {t(
-                'Precio de compra en Lempiras. Pago en su cuenta de cooperativa financiera aliada.',
-                'Purchase price in Lempiras. Paid to your account at an allied financial cooperative.',
+                'Aplica sobre el contenido de oro fino, no sobre el peso bruto del material. ',
+                'Applies to the fine gold content, not the gross weight of the material. ',
               )}
+              <Link href="/precio" style={{ color: 'var(--moss)', fontWeight: 600, textDecoration: 'none' }}>
+                {t('Fórmula y requisitos para vender →', 'Formula and selling requirements →')}
+              </Link>
             </p>
           </div>
 
@@ -392,10 +399,13 @@ export default function LivePricesWidget({ lang }: Props) {
 
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <SourceRow
-                label={t('Compra de oro MAPE LEGAL (L/gramo)', 'MAPE LEGAL gold purchase (L/gram)')}
+                label={t(
+                  'Precio de referencia MAPE.LEGAL (L/gramo de oro fino)',
+                  'MAPE.LEGAL reference price (L/gram of fine gold)',
+                )}
                 fuente={t(
-                  'Cálculo verificable: 80% del precio internacional del oro, convertido a Lempiras por gramo (1 onza troy = 31.1035 g).',
-                  'Verifiable calculation: 80% of the international gold price, converted to Lempiras per gram (1 troy oz = 31.1035 g).',
+                  'Cálculo verificable conforme a la Política de Precios v1.0: referencia internacional del oro ÷ 31.1035, por el factor de comercialización vigente y el tipo de cambio.',
+                  'Verifiable calculation per Pricing Policy v1.0: international gold reference ÷ 31.1035, times the current commercialization factor and the exchange rate.',
                 )}
                 frecuencia={t(
                   'Se fija una vez al día, a las 8:00 a.m. (Honduras), y no cambia durante el día.',

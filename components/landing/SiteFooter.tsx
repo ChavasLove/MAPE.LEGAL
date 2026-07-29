@@ -16,6 +16,8 @@ const FOOTER_LINKS: Array<{ href: string; label: string }> = [
   { href: '/comercializacion', label: 'Comercialización' },
   { href: '/mercados', label: 'Mercados' },
   { href: '/verificar', label: 'Verificar certificado' },
+  { href: '/precio', label: 'Precio de referencia' },
+  { href: '/politica-de-precios', label: 'Política de precios' },
   { href: '/precios', label: 'Precios del día' },
   { href: '/equipos', label: 'Equipos' },
   { href: '/registro', label: 'Registro INHGEOMIN' },

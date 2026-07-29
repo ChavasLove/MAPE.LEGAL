@@ -124,9 +124,10 @@ export default function ComercializacionPage() {
               </li>
             </ul>
             <p style={BODY}>
-              El precio del día se publica en{' '}
-              <Link href="/precios" style={{ color: 'var(--moss)', fontWeight: 600, textDecoration: 'none' }}>
-                mape.legal/precios
+              El precio de referencia del día, su fórmula y la política que lo rige se publican
+              en{' '}
+              <Link href="/precio" style={{ color: 'var(--moss)', fontWeight: 600, textDecoration: 'none' }}>
+                mape.legal/precio
               </Link>
               .
             </p>

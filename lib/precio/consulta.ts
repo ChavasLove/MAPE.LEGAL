@@ -32,8 +32,10 @@ export const PRECIO_REFERENCIA_COLS =
   'estado, reemplaza_a, motivo_reemplazo, created_at';
 
 // PostgREST serializa numeric como string — coaccionar a Number (misma
-// convención que combustiblesService.normalize()).
-export function normalizePrecioRow(row: Record<string, unknown>): PrecioReferenciaRow {
+// convención que combustiblesService.normalize()). Recibe unknown porque el
+// select concatenado impide que postgrest-js infiera la forma de la fila.
+export function normalizePrecioRow(input: unknown): PrecioReferenciaRow {
+  const row = input as Record<string, unknown>;
   const num = (v: unknown) => Number(v);
   return {
     id: String(row.id),
