@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Image from 'next/image';
-import { LayoutDashboard, FolderOpen, MessageSquare, Users, Mountain, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, MessageSquare, Users, Mountain, Banknote, Settings, LogOut } from 'lucide-react';
 import { getServerAuth, DASHBOARD_ROLES } from '@/lib/serverAuth';
 import SidebarNav from '@/components/dashboard/SidebarNav';
 
@@ -24,6 +24,7 @@ const navItems = [
 ];
 
 const adminItems = [
+  { href: '/dashboard/precio',       label: 'Precio de referencia', icon: <Banknote {...ICON} />            },
   { href: '/admin',                  label: 'Panel admin',  icon: <Settings        {...ICON} />              },
 ];
 
