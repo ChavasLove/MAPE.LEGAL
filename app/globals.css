@@ -68,6 +68,10 @@ code, pre, kbd, samp {
 }
 
 /* ── NAV ──────────────────────────────────────────────────────────────── */
+/* Hide scrollbar while keeping horizontal scroll (price ticker, chip rows) */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
 .nav {
   position: sticky; top: 0; z-index: 100;
   background: rgba(255,255,255,0.95);
@@ -105,7 +109,7 @@ code, pre, kbd, samp {
 .nav-toggle {
   display: none;
   align-items: center; justify-content: center;
-  width: 40px; height: 40px;
+  width: 44px; height: 44px;
   padding: 8px;
   background: transparent; border: 1px solid var(--border); border-radius: 8px;
   color: var(--ink); cursor: pointer;
@@ -113,7 +117,10 @@ code, pre, kbd, samp {
 .nav-toggle:hover { border-color: var(--ink); }
 .nav-toggle svg { display: block; }
 .nav-mobile-panel {
-  position: absolute; top: 64px; left: 0; right: 0; z-index: 99;
+  /* fixed (no absolute): el panel es hermano del nav sticky, sin ancestro
+     posicionado — con absolute el top se resolvía contra el documento y al
+     abrir el menú con la página scrolleada quedaba fuera de pantalla. */
+  position: fixed; top: 64px; left: 0; right: 0; z-index: 99;
   background: rgba(255,255,255,0.98);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
@@ -134,6 +141,11 @@ code, pre, kbd, samp {
 .mape-section {
   padding: 80px max(24px, calc((100% - 1100px)/2));
 }
+
+/* Anchor targets land below the sticky nav (64px). scroll-margin-top only
+   works on the scroll TARGET element — the <section id>, not its heading.
+   Landing sections sit under ticker (36px) + nav and override inline to 116. */
+section[id] { scroll-margin-top: 96px; }
 
 /* ── SHARED SECTION ELEMENTS ─────────────────────────────────────────── */
 .section-label { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--earth); margin-bottom: 12px; }

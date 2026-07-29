@@ -22,6 +22,56 @@ const FETCH_TIMEOUT_MS = 8000;
 // drift that a client comparing two replies would notice.
 export const TROY_OUNCE_GRAMS = 31.1034768;
 
+// MAPE LEGAL buys gold at 80% of the international reference price. Single source
+// of truth so the boletín diario, María (WhatsApp + web) and the /precios widget
+// all quote the same purchase price — a divergent factor or troy-ounce constant
+// here is exactly the drift the codebase already guards against.
+export const MAPE_GOLD_BUY_FACTOR = 0.8;
+
+// The public price is a single daily snapshot anchored to 08:00 Honduras time.
+// The cron, the cold-cache fetch, and María all key precios_diarios by
+// effectivePriceDate() so the displayed price is captured once per day at 8 AM
+// and stays frozen until the next 8 AM — it must NOT churn mid-day when the raw
+// UTC calendar rolls over at 6 PM Honduras (the old toISOString().slice(0,10)
+// key). See app/api/precios/live/route.ts for how the freeze is enforced.
+export const PRICE_REFRESH_HOUR_HN = 8;
+
+/**
+ * The Honduras date (YYYY-MM-DD) of the 08:00 window the given instant belongs
+ * to. Before 08:00 Honduras the snapshot still belongs to yesterday's window,
+ * so the date is rolled back one day. This is the single price-cache key.
+ */
+export function effectivePriceDate(now: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Tegucigalpa',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', hourCycle: 'h23',
+  }).formatToParts(now);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
+  const y = Number(get('year'));
+  const m = Number(get('month'));
+  const d = Number(get('day'));
+  const hour = Number(get('hour'));
+  // Date-only math on a UTC anchor once we have the Honduras Y/M/D — no further
+  // TZ conversion needed. Rolling back a day handles month/year boundaries.
+  const anchor = new Date(Date.UTC(y, m - 1, d));
+  if (hour < PRICE_REFRESH_HOUR_HN) anchor.setUTCDate(anchor.getUTCDate() - 1);
+  return anchor.toISOString().slice(0, 10);
+}
+
+/**
+ * MAPE LEGAL gold purchase price in Lempiras per gram.
+ * = international USD/oz × 80% × USD/HNL ÷ troy-ounce-grams.
+ * Returns null when either input is missing or non-positive.
+ */
+export function mapeGoldBuyLpsPerGram(
+  oroUsdOz: number | null | undefined,
+  usdHnl: number | null | undefined,
+): number | null {
+  if (!oroUsdOz || oroUsdOz <= 0 || !usdHnl || usdHnl <= 0) return null;
+  return (oroUsdOz * MAPE_GOLD_BUY_FACTOR * usdHnl) / TROY_OUNCE_GRAMS;
+}
+
 // ─── Fuentes con prioridad ────────────────────────────────────────────────────
 
 async function fetchGoldFromGoldAPI(): Promise<number | null> {
@@ -199,9 +249,11 @@ export async function fetchAllPrices(): Promise<PreciosDiarios> {
 // can write-back the cache without paying for a second round-trip to
 // GoldAPI/Yahoo/exchangerate-api — the prior pattern fan-out was 2× the
 // upstream calls per cold-cache turn.
-export async function storePrices(precios: PreciosDiarios): Promise<string> {
+export async function storePrices(
+  precios: PreciosDiarios,
+  fecha: string = effectivePriceDate(),
+): Promise<string> {
   const admin = getAdminClient();
-  const fecha = new Date().toISOString().slice(0, 10);
 
   // Prefer the SECURITY DEFINER RPC (migration 025) — bypasses RLS regardless
   // of whether service_role has BYPASSRLS in this Supabase project.

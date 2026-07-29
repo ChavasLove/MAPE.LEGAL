@@ -70,6 +70,26 @@ export async function searchEquipos(
   return { equipos, total };
 }
 
+// Vitrina pública: los equipos activos completos (máx. MAX_EQUIPOS_ACTIVOS),
+// con especificaciones y galería. Lectura directa con el proxy anon — la
+// policy RLS de 027 sólo expone activo = true.
+export async function getEquiposVitrina(limit = 3): Promise<EquipoMercado[]> {
+  const { data, error } = await supabase
+    .from('equipos_mercado')
+    .select('*')
+    .eq('activo', true)
+    .order('destacado', { ascending: false })
+    .order('orden', { ascending: true })
+    .order('precio_min_usd', { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    console.error('[equiposService] vitrina error:', error);
+    throw new Error('Error al cargar la vitrina de equipos');
+  }
+  return (data || []) as EquipoMercado[];
+}
+
 export async function getEquipoBySlug(slug: string): Promise<EquipoMercado | null> {
   const { data, error } = await supabase.rpc('get_equipo_by_slug', {
     p_slug: slug,
@@ -95,6 +115,24 @@ export async function getCategoriaStats(): Promise<CategoriaStat[]> {
 }
 
 // ==================== ADMIN WRITES (service-role client) ====================
+
+// Cuenta equipos activos, opcionalmente excluyendo una fila (para validar una
+// reactivación sin contarse a sí misma). Usado por el cap MAX_EQUIPOS_ACTIVOS.
+export async function countEquiposActivos(excludeId?: string): Promise<number> {
+  const admin = getAdminClient();
+  let query = admin
+    .from('equipos_mercado')
+    .select('id', { count: 'exact', head: true })
+    .eq('activo', true);
+  if (excludeId) query = query.neq('id', excludeId);
+
+  const { count, error } = await query;
+  if (error) {
+    console.error('[equiposService] countActivos error:', error);
+    throw new Error('Error al contar equipos activos');
+  }
+  return count ?? 0;
+}
 
 export interface CreateEquipoInput {
   slug: string;

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireRole } from '@/lib/serverAuth';
-import { updateEquipo, deleteEquipo, type CreateEquipoInput } from '@/services/equiposService';
-import { CATEGORIA_LABELS, ALLOWED_IMAGE_HOSTS, isAllowedImageUrl } from '@/lib/types/equipo';
+import { updateEquipo, deleteEquipo, countEquiposActivos, type CreateEquipoInput } from '@/services/equiposService';
+import { CATEGORIA_LABELS, ALLOWED_IMAGE_HOSTS, MAX_EQUIPOS_ACTIVOS, isAllowedImageUrl } from '@/lib/types/equipo';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,13 +84,25 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'activo debe ser booleano' }, { status: 400 });
     }
 
+    // Reactivar cuenta contra el cap de la vitrina (excluyendo esta fila,
+    // así editar un equipo ya activo no tropieza consigo mismo).
+    if (updates.activo === true) {
+      const activos = await countEquiposActivos(id);
+      if (activos >= MAX_EQUIPOS_ACTIVOS) {
+        return NextResponse.json(
+          { error: `La vitrina ya tiene ${MAX_EQUIPOS_ACTIVOS} equipos activos (máximo permitido). Desactivá uno antes de reactivar este.` },
+          { status: 409 }
+        );
+      }
+    }
+
     const imageCandidates: unknown[] = [
       ...('imagen_url' in updates ? [updates.imagen_url] : []),
       ...('galeria_urls' in updates && Array.isArray(updates.galeria_urls) ? updates.galeria_urls : []),
     ];
     if (imageCandidates.some((u) => typeof u !== 'string' || !isAllowedImageUrl(u))) {
       return NextResponse.json(
-        { error: `Las imágenes deben ser URLs https de: ${ALLOWED_IMAGE_HOSTS.join(', ')}. next/image rechaza otros hosts.` },
+        { error: `Las imágenes deben ser rutas del sitio (/images/...) o URLs https de: ${ALLOWED_IMAGE_HOSTS.join(', ')}. next/image rechaza otros hosts.` },
         { status: 400 }
       );
     }

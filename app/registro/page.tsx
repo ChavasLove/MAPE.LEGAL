@@ -4,7 +4,7 @@
  * Es un punto de entrada con un input que redirige a la API pública
  * `/api/concesiones/buscar`. Server component que consume la vista
  * `concesiones_mineras_publicas` (lazy-init de Supabase) para mostrar las
- * primeras 25 concesiones; el cliente hace búsquedas en vivo contra el
+ * primeras 25 concesiones; el cliente hace búsquedas inmediatas contra el
  * endpoint público.
  */
 import Link from 'next/link';
@@ -29,7 +29,7 @@ export default function RegistroPage() {
         </Link>
         <div className="nav-links">
           <Link href="/" className="nav-link">Inicio</Link>
-          <Link href="/#cumplimiento" className="nav-link">Cumplimiento</Link>
+          <Link href="/pequena-mineria" className="nav-link">Pequeña minería</Link>
           <Link href="/verificar" className="nav-link">Verificación</Link>
           <Link href="/#contacto" className="nav-link">Contacto</Link>
         </div>

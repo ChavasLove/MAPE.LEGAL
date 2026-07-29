@@ -37,6 +37,9 @@ jobs:
         run: npm run lint
         continue-on-error: true
 
+      - name: Copy compliance (términos prohibidos, Fase 2C)
+        run: npm run check:copy
+
       - name: Typecheck
         run: npm run typecheck
 

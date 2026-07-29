@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { getUserByPhone, getOrCreateUserByPhone } from "@/services/userService";
 import { interpretAndExecute } from "@/services/adminCommandService";
 import { getOnboardingState, handleOnboarding } from "@/services/onboardingService";
-import { fetchAllPrices, storePrices, TROY_OUNCE_GRAMS } from "@/services/pricingService";
+import { fetchAllPrices, storePrices, effectivePriceDate, TROY_OUNCE_GRAMS } from "@/services/pricingService";
 import { sanitizeIlikeTerm } from "@/services/concesionesService";
 import { embedQuery, toVectorText } from "@/lib/maria/embeddings";
 import { normalizePhone } from "@/lib/maria/normalizePhone";
@@ -397,20 +397,47 @@ export async function POST(request) {
     // --- EXECUTIVE MODE: Willis Yang admin trigger ---
     // The phrase + passphrase must appear as their own tokens (word-bounded) —
     // a substring includes() would fire on a quoted reference such as
-    // `tried 'willis yang TENKA-2026' but it didn't work` from a non-admin.
-    const ADMIN_PASSPHRASE = 'TENKA-2026';
+    // `tried 'willis yang <passphrase>' but it didn't work` from a non-admin.
+    //
+    // Security model (hardened): the passphrase lives in the env
+    // (MARIA_ADMIN_PASSPHRASE), never in the repo — unset ⇒ executive mode
+    // disabled (fail-closed). And the passphrase alone NEVER suffices: the
+    // sender's number must also hold rol='admin' in usuarios_broadcast,
+    // because sender numbers are spoofable while Twilio signature enforcement
+    // is staged (TWILIO_VALIDATE_SIGNATURE opt-in, see above).
+    const ADMIN_PASSPHRASE = process.env.MARIA_ADMIN_PASSPHRASE || null;
     const ADMIN_TRIGGER_RE = /\bwillis\s+yang\b/i;
-    const PASSPHRASE_RE    = /\bTENKA-2026\b/;
-    const isAdminCommand =
+    const PASSPHRASE_RE = ADMIN_PASSPHRASE
+      ? new RegExp(`\\b${ADMIN_PASSPHRASE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`)
+      : null;
+    const passphrasePresent =
+      !!PASSPHRASE_RE &&
       ADMIN_TRIGGER_RE.test(incomingMessage) &&
       PASSPHRASE_RE.test(incomingMessage);
 
+    let isAdminCommand = false;
+    if (passphrasePresent) {
+      try {
+        const callerUser = await getUserByPhone(normalizePhone(fromNumber));
+        isAdminCommand = callerUser?.rol === 'admin';
+      } catch {
+        isAdminCommand = false;
+      }
+      if (!isAdminCommand) {
+        // Wrong number with the right passphrase — treat as a probe: log and
+        // fall through to the normal María flow (no hint that a gate exists).
+        console.warn('[maria] executive-mode passphrase from non-admin number — ignored');
+      }
+    }
+
     // Redact the passphrase before any DB persistence — conversaciones_whatsapp
     // rows are visible in admin tooling and indexed by the RAG. Plaintext
-    // copies of TENKA-2026 in conversation history defeat the secrecy of the
-    // gate. Applied to every insert path below (admin reply, onboarding,
+    // copies of the passphrase in conversation history defeat the secrecy of
+    // the gate. Applied to every insert path below (admin reply, onboarding,
     // normal flow).
-    const safeIncoming = incomingMessage.replace(PASSPHRASE_RE, '[REDACTED]');
+    const safeIncoming = PASSPHRASE_RE
+      ? incomingMessage.replace(PASSPHRASE_RE, '[REDACTED]')
+      : incomingMessage;
 
     // --- ADMIN SUB-COMMANDS (fires before main admin report) ---
     if (incomingMessage.toLowerCase().startsWith('expediente ')) {
@@ -486,6 +513,9 @@ Notas: ${exp.notas || 'Sin notas'}`
         getSupabase().from('expedientes').select('estado, tipo, inicio').order('inicio', { ascending: false }),
         getSupabase().from('transacciones_pendientes').select('estado, created_at, mensaje_original').order('created_at', { ascending: false }),
         getSupabase().from('hitos').select('estado, monto, trigger_evento').order('created_at', { ascending: false }),
+        // 9th query — the destructuring above expects it; without it precioRes
+        // was undefined and every executive-report invocation threw TypeError.
+        getSupabase().from('precios_diarios').select('fecha, oro, usd_hnl, fuente, fetched_at').order('fecha', { ascending: false }).limit(1).maybeSingle(),
       ]);
 
       const activeHour = activeHourRes.data;
@@ -677,14 +707,17 @@ Comandos disponibles:
         : `\n- Perfil completo: no — faltan: ${faltantes.join(', ')}`;
     }
 
-    // --- Fetch gold/silver prices: cache-first, then live API ---
+    // --- Fetch gold prices: cache-first, then live API ---
+    // Key by the 8 AM Honduras window (same as storePrices / the /precios widget)
+    // so María quotes the frozen daily snapshot instead of a raw-UTC-date miss
+    // that would re-fetch and overwrite the frozen price every evening.
     let preciosHoy = null;
-    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const priceDate = effectivePriceDate();
     try {
       const { data: cached } = await getSupabase()
         .from('precios_diarios')
         .select('oro, plata, usd_hnl, fecha, fetched_at, fuente')
-        .eq('fecha', today)
+        .eq('fecha', priceDate)
         .single();
       if (cached?.oro) {
         preciosHoy = cached;
@@ -709,7 +742,7 @@ Comandos disponibles:
             oro: live.oro,
             plata: live.plata,
             usd_hnl: live.usd_hnl,
-            fecha: today,
+            fecha: priceDate,
             fetched_at: live.fetched_at,
             fuente: live.fuente,
           };
@@ -717,7 +750,8 @@ Comandos disponibles:
           // Best-effort DB cache write from the snapshot we just fetched —
           // calling fetchAndStorePrices() here would re-run the full upstream
           // fan-out, doubling the GoldAPI / Yahoo / FX cost per cold-cache turn.
-          storePrices(live).catch(e => console.log('Price DB cache failed (non-fatal):', e.message));
+          // Keyed to the 8 AM window so it freezes the same row the widget serves.
+          storePrices(live, priceDate).catch(e => console.log('Price DB cache failed (non-fatal):', e.message));
         }
       } catch (e) {
         console.log('Live price fetch failed (non-fatal):', e.message);

@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Plus, Pencil, Trash2, ArrowLeft, X, AlertCircle, RotateCcw } from 'lucide-react';
+import { Plus, Pencil, Trash2, ArrowLeft, X, AlertCircle, RotateCcw, Sparkles } from 'lucide-react';
 import type { EquipoMercado, EquipoCategoria } from '@/lib/types/equipo';
 import { CATEGORIA_LABELS } from '@/lib/types/equipo';
 
@@ -49,10 +49,24 @@ export function AdminEquiposClient({ initialEquipos, total: initialTotal }: Prop
 
   const [form, setForm] = useState(EMPTY_FORM);
 
+  // Importador de láminas: imágenes subidas al bucket `equipos-imagenes`
+  // (la primera es portada salvo que el admin elija otra con un click) y el
+  // borrador de especificaciones que la extracción con IA devuelve.
+  const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
+  const [specsDraft, setSpecsDraft] = useState<Record<string, string>>({});
+  const [importBusy, setImportBusy] = useState<'idle' | 'uploading' | 'extracting'>('idle');
+  const [importMsg, setImportMsg] = useState('');
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const resetForm = () => {
     setForm(EMPTY_FORM);
     setEditingId(null);
     setError('');
+    setUploadedUrls([]);
+    setSpecsDraft({});
+    setImportBusy('idle');
+    setImportMsg('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const refreshList = async () => {
@@ -96,9 +110,76 @@ export function AdminEquiposClient({ initialEquipos, total: initialTotal }: Prop
       destacado: equipo.destacado,
       orden: equipo.orden.toString(),
     });
+    // Sembrar galería + specs existentes para que la edición las preserve
+    // (el submit siempre las manda) y el picker de portada funcione.
+    setUploadedUrls([equipo.imagen_url, ...(equipo.galeria_urls ?? [])].filter(Boolean));
+    setSpecsDraft(equipo.especificaciones ?? {});
+    setImportBusy('idle');
+    setImportMsg('');
     setEditingId(equipo.id);
     setShowForm(true);
     setError('');
+  };
+
+  // Sube las láminas al bucket y llama la extracción con IA. Pre-llena el
+  // form (nunca el precio — se ingresa a mano) y arma portada + galería.
+  const handleImportSlides = async () => {
+    const files = Array.from(fileInputRef.current?.files ?? []);
+    if (files.length === 0) {
+      setImportMsg('Seleccioná las láminas o fotos del equipo primero.');
+      return;
+    }
+
+    setError('');
+    setImportMsg('');
+    setImportBusy('uploading');
+    try {
+      const fd = new FormData();
+      for (const f of files) fd.append('files', f);
+
+      const upRes = await fetch('/api/admin/equipos/upload-imagenes', {
+        method: 'POST',
+        body: fd,
+      });
+      const upData = await upRes.json();
+      if (!upRes.ok) throw new Error(upData.error || 'Error al subir las imágenes');
+
+      const urls: string[] = upData.urls ?? [];
+      setUploadedUrls(urls);
+      setForm((f) => ({ ...f, imagen_url: urls[0] ?? f.imagen_url }));
+
+      setImportBusy('extracting');
+      const exRes = await fetch('/api/admin/equipos/extraer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageUrls: urls }),
+      });
+      const exData = await exRes.json();
+      if (!exRes.ok) throw new Error(exData.error || 'La extracción con IA falló');
+
+      const d = exData.draft ?? {};
+      setForm((f) => ({
+        ...f,
+        slug: f.slug || d.slug || '',
+        nombre: d.nombre || f.nombre,
+        descripcion: d.descripcion || f.descripcion,
+        descripcion_corta: d.descripcion_corta || f.descripcion_corta,
+        categoria: (d.categoria as EquipoCategoria) || f.categoria,
+        capacidad: d.capacidad || f.capacidad,
+        potencia: d.potencia || f.potencia,
+        peso: d.peso || f.peso,
+        dimensiones: d.dimensiones || f.dimensiones,
+      }));
+      setSpecsDraft((prev) => ({ ...prev, ...(d.especificaciones ?? {}) }));
+      setImportMsg(
+        `Listo: ${urls.length} imagen(es) subidas y datos extraídos. Revisá los campos y completá el PRECIO a mano — nunca se extrae de las láminas.`
+      );
+    } catch (err) {
+      setImportMsg('');
+      setError(err instanceof Error ? err.message : 'Error al importar las láminas');
+    } finally {
+      setImportBusy('idle');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -133,6 +214,10 @@ export function AdminEquiposClient({ initialEquipos, total: initialTotal }: Prop
         precio_max_usd: precioMaxNum,
         moq: Number.parseInt(form.moq, 10) || 1,
         orden: Number.parseInt(form.orden, 10) || 0,
+        // Galería = todas las imágenes subidas menos la portada. En edición,
+        // uploadedUrls se siembra desde la fila, así que nada se pierde.
+        galeria_urls: uploadedUrls.filter((u) => u !== form.imagen_url),
+        especificaciones: specsDraft,
       };
 
       const res = await fetch(url, {
@@ -221,6 +306,16 @@ export function AdminEquiposClient({ initialEquipos, total: initialTotal }: Prop
           >
             Equipos Mercado
           </h1>
+          <span
+            className="text-xs px-2.5 py-1 rounded-full font-medium"
+            style={{
+              background: 'color-mix(in oklch, var(--moss) 14%, white)',
+              color: 'var(--moss)',
+              border: '1px solid color-mix(in oklch, var(--moss) 30%, white)',
+            }}
+          >
+            {equipos.filter((e) => e.activo).length} de 3 activos en vitrina
+          </span>
         </div>
         <button
           onClick={() => {
@@ -307,6 +402,82 @@ export function AdminEquiposClient({ initialEquipos, total: initialTotal }: Prop
                 {error}
               </div>
             )}
+
+            {/* Importador de láminas con IA */}
+            <div
+              className="mb-5 p-4 rounded-xl"
+              style={{
+                background: 'color-mix(in oklch, var(--moss) 6%, white)',
+                border: '1px solid color-mix(in oklch, var(--moss) 25%, white)',
+              }}
+            >
+              <p className="text-sm font-semibold flex items-center gap-2" style={{ color: 'var(--t1)' }}>
+                <Sparkles size={16} style={{ color: 'var(--moss)' }} />
+                Importar desde láminas
+              </p>
+              <p className="mt-1 text-xs leading-relaxed" style={{ color: 'var(--t2)' }}>
+                Subí las láminas de especificaciones o fotos del equipo (JPEG/PNG/WebP, máx. 12).
+                La IA lee las imágenes y pre-llena el formulario; la primera imagen queda como
+                portada (click en otra miniatura para cambiarla). El precio no se extrae — lo
+                ingresás vos.
+              </p>
+              <div className="mt-3 flex flex-col sm:flex-row gap-3 sm:items-center">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  aria-label="Láminas o fotos del equipo"
+                  className="text-xs"
+                  style={{ color: 'var(--t2)' }}
+                />
+                <button
+                  type="button"
+                  onClick={handleImportSlides}
+                  disabled={importBusy !== 'idle'}
+                  className="flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+                  style={{ background: 'var(--moss)', color: '#fff' }}
+                >
+                  {importBusy === 'uploading'
+                    ? 'Subiendo imágenes...'
+                    : importBusy === 'extracting'
+                      ? 'Extrayendo datos con IA...'
+                      : 'Subir y extraer datos'}
+                </button>
+              </div>
+              {importMsg && (
+                <p role="status" aria-live="polite" className="mt-2 text-xs" style={{ color: 'var(--moss)' }}>
+                  {importMsg}
+                </p>
+              )}
+              {uploadedUrls.length > 0 && (
+                <div className="mt-3 flex gap-2 flex-wrap">
+                  {uploadedUrls.map((u, i) => (
+                    <button
+                      key={u}
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, imagen_url: u }))}
+                      aria-label={`Usar imagen ${i + 1} como portada`}
+                      aria-pressed={form.imagen_url === u}
+                      className="relative w-16 h-16 rounded-lg overflow-hidden border-2"
+                      style={{
+                        borderColor: form.imagen_url === u ? 'var(--moss)' : 'var(--border)',
+                      }}
+                    >
+                      <Image src={u} alt={`Imagen ${i + 1}`} fill className="object-contain" sizes="64px" />
+                      {form.imagen_url === u && (
+                        <span
+                          className="absolute bottom-0 inset-x-0 text-[10px] font-semibold text-center"
+                          style={{ background: 'var(--moss)', color: '#fff' }}
+                        >
+                          Portada
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -460,8 +631,43 @@ export function AdminEquiposClient({ initialEquipos, total: initialTotal }: Prop
                 label="URL Imagen principal*"
                 value={form.imagen_url}
                 onChange={(v) => setForm({ ...form, imagen_url: v })}
-                placeholder="https://..."
+                placeholder="https://... o /images/equipos/..."
               />
+
+              {Object.keys(specsDraft).length > 0 && (
+                <div>
+                  <p className="text-sm font-medium mb-2" style={{ color: 'var(--t1)' }}>
+                    Especificaciones ({Object.keys(specsDraft).length})
+                  </p>
+                  <div
+                    className="rounded-lg p-3 space-y-1.5"
+                    style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)' }}
+                  >
+                    {Object.entries(specsDraft).map(([k, v]) => (
+                      <div key={k} className="flex items-start justify-between gap-3 text-xs">
+                        <span style={{ color: 'var(--slate)' }}>{k}</span>
+                        <span className="flex items-center gap-2 text-right" style={{ color: 'var(--t1)' }}>
+                          {v}
+                          <button
+                            type="button"
+                            aria-label={`Quitar especificación ${k}`}
+                            onClick={() =>
+                              setSpecsDraft((prev) => {
+                                const next = { ...prev };
+                                delete next[k];
+                                return next;
+                              })
+                            }
+                            style={{ color: 'var(--t3)' }}
+                          >
+                            <X size={12} />
+                          </button>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="flex gap-3 pt-2">
                 <button

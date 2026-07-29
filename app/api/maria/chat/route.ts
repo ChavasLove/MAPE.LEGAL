@@ -23,7 +23,7 @@ import {
 } from '@/lib/maria/ragShared';
 import { supabase } from '@/services/supabase';
 import { getAdminClient } from '@/services/adminSupabase';
-import { fetchAllPrices, storePrices, TROY_OUNCE_GRAMS } from '@/services/pricingService';
+import { fetchAllPrices, storePrices, mapeGoldBuyLpsPerGram, effectivePriceDate } from '@/services/pricingService';
 import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
@@ -166,7 +166,15 @@ async function retrieveKnowledge(userMessage: string): Promise<string | null> {
 
   if (hasEmbeddings) {
     try {
-      const queryEmbedding = await embedQuery(userMessage);
+      // Mismo bound de 4s que el webhook: embedQuery ya tiene timeout+retries
+      // internos, pero el peor caso acumulado excede lo razonable para un
+      // visitante esperando el widget — al vencer, cae al FTS determinístico.
+      const queryEmbedding = await Promise.race<
+        Awaited<ReturnType<typeof embedQuery>> | null
+      >([
+        embedQuery(userMessage),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
+      ]);
       if (queryEmbedding) {
         const vecText = toVectorText(queryEmbedding);
         const { data, error } = await supabase.rpc('match_maria_knowledge', {
@@ -213,7 +221,10 @@ interface PriceSnapshot {
 }
 
 async function buildPriceContext(): Promise<string> {
-  const today = new Date().toISOString().slice(0, 10);
+  // Key by the 8 AM Honduras window (same as storePrices / the /precios widget)
+  // so María quotes the frozen daily snapshot — reading by raw UTC date would
+  // miss the row all evening and re-fetch, overwriting the frozen 8 AM price.
+  const priceDate = effectivePriceDate();
   let prices: PriceSnapshot | null = null;
 
   try {
@@ -221,7 +232,7 @@ async function buildPriceContext(): Promise<string> {
     const { data: cached } = await admin()
       .from('precios_diarios')
       .select('oro, plata, usd_hnl, fecha, fuente')
-      .eq('fecha', today)
+      .eq('fecha', priceDate)
       .single();
     if (cached?.oro != null && cached.oro > 0) {
       prices = cached as unknown as PriceSnapshot;
@@ -244,14 +255,15 @@ async function buildPriceContext(): Promise<string> {
           oro: live.oro,
           plata: live.plata,
           usd_hnl: live.usd_hnl,
-          fecha: today,
+          fecha: priceDate,
           fuente: live.fuente,
         };
         // Cache write-back so subsequent turns hit the DB row instead of
         // re-fanning out to GoldAPI/Yahoo/exchangerate-api on every cold-cache
         // turn — without this, an anonymous visitor with the 20-turn budget
-        // could drive ~60 paid upstream calls.
-        storePrices(live).catch((e) =>
+        // could drive ~60 paid upstream calls. Keyed to the 8 AM window so it
+        // lands on (and freezes) the same row the widget serves.
+        storePrices(live, priceDate).catch((e) =>
           console.warn('[maria-web prices] cache write failed (non-fatal):', (e as Error)?.message),
         );
       } else if (!live) {
@@ -269,10 +281,8 @@ async function buildPriceContext(): Promise<string> {
   const fmt = (n: number, d = 2) =>
     Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
   const oroLBMA = `$${fmt(prices.oro)} USD/oz troy`;
-  const oroCompra =
-    prices.usd_hnl != null
-      ? `L ${fmt((prices.oro * 0.8 * prices.usd_hnl) / TROY_OUNCE_GRAMS)}/gramo`
-      : null;
+  const oroCompraLps = mapeGoldBuyLpsPerGram(prices.oro, prices.usd_hnl);
+  const oroCompra = oroCompraLps != null ? `L ${fmt(oroCompraLps)}/gramo` : null;
   const plataLBMA = prices.plata != null ? `$${fmt(prices.plata)} USD/oz troy` : null;
   const horaConsultaHN = new Date().toLocaleTimeString('es-HN', {
     timeZone: 'America/Tegucigalpa',
