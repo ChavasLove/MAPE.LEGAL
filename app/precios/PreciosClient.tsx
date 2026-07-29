@@ -10,7 +10,10 @@ import Link from 'next/link';
 import TopoBand from '@/components/decor/TopoBand';
 import MariaWidget from '@/components/landing/MariaWidget';
 import SiteFooter from '@/components/landing/SiteFooter';
-import LivePricesWidget from '@/components/precios/LivePricesWidget';
+import LivePricesWidget, {
+  PriceSourcesPanel,
+  type LivePrices,
+} from '@/components/precios/LivePricesWidget';
 import PriceHistoryChart from '@/components/precios/PriceHistoryChart';
 
 type Lang = 'es' | 'en';
@@ -21,6 +24,10 @@ const WHATSAPP_HREF =
 
 export default function PreciosClient() {
   const [lang, setLang] = useState<Lang>('es');
+  // Snapshot bubbled up from LivePricesWidget so the "Fuentes y actualización"
+  // panel (relocated to the bottom of the page) shares the same data without a
+  // second fetch/poll.
+  const [prices, setPrices] = useState<LivePrices | null>(null);
 
   useEffect(() => {
     try {
@@ -91,9 +98,22 @@ export default function PreciosClient() {
             )}
             <em>{t('hoy en Honduras.', 'today in Honduras.')}</em>
           </h1>
+          {/* Precios primero: el widget va inmediatamente después del título
+              para que las cifras y la gráfica sean lo primero visible. El
+              párrafo descriptivo se movió debajo de la gráfica. */}
+          <div style={{ marginTop: 24 }}>
+            <LivePricesWidget lang={lang} onData={setPrices} />
+          </div>
+
+          {/* Historial — daily 8 AM snapshots plotted over time so the price
+              of any past day is verifiable, not just today's. */}
+          <div style={{ marginTop: 32 }}>
+            <PriceHistoryChart lang={lang} />
+          </div>
+
           <p
             style={{
-              marginTop: 16,
+              marginTop: 32,
               maxWidth: 640,
               fontSize: 16,
               lineHeight: 1.6,
@@ -113,16 +133,6 @@ export default function PreciosClient() {
               )}
             </Link>
           </p>
-
-          <div style={{ marginTop: 32 }}>
-            <LivePricesWidget lang={lang} />
-          </div>
-
-          {/* Historial — daily 8 AM snapshots plotted over time so the price
-              of any past day is verifiable, not just today's. */}
-          <div style={{ marginTop: 32 }}>
-            <PriceHistoryChart lang={lang} />
-          </div>
 
           {/* CTA — miner-facing WhatsApp */}
           <div
@@ -180,6 +190,13 @@ export default function PreciosClient() {
             >
               {t('Escribir por WhatsApp', 'Message on WhatsApp')}
             </a>
+          </div>
+
+          {/* Fuentes y actualización — al final de la página por pedido del
+              operador: la procedencia sigue publicada (contrato de
+              transparencia de la página) pero sin separar precios y gráfica. */}
+          <div style={{ marginTop: 32 }}>
+            <PriceSourcesPanel lang={lang} data={prices} />
           </div>
         </div>
       </section>
