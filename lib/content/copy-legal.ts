@@ -274,6 +274,148 @@ export const PRECIO_REF_NATURALEZA =
   'previa verificación del origen del mineral y de la elegibilidad del ' +
   'vendedor conforme a los requisitos señalados.'
 
+/* Cláusulas 5 y 6 de la Política de Precios v1.1 (Adenda 01, 2026-07-29).
+ * TEXTO LEGAL — LITERAL: transcritas carácter por carácter; prohibido
+ * alterar la distinción entre método de liquidación y método de contraste. */
+
+export interface ClausulaPolitica {
+  num: string
+  titulo: string
+  texto: string
+}
+
+/** TEXTO LEGAL — LITERAL. Cláusula 5: título. */
+export const POLITICA_CL5_TITULO = 'Determinación de la ley del material'
+
+/** TEXTO LEGAL — LITERAL. Cláusula 5: subsecciones 5.1–5.5. */
+export const POLITICA_CL5: readonly ClausulaPolitica[] = [
+  {
+    num: '5.1',
+    titulo: 'Objeto del precio.',
+    texto:
+      'El precio de referencia se aplica sobre el contenido de oro fino del ' +
+      'material entregado, expresado en gramos de oro fino. No se aplica ' +
+      'sobre el peso bruto del material.',
+  },
+  {
+    num: '5.2',
+    titulo: 'Método de liquidación.',
+    texto:
+      'La ley que determina el pago de cada transacción se establece ' +
+      'mediante fluorescencia de rayos X (XRF), practicada sobre superficie ' +
+      'preparada del material, en presencia del vendedor o de su ' +
+      'representante. La preparación de superficie es obligatoria y ' +
+      'consiste en la exposición de superficie fresca en dos caras opuestas ' +
+      'del material, o en su fusión y homogeneización previas. Ninguna ' +
+      'lectura se practica sobre superficie sin preparar.',
+  },
+  {
+    num: '5.3',
+    titulo: 'Método de contraste.',
+    texto:
+      'El método de referencia es el ensayo al fuego, mediante fusión con ' +
+      'litargirio, carbonato de sodio, bórax, sílice y agente reductor, ' +
+      'seguido de copelación y lectura del régulo metálico resultante por ' +
+      'fluorescencia de rayos X. Este método se aplica en tres supuestos: ' +
+      'cuando el vendedor ejerce su derecho de contramuestra; en la ' +
+      'verificación periódica de calibración del método de liquidación; y ' +
+      'en la reconciliación con la refinería de destino.',
+  },
+  {
+    num: '5.4',
+    titulo: 'Muestreo del material.',
+    texto:
+      'Cuando el material entregado sea producto ya recuperado por el ' +
+      'vendedor, la determinación se practica sobre material previamente ' +
+      'fundido y homogeneizado, con toma de muestra en dos puntos opuestos. ' +
+      'Cuando el material entregado sea mineral, la determinación se ' +
+      'practica sobre muestra pulverizada de entre diez (10) y cincuenta ' +
+      '(50) gramos. El procedimiento operativo detallado de muestreo forma ' +
+      'parte integrante de esta política y se publica junto con ella.',
+  },
+  {
+    num: '5.5',
+    titulo: 'Muestra testigo.',
+    texto:
+      'De cada lote se conserva una porción sellada e identificada, firmada ' +
+      'por el vendedor y por Corporación Hondureña Tenka, S.A., en custodia ' +
+      'por noventa (90) días calendario contados desde la fecha de la ' +
+      'transacción. La muestra testigo constituye la base de cualquier ' +
+      'verificación posterior.',
+  },
+] as const
+
+/** TEXTO LEGAL — LITERAL. Cláusula 6: título. */
+export const POLITICA_CL6_TITULO = 'Liquidación, contramuestra y ajuste'
+
+/** TEXTO LEGAL — LITERAL. Cláusula 6: subsecciones 6.1–6.6. */
+export const POLITICA_CL6: readonly ClausulaPolitica[] = [
+  {
+    num: '6.1',
+    titulo: 'Liquidación provisional.',
+    texto:
+      'El pago se efectúa el mismo día de la entrega, sobre la base del ' +
+      'método de liquidación señalado en la cláusula 5.2. Esta liquidación ' +
+      'tiene carácter provisional.',
+  },
+  {
+    num: '6.2',
+    titulo: 'Derecho de contramuestra.',
+    texto:
+      'El vendedor tiene derecho a solicitar, sin costo alguno y dentro de ' +
+      'los quince (15) días calendario siguientes a la transacción, que la ' +
+      'muestra testigo sea analizada por el método de contraste. La ' +
+      'solicitud no requiere expresión de causa.',
+  },
+  {
+    num: '6.3',
+    titulo: 'Laboratorio dirimente.',
+    texto:
+      'Cuando el resultado del método de contraste difiera del resultado de ' +
+      'liquidación en más del margen señalado en la cláusula 6.4, ' +
+      'cualquiera de las partes puede requerir el análisis de la muestra ' +
+      'testigo por el laboratorio tercero designado en el Anexo I de esta ' +
+      'política. Su resultado es definitivo para ambas partes. El costo se ' +
+      'asume por la parte cuyo resultado resulte más alejado del dictamen ' +
+      'del laboratorio dirimente.',
+  },
+  {
+    num: '6.4',
+    titulo: 'Liquidación final y ajuste.',
+    texto:
+      'La diferencia entre la liquidación provisional y el resultado ' +
+      'definitivo se ajusta en la siguiente transacción del vendedor, o ' +
+      'mediante pago o cargo directo si no hubiere transacción posterior ' +
+      'dentro de treinta (30) días. El ajuste opera en ambas direcciones y ' +
+      'no excede de dos (2) puntos porcentuales de ley por transacción. ' +
+      'Toda diferencia que exceda ese límite suspende la liquidación y ' +
+      'activa el procedimiento de la cláusula 6.3.',
+  },
+  {
+    num: '6.5',
+    titulo: 'Verificación externa periódica.',
+    texto:
+      'Corporación Hondureña Tenka, S.A. remite trimestralmente muestras ' +
+      'ciegas a un laboratorio independiente y publica los resultados de ' +
+      'esa verificación en el sitio institucional, junto con el histórico ' +
+      'de verificaciones anteriores.',
+  },
+  {
+    num: '6.6',
+    titulo: 'Constancia.',
+    texto:
+      'El resultado de la determinación de ley, el método empleado, la ' +
+      'identificación de la muestra testigo y el detalle de cualquier ' +
+      'ajuste constan en el estado de cuenta de la transacción entregado ' +
+      'al vendedor.',
+  },
+] as const
+
+/** LITERAL (Tarea 7, Adenda 01): estado vacío de verificaciones externas. */
+export const VERIFICACIONES_EXTERNAS_VACIO =
+  'Primera verificación externa programada. Los resultados de todas las ' +
+  'verificaciones se publicarán en esta sección de forma permanente.'
+
 /** TEXTO LEGAL — LITERAL. Cláusula 4 de la Política de Precios: revisión. */
 export const PRECIO_REF_CLAUSULA_REVISION =
   'El factor de comercialización podrá ser revisado por Corporación ' +

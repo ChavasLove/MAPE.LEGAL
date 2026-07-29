@@ -18,6 +18,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { RefreshCw } from 'lucide-react';
 import { type TipoCombustible } from '@/lib/types/combustible';
+import { VERSION_POLITICA_PRECIOS } from '@/lib/precio/calculo';
 
 interface FuelLine {
   combustible: TipoCombustible;
@@ -404,8 +405,8 @@ export default function LivePricesWidget({ lang }: Props) {
                   'MAPE.LEGAL reference price (L/gram of fine gold)',
                 )}
                 fuente={t(
-                  'Cálculo verificable conforme a la Política de Precios v1.0: referencia internacional del oro ÷ 31.1035, por el factor de comercialización vigente y el tipo de cambio.',
-                  'Verifiable calculation per Pricing Policy v1.0: international gold reference ÷ 31.1035, times the current commercialization factor and the exchange rate.',
+                  `Cálculo verificable conforme a la Política de Precios v${VERSION_POLITICA_PRECIOS}: referencia internacional del oro ÷ 31.1035, por el factor de comercialización vigente y el tipo de cambio.`,
+                  `Verifiable calculation per Pricing Policy v${VERSION_POLITICA_PRECIOS}: international gold reference ÷ 31.1035, times the current commercialization factor and the exchange rate.`,
                 )}
                 frecuencia={t(
                   'Se fija una vez al día, a las 8:00 a.m. (Honduras), y no cambia durante el día.',

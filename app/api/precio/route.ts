@@ -23,7 +23,8 @@ import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit';
 import {
   calcularPrecioLempirasGramoFino,
   redondearAlmacenamiento,
-  METODO_ENSAYE,
+  METODO_LIQUIDACION,
+  METODO_CONTRASTE,
   VERSION_POLITICA_PRECIOS,
 } from '@/lib/precio/calculo';
 import { fechaHondurasHoy, getPrecioReferenciaHoy } from '@/lib/precio/consulta';
@@ -63,7 +64,8 @@ export async function GET(request: NextRequest) {
           tipo_cambio_bch: vigente.tipo_cambio_bch,
           factor_comercializacion: vigente.factor_comercializacion,
           version_politica: vigente.version_politica,
-          metodo_ensaye: METODO_ENSAYE,
+          metodo_liquidacion: METODO_LIQUIDACION,
+          metodo_contraste: METODO_CONTRASTE,
         },
         { headers: { 'Cache-Control': CACHE_HEADER } },
       );
@@ -73,7 +75,8 @@ export async function GET(request: NextRequest) {
       {
         disponible: false,
         fecha: hoy,
-        metodo_ensaye: METODO_ENSAYE,
+        metodo_liquidacion: METODO_LIQUIDACION,
+        metodo_contraste: METODO_CONTRASTE,
         // Último precio vigente anterior, etiquetado con su propia fecha.
         // No se extrapola ni se recalcula.
         ultimo_vigente: anterior
