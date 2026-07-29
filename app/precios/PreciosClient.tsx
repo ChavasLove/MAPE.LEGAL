@@ -121,9 +121,17 @@ export default function PreciosClient() {
             }}
           >
             {t(
-              'Consulta el precio internacional del oro, cuánto paga MAPE LEGAL por gramo en Lempiras, el tipo de cambio del día y el precio oficial del diésel. Actualizado diariamente.',
-              'Check the international gold price, what MAPE LEGAL pays per gram in Lempiras, today’s exchange rate, and the official diesel price. Updated daily.',
+              'Consulta el precio internacional del oro, el precio de referencia de MAPE LEGAL en lempiras por gramo de oro fino, el tipo de cambio del día y el precio oficial del diésel. Actualizado diariamente.',
+              'Check the international gold price, the MAPE LEGAL reference price in lempiras per gram of fine gold, today’s exchange rate, and the official diesel price. Updated daily.',
             )}
+          </p>
+          <p style={{ marginTop: 10, fontSize: 14, lineHeight: 1.6 }}>
+            <Link href="/precio" style={{ color: 'var(--moss)', fontWeight: 600, textDecoration: 'none' }}>
+              {t(
+                'Precio de Referencia oficial, fórmula y requisitos para vender →',
+                'Official reference price, formula and selling requirements →',
+              )}
+            </Link>
           </p>
 
           {/* CTA — miner-facing WhatsApp */}
@@ -156,8 +164,8 @@ export default function PreciosClient() {
               </div>
               <div style={{ fontSize: 14, color: 'var(--t2)', lineHeight: 1.5 }}>
                 {t(
-                  'Escribinos por WhatsApp y coordinamos la compra con pago en Lempiras vía cooperativa financiera aliada.',
-                  'Message us on WhatsApp and we’ll arrange the purchase, paid in Lempiras via an allied financial cooperative.',
+                  'Escribinos por WhatsApp para coordinar la verificación documental: Registro de Comercializador vigente y Certificado de Origen por lote. Pago en Lempiras vía cooperativa financiera aliada.',
+                  'Message us on WhatsApp to arrange the document verification: a current Trader Registry and a Certificate of Origin per lot. Paid in Lempiras via an allied financial cooperative.',
                 )}
               </div>
             </div>

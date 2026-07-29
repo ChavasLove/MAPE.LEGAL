@@ -10,6 +10,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/comercializacion', priority: 0.9, changeFrequency: 'monthly' },
     { path: '/mercados', priority: 0.8, changeFrequency: 'monthly' },
     { path: '/verificar', priority: 0.8, changeFrequency: 'monthly' },
+    { path: '/precio', priority: 0.8, changeFrequency: 'daily' },
+    { path: '/politica-de-precios', priority: 0.5, changeFrequency: 'monthly' },
     { path: '/precios', priority: 0.7, changeFrequency: 'daily' },
     { path: '/equipos', priority: 0.6, changeFrequency: 'weekly' },
     { path: '/registro', priority: 0.6, changeFrequency: 'weekly' },
