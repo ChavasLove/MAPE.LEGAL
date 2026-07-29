@@ -236,11 +236,6 @@ export default function PriceHistoryChart({ lang }: Props) {
     return withValue.filter((p) => parseFecha(p.fecha).getTime() >= cutoff);
   }, [points, metric, range]);
 
-  // Reset hover when the visible data changes shape.
-  useEffect(() => {
-    setActiveIdx(null);
-  }, [metricKey, rangeKey]);
-
   const geom = useMemo(() => {
     if (slice.length < 2 || chartWidth < 120) return null;
     const values = slice.map((p) => metric.value(p) as number);
@@ -268,7 +263,7 @@ export default function PriceHistoryChart({ lang }: Props) {
       const idx = Math.round((k * (slice.length - 1)) / Math.max(labelCount - 1, 1));
       return { idx, cx: px[idx].cx };
     });
-    return { values, times, ticks, step, px, linePath, areaPath, baseline, xLabels, innerW };
+    return { ticks, step, px, linePath, areaPath, baseline, xLabels };
   }, [slice, metric, chartWidth]);
 
   const stats = useMemo(() => {
@@ -278,7 +273,7 @@ export default function PriceHistoryChart({ lang }: Props) {
     const values = slice.map((p) => metric.value(p) as number);
     const delta = last - first;
     const pct = first !== 0 ? (delta / first) * 100 : 0;
-    return { first, last, delta, pct, min: Math.min(...values), max: Math.max(...values) };
+    return { delta, pct, min: Math.min(...values), max: Math.max(...values) };
   }, [slice, metric]);
 
   const withYear = range.days > 180 || !Number.isFinite(range.days);
@@ -459,7 +454,10 @@ export default function PriceHistoryChart({ lang }: Props) {
             <button
               key={r.key}
               type="button"
-              onClick={() => setRangeKey(r.key)}
+              onClick={() => {
+                setRangeKey(r.key);
+                setActiveIdx(null); // the hovered index no longer maps to the new slice
+              }}
               aria-pressed={rangeKey === r.key}
               style={segBtn(rangeKey === r.key)}
             >
@@ -472,7 +470,10 @@ export default function PriceHistoryChart({ lang }: Props) {
             <button
               key={m.key}
               type="button"
-              onClick={() => setMetricKey(m.key)}
+              onClick={() => {
+                setMetricKey(m.key);
+                setActiveIdx(null);
+              }}
               aria-pressed={metricKey === m.key}
               style={segBtn(metricKey === m.key)}
             >
