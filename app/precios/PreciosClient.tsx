@@ -11,6 +11,7 @@ import TopoBand from '@/components/decor/TopoBand';
 import MariaWidget from '@/components/landing/MariaWidget';
 import SiteFooter from '@/components/landing/SiteFooter';
 import LivePricesWidget from '@/components/precios/LivePricesWidget';
+import PriceHistoryChart from '@/components/precios/PriceHistoryChart';
 
 type Lang = 'es' | 'en';
 
@@ -107,6 +108,12 @@ export default function PreciosClient() {
 
           <div style={{ marginTop: 32 }}>
             <LivePricesWidget lang={lang} />
+          </div>
+
+          {/* Historial — daily 8 AM snapshots plotted over time so the price
+              of any past day is verifiable, not just today's. */}
+          <div style={{ marginTop: 32 }}>
+            <PriceHistoryChart lang={lang} />
           </div>
 
           {/* CTA — miner-facing WhatsApp */}
