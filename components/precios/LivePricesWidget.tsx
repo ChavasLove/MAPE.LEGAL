@@ -24,7 +24,7 @@ interface FuelLine {
   fuente: string;
 }
 
-interface LivePrices {
+export interface LivePrices {
   fecha: string;
   fetched_at: string | null;
   fuente: string | null;
@@ -45,6 +45,9 @@ const SHADOW_SM = '0 2px 6px rgba(31,42,56,0.05)';
 
 interface Props {
   lang: 'es' | 'en';
+  // Bubbles each successful snapshot up to the parent so the page can feed the
+  // relocated "Fuentes y actualización" panel without a second fetch/poll.
+  onData?: (data: LivePrices) => void;
 }
 
 function fmtNum(n: number | null | undefined, decimals = 2): string {
@@ -66,7 +69,7 @@ function fmtDate(iso: string, lang: 'es' | 'en'): string {
   });
 }
 
-export default function LivePricesWidget({ lang }: Props) {
+export default function LivePricesWidget({ lang, onData }: Props) {
   const t = useCallback(
     (es: string, en: string) => (lang === 'es' ? es : en),
     [lang],
@@ -79,6 +82,14 @@ export default function LivePricesWidget({ lang }: Props) {
 
   const mountedRef = useRef(true);
   const ctrlRef = useRef<AbortController | null>(null);
+
+  // Ref keeps `load` stable even if the parent passes an inline callback —
+  // otherwise a new onData identity each render would re-arm the mount/poll
+  // effects and refetch in a loop.
+  const onDataRef = useRef<Props['onData']>(undefined);
+  useEffect(() => {
+    onDataRef.current = onData;
+  }, [onData]);
 
   const load = useCallback(async () => {
     ctrlRef.current?.abort();
@@ -95,6 +106,7 @@ export default function LivePricesWidget({ lang }: Props) {
       if (!mountedRef.current) return;
       setData(json);
       setError(false);
+      onDataRef.current?.(json);
     } catch {
       if (!mountedRef.current) return;
       // Flag the error. The render keeps any previously loaded snapshot visible
@@ -344,109 +356,123 @@ export default function LivePricesWidget({ lang }: Props) {
               }
             />
           </div>
-
-          {/* Fuentes y actualización — per-indicator provenance. Each number on
-              this page states where it comes from and how often it changes, so
-              a miner or buyer can verify it instead of trusting it blindly. */}
-          <div
-            style={{
-              marginTop: 18,
-              background: 'var(--bg)',
-              border: '1px solid var(--border)',
-              borderRadius: 12,
-              boxShadow: SHADOW_SM,
-              padding: 'clamp(16px, 3vw, 22px)',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'baseline',
-                justifyContent: 'space-between',
-                gap: 12,
-                flexWrap: 'wrap',
-                marginBottom: 14,
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  letterSpacing: '0.14em',
-                  textTransform: 'uppercase',
-                  color: 'var(--slate)',
-                }}
-              >
-                {t('Fuentes y actualización', 'Sources & update schedule')}
-              </span>
-              {(data?.actualizado_hn || data?.consultado_hn) && (
-                <span
-                  style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--t3)' }}
-                >
-                  {t('Última captura:', 'Last capture:')}{' '}
-                  {data?.actualizado_hn ?? data?.consultado_hn} {t('(Honduras)', '(Honduras)')}
-                </span>
-              )}
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <SourceRow
-                label={t('Compra de oro MAPE LEGAL (L/gramo)', 'MAPE LEGAL gold purchase (L/gram)')}
-                fuente={t(
-                  'Cálculo verificable: 80% del precio internacional del oro, convertido a Lempiras por gramo (1 onza troy = 31.1035 g).',
-                  'Verifiable calculation: 80% of the international gold price, converted to Lempiras per gram (1 troy oz = 31.1035 g).',
-                )}
-                frecuencia={t(
-                  'Se fija una vez al día, a las 8:00 a.m. (Honduras), y no cambia durante el día.',
-                  'Set once a day at 8:00 a.m. (Honduras); it does not change during the day.',
-                )}
-              />
-              <SourceRow
-                label={t('Oro internacional (USD/onza troy)', 'International gold (USD/troy oz)')}
-                fuente={
-                  t(
-                    'Precio internacional de referencia (LBMA).',
-                    'International reference price (LBMA).',
-                  ) + (data?.fuente ? ` ${t('Feed técnico', 'Technical feed')}: ${data.fuente}.` : '')
-                }
-                frecuencia={t(
-                  'Captura diaria a las 8:00 a.m. (Honduras). Los mercados cierran los fines de semana: sábado y domingo se conserva el cierre del viernes.',
-                  'Captured daily at 8:00 a.m. (Honduras). Markets close on weekends: Saturday and Sunday keep Friday’s close.',
-                )}
-              />
-              <SourceRow
-                label={t('Tipo de cambio USD/LPS', 'USD/LPS exchange rate')}
-                fuente={t(
-                  'Tipo de cambio de referencia (BCH).',
-                  'Reference exchange rate (BCH).',
-                )}
-                frecuencia={t(
-                  'Captura diaria a las 8:00 a.m. (Honduras).',
-                  'Captured daily at 8:00 a.m. (Honduras).',
-                )}
-              />
-              <SourceRow
-                label={t('Diésel y combustibles (L/galón)', 'Diesel & fuels (L/gallon)')}
-                fuente={t(
-                  'Precio oficial de la Secretaría de Energía (SEN) de Honduras.',
-                  'Official price from Honduras’ Secretaría de Energía (SEN).',
-                )}
-                frecuencia={
-                  t(
-                    'Fijado semanalmente por decreto; entra en vigor cada lunes.',
-                    'Set weekly by decree; takes effect every Monday.',
-                  ) +
-                  (data?.diesel != null
-                    ? ` ${t('Vigente desde el', 'In effect since')} ${fmtDate(data.diesel.vigente_desde, lang)}.`
-                    : '')
-                }
-                last
-              />
-            </div>
-          </div>
         </>
       )}
+    </div>
+  );
+}
+
+// Fuentes y actualización — per-indicator provenance. Each number on the page
+// states where it comes from and how often it changes, so a miner or buyer can
+// verify it instead of trusting it blindly. Rendered by the page at the bottom
+// (below chart and CTA); receives the snapshot bubbled up via the widget's
+// onData so it never fetches on its own. With `data` still null it renders the
+// static provenance text without timestamps.
+export function PriceSourcesPanel({
+  lang,
+  data,
+}: {
+  lang: 'es' | 'en';
+  data: LivePrices | null;
+}) {
+  const t = (es: string, en: string) => (lang === 'es' ? es : en);
+
+  return (
+    <div
+      style={{
+        background: 'var(--bg)',
+        border: '1px solid var(--border)',
+        borderRadius: 12,
+        boxShadow: SHADOW_SM,
+        padding: 'clamp(16px, 3vw, 22px)',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          gap: 12,
+          flexWrap: 'wrap',
+          marginBottom: 14,
+        }}
+      >
+        <span
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            color: 'var(--slate)',
+          }}
+        >
+          {t('Fuentes y actualización', 'Sources & update schedule')}
+        </span>
+        {(data?.actualizado_hn || data?.consultado_hn) && (
+          <span
+            style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--t3)' }}
+          >
+            {t('Última captura:', 'Last capture:')}{' '}
+            {data?.actualizado_hn ?? data?.consultado_hn} {t('(Honduras)', '(Honduras)')}
+          </span>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <SourceRow
+          label={t('Compra de oro MAPE LEGAL (L/gramo)', 'MAPE LEGAL gold purchase (L/gram)')}
+          fuente={t(
+            'Cálculo verificable: 80% del precio internacional del oro, convertido a Lempiras por gramo (1 onza troy = 31.1035 g).',
+            'Verifiable calculation: 80% of the international gold price, converted to Lempiras per gram (1 troy oz = 31.1035 g).',
+          )}
+          frecuencia={t(
+            'Se fija una vez al día, a las 8:00 a.m. (Honduras), y no cambia durante el día.',
+            'Set once a day at 8:00 a.m. (Honduras); it does not change during the day.',
+          )}
+        />
+        <SourceRow
+          label={t('Oro internacional (USD/onza troy)', 'International gold (USD/troy oz)')}
+          fuente={
+            t(
+              'Precio internacional de referencia (LBMA).',
+              'International reference price (LBMA).',
+            ) + (data?.fuente ? ` ${t('Feed técnico', 'Technical feed')}: ${data.fuente}.` : '')
+          }
+          frecuencia={t(
+            'Captura diaria a las 8:00 a.m. (Honduras). Los mercados cierran los fines de semana: sábado y domingo se conserva el cierre del viernes.',
+            'Captured daily at 8:00 a.m. (Honduras). Markets close on weekends: Saturday and Sunday keep Friday’s close.',
+          )}
+        />
+        <SourceRow
+          label={t('Tipo de cambio USD/LPS', 'USD/LPS exchange rate')}
+          fuente={t(
+            'Tipo de cambio de referencia (BCH).',
+            'Reference exchange rate (BCH).',
+          )}
+          frecuencia={t(
+            'Captura diaria a las 8:00 a.m. (Honduras).',
+            'Captured daily at 8:00 a.m. (Honduras).',
+          )}
+        />
+        <SourceRow
+          label={t('Diésel y combustibles (L/galón)', 'Diesel & fuels (L/gallon)')}
+          fuente={t(
+            'Precio oficial de la Secretaría de Energía (SEN) de Honduras.',
+            'Official price from Honduras’ Secretaría de Energía (SEN).',
+          )}
+          frecuencia={
+            t(
+              'Fijado semanalmente por decreto; entra en vigor cada lunes.',
+              'Set weekly by decree; takes effect every Monday.',
+            ) +
+            (data?.diesel != null
+              ? ` ${t('Vigente desde el', 'In effect since')} ${fmtDate(data.diesel.vigente_desde, lang)}.`
+              : '')
+          }
+          last
+        />
+      </div>
     </div>
   );
 }
