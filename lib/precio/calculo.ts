@@ -6,14 +6,34 @@
 // Onza troy en gramos. Constante física, no configurable.
 export const GRAMOS_POR_ONZA_TROY = 31.1035;
 
-// TODO(CHT): definir método de ensaye antes de publicación.
-export const METODO_ENSAYE = "PENDIENTE DE DEFINICIÓN";
-
-export const VERSION_POLITICA_PRECIOS = "1.0";
+export const VERSION_POLITICA_PRECIOS = "1.1";
 
 // Fecha de entrada en vigencia de la versión actual de la Política de
 // Precios (YYYY-MM-DD). Se publica en /politica-de-precios §9.
 export const FECHA_VIGENCIA_POLITICA = "2026-07-29";
+
+/**
+ * Método de liquidación: determina el precio pagado en la transacción del día.
+ * No destructivo, resultado en minutos, compatible con depósito el mismo día.
+ */
+export const METODO_LIQUIDACION =
+  "Fluorescencia de rayos X (XRF) sobre superficie preparada";
+
+/**
+ * Método de contraste: dirime discrepancias, calibra el método de liquidación
+ * y reconcilia con la refinería de destino.
+ */
+export const METODO_CONTRASTE =
+  "Ensayo al fuego (fusión y copelación) con lectura del régulo por XRF";
+
+/** Laboratorio tercero dirimente. Debe nombrarse antes de publicar en producción. */
+export const LABORATORIO_DIRIMENTE = "[PENDIENTE CHT]";
+
+/** Tope de ajuste entre liquidación provisional y final, en puntos porcentuales de ley. */
+export const TOPE_AJUSTE_LIQUIDACION_PP = 2.0;
+
+/** Plazo de conservación de la muestra testigo, en días calendario. */
+export const DIAS_CONSERVACION_TESTIGO = 90;
 
 // Factor de comercialización vigente conforme a la Política de Precios
 // v1.0 (0.80 = 80%). Precarga del panel de fijación diaria y dato publicado
