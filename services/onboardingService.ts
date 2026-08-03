@@ -1,9 +1,17 @@
 /**
  * Onboarding State Machine
  *
- * Guides new WhatsApp users through 4 questions (name → DPI → location → role)
+ * Guides new WhatsApp users through 4 questions (name → location → role → DPI)
  * one at a time, saving each answer to DB immediately. When COMPLETE the user
  * gets a row in clientes and usuarios_broadcast and María takes over normally.
+ * The DPI is asked LAST — only once the role is clear and NOT institutional
+ * (orden Blindaje institucional 2026-08, T4.1).
+ *
+ * Interlocutores institucionales (T1.4): un mensaje que matchea
+ * INSTITUTIONAL_PATTERNS en cualquier estado — o la opción 4 de ASK_ROLE —
+ * termina el onboarding sin pedir más datos, marca la fila COMPLETE con
+ * datos.rol = 'institucional', NO persiste nada en clientes/usuarios_broadcast
+ * y responde con la derivación institucional (usted, sin comercial).
  *
  * Entry points:
  *   getOnboardingState(telefono)     — null means returning/registered user
@@ -14,6 +22,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { getAdminClient } from '@/services/adminSupabase';
 import { getOrCreateUserByPhone, assignRole, type BroadcastRol } from '@/services/userService';
+import { isInstitutionalMessage } from '@/lib/maria/institutional';
 
 // Gated init mirrors app/api/whatsapp/route.js: instantiating unconditionally
 // at module load throws "Could not find API key" during Next.js page-data
@@ -36,7 +45,9 @@ export interface OnboardingDatos {
   nombre_completo?:    string;
   numero_identidad?:   string;
   ubicacion_proyecto?: string;
-  rol?:                BroadcastRol;
+  // 'institucional' cierra el flujo sin registro comercial (T1.4) — nunca se
+  // pasa a assignRole ni produce fila en clientes.
+  rol?:                BroadcastRol | 'institucional';
 }
 
 export interface OnboardingState {
@@ -94,12 +105,17 @@ function detectCorrection(message: string): boolean {
 // user from being stuck in a stale state from weeks-old test traffic.
 const STALE_ROW_MS = 7 * 24 * 60 * 60 * 1000;
 
-// Determines the next state based on which fields are still missing
+// Determines the next state based on which fields are still missing.
+// Orden T4.1: nombre → ubicación → rol → DPI. El DPI va al FINAL, cuando el
+// rol ya está claro y NO es institucional (a un funcionario nunca se le pide
+// DPI). El reparador de filas inconsistentes en getOnboardingState usa esta
+// misma función, así que las filas guardadas con el orden viejo resuelven
+// automáticamente a un estado válido del orden nuevo.
 function nextPendingState(datos: OnboardingDatos): OnboardingEstado {
   if (!datos.nombre_completo)    return 'ASK_NAME';
-  if (!datos.numero_identidad)   return 'ASK_ID';
   if (!datos.ubicacion_proyecto) return 'ASK_LOCATION';
   if (!datos.rol)                return 'ASK_ROLE';
+  if (!datos.numero_identidad)   return 'ASK_ID';
   return 'COMPLETE';
 }
 
@@ -108,16 +124,27 @@ function buildQuestion(estado: OnboardingEstado, datos: OnboardingDatos): string
   switch (estado) {
     case 'ASK_NAME':
       return 'Hola, soy Maria de MAPE LEGAL. Para atenderte mejor, digame tu nombre completo.';
-    case 'ASK_ID':
-      return `Mucho gusto${nombre ? `, ${nombre}` : ''}. Compartime tu numero de identidad (DPI).`;
     case 'ASK_LOCATION':
-      return 'Listo. En que zona o municipio trabajas?';
+      return `Mucho gusto${nombre ? `, ${nombre}` : ''}. En que zona o municipio trabajas?`;
     case 'ASK_ROLE':
-      return 'Perfecto. Cual es tu rol?\n1. Minero\n2. Comprador\n3. Tecnico';
+      return 'Perfecto. Cual es tu rol?\n1. Minero\n2. Comprador\n3. Tecnico\n4. Funcionario o institucion publica';
+    case 'ASK_ID':
+      return 'Para terminar, compartime tu numero de identidad (DPI).';
     case 'COMPLETE':
-      return `Listo${nombre ? ` ${nombre}` : ''}, ya quedas registrado. Nuestro equipo se comunica con vos pronto. Cualquier consulta me escribis.`;
+      // Sin promesa de contacto humano — el propio prompt de María prohíbe
+      // prometer acción humana que el sistema no controla (T1.4).
+      return `Listo${nombre ? ` ${nombre}` : ''}, ya quedás registrado en el sistema. El equipo de MAPE LEGAL revisa las solicitudes en la plataforma. Si es urgente, escribí a gerencia@mape.legal.`;
   }
 }
+
+// Respuesta de derivación institucional (usted, cero comercial). Exportada
+// para que el webhook pueda marcar tipo_interlocutor='institucional' en el
+// historial cuando el onboarding cerró por esta vía (opción 4 / patrón).
+export const INSTITUTIONAL_ONBOARDING_REPLY =
+  'Entendido. Para consultas y coordinación institucional con MAPE LEGAL le ' +
+  'atendemos por el canal formal: gerencia@mape.legal. Por este medio le puedo ' +
+  'compartir con gusto información general del marco legal minero (Ley General ' +
+  'de Minería y Reglamento Especial MAPE).';
 
 // ─── Data extraction via Claude ───────────────────────────────────────────────
 
@@ -315,7 +342,7 @@ async function finalise(telefono: string, datos: OnboardingDatos): Promise<void>
 
   // 2. Ensure broadcast user exists and has the correct role
   await getOrCreateUserByPhone(telefono, datos.nombre_completo ?? undefined);
-  if (datos.rol) {
+  if (datos.rol && datos.rol !== 'institucional') {
     await assignRole(telefono, datos.rol);
   }
 
@@ -345,6 +372,20 @@ export async function handleOnboarding(
   const existing = await getOnboardingState(telefono);
   const current  = existing ?? { estado: 'ASK_NAME' as OnboardingEstado, datos: {} as OnboardingDatos };
 
+  // Interlocutor institucional (T1.4): en CUALQUIER estado, un mensaje que
+  // matchea los patrones institucionales — o la opción 4 en ASK_ROLE —
+  // termina el onboarding sin pedir más datos. La fila queda COMPLETE con
+  // rol='institucional' (registro de que este número no es prospecto); NO se
+  // llama finalise(), así que no se escribe clientes ni usuarios_broadcast, y
+  // un DPI ya capturado en la sesión se descarta (no se persiste).
+  const isRoleFour = current.estado === 'ASK_ROLE' && /^\s*4\s*\.?\s*$/.test(message);
+  if (isInstitutionalMessage(message) || isRoleFour) {
+    const datos: OnboardingDatos = { ...current.datos, rol: 'institucional' };
+    delete datos.numero_identidad;
+    await upsertState(telefono, 'COMPLETE', datos);
+    return INSTITUTIONAL_ONBOARDING_REPLY;
+  }
+
   // Correction intent: user is denying a previously-captured field. Wipe the
   // most-recently captured field (or the name by default — that's where false
   // positives hurt most) and re-ask. Bypasses Haiku because a "no" is fast and
@@ -353,10 +394,12 @@ export async function handleOnboarding(
   // but still re-presents the current question, never gets stuck.
   if (detectCorrection(message)) {
     const datos = { ...current.datos };
+    // Prioridad de borrado: nombre primero (donde los falsos positivos hacen
+    // más daño), luego el resto en el orden de captura T4.1.
     if (datos.nombre_completo)         delete datos.nombre_completo;
-    else if (datos.numero_identidad)   delete datos.numero_identidad;
     else if (datos.ubicacion_proyecto) delete datos.ubicacion_proyecto;
     else if (datos.rol)                delete datos.rol;
+    else if (datos.numero_identidad)   delete datos.numero_identidad;
     const nextAfterFix = nextPendingState(datos);
     await upsertState(telefono, nextAfterFix, datos);
     return `Disculpa, lo corrijo. ${buildQuestion(nextAfterFix, datos)}`;

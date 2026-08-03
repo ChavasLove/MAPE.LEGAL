@@ -2,12 +2,13 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { getUserByPhone, getOrCreateUserByPhone } from "@/services/userService";
 import { interpretAndExecute } from "@/services/adminCommandService";
-import { getOnboardingState, handleOnboarding } from "@/services/onboardingService";
+import { getOnboardingState, handleOnboarding, INSTITUTIONAL_ONBOARDING_REPLY } from "@/services/onboardingService";
 import { fetchAllPrices, storePrices, effectivePriceDate, TROY_OUNCE_GRAMS } from "@/services/pricingService";
 import { sanitizeIlikeTerm } from "@/services/concesionesService";
 import { embedQuery, toVectorText } from "@/lib/maria/embeddings";
 import { normalizePhone } from "@/lib/maria/normalizePhone";
 import { validateTwilioSignature } from "@/lib/webhookSignatures";
+import { isInstitutionalMessage, INSTITUTIONAL_CONTEXT_BLOCK } from "@/lib/maria/institutional";
 import { CHT_SYSTEM_PROMPT } from "@/lib/maria/systemPrompt";
 import {
   RAG_MATCH_COUNT,
@@ -677,15 +678,56 @@ Comandos disponibles:
     const conversationHistory = (historyDesc || []).reverse();
     console.log('History found:', conversationHistory.length, 'messages');
 
-    // --- Look up miner in clientes table ---
     // normalizePhone handles whatsapp:/tel:/sms: prefixes, URL-encoding, and stray whitespace.
     // fromNumber stays as-is for conversaciones_whatsapp inserts (legacy rows use the prefix).
     const cleanNumber = normalizePhone(fromNumber);
-    const { data: cliente } = await getSupabase()
-      .from('clientes')
-      .select('id, nombre, situacion_tierra, municipio, tipo_mineral, dpi, telefono_whatsapp')
-      .eq('telefono_whatsapp', cleanNumber)
-      .maybeSingle();
+
+    // --- Gate institucional determinístico (orden Blindaje institucional 2026-08, T1.3) ---
+    // El guardarriel del prompt (INTERLOCUTORES INSTITUCIONALES) no basta: el
+    // flujo determinístico (onboarding, registro, contextos comerciales) corre
+    // antes del modelo. Dos señales, cualquiera activa el modo institucional:
+    //   1. El mensaje del turno matchea INSTITUTIONAL_PATTERNS.
+    //   2. El número ya tiene filas tipo_interlocutor='institucional'
+    //      (persistencia: una vez institucional, siempre institucional — un
+    //      funcionario no se "convierte" en prospecto en el turno siguiente).
+    // Consecuencias determinísticas: sin onboarding, sin getOrCreateUserByPhone,
+    // sin filas en clientes/transacciones_pendientes, prompt sin bloques
+    // comerciales, historial marcado institucional.
+    let esInstitucional = isInstitutionalMessage(incomingMessage);
+    if (!esInstitucional) {
+      try {
+        const instCandidates = [...new Set([fromNumber, cleanNumber, `whatsapp:${cleanNumber}`])];
+        const { data: instRows, error: instErr } = await getSupabase()
+          .from('conversaciones_whatsapp')
+          .select('id')
+          .in('numero_whatsapp', instCandidates)
+          .eq('tipo_interlocutor', 'institucional')
+          .limit(1);
+        if (instErr) {
+          // Causa más común: migración 037 sin aplicar (columna inexistente).
+          // No-fatal: el patrón del turno sigue cubriendo la detección.
+          console.warn('[maria] institutional flag lookup non-fatal:', instErr.message);
+        }
+        esInstitucional = !!(instRows && instRows.length);
+      } catch (e) {
+        console.warn('[maria] institutional flag lookup non-fatal:', e?.message);
+      }
+    }
+    if (esInstitucional) {
+      console.log('[maria] interlocutor institucional — supresión comercial determinística activa');
+    }
+
+    // --- Look up miner in clientes table ---
+    // Interlocutores institucionales nunca cargan contexto comercial.
+    let cliente = null;
+    if (!esInstitucional) {
+      const { data: clienteRow } = await getSupabase()
+        .from('clientes')
+        .select('id, nombre, situacion_tierra, municipio, tipo_mineral, dpi, telefono_whatsapp')
+        .eq('telefono_whatsapp', cleanNumber)
+        .maybeSingle();
+      cliente = clienteRow ?? null;
+    }
 
     console.log('Cliente found:', cliente ? cliente.nombre : 'Unknown');
 
@@ -713,7 +755,9 @@ Comandos disponibles:
     // that would re-fetch and overwrite the frozen price every evening.
     let preciosHoy = null;
     const priceDate = effectivePriceDate();
-    try {
+    // Interlocutor institucional: sin precios — ni fetch (costo/latencia) ni
+    // bloque PRECIOS DE REFERENCIA en el prompt (supresión determinística).
+    if (!esInstitucional) try {
       const { data: cached } = await getSupabase()
         .from('precios_diarios')
         .select('oro, plata, usd_hnl, fecha, fetched_at, fuente')
@@ -725,7 +769,7 @@ Comandos disponibles:
       }
     } catch { /* table may not exist or be empty — fall through to live fetch */ }
 
-    if (!preciosHoy) {
+    if (!esInstitucional && !preciosHoy) {
       try {
         // Race the upstream fan-out against a tight budget. fetchAllPrices can
         // take ~16s worst case (FX 8s + Yahoo backfill 8s); on Twilio's ~15s
@@ -780,15 +824,17 @@ Comandos disponibles:
     const frescuraLabel = `consultado hoy ${horaConsultaHN}`;
 
     const tipoCambio = preciosHoy?.usd_hnl != null ? `L ${fmt(preciosHoy.usd_hnl)}/USD` : null;
-    const priceContext = preciosHoy
+    // Institucional: '' (ni siquiera el fallback "no hay datos", que instruye
+    // una respuesta de precio).
+    const priceContext = esInstitucional ? '' : preciosHoy
       ? `\n\nPRECIOS DE REFERENCIA (${preciosHoy.fecha ?? 'hoy'}${frescuraLabel ? ` — ${frescuraLabel}` : ''}):
 - Oro internacional: ${oroLBMA ?? 'no disponible'}
-- Precio de compra MAPE LEGAL (80% del precio internacional): ${oroCompra ?? 'el equipo confirma hoy'}
+- Precio de compra MAPE LEGAL (según la Política de Precios vigente): ${oroCompra ?? 'el equipo confirma hoy'}
 - Plata internacional: ${plataLBMA ?? 'no disponible'}
 - Tipo de cambio: ${tipoCambio ?? 'no disponible'}
 - Frescura: ${frescuraLabel || 'no disponible'}
 ${preciosHoy.fuente ? `- Fuente: ${preciosHoy.fuente}` : ''}
-El formato canónico de respuesta para precio del día está en CUANDO PREGUNTAN POR EL PRECIO DEL ORO — síguelo al pie de la letra (4 viñetas: precio internacional + MAPE LEGAL compra + Tipo de cambio USD/LPS + Actualizado, luego Finacoop + www.mape.legal). El timestamp ("Actualizado") y el tipo de cambio USD/LPS son OBLIGATORIOS en cada respuesta de precio.`
+El formato canónico de respuesta para precio del día está en CUANDO PREGUNTAN POR EL PRECIO DEL ORO — síguelo al pie de la letra (4 viñetas: precio internacional + MAPE LEGAL compra + Tipo de cambio USD/LPS + Actualizado, luego la cooperativa financiera aliada + www.mape.legal). El timestamp ("Actualizado") y el tipo de cambio USD/LPS son OBLIGATORIOS en cada respuesta de precio.`
       : `\n\nPRECIOS DE REFERENCIA: No hay datos de precios cargados hoy. Si el cliente pregunta por precio de compra del oro, di: "Hoy no tengo el precio cargado en el sistema. Para precio actualizado escribí a gerencia@mape.legal."`;
 
     // --- Query expedientes linked to this client ---
@@ -831,7 +877,9 @@ El formato canónico de respuesta para precio del día está en CUANDO PREGUNTAN
     }
 
     // --- Build client context for María ---
-    const clienteContext = cliente
+    // Institucional: '' — el branch "MINERO NO REGISTRADO" instruye pedir el
+    // nombre para registro comercial, exactamente lo que hay que suprimir.
+    const clienteContext = esInstitucional ? '' : cliente
       ? `
 CONTEXTO DEL MINERO ACTIVO:
 - Nombre: ${cliente.nombre}
@@ -891,20 +939,39 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
     // reference, or explicitly opting out, skip onboarding this turn and route
     // them to free chat. Their onboarding row stays untouched so they can
     // resume later when they send a non-escape message.
-    const wantsEscape = ONBOARDING_ESCAPE_PATTERNS.test(incomingMessage);
+    // T1.5 (defensa en profundidad): un mensaje institucional también escapa
+    // el onboarding aunque el gate principal fallara por error de DB.
+    const wantsEscape = ONBOARDING_ESCAPE_PATTERNS.test(incomingMessage) || isInstitutionalMessage(incomingMessage);
     // Registered clients never need onboarding — skip the extra onboarding_states
     // round-trip (and its possible repair upsert) on their hot path entirely.
-    if (!isAdmin && !wantsEscape && !cliente) {
+    // Interlocutores institucionales NUNCA entran al onboarding (T1.3): no se
+    // crea ni avanza onboarding_states para ese número.
+    if (!isAdmin && !wantsEscape && !cliente && !esInstitucional) {
       try {
         const onboardingState = await getOnboardingState(cleanNumber);
         const isNewUser     = !cliente && onboardingState === null;
         const isInProgress  = onboardingState && onboardingState.estado !== 'COMPLETE';
         if (isNewUser || isInProgress) {
           const reply = await handleOnboarding(cleanNumber, incomingMessage);
-          await getSupabase().from("conversaciones_whatsapp").insert([
+          // Si el onboarding cerró por la vía institucional (opción 4 de
+          // ASK_ROLE — el patrón textual ya escapa el gate antes de llegar
+          // aquí), marca el historial para que la persistencia por columna
+          // aplique desde el siguiente turno. Retry sin marca si la columna
+          // no existe (migración 037 sin aplicar).
+          const onbRows = [
             { numero_whatsapp: fromNumber, role: "user",      content: safeIncoming },
             { numero_whatsapp: fromNumber, role: "assistant", content: reply },
-          ]);
+          ];
+          const onbInstitutional = reply === INSTITUTIONAL_ONBOARDING_REPLY;
+          let { error: onbInsertErr } = await getSupabase().from("conversaciones_whatsapp").insert(
+            onbInstitutional
+              ? onbRows.map(r => ({ ...r, tipo_interlocutor: 'institucional' }))
+              : onbRows
+          );
+          if (onbInsertErr && onbInstitutional && /tipo_interlocutor/i.test(onbInsertErr.message ?? '')) {
+            console.warn('[maria] tipo_interlocutor column missing (aplicar migración 037) — insertando sin marca');
+            await getSupabase().from("conversaciones_whatsapp").insert(onbRows);
+          }
           return new Response(
             `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${esc(reply)}</Message></Response>`,
             { status: 200, headers: { "Content-Type": "text/xml" } }
@@ -948,7 +1015,9 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
 CONTEXTO CRÍTICO: Esta conversación YA ESTÁ EN CURSO.
 PROHIBIDO saludar de nuevo.
 PROHIBIDO decir "Hola", "Bienvenido", o "Soy María" en este mensaje.
-Responde DIRECTAMENTE a lo que acaba de decir el usuario.`);
+Responde DIRECTAMENTE a lo que acaba de decir el usuario.`)
+      // Al FINAL del prompt (T1.3): refuerzo no negociable del guardarriel.
+      + (esInstitucional ? INSTITUTIONAL_CONTEXT_BLOCK : '');
 
     // Strip the admin take-over prefix BEFORE Claude sees it. The admin UI
     // tags messages it sends from /api/admin/maria/conversations/[phone] with
@@ -1028,14 +1097,29 @@ Responde DIRECTAMENTE a lo que acaba de decir el usuario.`);
     console.log(`🤖 Claude responds: ${assistantReply}`);
 
     // --- Auto-create broadcast user if not yet registered ---
-    if (!broadcastUser) {
+    // Institucional: NUNCA — un funcionario no es lead ni suscriptor (T1.3).
+    if (!broadcastUser && !esInstitucional) {
       getOrCreateUserByPhone(cleanNumber, cliente?.nombre ?? undefined).catch(() => {});
     }
 
-    const { error: insertError } = await getSupabase().from("conversaciones_whatsapp").insert([
+    // Historial marcado por tipo de interlocutor. Las filas comerciales no
+    // envían la columna (el DEFAULT 'comercial' de la migración 037 la cubre y
+    // el insert no rompe si la migración aún no está aplicada); las
+    // institucionales la envían explícita, con reintento sin marca si la
+    // columna no existe todavía (advertido en logs — aplicar 037).
+    const convRows = [
       { numero_whatsapp: fromNumber, role: "user", content: safeIncoming },
       { numero_whatsapp: fromNumber, role: "assistant", content: assistantReply },
-    ]);
+    ];
+    let { error: insertError } = await getSupabase().from("conversaciones_whatsapp").insert(
+      esInstitucional
+        ? convRows.map(r => ({ ...r, tipo_interlocutor: 'institucional' }))
+        : convRows
+    );
+    if (insertError && esInstitucional && /tipo_interlocutor/i.test(insertError.message ?? '')) {
+      console.warn('[maria] tipo_interlocutor column missing (aplicar migración 037) — insertando sin marca');
+      ({ error: insertError } = await getSupabase().from("conversaciones_whatsapp").insert(convRows));
+    }
     console.log('Insert result:', insertError ? insertError.message : 'success');
 
     // --- Forward contact requests to Willis ---
@@ -1096,7 +1180,9 @@ Accion requerida: Llamar o escribir al cliente hoy.`;
     }
 
     // --- Extract and save structured client data ---
-    if (!cliente) {
+    // Institucional: sin extracción ni auto-registro — un funcionario jamás
+    // termina con fila en clientes (T1.3 / gate G1).
+    if (!cliente && !esInstitucional) {
       // Best-effort data enrichment. The reply was already generated and saved
       // above, so a throw here (Haiku overload / rate-limit / network) must NOT
       // reach the outer catch and replace the good answer with "problema
@@ -1176,7 +1262,7 @@ Si algún dato no está claramente mencionado, deja null.`
       }
     }
 
-    if (assistantReply.includes("Listo") && assistantReply.includes("Confirmas")) {
+    if (!esInstitucional && assistantReply.includes("Listo") && assistantReply.includes("Confirmas")) {
       // Non-fatal: a Supabase blip here must not propagate to the outer catch,
       // which would replace María's reply with "tuvimos un problema técnico".
       // Mirrors the .catch() on the new-expediente insert below.
@@ -1190,6 +1276,7 @@ Si algún dato no está claramente mencionado, deja null.`
 
     // --- Detect new expediente intake pattern ---
     if (
+      !esInstitucional &&
       assistantReply.includes("Listo") &&
       assistantReply.includes("registré tu solicitud de")
     ) {

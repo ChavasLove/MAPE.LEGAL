@@ -13,8 +13,11 @@
  * convenio firmado ni cifras de margen comercial.
  *
  * Exclusiones (documentadas):
- *  - app/api        — código de servidor, no copy público; incluye
- *                     app/api/whatsapp, intocable por restricción §1.3.
+ *  - app/api        — código de servidor, no copy público: exento de las
+ *                     reglas de copy PÚBLICO, pero desde la orden "Blindaje
+ *                     institucional de María" (2026-08) SÍ se escanea con las
+ *                     reglas de confidencialidad (scope: 'all') — la exención
+ *                     total de §1.3 quedó superseded para ese propósito.
  *  - app/admin      — panel interno autenticado, fuera del sitio público.
  *  - app/dashboard  — superficie interna autenticada.
  *  - app/portal     — superficie interna autenticada.
@@ -35,6 +38,13 @@ const SCAN_DIRS = ['app', 'components', 'lib/content']
 // violaciones pasadas, y no es superficie de copy.
 const INTERNAL_SCAN_DIRS = ['docs', 'lib/maria', 'services']
 const ROOT_FILES = ['README.md', 'CLAUDE.md', 'MARIA.md', 'AGENTS.md', 'DESIGN.md']
+// Tercer alcance (orden "Blindaje institucional de María" 2026-08, T2.4):
+// app/api deja de estar totalmente exento — se escanea ÚNICAMENTE con las
+// reglas de confidencialidad (`scope: 'all'`: contrapartes sin convenio +
+// cifras de margen), no con las reglas de copy público (es código de
+// servidor, no copy). La exención total de §1.3 quedó superseded por esa
+// orden para este propósito.
+const CONFIDENTIALITY_ALSO_DIRS = [join('app', 'api')]
 const EXCLUDED = [
   join('app', 'api'),
   join('app', 'admin'),
@@ -107,13 +117,14 @@ const RULES = [
   // público — ningún archivo expone contrapartes sin convenio ni márgenes.
   { re: /chiopa/i, label: '"Chiopa" — contraparte sin anexo contractual público; usar "refinería de destino"', scope: 'all' },
   { re: /8[05]\s*%\s*del\s+precio/i, label: 'cifra de margen comercial — remite a la Política de Precios versionada', scope: 'all' },
+  { re: /8[05]\s*%\s*of\s+the\s+(international|reference)/i, label: 'cifra de margen comercial (variante EN) — remite a la Política de Precios versionada', scope: 'all' },
 
   // Entidades no constituidas / marca no registrada
   { re: /asociaci[óo]n\s+de\s+mineros\s+mape/i, label: '"Asociación de Mineros MAPE" — entidad no constituida' },
   { re: /[™®]/, label: 'símbolo ™/® — la marca no está registrada ante DGPI' },
 ]
 
-function walk(dir, out = []) {
+function walk(dir, out = [], applyExcluded = true) {
   let entries
   try {
     entries = readdirSync(dir)
@@ -123,10 +134,10 @@ function walk(dir, out = []) {
   for (const entry of entries) {
     const full = join(dir, entry)
     const rel = relative(ROOT, full)
-    if (EXCLUDED.some((ex) => rel === ex || rel.startsWith(ex + '/') || rel.startsWith(ex + '\\'))) continue
+    if (applyExcluded && EXCLUDED.some((ex) => rel === ex || rel.startsWith(ex + '/') || rel.startsWith(ex + '\\'))) continue
     const st = statSync(full)
     if (st.isDirectory()) {
-      walk(full, out)
+      walk(full, out, applyExcluded)
     } else if (EXTENSIONS.some((ext) => entry.endsWith(ext))) {
       out.push(full)
     }
@@ -147,10 +158,16 @@ const internalFiles = [
     }
   }),
 ]
+// app/api está en EXCLUDED para el alcance público — se recorre aparte, sin
+// aplicar EXCLUDED, y solo con las reglas de confidencialidad.
+const confidentialityAlsoFiles = CONFIDENTIALITY_ALSO_DIRS.flatMap((d) =>
+  walk(join(ROOT, d), [], false)
+)
 const publicSet = new Set(publicFiles)
+const confidentialFiles = [...internalFiles, ...confidentialityAlsoFiles]
 const targets = [
   ...publicFiles.map((f) => ({ file: f, rules: RULES })),
-  ...internalFiles.filter((f) => !publicSet.has(f)).map((f) => ({ file: f, rules: CONFIDENTIAL_RULES })),
+  ...confidentialFiles.filter((f) => !publicSet.has(f)).map((f) => ({ file: f, rules: CONFIDENTIAL_RULES })),
 ]
 let violations = 0
 

@@ -22,10 +22,12 @@ const FETCH_TIMEOUT_MS = 8000;
 // drift that a client comparing two replies would notice.
 export const TROY_OUNCE_GRAMS = 31.1034768;
 
-// MAPE LEGAL buys gold at 80% of the international reference price. Single source
-// of truth so the boletín diario, María (WhatsApp + web) and the /precios widget
-// all quote the same purchase price — a divergent factor or troy-ounce constant
-// here is exactly the drift the codebase already guards against.
+// MAPE LEGAL buy factor over the international reference price — the current
+// value is governed by the published, versioned Política de Precios
+// (/politica-de-precios); do not state the figure in prose. Single source of
+// truth so the boletín diario, María (WhatsApp + web) and the /precios widget
+// all quote the same purchase price — a divergent factor or troy-ounce
+// constant here is exactly the drift the codebase already guards against.
 export const MAPE_GOLD_BUY_FACTOR = 0.8;
 
 // The public price is a single daily snapshot anchored to 08:00 Honduras time.
@@ -61,7 +63,8 @@ export function effectivePriceDate(now: Date = new Date()): string {
 
 /**
  * MAPE LEGAL gold purchase price in Lempiras per gram.
- * = international USD/oz × 80% × USD/HNL ÷ troy-ounce-grams.
+ * = international USD/oz × factor de la Política de Precios × USD/HNL
+ *   ÷ troy-ounce-grams.
  * Returns null when either input is missing or non-positive.
  */
 export function mapeGoldBuyLpsPerGram(
