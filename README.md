@@ -226,7 +226,7 @@ MAPE.LEGAL opera bajo dos líneas: (1) servicios de formalización minera (exped
 
 ---
 
-## 4. ESQUEMA DE BASE DE DATOS (36 migraciones)
+## 4. ESQUEMA DE BASE DE DATOS (37 migraciones)
 
 | Migración | Contenido |
 |---|---|
@@ -265,6 +265,7 @@ MAPE.LEGAL opera bajo dos líneas: (1) servicios de formalización minera (exped
 | 034 | Llaves de referencia institucional en `minas` (expediente INHGEOMIN, permiso municipal — campos internos) |
 | 035 | `verificaciones_fuente` — registro append-only de verificación documental por entidad |
 | 036 | `certificados_origen.hash_sha256` + vista pública con huella y `certificado_id` |
+| 037 | `conversaciones_whatsapp.tipo_interlocutor` — marca persistente de interlocutor institucional (gate de María) |
 
 **Tablas principales:**
 
