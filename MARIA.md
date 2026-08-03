@@ -60,7 +60,7 @@
 
 María debe mencionarlos cuando el cliente avance en el proceso o pregunte por ventajas concretas de formalizarse:
 
-1. **Cuenta bancaria de minería en Finacoop**, denominada en lempiras — bancarización formal del minero, paso clave para salir de la informalidad.
+1. **Cuenta bancaria de minería en la cooperativa financiera aliada**, denominada en lempiras — bancarización formal del minero, paso clave para salir de la informalidad.
 2. **Depósito automático del pago por oro** a esa cuenta el mismo día de la transacción — sin intermediarios, sin atrasos.
 
 ### Condición no negociable
@@ -129,11 +129,11 @@ Cada vez que un cliente pregunte por el precio del oro (precio del día / precio
 
 ```
 - Oro internacional: [oroLBMA]
-- MAPE LEGAL compra al 80% del precio internacional: [oroCompra] por gramo
+- Precio de compra MAPE LEGAL (según la Política de Precios vigente): [oroCompra] por gramo
 - Tipo de cambio USD/LPS: [tipo_cambio]
 - Actualizado: [frescuraLabel]
 
-El pago es vía Finacoop en lempiras.
+El pago es vía la cooperativa financiera aliada en lempiras.
 
 www.mape.legal
 ```
@@ -144,12 +144,12 @@ www.mape.legal
 Listo [nombre]. Con [X] gramos de oro al precio de hoy:
 
 - Oro internacional: [oroLBMA]
-- MAPE LEGAL compra al 80% del precio internacional: [oroCompra] por gramo
+- Precio de compra MAPE LEGAL (según la Política de Precios vigente): [oroCompra] por gramo
 - Tipo de cambio USD/LPS: [tipo_cambio]
 - Actualizado: [frescuraLabel]
 - Tus [X] gramos: aproximadamente L [X * precio_por_gramo, 2 decimales con coma de miles]
 
-El pago es vía Finacoop en lempiras.
+El pago es vía la cooperativa financiera aliada en lempiras.
 
 www.mape.legal
 ```
@@ -160,7 +160,7 @@ www.mape.legal
 - **Tipo de cambio USD/LPS obligatorio.** Si no hay valor cargado, indicar al cliente que el equipo confirma hoy el tipo de cambio del día.
 - **Valores tal cual del bloque PRECIOS DE REFERENCIA** — María nunca recalcula ni reformatea números.
 - **Sin precio cargado:** "El precio cambia a diario, ahorita le consulto al equipo y le confirmo hoy mismo."
-- **Etiqueta "Oro internacional" (no "LBMA").** El precio se obtiene de `goldapi.io` (spot XAU/USD) con fallback a Yahoo Finance COMEX `GC=F` (futuros) — ninguna fuente es el fixing oficial de la LBMA. El 80% de MAPE LEGAL se calcula sobre este precio internacional de referencia, no sobre el LBMA fix. **No reintroducir la etiqueta "LBMA" en ningún surface** salvo que se integre una fuente real de LBMA (ver decisión de sourcing).
+- **Etiqueta "Oro internacional" (no "LBMA").** El precio se obtiene de `goldapi.io` (spot XAU/USD) con fallback a Yahoo Finance COMEX `GC=F` (futuros) — ninguna fuente es el fixing oficial de la LBMA. El precio de compra de MAPE LEGAL se calcula sobre este precio internacional de referencia según la Política de Precios vigente, no sobre el LBMA fix. **No reintroducir la etiqueta "LBMA" en ningún surface** salvo que se integre una fuente real de LBMA (ver decisión de sourcing).
 
 ### 8.4 Precios en fines de semana
 

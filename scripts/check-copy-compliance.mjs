@@ -6,6 +6,12 @@
  * lib/content/) y falla con exit code 1 si encuentra cualquier expresión
  * prohibida por las restricciones duras de copy legal.
  *
+ * Alcance ampliado (limpieza 2026-08): docs/, lib/maria/, services/ y los
+ * archivos raíz (README.md, CLAUDE.md, MARIA.md, AGENTS.md, DESIGN.md) se
+ * escanean con las reglas de confidencialidad (`scope: 'all'`) — el
+ * repositorio es público y ningún archivo debe exponer contrapartes sin
+ * convenio firmado ni cifras de margen comercial.
+ *
  * Exclusiones (documentadas):
  *  - app/api        — código de servidor, no copy público; incluye
  *                     app/api/whatsapp, intocable por restricción §1.3.
@@ -21,6 +27,14 @@ import { join, relative } from 'node:path'
 
 const ROOT = process.cwd()
 const SCAN_DIRS = ['app', 'components', 'lib/content']
+// Alcance ampliado (limpieza 2026-08): documentación interna, prompts de María
+// y servicios. En este alcance solo aplican las reglas de confidencialidad
+// (`scope: 'all'`) — contrapartes sin convenio firmado y cifras de margen.
+// Las reglas de copy público siguen limitadas a SCAN_DIRS: la documentación
+// histórica interna (p. ej. CLAUDE.md) describe esas mismas reglas y sus
+// violaciones pasadas, y no es superficie de copy.
+const INTERNAL_SCAN_DIRS = ['docs', 'lib/maria', 'services']
+const ROOT_FILES = ['README.md', 'CLAUDE.md', 'MARIA.md', 'AGENTS.md', 'DESIGN.md']
 const EXCLUDED = [
   join('app', 'api'),
   join('app', 'admin'),
@@ -28,6 +42,11 @@ const EXCLUDED = [
   join('app', 'portal'),
 ]
 const EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.md', '.mdx', '.css', '.html']
+// Marcador de excepción: una línea que documenta una regla prohibitiva (p. ej.
+// la propia regla FINACOOP en CLAUDE.md) se exime añadiendo este marcador en
+// un comentario HTML al final de la línea. Usarlo SOLO para documentación de
+// reglas — nunca para copy real.
+const ALLOW_MARKER = 'check-copy:allow'
 
 /**
  * Cada regla: expresión regular (insensible a mayúsculas donde aplica) y
@@ -76,9 +95,15 @@ const RULES = [
   { re: /naciones\s+unidas/i, label: 'mención de Naciones Unidas — prohibida hasta instrucción expresa' },
   { re: /united\s+nations/i, label: 'mención de United Nations — prohibida hasta instrucción expresa' },
 
-  // Institución financiera: no se nombra en superficies públicas hasta que
-  // el convenio esté firmado — usar "cooperativa financiera aliada".
-  { re: /finacoop/i, label: 'FINACOOP — usar "cooperativa financiera aliada" hasta convenio firmado' },
+  // Institución financiera: no se nombra en superficies públicas ni en
+  // archivos del repositorio hasta que el convenio esté firmado — usar
+  // "cooperativa financiera aliada".
+  { re: /finacoop/i, label: 'FINACOOP — usar "cooperativa financiera aliada" hasta convenio firmado', scope: 'all' },
+
+  // Contrapartes y términos económicos (limpieza 2026-08): el repositorio es
+  // público — ningún archivo expone contrapartes sin convenio ni márgenes.
+  { re: /chiopa/i, label: '"Chiopa" — contraparte sin anexo contractual público; usar "refinería de destino"', scope: 'all' },
+  { re: /8[05]\s*%\s*del\s+precio/i, label: 'cifra de margen comercial — remite a la Política de Precios versionada', scope: 'all' },
 
   // Entidades no constituidas / marca no registrada
   { re: /asociaci[óo]n\s+de\s+mineros\s+mape/i, label: '"Asociación de Mineros MAPE" — entidad no constituida' },
@@ -106,14 +131,32 @@ function walk(dir, out = []) {
   return out
 }
 
-const files = SCAN_DIRS.flatMap((d) => walk(join(ROOT, d)))
+const CONFIDENTIAL_RULES = RULES.filter((r) => r.scope === 'all')
+
+const publicFiles = SCAN_DIRS.flatMap((d) => walk(join(ROOT, d)))
+const internalFiles = [
+  ...INTERNAL_SCAN_DIRS.flatMap((d) => walk(join(ROOT, d))),
+  ...ROOT_FILES.map((f) => join(ROOT, f)).filter((f) => {
+    try {
+      return statSync(f).isFile()
+    } catch {
+      return false
+    }
+  }),
+]
+const publicSet = new Set(publicFiles)
+const targets = [
+  ...publicFiles.map((f) => ({ file: f, rules: RULES })),
+  ...internalFiles.filter((f) => !publicSet.has(f)).map((f) => ({ file: f, rules: CONFIDENTIAL_RULES })),
+]
 let violations = 0
 
-for (const file of files) {
+for (const { file, rules } of targets) {
   const rel = relative(ROOT, file)
   const lines = readFileSync(file, 'utf8').split('\n')
   lines.forEach((line, i) => {
-    for (const rule of RULES) {
+    if (line.includes(ALLOW_MARKER)) return
+    for (const rule of rules) {
       const match = line.match(rule.re)
       if (match) {
         violations++
@@ -127,4 +170,4 @@ if (violations > 0) {
   console.error(`\ncheck:copy — ${violations} violación(es) encontrada(s).`)
   process.exit(1)
 }
-console.log(`check:copy — sin violaciones (${files.length} archivos escaneados).`)
+console.log(`check:copy — sin violaciones (${targets.length} archivos escaneados).`)

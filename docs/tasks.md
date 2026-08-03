@@ -1,7 +1,7 @@
 # Tasks
 
 ## Pending
-- [ ] **Phase 0 — Stabilization.** Source: `docs/code-analysis-review.md`.
+- [ ] **Phase 0 — Stabilization.**
   Fix `middleware.ts` / `proxy.ts`, cookie-name mismatch in `/api/auth/login`,
   API route auth, María webhook import errors, workflow race conditions,
   and the pre-existing lint warning in `app/dashboard/minas/page.tsx`
