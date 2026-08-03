@@ -1,7 +1,7 @@
 # MAPE.LEGAL — Plataforma de Formalización Minera
 
 **Versión 1.1 — Piloto Iriona 2026**
-Última actualización: 9 de mayo de 2026
+Última actualización: 3 de agosto de 2026
 Propietario: MAPE LEGAL
 Administrador Único: Willis Yang
 Dominio: mape.legal · App privada en Vercel + Supabase
@@ -226,7 +226,7 @@ MAPE.LEGAL opera bajo dos líneas: (1) servicios de formalización minera (exped
 
 ---
 
-## 4. ESQUEMA DE BASE DE DATOS (27 migraciones)
+## 4. ESQUEMA DE BASE DE DATOS (36 migraciones)
 
 | Migración | Contenido |
 |---|---|
@@ -256,6 +256,15 @@ MAPE.LEGAL opera bajo dos líneas: (1) servicios de formalización minera (exped
 | 025 | Desbloqueo del cache de `precios_diarios`: policy `service_all_precios_diarios` idempotente + RPC `upsert_precios_diarios` SECURITY DEFINER |
 | 026 | Mercado de Proyectos: `projects`, `project_documents`, `document_chunks` (vector 1536), `document_tables`, `investor_project_access`, `document_access_log` + RPCs de búsqueda híbrida + bucket `project-documents` |
 | **027** | **`equipos_mercado` (catálogo de maquinaria de lavado de oro): CHECK de 10 categorías, FTS español, soft-delete `activo`, RLS pública/admin/service_role + RPCs SECURITY DEFINER `search_equipos_mercado`, `get_equipo_by_slug`, `equipos_categoria_stats`. 12 productos seed.** |
+| 028 | `precios_combustibles` (diésel y combustibles regulados SEN) — valor almacenado + `vigente_desde`, RLS pública/staff/service_role |
+| 029 | Bucket público `equipos-imagenes` (carga de láminas del admin de equipos) |
+| 030 | `precios_referencia` + RPC `reemplazar_precio_referencia` — Precio de Referencia diario indeleble |
+| 031 | `ensayes` — registro indeleble de determinaciones de ley (liquidación / contraste / verificación externa) |
+| 032 | RLS en tablas de María: `conversaciones_whatsapp` + `transacciones_pendientes` (service role only) |
+| 033 | RPC `avanzar_expediente_fase` — transición de expediente con `SELECT ... FOR UPDATE` (sin carreras) |
+| 034 | Llaves de referencia institucional en `minas` (expediente INHGEOMIN, permiso municipal — campos internos) |
+| 035 | `verificaciones_fuente` — registro append-only de verificación documental por entidad |
+| 036 | `certificados_origen.hash_sha256` + vista pública con huella y `certificado_id` |
 
 **Tablas principales:**
 
