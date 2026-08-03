@@ -219,7 +219,7 @@ MAPE.LEGAL opera bajo dos líneas: (1) servicios de formalización minera (exped
 | Framework | Next.js 16.2.4 (App Router, Turbopack) |
 | Frontend | React 19 + Tailwind v4 (`@theme inline`) |
 | Autenticación | httpOnly cookies (`auth-token`, `auth-role`, `user-email`) — 4 roles |
-| Guard de rutas | `proxy.ts` (Next.js 16 — reemplaza `middleware.ts`) |
+| Guard de rutas | `proxy.ts` (Next.js 16 — ES el middleware del framework; valida sesión real vía `lib/sessionValidator.ts`) |
 | Email | SendGrid REST API |
 | WhatsApp | Meta Cloud API v21.0 (webhook) + Twilio (María bot) |
 | IA | Anthropic Claude Haiku (`claude-haiku-4-5-20251001`) — asistente María |

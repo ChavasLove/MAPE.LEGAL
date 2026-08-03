@@ -1,12 +1,28 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit'
 
 export const dynamic = 'force-dynamic'
 
+// Anti-enumeración de números de certificado: el contraste 200/404 permite
+// barrer el espacio de números sin costo. 20 consultas/min por IP cubren
+// con holgura el uso legítimo (un comprador verifica pocos certificados).
+const RATE_LIMIT = 20
+const RATE_WINDOW_MS = 60_000
+
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ numero: string }> }
 ) {
+  const ip = clientIpFrom(req)
+  const rl = checkRateLimit(`verificar:${ip}`, RATE_LIMIT, RATE_WINDOW_MS)
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'Demasiadas consultas. Intente de nuevo en unos minutos.' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } },
+    )
+  }
+
   const { numero: rawNumero } = await params
   const numero = decodeURIComponent(rawNumero ?? '').trim()
 
