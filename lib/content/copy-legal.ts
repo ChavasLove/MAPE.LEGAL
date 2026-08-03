@@ -445,3 +445,16 @@ export const AVISO_RESOLUCIONES =
   'La resolución de toda solicitud de derecho minero es potestad de la ' +
   'Autoridad Minera. CHT gestiona expedientes y acompaña el trámite; no ' +
   'otorga permisos ni puede asegurar el resultado de una resolución.'
+
+/* ── Portal de verificación (/verificar) — interoperabilidad Fase 1 ──── */
+
+/** Nota de método del portal de verificación. */
+export const VERIFICAR_FRESCURA_NOTA =
+  'Cada registro muestra su fuente documental y la fecha de su última ' +
+  'verificación. La información no es en tiempo real; es información ' +
+  'verificada contra documento.'
+
+/** Estado inicial del registro público, mientras no existan certificados. */
+export const VERIFICAR_CARGA_INICIAL =
+  'Registro en fase de carga inicial — piloto Iriona, Colón. Los ' +
+  'certificados emitidos se publican en esta sección de forma permanente.'

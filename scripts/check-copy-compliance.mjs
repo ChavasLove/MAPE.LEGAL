@@ -68,7 +68,10 @@ const RULES = [
   // Precio: la cadencia real es diaria
   { re: /precios?\s+en\s+vivo/i, label: '"precio en vivo" — usar "actualizado diariamente"' },
   { re: /\ben\s+vivo\b/i, label: '"en vivo" (variante) — usar "del día" / "actualizado diariamente"' },
-  { re: /tiempo\s+real/i, label: '"tiempo real" — usar "actualizado diariamente"' },
+  // Lookbehind: la negación expresa ("no es en tiempo real", copy requerido
+  // por T2.4 de la orden 2026-08 — VERIFICAR_FRESCURA_NOTA) no es violación;
+  // mismo criterio que la regla de garantías.
+  { re: /(?<!\bno\s+es\s+en\s)tiempo\s+real/i, label: '"tiempo real" — usar "actualizado diariamente"' },
   { re: /\blive\s+price/i, label: '"live price" — usar "daily price"' },
   { re: /real[-\s]?time\s+price/i, label: '"real-time price" — usar "daily price"' },
 

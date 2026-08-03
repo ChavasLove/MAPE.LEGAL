@@ -12,6 +12,9 @@ const ALLOWED_PATCH_FIELDS = new Set([
   'cliente_id', 'nombre', 'codigo', 'latitud', 'longitud',
   'municipio', 'departamento', 'area_hectareas',
   'tipo_mineral', 'tipo_concesion', 'estado',
+  // Llaves de referencia institucional (migración 034) — campos INTERNOS,
+  // nunca expuestos en superficies públicas (R6, orden 2026-08).
+  'numero_expediente_inhgeomin', 'numero_permiso_municipal', 'municipio_permiso',
 ]);
 
 export async function GET(
@@ -142,6 +145,15 @@ export async function PATCH(
   if (typeof update.codigo === 'string') update.codigo = update.codigo.trim() || null;
   if (typeof update.municipio === 'string') update.municipio = update.municipio.trim() || null;
   if (typeof update.departamento === 'string') update.departamento = update.departamento.trim() || null;
+  for (const k of ['numero_expediente_inhgeomin', 'numero_permiso_municipal', 'municipio_permiso'] as const) {
+    if (typeof update[k] === 'string') {
+      const v = (update[k] as string).trim();
+      if (v.length > 120) {
+        return NextResponse.json({ error: `${k} demasiado largo (máx. 120).` }, { status: 400 });
+      }
+      update[k] = v || null;
+    }
+  }
 
   const admin = getAdminClient();
 
