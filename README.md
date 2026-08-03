@@ -226,7 +226,7 @@ MAPE.LEGAL opera bajo dos líneas: (1) servicios de formalización minera (exped
 
 ---
 
-## 4. ESQUEMA DE BASE DE DATOS (37 migraciones)
+## 4. ESQUEMA DE BASE DE DATOS (40 migraciones)
 
 | Migración | Contenido |
 |---|---|
@@ -266,6 +266,9 @@ MAPE.LEGAL opera bajo dos líneas: (1) servicios de formalización minera (exped
 | 035 | `verificaciones_fuente` — registro append-only de verificación documental por entidad |
 | 036 | `certificados_origen.hash_sha256` + vista pública con huella y `certificado_id` |
 | 037 | `conversaciones_whatsapp.tipo_interlocutor` — marca persistente de interlocutor institucional (gate de María) |
+| 038 | **Reparación Plan 2 (1/3)**: renames y backfills del esquema a-mano de producción al contrato del código (clientes/expedientes/documentos; `indice_legalidad`→legacy) |
+| 039 | **Reparación Plan 2 (2/3)**: motor de workflow (fases 0-4, transiciones, historial, auditoría, pagos) + tablas hijas del dashboard, sin seeds demo |
+| 040 | **Reparación Plan 2 (3/3)**: estructura del piloto (minas, contratos, indice_legalidad nuevo, transacciones_oro) con RLS, sin datos demo |
 
 **Tablas principales:**
 
