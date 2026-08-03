@@ -3,6 +3,14 @@
 ## Last Updated
 2026-08-03 (orden limpieza/blindaje/interop — rama `claude/limpieza-blindaje-legal-islmar`, PR #220)
 
+> **2026-08-03 HALLAZGO CRÍTICO (leer primero):** la base de producción corre un
+> esquema a mano divergente del repo — María nunca reconocía clientes (lookup
+> `dpi` vs columna `identidad`), y workflow/minas/`/verificar`/concesiones
+> nunca operaron. Decisión de Willis: **Plan 2** — migrar producción al esquema
+> del repo. Scripts `038-040` listos y probados; **PENDIENTES de aplicar en
+> producción** (ver CLAUDE.md §Reparación del esquema de producción y
+> docs/tasks.md §PRÓXIMA SESIÓN).
+
 > **2026-08 blindaje:** `proxy.ts` (el middleware real de Next 16) ahora valida
 > la sesión (JWT contra Supabase Auth vía `lib/sessionValidator.ts`); RLS en
 > `conversaciones_whatsapp`/`transacciones_pendientes` (migración 032);

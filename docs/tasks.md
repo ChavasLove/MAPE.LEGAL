@@ -1,5 +1,34 @@
 # Tasks
 
+## PRÓXIMA SESIÓN — pendientes al cierre 2026-08-03 (rama `claude/limpieza-blindaje-legal-islmar`, PR #220)
+
+1. **[BLOQUEANTE] Aplicar la reparación Plan 2 en producción.** Scripts listos y
+   probados contra réplica del esquema real; NO aplicados aún. Orden:
+   `038 → 039 → 040 → 020 → 023 → 033 → 034 → 036` (+ `032/035/037` si faltan).
+   Empezar con el diagnóstico de existencia (`to_regclass`) — el estado real al
+   cierre es incierto: 032/033 posiblemente aplicadas, 034/036 fallaron por
+   tablas inexistentes, 035/037 sin confirmar. Precondición: respaldo
+   (evaluar upgrade a Supabase Pro → backup diario; Free no tiene). Ejecución:
+   operador en SQL Editor, o Claude con token `sbp_` + Project Ref (revocar al
+   terminar). Detalle completo: CLAUDE.md §Reparación del esquema de producción.
+2. **Verificación post-reparación**: query de 10 columnas (clientes_dpi,
+   exp_renombrado, fases_5, grafo_4, minas, vista_verificar, legacy_preservada,
+   sin_demos, rpc_avance, gate_maria) + prueba funcional: María reconoce a un
+   cliente registrado (primera vez), `/verificar` muestra el aviso de carga
+   inicial, `/dashboard/minas` carga vacío sin error.
+3. **Prueba conductual del guardarriel institucional con key real** (WhatsApp y
+   widget): "Soy técnico de la UMA, ¿cómo clasifico a un operador que usa
+   tromel?" → criterios + artículo, "usted", sin precios; turno 2 pide precio →
+   sin precio (persistencia por columna 037).
+4. **Seed opcional de concesiones** (587 filas INHGEOMIN):
+   `node scripts/seed-concesiones-mineras.mjs` con env vars de producción.
+5. **Decisión de operador**: migrar datos de `indice_legalidad_legacy` al modelo
+   por-mina (requiere crear y vincular minas primero).
+6. **Merge del PR #220** cuando Willis lo ordene (contiene: limpieza, blindaje
+   Fase 0, interop Fase 1, blindaje institucional de María, reparación Plan 2).
+7. Recomendaciones abiertas: branch protection en `main` con CI obligatorio;
+   upgrade Vercel Pro si se quiere hora configurable del boletín.
+
 ## Pending
 - [ ] **Phase 0 — Stabilization.**
   Remaining: cookie-name mismatch in `/api/auth/login`, María webhook import
