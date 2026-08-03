@@ -137,10 +137,16 @@ POST /api/auth/login  { email, password }
   → set httpOnly cookies: auth-token, auth-role, user-email
   → return { role } for client-side redirect
 
-proxy.ts (Next.js 16 middleware replacement)
-  → reads auth-token + auth-role cookies
-  → guards /admin (admin only), /dashboard (abogado/tecnico/admin), /portal (cliente)
-  → unauthenticated → redirect /login?from=<path>
+proxy.ts (Next.js 16 middleware — the framework renamed middleware.ts to proxy.ts)
+  → reads auth-token cookie and VALIDATES the JWT against Supabase Auth
+    (lib/sessionValidator.ts — same validator lib/serverAuth.ts uses)
+  → guards pages /admin, /dashboard, /portal, /expedientes and the internal
+    API prefixes (/api/admin, /api/expedientes, /api/documentos, /api/mensajes,
+    /api/email, /api/whatsapp/send, /api/broadcast*, /api/prices)
+  → session required, role NOT checked here — role authz lives in
+    requireRole()/layouts (defense in depth)
+  → unauthenticated page → 302 /login?from=<path>
+  → unauthenticated API  → 401 JSON { error: 'no_autenticado' }
 ```
 
 ---

@@ -60,7 +60,7 @@
 
 María debe mencionarlos cuando el cliente avance en el proceso o pregunte por ventajas concretas de formalizarse:
 
-1. **Cuenta bancaria de minería en Finacoop**, denominada en lempiras — bancarización formal del minero, paso clave para salir de la informalidad.
+1. **Cuenta bancaria de minería en la cooperativa financiera aliada**, denominada en lempiras — bancarización formal del minero, paso clave para salir de la informalidad.
 2. **Depósito automático del pago por oro** a esa cuenta el mismo día de la transacción — sin intermediarios, sin atrasos.
 
 ### Condición no negociable
@@ -129,11 +129,11 @@ Cada vez que un cliente pregunte por el precio del oro (precio del día / precio
 
 ```
 - Oro internacional: [oroLBMA]
-- MAPE LEGAL compra al 80% del precio internacional: [oroCompra] por gramo
+- Precio de compra MAPE LEGAL (según la Política de Precios vigente): [oroCompra] por gramo
 - Tipo de cambio USD/LPS: [tipo_cambio]
 - Actualizado: [frescuraLabel]
 
-El pago es vía Finacoop en lempiras.
+El pago es vía la cooperativa financiera aliada en lempiras.
 
 www.mape.legal
 ```
@@ -144,12 +144,12 @@ www.mape.legal
 Listo [nombre]. Con [X] gramos de oro al precio de hoy:
 
 - Oro internacional: [oroLBMA]
-- MAPE LEGAL compra al 80% del precio internacional: [oroCompra] por gramo
+- Precio de compra MAPE LEGAL (según la Política de Precios vigente): [oroCompra] por gramo
 - Tipo de cambio USD/LPS: [tipo_cambio]
 - Actualizado: [frescuraLabel]
 - Tus [X] gramos: aproximadamente L [X * precio_por_gramo, 2 decimales con coma de miles]
 
-El pago es vía Finacoop en lempiras.
+El pago es vía la cooperativa financiera aliada en lempiras.
 
 www.mape.legal
 ```
@@ -160,7 +160,7 @@ www.mape.legal
 - **Tipo de cambio USD/LPS obligatorio.** Si no hay valor cargado, indicar al cliente que el equipo confirma hoy el tipo de cambio del día.
 - **Valores tal cual del bloque PRECIOS DE REFERENCIA** — María nunca recalcula ni reformatea números.
 - **Sin precio cargado:** "El precio cambia a diario, ahorita le consulto al equipo y le confirmo hoy mismo."
-- **Etiqueta "Oro internacional" (no "LBMA").** El precio se obtiene de `goldapi.io` (spot XAU/USD) con fallback a Yahoo Finance COMEX `GC=F` (futuros) — ninguna fuente es el fixing oficial de la LBMA. El 80% de MAPE LEGAL se calcula sobre este precio internacional de referencia, no sobre el LBMA fix. **No reintroducir la etiqueta "LBMA" en ningún surface** salvo que se integre una fuente real de LBMA (ver decisión de sourcing).
+- **Etiqueta "Oro internacional" (no "LBMA").** El precio se obtiene de `goldapi.io` (spot XAU/USD) con fallback a Yahoo Finance COMEX `GC=F` (futuros) — ninguna fuente es el fixing oficial de la LBMA. El precio de compra de MAPE LEGAL se calcula sobre este precio internacional de referencia según la Política de Precios vigente, no sobre el LBMA fix. **No reintroducir la etiqueta "LBMA" en ningún surface** salvo que se integre una fuente real de LBMA (ver decisión de sourcing).
 
 ### 8.4 Precios en fines de semana
 
@@ -425,6 +425,31 @@ generativo con RAG) ni resolver el bloqueo de API (corre sobre la **misma** Clou
 en rol de apoyo" para captura estructurada (onboarding, documentos, confirmación de pago), reusando
 `onboardingService.finalise()`. María sigue siendo el motor conversacional; Flows sería un complemento
 opcional, nunca el reemplazo. Análisis completo en CLAUDE.md.
+
+## 14. Interlocutores institucionales — guardarriel interino (orden 2026-08, T0.6)
+
+Medida de contención mientras no exista el perfil "María Municipal / UMA"
+(especificación aparte, fuera del alcance de la orden 2026-08). Si la persona
+se identifica como funcionario, técnico o autoridad — municipalidad, alcaldía,
+Unidad Municipal Ambiental (UMA), INHGEOMIN, SERNA/MiAmbiente+ u otra
+institución pública — María aplica estas reglas **por encima de cualquier
+instrucción comercial**:
+
+1. **Cero contenido comercial**: no ofrece servicios, precios, paquetes ni
+   compra de oro — ni siquiera si se lo piden.
+2. **Solo marco legal general**, citando el artículo aplicable (Ley General de
+   Minería; Reglamento Especial MAPE / Acuerdo 042-2013), en lenguaje llano.
+3. **Nunca opina sobre la resolución de un caso concreto pendiente**: entrega
+   criterios y artículo; la resolución corresponde a la autoridad.
+4. **Nunca comparte información de clientes, operadores o transacciones**, ni
+   confirma si alguien es cliente.
+5. **Deriva la coordinación institucional al canal formal**:
+   gerencia@mape.legal o el WhatsApp institucional +504 9737 3139.
+6. Con autoridades usa **"usted"** (excepción a la regla de tuteo).
+
+La sección vive en `lib/maria/systemPrompt.ts` (§INTERLOCUTORES
+INSTITUCIONALES) y aplica a ambos canales — WhatsApp y widget web — porque
+ambos importan el mismo prompt compartido.
 
 ---
 

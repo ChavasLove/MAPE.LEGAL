@@ -295,7 +295,7 @@ async function buildPriceContext(): Promise<string> {
 
   return `\n\nPRECIOS DE REFERENCIA (${prices.fecha ?? 'hoy'} — ${frescuraLabel}):
 - Oro internacional: ${oroLBMA}
-- Precio de compra MAPE LEGAL (80% del precio internacional): ${oroCompra ?? 'el equipo confirma hoy'}
+- Precio de compra MAPE LEGAL (según la Política de Precios vigente): ${oroCompra ?? 'el equipo confirma hoy'}
 - Plata internacional: ${plataLBMA ?? 'no disponible'}
 - Tipo de cambio: ${tipoCambio ?? 'no disponible'}
 - Frescura: ${frescuraLabel}

@@ -187,8 +187,6 @@ MAPE.LEGAL es la plataforma digital que actúa como **motor de evidencia legal d
 
 Su propósito es generar, almacenar y certificar evidencia legalmente defendible de que el oro proviene de operaciones formalizadas conforme a la **Ley de Minería, Reglamento MAPE (Acuerdo 042-2013), ILO 169, SLAS-2** y estándares internacionales (CRAFT / Fairmined / RJC).
 
-> "La plataforma que convierte minería informal en oro traceable, certificado y premium para Chiopa Industrias y mercados éticos internacionales."
-
 ---
 
 ## 2. CONTEXTO DE NEGOCIO
@@ -197,9 +195,9 @@ Su propósito es generar, almacenar y certificar evidencia legalmente defendible
 - **Fundador:** Willis Yang (Administrador Único)
 - **Socio 50%:** Ricardo Alfredo Montes Nájera
 
-**Modelo de ingresos:**
-1. Servicios de formalización — paquete ancla L 1.600.000 + titulaciones + contratos de sociedad minera
-2. Margen de comercialización de oro — compra a mineros 80% del precio internacional → venta a Chiopa Industrias 85% del precio internacional
+**Modelo de negocio:**
+
+MAPE.LEGAL opera bajo dos líneas: (1) servicios de formalización minera (expediente, licenciamiento ambiental y trazabilidad documental), con precios publicados en el sitio; y (2) comercialización formal de oro con origen certificado, bajo un precio de referencia diario publicado y una Política de Precios versionada, conforme a los Arts. 37 y 38 de la Ley General de Minería. Los términos económicos específicos con contrapartes se rigen por sus contratos y no forman parte de este documento.
 
 **Piloto 2026:** Asociación de Mineros de Iriona, Colón (~60 mineros)
 
@@ -221,7 +219,7 @@ Su propósito es generar, almacenar y certificar evidencia legalmente defendible
 | Framework | Next.js 16.2.4 (App Router, Turbopack) |
 | Frontend | React 19 + Tailwind v4 (`@theme inline`) |
 | Autenticación | httpOnly cookies (`auth-token`, `auth-role`, `user-email`) — 4 roles |
-| Guard de rutas | `proxy.ts` (Next.js 16 — reemplaza `middleware.ts`) |
+| Guard de rutas | `proxy.ts` (Next.js 16 — ES el middleware del framework; valida sesión real vía `lib/sessionValidator.ts`) |
 | Email | SendGrid REST API |
 | WhatsApp | Meta Cloud API v21.0 (webhook) + Twilio (María bot) |
 | IA | Anthropic Claude Haiku (`claude-haiku-4-5-20251001`) — asistente María |

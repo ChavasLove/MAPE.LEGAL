@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { fetchAllPrices } from '@/services/pricingService';
+import { requireRole } from '@/lib/serverAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +15,12 @@ function computeDelta(current: number, previous: number) {
 }
 
 export async function GET() {
+  // Superficie de dashboard (dispara fetch a upstreams externos) — el proxy la
+  // trata como interna; la guarda real vive aquí. El precio público del día es
+  // /api/precios/live (rate-limited, cache de 8 AM).
+  const auth = await requireRole('admin', 'abogado', 'tecnico_ambiental');
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const precios = await fetchAllPrices();
     const gold = precios.oro;

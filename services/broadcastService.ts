@@ -81,11 +81,11 @@ export async function generateDailyMessage(precios: PreciosDiarios): Promise<str
   }
 
   // Every data line is a `* ` bullet — matches MARIA.md §8 (canonical price
-  // format requires 4 obligatory bullets: Oro internacional, MAPE LEGAL compra
-  // 80%, Tipo de cambio USD/LPS, Actualizado). The reference price comes from
-  // goldapi.io spot / Yahoo COMEX GC=F — NOT the LBMA fix — so it is labeled
-  // "Oro internacional", not "LBMA". Footer lines are unprefixed so they read
-  // as a separator from the data section.
+  // format requires 4 obligatory bullets: Oro internacional, Precio de compra
+  // MAPE LEGAL, Tipo de cambio USD/LPS, Actualizado). The reference price comes
+  // from goldapi.io spot / Yahoo COMEX GC=F — NOT the LBMA fix — so it is
+  // labeled "Oro internacional", not "LBMA". Footer lines are unprefixed so
+  // they read as a separator from the data section.
   const tcLine = tc > 0 ? `L ${tc.toFixed(2)} por USD` : 'N/D';
   const lines = [
     `BOLETIN DIARIO`,
@@ -97,9 +97,9 @@ export async function generateDailyMessage(precios: PreciosDiarios): Promise<str
     `* Tasa de cambio referencia: ${tcLine}`,
     ``,
     `Precio de compra oro calculado en Lempiras:`,
-    `* MAPE LEGAL compra al 80% del precio internacional`,
+    `* Precio de compra MAPE LEGAL según la Política de Precios vigente`,
     `* ${fmtLps(compraLpsPorGramo)} por gramo estimado`,
-    `* Pago realizado en Lempiras en su cuenta de FINACOOP`,
+    `* Pago realizado en Lempiras en su cuenta de la cooperativa financiera aliada`,
     ``,
     `Precios de referencia al ${fechaLarga} — ${horaCorta} Honduras`,
     `Fuentes: ${fuente} + BCH referencial`,

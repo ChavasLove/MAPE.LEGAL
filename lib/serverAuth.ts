@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 import { checkAuthEnv, logAuthEnvFailure } from '@/lib/authEnv';
+import { validateAccessToken } from '@/lib/sessionValidator';
 import { lookupUserRole, type Role } from '@/lib/userRoleLookup';
 
 // Single source of truth for "is the caller logged in and what role do they have".
@@ -17,15 +18,6 @@ export interface AuthContext {
   user: User;
   role: Role;
   token: string;
-}
-
-function validatorClient(): SupabaseClient | null {
-  const url     = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
-  if (!url || !anonKey) return null;
-  return createClient(url, anonKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
 }
 
 function roleLookupClient(): SupabaseClient | null {
@@ -54,11 +46,10 @@ export async function getServerAuth(): Promise<AuthContext | null> {
     return null;
   }
 
-  const validator = validatorClient();
-  if (!validator) return null;
-
-  const { data: { user }, error } = await validator.auth.getUser(token);
-  if (error || !user) return null;
+  // Shared with proxy.ts — the JWT is validated the same way at the request
+  // boundary and inside handlers/layouts (see lib/sessionValidator.ts).
+  const user = await validateAccessToken(token, 'serverAuth');
+  if (!user) return null;
 
   const roleClient = roleLookupClient();
   if (!roleClient) return null;

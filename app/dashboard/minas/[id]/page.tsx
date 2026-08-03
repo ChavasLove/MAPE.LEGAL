@@ -72,6 +72,11 @@ interface Mina {
   tipo_mineral: string;
   tipo_concesion: string;
   estado: string;
+  // Llaves de referencia institucional (migración 034) — internas, solo
+  // superficies autenticadas.
+  numero_expediente_inhgeomin?: string | null;
+  numero_permiso_municipal?: string | null;
+  municipio_permiso?: string | null;
   created_at: string;
 }
 
@@ -179,6 +184,9 @@ interface EditMineForm {
   tipo_mineral:   string;
   tipo_concesion: string;
   estado:         string;
+  numero_expediente_inhgeomin: string;
+  numero_permiso_municipal:    string;
+  municipio_permiso:           string;
 }
 
 function mineToForm(m: Mina): EditMineForm {
@@ -194,6 +202,9 @@ function mineToForm(m: Mina): EditMineForm {
     tipo_mineral:   m.tipo_mineral,
     tipo_concesion: m.tipo_concesion,
     estado:         m.estado,
+    numero_expediente_inhgeomin: m.numero_expediente_inhgeomin ?? '',
+    numero_permiso_municipal:    m.numero_permiso_municipal ?? '',
+    municipio_permiso:           m.municipio_permiso ?? '',
   };
 }
 
@@ -316,6 +327,9 @@ export default function MinaDetailPage({ params }: { params: Promise<{ id: strin
         tipo_mineral:   editForm.tipo_mineral,
         tipo_concesion: editForm.tipo_concesion,
         estado:         editForm.estado,
+        numero_expediente_inhgeomin: editForm.numero_expediente_inhgeomin.trim() || null,
+        numero_permiso_municipal:    editForm.numero_permiso_municipal.trim() || null,
+        municipio_permiso:           editForm.municipio_permiso.trim() || null,
       };
 
       const res = await fetch(`/api/admin/minas/${id}`, {
@@ -510,6 +524,17 @@ export default function MinaDetailPage({ params }: { params: Promise<{ id: strin
               <Field label="Área" value={formatArea(m.area_hectareas)} />
               <Field label="Mineral" value={<span className="capitalize">{m.tipo_mineral}</span>} />
               <Field label="Concesión" value={CONCESION_LABEL[m.tipo_concesion] ?? m.tipo_concesion} />
+            </div>
+
+            <div className="mt-6 pt-4 border-t" style={{ borderColor: 'rgba(94,107,123,0.2)' }}>
+              <h3 className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: '#A3A8AB' }}>
+                Llaves de referencia institucional (interno)
+              </h3>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                <Field label="Expediente INHGEOMIN" value={m.numero_expediente_inhgeomin ?? '—'} mono />
+                <Field label="Permiso municipal" value={m.numero_permiso_municipal ?? '—'} mono />
+                <Field label="Municipalidad emisora" value={m.municipio_permiso ?? '—'} />
+              </div>
             </div>
           </div>
 
@@ -891,6 +916,42 @@ function EditMineModal({
                 type="text"
                 value={form.departamento}
                 onChange={e => setForm({ ...form, departamento: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg text-sm font-sans outline-none"
+                style={{ background: '#0F1621', border: '1px solid rgba(94,107,123,0.3)', color: 'white' }}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: '#A3A8AB' }}>Exp. INHGEOMIN</label>
+              <input
+                type="text"
+                maxLength={120}
+                value={form.numero_expediente_inhgeomin}
+                onChange={e => setForm({ ...form, numero_expediente_inhgeomin: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg text-sm font-sans outline-none"
+                style={{ background: '#0F1621', border: '1px solid rgba(94,107,123,0.3)', color: 'white' }}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: '#A3A8AB' }}>Permiso municipal</label>
+              <input
+                type="text"
+                maxLength={120}
+                value={form.numero_permiso_municipal}
+                onChange={e => setForm({ ...form, numero_permiso_municipal: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg text-sm font-sans outline-none"
+                style={{ background: '#0F1621', border: '1px solid rgba(94,107,123,0.3)', color: 'white' }}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: '#A3A8AB' }}>Municipalidad emisora</label>
+              <input
+                type="text"
+                maxLength={120}
+                value={form.municipio_permiso}
+                onChange={e => setForm({ ...form, municipio_permiso: e.target.value })}
                 className="w-full px-3 py-2 rounded-lg text-sm font-sans outline-none"
                 style={{ background: '#0F1621', border: '1px solid rgba(94,107,123,0.3)', color: 'white' }}
               />

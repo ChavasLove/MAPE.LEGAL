@@ -1,20 +1,35 @@
-'use client'
-
-import { useState, type FormEvent } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { createClient } from '@supabase/supabase-js'
 import TopoBand from '@/components/decor/TopoBand'
+import { VERIFICAR_CARGA_INICIAL, VERIFICAR_FRESCURA_NOTA } from '@/lib/content/copy-legal'
+import VerificarForm from './VerificarForm'
 
-export default function VerificarEntryPage() {
-  const router = useRouter()
-  const [numero, setNumero] = useState('')
+export const dynamic = 'force-dynamic'
 
-  const onSubmit = (e: FormEvent) => {
-    e.preventDefault()
-    const trimmed = numero.trim()
-    if (!trimmed) return
-    router.push(`/verificar/${encodeURIComponent(trimmed)}`)
+// Conteo público de certificados: sostiene el estado inicial honesto del
+// registro (T2.4 — mientras no existan certificados se declara la fase de
+// carga inicial en vez de simular un registro poblado). Anon client con
+// lazy-init (regla §Framework); null = no se pudo contar (no se muestra el
+// aviso, tampoco se rompe la página).
+async function countCertificados(): Promise<number | null> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !anonKey) return null
+
+  try {
+    const supabase = createClient(url, anonKey, { auth: { persistSession: false } })
+    const { count, error } = await supabase
+      .from('certificados_origen_publicos')
+      .select('numero_certificado', { count: 'exact', head: true })
+    if (error) return null
+    return count
+  } catch {
+    return null
   }
+}
+
+export default async function VerificarEntryPage() {
+  const total = await countCertificados()
 
   return (
     <>
@@ -66,62 +81,24 @@ export default function VerificarEntryPage() {
             personal del registro.
           </p>
 
-          <form
-            onSubmit={onSubmit}
-            style={{
-              marginTop: 32,
-              display: 'flex',
-              gap: 10,
-              flexWrap: 'wrap',
-              background: 'var(--bg)',
-              border: '1px solid var(--border)',
-              borderRadius: 12,
-              padding: 16,
-              boxShadow: '0 2px 6px rgba(31,42,56,0.05)',
-            }}
-          >
-            <label htmlFor="numero" style={{ display: 'none' }}>
-              Número de certificado
-            </label>
-            <input
-              id="numero"
-              name="numero"
-              type="text"
-              required
-              maxLength={64}
-              placeholder="Número de certificado (ej. CO-2026-0001)"
-              value={numero}
-              onChange={(e) => setNumero(e.target.value)}
+          {total === 0 && (
+            <div
               style={{
-                flex: 1,
-                minWidth: 240,
-                padding: '12px 16px',
-                border: '1px solid var(--border)',
-                borderRadius: 8,
-                fontFamily: 'var(--font-mono)',
+                marginTop: 24,
+                background: 'var(--concrete)',
+                border: '1px solid var(--border-2)',
+                borderRadius: 12,
+                padding: '16px 20px',
                 fontSize: 14,
-                color: 'var(--ink)',
-                background: 'var(--bg)',
-              }}
-            />
-            <button
-              type="submit"
-              style={{
-                background: 'var(--ink)',
-                color: '#fff',
-                padding: '12px 24px',
-                borderRadius: 8,
-                fontFamily: 'var(--font-body)',
-                fontSize: 14,
-                fontWeight: 600,
-                border: 'none',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
+                color: 'var(--t2)',
+                lineHeight: 1.7,
               }}
             >
-              Verificar
-            </button>
-          </form>
+              {VERIFICAR_CARGA_INICIAL}
+            </div>
+          )}
+
+          <VerificarForm />
 
           <p
             style={{
@@ -135,6 +112,17 @@ export default function VerificarEntryPage() {
             Esta verificación consulta el registro público de certificados
             emitidos por MAPE LEGAL. Los datos personales del productor y los montos
             de la transacción no son públicos.
+          </p>
+          <p
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 12,
+              color: 'var(--t3)',
+              marginTop: 12,
+              lineHeight: 1.6,
+            }}
+          >
+            {VERIFICAR_FRESCURA_NOTA}
           </p>
         </div>
       </section>

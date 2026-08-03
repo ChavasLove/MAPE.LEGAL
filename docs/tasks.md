@@ -1,11 +1,13 @@
 # Tasks
 
 ## Pending
-- [ ] **Phase 0 — Stabilization.** Source: `docs/code-analysis-review.md`.
-  Fix `middleware.ts` / `proxy.ts`, cookie-name mismatch in `/api/auth/login`,
-  API route auth, María webhook import errors, workflow race conditions,
-  and the pre-existing lint warning in `app/dashboard/minas/page.tsx`
-  (`react-hooks/set-state-in-effect`).
+- [ ] **Phase 0 — Stabilization.**
+  Remaining: cookie-name mismatch in `/api/auth/login`, María webhook import
+  errors, and the pre-existing lint warning in `app/dashboard/minas/page.tsx`
+  (`react-hooks/set-state-in-effect`). Done in the 2026-08 blindaje: `proxy.ts`
+  now validates the real session (Next 16 middleware), API route auth audited
+  (`/api/prices` closed), and workflow transitions are race-free via the
+  `avanzar_expediente_fase` RPC (migration 033).
 - [ ] **Phase 2B — Transactions + Certificate issuance.** `transacciones_oro`
   CRUD, certificate issuance flow that creates rows in `certificados_origen`
   from a transaction, computes `hash_verificacion` (SHA-256 over canonical

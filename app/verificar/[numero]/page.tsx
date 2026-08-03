@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import TopoBand from '@/components/decor/TopoBand'
+import { getAdminClient } from '@/services/adminSupabase'
+import { VERIFICAR_CARGA_INICIAL, VERIFICAR_FRESCURA_NOTA } from '@/lib/content/copy-legal'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,14 +19,28 @@ type CertificadoPublico = {
   mina_codigo: string | null
   mina_municipio: string | null
   mina_departamento: string | null
+  // Expuestos por la migración 036; opcionales para tolerar un entorno donde
+  // la vista aún no fue re-creada.
+  hash_sha256?: string | null
+  certificado_id?: string | null
 }
 
-async function lookupCertificado(numero: string): Promise<CertificadoPublico | null> {
+type VerificacionFuente = {
+  fuente: string
+  referencia: string | null
+  fecha_documento: string | null
+}
+
+function anonClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!url || !anonKey) return null
+  return createClient(url, anonKey, { auth: { persistSession: false } })
+}
 
-  const supabase = createClient(url, anonKey, { auth: { persistSession: false } })
+async function lookupCertificado(numero: string): Promise<CertificadoPublico | null> {
+  const supabase = anonClient()
+  if (!supabase) return null
 
   const { data, error } = await supabase
     .from('certificados_origen_publicos')
@@ -34,6 +50,53 @@ async function lookupCertificado(numero: string): Promise<CertificadoPublico | n
 
   if (error || !data) return null
   return data as CertificadoPublico
+}
+
+// Estado inicial honesto (T2.4): si el registro está vacío, el "no encontrado"
+// lo dice — el portal está en fase de carga inicial, no es que el número
+// exista y falle la consulta.
+async function countCertificados(): Promise<number | null> {
+  const supabase = anonClient()
+  if (!supabase) return null
+  try {
+    const { count, error } = await supabase
+      .from('certificados_origen_publicos')
+      .select('numero_certificado', { count: 'exact', head: true })
+    if (error) return null
+    return count
+  } catch {
+    return null
+  }
+}
+
+// Última verificación documental (T2.2/T2.4): la fila más reciente de
+// verificaciones_fuente para este certificado. La tabla es
+// SELECT-para-authenticated (RLS, migración 035); esta superficie pública
+// solo publica el trío fuente · referencia · fecha, leído server-side con
+// service role (mismo patrón que /api/precios/live sobre precios_diarios).
+// No-fatal: si la migración no está aplicada, degrada a null con log.
+async function lookupUltimaVerificacion(
+  certificadoId: string
+): Promise<VerificacionFuente | null> {
+  try {
+    const admin = getAdminClient()
+    const { data, error } = await admin
+      .from('verificaciones_fuente')
+      .select('fuente, referencia, fecha_documento')
+      .eq('entidad_tipo', 'certificado')
+      .eq('entidad_id', certificadoId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (error) {
+      console.error('[verificar] verificaciones_fuente non-fatal:', error.message)
+      return null
+    }
+    return (data as VerificacionFuente | null) ?? null
+  } catch (err) {
+    console.error('[verificar] verificaciones_fuente non-fatal:', err)
+    return null
+  }
 }
 
 const STATE_STYLE: Record<Estado, { color: string; label: string; description: string }> = {
@@ -152,6 +215,10 @@ export default async function VerificarResultPage({
   const numero = decodeURIComponent(rawNumero ?? '').trim()
   const cert = numero.length > 0 && numero.length <= 64 ? await lookupCertificado(numero) : null
   const found = !!cert
+  const ultimaVerificacion = cert?.certificado_id
+    ? await lookupUltimaVerificacion(cert.certificado_id)
+    : null
+  const totalCertificados = found ? null : await countCertificados()
 
   return (
     <>
@@ -258,6 +325,26 @@ export default async function VerificarResultPage({
                     {cert.hash_verificacion.slice(0, 12)}…
                   </FieldValue>
                 </div>
+                {cert.hash_sha256 ? (
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <FieldLabel>Huella SHA-256 del documento</FieldLabel>
+                    <FieldValue mono>{cert.hash_sha256}</FieldValue>
+                  </div>
+                ) : null}
+                {ultimaVerificacion ? (
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <FieldLabel>Última verificación documental</FieldLabel>
+                    <FieldValue>
+                      {[
+                        ultimaVerificacion.fuente,
+                        ultimaVerificacion.referencia,
+                        ultimaVerificacion.fecha_documento,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </FieldValue>
+                  </div>
+                ) : null}
                 <div style={{ gridColumn: '1 / -1' }}>
                   <FieldLabel>Unidad minera de origen</FieldLabel>
                   <FieldValue>
@@ -322,6 +409,20 @@ export default async function VerificarResultPage({
                 . Verifique el número impreso en el documento físico o
                 contacte a MAPE LEGAL.
               </p>
+              {totalCertificados === 0 && (
+                <p
+                  style={{
+                    fontSize: 14,
+                    color: 'var(--t2)',
+                    lineHeight: 1.7,
+                    marginTop: 12,
+                    paddingTop: 12,
+                    borderTop: '1px solid var(--border)',
+                  }}
+                >
+                  {VERIFICAR_CARGA_INICIAL}
+                </p>
+              )}
             </div>
           )}
 
@@ -337,6 +438,17 @@ export default async function VerificarResultPage({
             Esta verificación consulta el registro público de certificados
             emitidos por MAPE LEGAL. Los datos personales del productor y los montos
             de la transacción no son públicos.
+          </p>
+          <p
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 12,
+              color: 'var(--t3)',
+              marginTop: 12,
+              lineHeight: 1.6,
+            }}
+          >
+            {VERIFICAR_FRESCURA_NOTA}
           </p>
 
           <div style={{ marginTop: 24 }}>
