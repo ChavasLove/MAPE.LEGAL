@@ -12,6 +12,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { CHT_SYSTEM_PROMPT } from '@/lib/maria/systemPrompt';
+import { isInstitutionalMessage, INSTITUTIONAL_CONTEXT_BLOCK } from '@/lib/maria/institutional';
 import { embedQuery, toVectorText } from '@/lib/maria/embeddings';
 import {
   RAG_MATCH_COUNT,
@@ -494,9 +495,21 @@ export async function POST(request: Request) {
 
   const lastUserMessage = [...cleanHistory].reverse().find((m) => m.role === 'user')?.content ?? '';
 
+  // Gate institucional (orden Blindaje institucional 2026-08, T1.6): el canal
+  // web es anónimo — no hay número que persistir — así que la detección es por
+  // conversación: CUALQUIER mensaje `user` del array que matchee los patrones
+  // marca el turno como institucional. Supresión determinística del bloque de
+  // precios (ni siquiera se consulta) + refuerzo al final del prompt.
+  const esInstitucional = cleanHistory.some(
+    (m) => m.role === 'user' && isInstitutionalMessage(m.content)
+  );
+  if (esInstitucional) {
+    console.log('[maria-web] interlocutor institucional — supresión comercial determinística activa');
+  }
+
   // Build dynamic context blocks in parallel — independent queries.
   const [priceContext, concesionContext, ragBlock] = await Promise.all([
-    buildPriceContext(),
+    esInstitucional ? Promise.resolve('') : buildPriceContext(),
     buildConcesionContext(lastUserMessage),
     retrieveKnowledge(lastUserMessage),
   ]);
@@ -509,7 +522,8 @@ export async function POST(request: Request) {
     ? `\n\nCONTEXTO DEL SISTEMA (citas literales de la base de conocimiento legal y regulatoria de MAPE LEGAL — Ley General del Ambiente Decreto 104-93, Decreto 181-2007 que adiciona Arts. 28-A y 29-C, Decreto 47-2010, Requisitos SLAS-2 de MiAmbiente, Reglamento de Minería Acuerdo 042-2013, Manual Operativo MAPE LEGAL):\n${ragBlock}\n\nINSTRUCCIONES PARA USAR ESTE BLOQUE:\n- Si la respuesta a la pregunta del visitante está aquí, CITALA con la referencia específica (artículo, decreto, requisito). Resumí el texto en hondureño claro pero conservando los términos legales.\n- NO derives a gerencia@mape.legal cuando este bloque responde la pregunta — comunicar la norma es tu trabajo, no interpretación jurídica.\n- Solo derivá si la pregunta requiere análisis jurídico específico que este bloque no cubre (por ejemplo, estrategia de litigio, jurisprudencia, casos novedosos sin precedente en el bloque).`
     : '';
   const dynamicPrompt =
-    CHT_SYSTEM_PROMPT + WEB_CHANNEL_CONTEXT + priceContext + concesionContext + ragContext;
+    CHT_SYSTEM_PROMPT + WEB_CHANNEL_CONTEXT + priceContext + concesionContext + ragContext +
+    (esInstitucional ? INSTITUTIONAL_CONTEXT_BLOCK : '');
 
   try {
     const claudeRes = await anthropic.messages.create({

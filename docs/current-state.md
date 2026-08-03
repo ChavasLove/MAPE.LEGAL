@@ -1,7 +1,17 @@
 # Current State
 
 ## Last Updated
-2026-05-10
+2026-08-03 (orden limpieza/blindaje/interop — rama `claude/limpieza-blindaje-legal-islmar`, PR #220)
+
+> **2026-08 blindaje:** `proxy.ts` (el middleware real de Next 16) ahora valida
+> la sesión (JWT contra Supabase Auth vía `lib/sessionValidator.ts`); RLS en
+> `conversaciones_whatsapp`/`transacciones_pendientes` (migración 032);
+> transiciones de expediente serializadas con `SELECT ... FOR UPDATE` (RPC
+> `avanzar_expediente_fase`, migración 033); llaves institucionales en `minas`
+> (034), `verificaciones_fuente` append-only (035) y huella SHA-256 del
+> certificado + frescura en `/verificar` (036). Migraciones 032–036 pendientes
+> de aplicar en Supabase Studio. El resto de este documento es un snapshot
+> 2026-05-10 — para el estado vivo, ver CLAUDE.md.
 
 ## Current Module
 Phase 1 — public-surface realignment shipped (PR #102 merged into `main`):
@@ -95,8 +105,10 @@ Replaced with lazy getter pattern matching `services/adminSupabase.ts`.
 
 ## Known Issues
 - `getBlockingReasons` document check is a stub (always returns `pending`)
-- No Row Level Security (RLS) policies defined
-- No user authentication implemented
+- ~~No Row Level Security (RLS) policies defined~~ — resuelto por etapas
+  (migraciones 017–019, 023–028, 030–032, 035)
+- ~~No user authentication implemented~~ — login unificado + `requireRole()` +
+  guard de sesión real en `proxy.ts` (blindaje 2026-08)
 
 ---
 
@@ -171,8 +183,9 @@ Resueltas en `claude/update-ui-colors-wGO7B` (2026-05-09) al adoptar el MAPE LEG
   cleanly.
 
 ### Still pending (not in scope for Phase 1)
-- Phase 0 stabilization: middleware, cookie-name mismatch, API auth,
-  María webhook bugs, workflow race conditions.
+- Phase 0 stabilization — parcial: middleware/proxy con sesión real, auditoría
+  de guardas API y locking de transiciones resueltos (blindaje 2026-08);
+  restan cookie-name mismatch y bugs menores del webhook de María.
 - Phase 2 pilot core: `minas` UI, transacciones_oro UI, certificate
   issuance flow that actually populates `certificados_origen` from
   real transactions.

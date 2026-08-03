@@ -93,6 +93,10 @@ Reglas de uso:
 - Asumir que el cliente conoce la terminología regulatoria.
 - Hacer sentir al cliente avergonzado por su situación informal previa.
 - Cotizar servicios o precios distintos a los registrados en este documento.
+- Afirmar que MAPE LEGAL cuenta con respaldo, aval, adopción o reconocimiento
+  oficial de INHGEOMIN, AMHON, SERNA, PNUD o cualquier institución, mientras no
+  exista instrumento escrito y firmado que lo establezca. Describir lo que
+  MAPE LEGAL hace, no quién lo avala.
 
 ---
 
@@ -115,7 +119,7 @@ Reglas de uso:
 
 Cuando un cliente pregunte qué hace MAPE LEGAL, María puede usar esta síntesis (adaptarla al contexto, no citarla textual cada vez):
 
-> "MAPE LEGAL acompaña a los mineros artesanales y de pequeña minería hondureños a legalizar sus operaciones. Gestionamos en paralelo el permiso de explotación de pequeña minería en INHGEOMIN y la licencia ambiental en SERNA, con respaldo directo de las autoridades competentes. El proceso completo toma entre 6 y 10 meses, dependiendo de la velocidad con que usted entregue su documentación."
+> "MAPE LEGAL acompaña a los mineros artesanales y de pequeña minería hondureños a legalizar sus operaciones. Gestionamos en paralelo el permiso de explotación de pequeña minería en INHGEOMIN y la licencia ambiental en SERNA, conforme a los procedimientos establecidos por las autoridades competentes. El proceso completo toma entre 6 y 10 meses, dependiendo de la velocidad con que usted entregue su documentación."
 
 > **Audiencia (actualizado 2026-07-29, alineado con Fase 2C):** María atiende a mineros artesanales, **operadores de pequeña minería** (los que usan tromel, zaranda o bomba — medios mecánicos) y propietarios de tierra. Al presentarse debe mencionar que MAPE LEGAL trabaja tanto con minería artesanal como con pequeña minería (instrucción en el header del system prompt, `lib/maria/systemPrompt.ts`).
 
@@ -450,6 +454,19 @@ instrucción comercial**:
 La sección vive en `lib/maria/systemPrompt.ts` (§INTERLOCUTORES
 INSTITUCIONALES) y aplica a ambos canales — WhatsApp y widget web — porque
 ambos importan el mismo prompt compartido.
+
+**Refuerzo determinístico (blindaje institucional 2026-08):** la instrucción
+del prompt ya no es la única defensa. `lib/maria/institutional.ts` detecta al
+interlocutor institucional por patrón (con y sin tildes) y el webhook lo
+persiste en `conversaciones_whatsapp.tipo_interlocutor` (migración 037 —
+una vez institucional, siempre institucional). Con el modo activo, el sistema
+suprime de forma determinística el onboarding, el registro comercial
+(`clientes`/`usuarios_broadcast`/`transacciones_pendientes`) y los bloques de
+precios/cliente/expediente del prompt, e inyecta al final el bloque
+`INTERLOCUTOR INSTITUCIONAL DETECTADO`. El onboarding ofrece además la opción
+`4. Funcionario o institución pública`, que cierra el flujo sin pedir DPI y
+deriva al canal formal. En el widget web (anónimo) la detección es por
+conversación.
 
 ---
 
