@@ -1,32 +1,31 @@
 # Tasks
 
-## PRÓXIMA SESIÓN — pendientes al cierre 2026-08-03 (rama `claude/limpieza-blindaje-legal-islmar`, PR #220)
+## CIERRE 2026-08-04 — Plan 2 EJECUTADO en producción (rama `claude/plan-2-produccion-imgq78`, PR #224)
 
-1. **[BLOQUEANTE] Aplicar la reparación Plan 2 en producción.** Scripts listos y
-   probados contra réplica del esquema real; NO aplicados aún. Orden:
-   `038 → 039 → 040 → 020 → 023 → 033 → 034 → 036` (+ `032/035/037` si faltan).
-   Empezar con el diagnóstico de existencia (`to_regclass`) — el estado real al
-   cierre es incierto: 032/033 posiblemente aplicadas, 034/036 fallaron por
-   tablas inexistentes, 035/037 sin confirmar. Precondición: respaldo
-   (evaluar upgrade a Supabase Pro → backup diario; Free no tiene). Ejecución:
-   operador en SQL Editor, o Claude con token `sbp_` + Project Ref (revocar al
-   terminar). Detalle completo: CLAUDE.md §Reparación del esquema de producción.
-2. **Verificación post-reparación**: query de 10 columnas (clientes_dpi,
-   exp_renombrado, fases_5, grafo_4, minas, vista_verificar, legacy_preservada,
-   sin_demos, rpc_avance, gate_maria) + prueba funcional: María reconoce a un
-   cliente registrado (primera vez), `/verificar` muestra el aviso de carga
-   inicial, `/dashboard/minas` carga vacío sin error.
-3. **Prueba conductual del guardarriel institucional con key real** (WhatsApp y
-   widget): "Soy técnico de la UMA, ¿cómo clasifico a un operador que usa
-   tromel?" → criterios + artículo, "usted", sin precios; turno 2 pide precio →
-   sin precio (persistencia por columna 037).
-4. **Seed opcional de concesiones** (587 filas INHGEOMIN):
-   `node scripts/seed-concesiones-mineras.mjs` con env vars de producción.
-5. **Decisión de operador**: migrar datos de `indice_legalidad_legacy` al modelo
-   por-mina (requiere crear y vincular minas primero).
-6. **Merge del PR #220** cuando Willis lo ordene (contiene: limpieza, blindaje
-   Fase 0, interop Fase 1, blindaje institucional de María, reparación Plan 2).
-7. Recomendaciones abiertas: branch protection en `main` con CI obligatorio;
+**La reparación Plan 2 se ejecutó completa contra producción el 2026-08-04** vía
+Management API (detalle: CLAUDE.md §Reparación → bullet ✅ EJECUTADO, y
+`docs/plan2-runbook-produccion.md`). Resultado: diagnóstico post **39/39 OK**,
+verificación **28 OK + 3 INFO**, respaldo JSON completo entregado al operador,
+**seed de 587 concesiones ejecutado**, probes públicos verdes (`/verificar`,
+`/api/verificar`, búsqueda de concesiones) y **guardarriel institucional web
+PASS** con key real. `indice_legalidad_legacy` quedó con 0 filas → la decisión
+de migración legacy se disuelve. PRs #220–#223 mergeados.
+
+### Pendientes del operador (no requieren sesión de Claude)
+
+1. **Revocar el token `sbp_`** usado en la ejecución (Dashboard → Account →
+   Access Tokens) y, si se desea, revertir la política de red del entorno
+   (`api.supabase.com` / `mape.legal` ya no son necesarios).
+2. **Prueba WhatsApp con teléfono real**: (a) desde un número registrado en
+   `clientes`, confirmar que María ya no re-pide datos; (b) desde un número
+   nuevo, mensaje UMA → sin precios, y `tipo_interlocutor='institucional'`
+   pegajoso en turno 2 (runbook paso 5).
+3. **`/dashboard/minas` con login admin** — debe cargar vacío con "+ Nueva mina".
+4. **Decisión Supabase Pro** — confirmado durante la ejecución: el proyecto no
+   tiene NINGÚN backup automático (plan Free, PITR off). Recomendado.
+5. **Merge del PR #224** (solo docs: registro de ejecución + runbook).
+6. Recomendaciones abiertas: branch protection en `main` con CI obligatorio
+   (quinta pérdida silenciosa por auto-merge de la UI documentada en el #223);
    upgrade Vercel Pro si se quiere hora configurable del boletín.
 
 ## Pending

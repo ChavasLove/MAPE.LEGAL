@@ -1,15 +1,18 @@
 # Current State
 
 ## Last Updated
-2026-08-03 (orden limpieza/blindaje/interop — rama `claude/limpieza-blindaje-legal-islmar`, PR #220)
+2026-08-04 (reparación Plan 2 EJECUTADA en producción — rama `claude/plan-2-produccion-imgq78`, PR #224)
 
-> **2026-08-03 HALLAZGO CRÍTICO (leer primero):** la base de producción corre un
-> esquema a mano divergente del repo — María nunca reconocía clientes (lookup
-> `dpi` vs columna `identidad`), y workflow/minas/`/verificar`/concesiones
-> nunca operaron. Decisión de Willis: **Plan 2** — migrar producción al esquema
-> del repo. Scripts `038-040` listos y probados; **PENDIENTES de aplicar en
-> producción** (ver CLAUDE.md §Reparación del esquema de producción y
-> docs/tasks.md §PRÓXIMA SESIÓN).
+> **2026-08-04 — PRODUCCIÓN REPARADA (cierra el hallazgo crítico 2026-08-03):**
+> la cadena Plan 2 (`038→039→040→020→023→033→034→036` + seed de 587
+> concesiones) se ejecutó completa contra la base de producción vía Management
+> API. Diagnóstico post 39/39 OK, verificación 28 OK + 3 INFO, respaldo JSON
+> entregado al operador, superficies públicas verificadas en vivo y guardarriel
+> institucional web PASS. El esquema de producción cumple el contrato del
+> código por primera vez: María reconoce clientes, y workflow, minas,
+> `/verificar` y concesiones quedaron operativos. Pendientes del operador en
+> docs/tasks.md §CIERRE 2026-08-04. Detalle: CLAUDE.md §Reparación y
+> `docs/plan2-runbook-produccion.md`.
 
 > **2026-08 blindaje:** `proxy.ts` (el middleware real de Next 16) ahora valida
 > la sesión (JWT contra Supabase Auth vía `lib/sessionValidator.ts`); RLS en
@@ -17,9 +20,10 @@
 > transiciones de expediente serializadas con `SELECT ... FOR UPDATE` (RPC
 > `avanzar_expediente_fase`, migración 033); llaves institucionales en `minas`
 > (034), `verificaciones_fuente` append-only (035) y huella SHA-256 del
-> certificado + frescura en `/verificar` (036). Migraciones 032–036 pendientes
-> de aplicar en Supabase Studio. El resto de este documento es un snapshot
-> 2026-05-10 — para el estado vivo, ver CLAUDE.md.
+> certificado + frescura en `/verificar` (036). Migraciones 032–037 aplicadas
+> en producción (032/033/035/037 el 2026-08-03; 034/036 el 2026-08-04 dentro de
+> la cadena Plan 2). El resto de este documento es un snapshot 2026-05-10 —
+> para el estado vivo, ver CLAUDE.md.
 
 ## Current Module
 Phase 1 — public-surface realignment shipped (PR #102 merged into `main`):
