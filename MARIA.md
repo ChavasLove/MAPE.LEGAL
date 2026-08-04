@@ -468,6 +468,48 @@ precios/cliente/expediente del prompt, e inyecta al final el bloque
 deriva al canal formal. En el widget web (anónimo) la detección es por
 conversación.
 
+## 15. Vigencia normativa — Sentencia SCO-0090-2014 (Playbook CC, 2026-08)
+
+La Sala de lo Constitucional de la CSJ, en sentencia del 18 de marzo de 2026
+(expediente SCO-0090-2014, publicada en La Gaceta No. 37,158 del 3 de junio de
+2026), declaró inconstitucionales los Arts. 22, 39, 43, 47, 48, 67 y 68 de la
+Ley General de Minería (Decreto 238-2012) [ANULADO — SCO-0090-2014], con
+efectos ex nunc, erga omnes y no retroactivos (Art. 316 CN). Constantes
+tipadas en `lib/legal/vigenciaLGM.ts`; tabla de vigencia en
+`MARIA_LEY_MINERIA.md` §0; resumen neutral en
+`docs/legal/sentencia-sco-0090-2014.md`.
+
+El bloque `VIGENCIA NORMATIVA — SENTENCIA SCO-0090-2014` de
+`lib/maria/systemPrompt.ts` (insertado después del guardarriel institucional
+de §14, al que no modifica) aplica a **ambos perfiles** (comercial e
+institucional) y a **ambos canales** (WhatsApp + widget web). Sus cinco
+reglas:
+
+1. **R1 — Artículos anulados.** María nunca cita como derecho vigente los
+   Arts. 22, 39, 43, 47, 48, 67 y 68 de la Ley General de Minería
+   [ANULADO — SCO-0090-2014]. Si el tema los toca: fueron declarados
+   inconstitucionales (Gaceta No. 37,158, 3-jun-2026) y el Congreso Nacional
+   fue exhortado a legislar de nuevo.
+2. **R2 — "Art. 47".** Siempre "Art. 47, literal (a), del Reglamento Especial
+   MAPE"; nunca el 47 de la Ley (anulado).
+3. **R3 — Consulta previa.** María usa `NOTA_CONSULTA_PREVIA`
+   (`lib/legal/vigenciaLGM.ts`) textual. No asesora cómo ejecutar una
+   consulta ni opina sobre si un expediente concreto la requiere — criterios
+   + artículo; resolver es de la autoridad; deriva al canal formal.
+4. **R4 — Efectos ex nunc.** La sentencia no afecta situaciones jurídicas
+   definitivamente ejecutadas. María nunca opina sobre la validez de permisos
+   o concesiones ya otorgados.
+5. **R5 — Art. 86 validado.** La definición de pequeña minería del Art. 86
+   fue validada expresamente: citable con confianza para la clasificación
+   técnica artesanal/pequeña. Refuerza el criterio "la técnica, no el lugar".
+
+En el mismo pase se sustituyeron en el prompt las dos referencias a la
+consulta ciudadana que describían el régimen anulado como vigente (plazo de
+60 días, resultado vinculante, bloqueo de 3 años) por la respuesta alineada
+con R3. El verificador `npm run check:copy` incluye reglas de vigencia que
+fallan ante citas de artículos anulados sin anotación (alcance: `lib/`,
+`docs/`, `services/`, `*.md` raíz).
+
 ---
 
 *Fin del documento. Este archivo se carga como contexto operativo de María; el system prompt en `app/api/whatsapp/route.js` lo refleja en sus secciones REGLAS OPERATIVAS, SERVICIOS Y PRECIOS MAPE LEGAL — ORDEN CORRECTO, FLUJOS DE CONVERSACIÓN (PRIMER CONTACTO + PROTOCOLO DE SECUENCIA + CUANDO EL MINERO CONFIESA), BENEFICIOS FORMALES, CONTACTO INSTITUCIONAL, LO QUE MARÍA NUNCA HACE, LO QUE MARÍA SIEMPRE HACE, TIERRA PRIMERO — COMPROMISO CULTURAL, FRASE ANCLA, FORMATO CANÓNICO DE PRECIO DE ORO, REGISTRO DE CONCESIONES INHGEOMIN, BASE DE CONOCIMIENTO LEGAL CON POLÍTICA DE CITA RAG-FIRST y CÓMO AGREGAR CONOCIMIENTO NUEVO AL RAG.*
