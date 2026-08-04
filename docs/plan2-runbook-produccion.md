@@ -22,6 +22,16 @@ que no existían — con el orden de este runbook eso queda resuelto), 038–040
 aplicar. Por eso el paso 2 es obligatorio: el diagnóstico resuelve la incertidumbre
 fila por fila; no asumir nada de ese intento.
 
+> **✅ EJECUTADO EN PRODUCCIÓN — 2026-08-04, vía Management API (camino b).**
+> Diagnóstico pre: 032/033/035/037 ya aplicadas, resto FALTA. Respaldo JSON completo
+> entregado al operador (el proyecto no tenía ningún backup automático). Cadena
+> completa aplicada limpia; diagnóstico post 39/39 OK; verificación 28 OK + 3 INFO;
+> seed de 587 concesiones ejecutado; `/verificar`, `/api/verificar` y la búsqueda
+> pública de concesiones verificadas en vivo; guardarriel institucional web PASS.
+> `indice_legalidad_legacy` quedó con 0 filas — la decisión del paso 7 se disuelve.
+> Pendiente del operador: pruebas WhatsApp (paso 4b.1 y paso 5), `/dashboard/minas`
+> con login, decisión Supabase Pro, y revocar el token `sbp_` usado.
+
 ---
 
 ## Paso 0 — Antes de empezar
