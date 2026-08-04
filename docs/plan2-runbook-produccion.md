@@ -15,6 +15,13 @@ diagnóstico pre-reparación reporta FALTA correcto en 37 chequeos; cadena aplic
 y re-ejecutable; diagnóstico post = 39/39 OK; verificación = 28 OK + 3 INFO; datos de
 muestra fluyeron por renames y backfills (dpi, fase_actual_id, historial, estado).
 
+**Estado real de producción (cierre 2026-08-03):** hubo un intento de aplicación que
+se detuvo a la mitad — 032/033 posiblemente aplicadas (corrieron sin error reportado),
+035/037 sin confirmar, **034/036 fallaron** (referencian `minas`/`certificados_origen`,
+que no existían — con el orden de este runbook eso queda resuelto), 038–040 sin
+aplicar. Por eso el paso 2 es obligatorio: el diagnóstico resuelve la incertidumbre
+fila por fila; no asumir nada de ese intento.
+
 ---
 
 ## Paso 0 — Antes de empezar
@@ -27,12 +34,14 @@ muestra fluyeron por renames y backfills (dpi, fase_actual_id, historial, estado
 
 ## Paso 1 — Respaldo (obligatorio antes de tocar el esquema)
 
-**Recomendación: upgrade a Supabase Pro** (USD 25/mes) — backups automáticos diarios
-con 7 días de retención (y PITR opcional). La plataforma ya opera con clientes y
-autoridades reales, y los registros de precio/ensayes son indelebles por diseño legal
-(migraciones 030/031): seguir en un plan sin backup automático es un riesgo
-desproporcionado frente al costo. Se activa en **Dashboard → Settings → Billing**.
-El upgrade no bloquea la reparación de hoy; el respaldo manual de abajo sí es previo.
+**Recomendación (aceptada a evaluar en el cierre 2026-08-03): upgrade a Supabase Pro**
+(USD 25/mes) — backups automáticos diarios con 7 días de retención (y PITR opcional).
+La plataforma ya opera con clientes y autoridades reales, y los registros de
+precio/ensayes son indelebles por diseño legal (migraciones 030/031): seguir en un
+plan sin backup automático es un riesgo desproporcionado frente al costo. Se activa
+en **Dashboard → Settings → Billing**. Si se hace el upgrade, **esperar a que el
+primer backup automático exista** antes de aplicar la cadena; si no, hacer el
+respaldo manual de abajo antes de tocar el esquema.
 
 **Respaldo manual hoy (elegir a):**
 
@@ -89,6 +98,11 @@ Para cada archivo, pegar el contenido completo en SQL Editor → Run, y esperar
 10. `035_verificaciones_fuente.sql` — solo si FALTA
 11. `037_conversaciones_tipo_interlocutor.sql` — solo si FALTA
 
+La cadena re-ejecuta 032/033 aunque el intento del 2026-08-03 las haya aplicado: son
+idempotentes, y re-crear la 033 después de la 039 garantiza que el RPC quede válido
+contra las tablas reales (un `create function` plpgsql anterior a 039 no valida
+tablas hasta la ejecución — re-crearla no daña y elimina la duda).
+
 Notas verificadas contra la réplica:
 
 - Los `NOTICE` son normales (drop-guards e `if exists`). El único NOTICE que exige
@@ -101,6 +115,17 @@ Notas verificadas contra la réplica:
   vista pública y `create or replace view` no puede quitar columnas). Es benigno: no
   re-correr 020 tras 036. Si hiciera falta rehacer la vista:
   `drop view public.certificados_origen_publicos;` y correr 020 → 036 seguidas.
+
+### Camino alternativo — ejecución por Claude vía Management API
+
+Acordado en el cierre 2026-08-03 como opción (b): en lugar de pegar los archivos a
+mano, una sesión remota de Claude Code puede aplicar la cadena completa por HTTPS con
+la **Management API de Supabase** (`https://api.supabase.com/v1/projects/{ref}/database/query`).
+Requiere pasarle a la sesión: un **Access Token `sbp_…`** (Dashboard → cuenta →
+Access Tokens → Generate new token) y el **Project Ref** del proyecto. La connection
+string psql directa puede estar bloqueada por el proxy del entorno remoto — la
+Management API es el camino que funciona. **Revocar el token al terminar.** El flujo
+es el mismo: diagnóstico → cadena en orden → verificación, con los mismos scripts.
 
 ## Paso 4 — Verificación post-reparación
 
@@ -164,10 +189,11 @@ estén cargadas, transcribir a mano los componentes por mina desde
 
 ## Estado del código y pendientes de gobernanza
 
-- PRs #220 y #221 ya están mergeados en `main`. Las migraciones 038–040 + los dos
-  scripts + este runbook viven en la rama `claude/plan-2-produccion-imgq78` —
-  mergear a `main` cuando Willis lo ordene (son SQL y docs: no afectan el build y
-  Vercel no aplica migraciones).
+- PRs #220, #221 y #222 ya están mergeados en `main` — las migraciones 038–040 están
+  en `main` desde el #222. Los scripts de diagnóstico/verificación + este runbook
+  viven en el **PR #223** (rama `claude/plan-2-produccion-imgq78`) — mergear cuando
+  Willis lo ordene (son SQL y docs: no afectan el build y Vercel no aplica
+  migraciones).
 - Recomendaciones abiertas: **branch protection en `main` con el check de CI
   obligatorio** (cuatro incidentes de build roto llegaron a producción por saltarse
   el gate); **Vercel Pro** si se quiere hora configurable del boletín diario.
