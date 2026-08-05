@@ -36,15 +36,35 @@ Donde la documentación y el código discrepan, manda el código.
 
 El favicon anterior (`app/favicon.ico`) era el marcador de posición por
 defecto: un círculo negro con un triángulo blanco, sin relación con la
-identidad. Reemplazado por la marca real, derivada del activo oficial.
+identidad. Reemplazado por el logotipo real.
 
-Detalle en el commit `feat(brand): reemplazar el favicon genérico…`.
 Se añadieron además `app/icon.png` (512) y `app/apple-icon.png` (180), que
 antes no existían — el sitio no tenía icono para Android, PWA ni iOS.
 
-Nota técnica reutilizable: los frames del `.ico` deben ir en **RGBA**.
-Guardados en RGB, Turbopack rompe el build con
-`Format error decoding Ico: The PNG is not in RGBA format!`.
+**Criterio: el lockup completo, idéntico en todas las resoluciones.** Un primer
+intento recortó sólo la marca (sin el wordmark) y aplicó realce de saturación a
+los tamaños chicos para que la línea fina no se apagara. A 16 px eso producía un
+bloque amarillo que no se parecía al logotipo, y el encuadre variaba entre
+archivos. Corregido: los tres iconos salen de un único maestro de 628 px con el
+lockup al 80% del lienzo, y todos los tamaños se derivan con el mismo
+remuestreo. Sin realce de color.
+
+**Límite físico a tener presente.** El lockup se lee bien de 48 px para arriba.
+A 32 px "MAPE" aún se distingue; a 16 px no, porque las letras miden ~4 px de
+alto. Es una restricción del formato, no del archivo: ningún logotipo con
+tipografía es legible a 16 px. En pantallas HiDPI el navegador toma el frame de
+32 px, que es el caso más común hoy. Si en algún momento se prioriza la
+legibilidad en la pestaña sobre la fidelidad al lockup, la práctica habitual es
+usar sólo la marca en los frames de 16 y 32 px — pero eso es exactamente la
+variación de diseño que se descartó, y la decisión corresponde al dueño de marca.
+
+Dos notas técnicas reutilizables:
+
+- Los frames del `.ico` deben ir en **RGBA**. Guardados en RGB, Turbopack rompe
+  el build con `Format error decoding Ico: The PNG is not in RGBA format!`.
+- Los tamaños chicos se generan con reducción **por etapas** (mitades sucesivas)
+  más un unsharp suave. Un `resize` directo de 628 a 16 px pierde toda la
+  estructura. El unsharp no toca tono ni geometría: sólo recupera nitidez.
 
 ---
 
@@ -263,7 +283,16 @@ Google en el botón de OAuth. Una marca de terceros conserva su propia paleta.
 
 `public/images/MAPE LEGAL LOGO 1.JPG` es el único logotipo del repositorio y se
 usa en 10 superficies (admin, dashboard, portal, login y las cuatro pantallas de
-autenticación). Tres problemas:
+autenticación).
+
+**Es una captura de pantalla de un teléfono, no un activo de marca.** El perfil
+de contenido del archivo devuelve cuatro bandas: la marca (y 203–511), "MAPE"
+(y 577–646), "LEGAL" (y 671–704) y una cuarta en y 890–897 que es el **indicador
+de inicio de iOS**. Al generar los iconos hubo que recortarla explícitamente.
+Un logotipo institucional no debería distribuirse como captura: se necesita el
+original del diseñador.
+
+Sobre ese mismo activo, tres problemas más:
 
 1. **Es un JPG con fondo opaco.** Su negro es `#1E1E1E` uniforme, mientras que
    `--ink` es `#1F2A38`. Sobre la barra lateral del panel de administración
@@ -348,7 +377,7 @@ Ordenado por relación impacto/esfuerzo, no por severidad.
 | ~~2~~ | ~~Corregir hitos, disparadores y precio de titulación en `cht-brand`~~ | ✅ hecho | §4 (cifras) |
 | 3 | Sustituir las 6 insignias por las de `DESIGN.md` §3 con `color-mix` | 3 archivos | §3 + parte de §5 |
 | 4 | Fijar la regla de nomenclatura en `DESIGN.md` y corregir los casos que la contradicen | 1 sección + ~5 archivos | §7 |
-| 5 | Exportar el logotipo a PNG con alfa (o SVG) y corregir las proporciones declaradas | 1 activo + 3 layouts | §6.1, §6.2 |
+| 5 | Pedir al diseñador el logotipo original (SVG, o PNG con alfa sin el artefacto de captura) y corregir las proporciones declaradas | 1 activo + 3 layouts | §6 completo |
 | 6 | Migrar `app/dashboard/**` y `app/portal/**` al Color Manual | 9 archivos, ~500 literales | §2 + §5 |
 | 7 | Tarjeta `og:image` con identidad | 1 activo | §6 |
 | 8 | Normalizar `strokeWidth` y `rounded-2xl` | mecánico | §8 |
