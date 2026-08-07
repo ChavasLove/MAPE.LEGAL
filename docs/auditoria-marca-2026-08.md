@@ -21,10 +21,11 @@ Donde la documentación y el código discrepan, manda el código.
 | Tipografía: pesos ≤ 700 | ✅ Cero `font-extrabold` / `font-black` |
 | Emojis en UI y plantillas de email | ✅ Cero ocurrencias |
 | Voz pública (tercera persona, sin "ofrecemos") | ✅ Cero infracciones |
-| **Fuente de marca en superficies internas** | ❌ Inter anulada en 190 puntos |
+| Fuente de marca en superficies internas | ✅ Resuelto en esta rama |
+| Skill `cht-brand` — cifras operativas | ✅ Resuelto en esta rama |
 | **Coherencia visual dashboard / portal** | ❌ Dos sistemas coexistiendo |
 | **Contraste WCAG en insignias de estado** | ❌ Dos pares reprueban |
-| **Skill `cht-brand` como fuente de verdad** | ❌ Precios y posicionamiento obsoletos |
+| Skill `cht-brand` — posicionamiento y taglines | ⚠️ Marcado, pendiente de decisión |
 | Literales de color fuera de `globals.css` | ⚠️ 565 ocurrencias |
 | Activo de logotipo | ⚠️ Formato y proporción incorrectos |
 | Nomenclatura MAPE LEGAL / MAPE.LEGAL | ⚠️ Sin criterio aplicado |
@@ -35,15 +36,35 @@ Donde la documentación y el código discrepan, manda el código.
 
 El favicon anterior (`app/favicon.ico`) era el marcador de posición por
 defecto: un círculo negro con un triángulo blanco, sin relación con la
-identidad. Reemplazado por la marca real, derivada del activo oficial.
+identidad. Reemplazado por el logotipo real.
 
-Detalle en el commit `feat(brand): reemplazar el favicon genérico…`.
 Se añadieron además `app/icon.png` (512) y `app/apple-icon.png` (180), que
 antes no existían — el sitio no tenía icono para Android, PWA ni iOS.
 
-Nota técnica reutilizable: los frames del `.ico` deben ir en **RGBA**.
-Guardados en RGB, Turbopack rompe el build con
-`Format error decoding Ico: The PNG is not in RGBA format!`.
+**Criterio: el lockup completo, idéntico en todas las resoluciones.** Un primer
+intento recortó sólo la marca (sin el wordmark) y aplicó realce de saturación a
+los tamaños chicos para que la línea fina no se apagara. A 16 px eso producía un
+bloque amarillo que no se parecía al logotipo, y el encuadre variaba entre
+archivos. Corregido: los tres iconos salen de un único maestro de 628 px con el
+lockup al 80% del lienzo, y todos los tamaños se derivan con el mismo
+remuestreo. Sin realce de color.
+
+**Límite físico a tener presente.** El lockup se lee bien de 48 px para arriba.
+A 32 px "MAPE" aún se distingue; a 16 px no, porque las letras miden ~4 px de
+alto. Es una restricción del formato, no del archivo: ningún logotipo con
+tipografía es legible a 16 px. En pantallas HiDPI el navegador toma el frame de
+32 px, que es el caso más común hoy. Si en algún momento se prioriza la
+legibilidad en la pestaña sobre la fidelidad al lockup, la práctica habitual es
+usar sólo la marca en los frames de 16 y 32 px — pero eso es exactamente la
+variación de diseño que se descartó, y la decisión corresponde al dueño de marca.
+
+Dos notas técnicas reutilizables:
+
+- Los frames del `.ico` deben ir en **RGBA**. Guardados en RGB, Turbopack rompe
+  el build con `Format error decoding Ico: The PNG is not in RGBA format!`.
+- Los tamaños chicos se generan con reducción **por etapas** (mitades sucesivas)
+  más un unsharp suave. Un `resize` directo de 628 a 16 px pierde toda la
+  estructura. El unsharp no toca tono ni geometría: sólo recupera nitidez.
 
 ---
 
@@ -82,12 +103,29 @@ Roboto en Android). Hay **190 ocurrencias**:
 Es el hallazgo de mayor alcance: el cliente que entra al portal y el equipo
 que usa el dashboard no ven la tipografía de la marca.
 
-**Dos correcciones posibles.** (a) Declarar `@theme inline { --font-sans: var(--font-inter); }`
-en `globals.css` — una línea, arregla las 190 de golpe y alinea el archivo con
-lo que `CLAUDE.md` ya afirma. (b) Eliminar las 190 clases, ya que `<body>` hereda
-Inter. La (a) es la de menor riesgo; conviene además mapear `--font-serif` y
-confirmar que `font-mono` sigue resolviendo a JetBrains (hoy funciona porque
-`:root` sí redefine `--font-mono`).
+### ✅ Corregido en esta rama
+
+Se añadió a `app/globals.css` el bloque que `CLAUDE.md` ya daba por existente:
+
+```css
+@theme inline {
+  --font-sans: var(--font-body);
+}
+```
+
+Verificado en el CSS recompilado: `.font-sans{font-family:var(--font-body)}`.
+Las 190 ocurrencias quedan resueltas sin tocar un solo componente.
+
+Comprobaciones colaterales, todas limpias:
+
+- `font-mono` sigue resolviendo a JetBrains. Tailwind emite su
+  `--font-mono` por defecto en el offset 20014 del bundle y el `:root` de
+  `globals.css` lo redefine en el 48331 — misma especificidad, gana el
+  posterior. No hacía falta declararlo en `@theme` (y hacerlo con el mismo
+  nombre habría sido autorreferencial).
+- `--font-serif` no se mapea: `font-serif` tiene cero usos en el árbol.
+- `--default-font-family` pasa a `var(--font-body)`, de modo que `html`
+  hereda Inter igual que `body`. Sin regresión.
 
 ---
 
@@ -184,9 +222,25 @@ Y hay un conflicto de gobernanza de fondo: el tagline principal de la skill
 ocurrencias de `ofrecemos|brindamos|nos comprometemos|trabajamos para` — de modo
 que la skill prescribe hoy lo que el canon prohíbe.
 
-Recomendación: la skill debe **remitir** a `MARIA.md` y `lib/content/copy-legal.ts`
-en vez de replicar cifras, o quedar sujeta al mismo gate que el resto del copy.
-Un dato replicado es un dato que se desincroniza.
+### ✅ Corregido en esta rama (las cifras) · ⚠️ Pendiente (el posicionamiento)
+
+Se corrigieron en `.claude/commands/cht-brand.md` los tres datos con fuente
+canónica verificable: los hitos pasan a 40/40/20 (L 640,000 · 640,000 · 320,000,
+que sí suman el total del contrato), sus disparadores reales, y el precio de
+titulación a L 60,000 + L 25,000/mz. Se corrigió además una cuarta discrepancia
+que apareció al verificar: el Índice de Legalidad Absoluta **no** es el
+disparador de H3 — se verifica en el paso 36, con el Paquete Ancla ya cerrado, y
+los honorarios que le siguen (paso 37) son un servicio adicional con cotización
+separada.
+
+Se añadió al encabezado del archivo una nota de precedencia: la skill es contexto
+de marca, no fuente de verdad de precios ni de proceso; ante discrepancia manda
+`MARIA.md` / `lib/maria/systemPrompt.ts`. Un dato replicado es un dato que se
+desincroniza, y este ya se había desincronizado al menos dos veces.
+
+Las cinco frases y el descriptor quedan **marcados en el archivo como pendientes
+de revisión, no retirados**. Retirar o reformular el posicionamiento de la marca
+es una decisión del dueño de marca, no una corrección de código.
 
 ---
 
@@ -229,7 +283,16 @@ Google en el botón de OAuth. Una marca de terceros conserva su propia paleta.
 
 `public/images/MAPE LEGAL LOGO 1.JPG` es el único logotipo del repositorio y se
 usa en 10 superficies (admin, dashboard, portal, login y las cuatro pantallas de
-autenticación). Tres problemas:
+autenticación).
+
+**Es una captura de pantalla de un teléfono, no un activo de marca.** El perfil
+de contenido del archivo devuelve cuatro bandas: la marca (y 203–511), "MAPE"
+(y 577–646), "LEGAL" (y 671–704) y una cuarta en y 890–897 que es el **indicador
+de inicio de iOS**. Al generar los iconos hubo que recortarla explícitamente.
+Un logotipo institucional no debería distribuirse como captura: se necesita el
+original del diseñador.
+
+Sobre ese mismo activo, tres problemas más:
 
 1. **Es un JPG con fondo opaco.** Su negro es `#1E1E1E` uniforme, mientras que
    `--ink` es `#1F2A38`. Sobre la barra lateral del panel de administración
@@ -310,16 +373,18 @@ Ordenado por relación impacto/esfuerzo, no por severidad.
 
 | # | Acción | Esfuerzo | Cierra |
 |---|---|---|---|
-| 1 | `@theme inline { --font-sans: var(--font-inter); }` en `globals.css` | 1 línea | §1 completo (190 puntos) |
-| 2 | Corregir hitos y precio de titulación en la skill `cht-brand`; sustituir cifras por remisión a `MARIA.md` | 1 archivo | §4 |
+| ~~1~~ | ~~`@theme inline` con `--font-sans` en `globals.css`~~ | ✅ hecho | §1 completo (190 puntos) |
+| ~~2~~ | ~~Corregir hitos, disparadores y precio de titulación en `cht-brand`~~ | ✅ hecho | §4 (cifras) |
 | 3 | Sustituir las 6 insignias por las de `DESIGN.md` §3 con `color-mix` | 3 archivos | §3 + parte de §5 |
 | 4 | Fijar la regla de nomenclatura en `DESIGN.md` y corregir los casos que la contradicen | 1 sección + ~5 archivos | §7 |
-| 5 | Exportar el logotipo a PNG con alfa (o SVG) y corregir las proporciones declaradas | 1 activo + 3 layouts | §6.1, §6.2 |
+| 5 | Pedir al diseñador el logotipo original (SVG, o PNG con alfa sin el artefacto de captura) y corregir las proporciones declaradas | 1 activo + 3 layouts | §6 completo |
 | 6 | Migrar `app/dashboard/**` y `app/portal/**` al Color Manual | 9 archivos, ~500 literales | §2 + §5 |
 | 7 | Tarjeta `og:image` con identidad | 1 activo | §6 |
 | 8 | Normalizar `strokeWidth` y `rounded-2xl` | mecánico | §8 |
 
-Los puntos 1 a 5 son acotados y de bajo riesgo. El 6 es el trabajo de fondo: es
+Los puntos 1 y 2 se aplicaron en esta rama por ser los de mejor relación
+impacto/riesgo: uno arregla 190 puntos con una línea, el otro corrige cifras que
+se comunican al cliente. Los puntos 3 a 5 son acotados. El 6 es el trabajo de fondo: es
 donde vive la mayor parte de la deuda y conviene tratarlo como una tarea propia,
 con verificación visual a 320 / 375 / 768 / 1024 antes de mergear, según el
 quality gate que `CLAUDE.md` ya exige para cambios de landing.
