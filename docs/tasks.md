@@ -1,5 +1,33 @@
 # Tasks
 
+## Pendientes al cierre 2026-08-07 (rama `claude/price-conversion-gold-widget-gjq10r`, PR #228 — conversión por kilates)
+
+1. **[REVISIÓN LEGAL] Redacción de la columna "Referencia MAPE.LEGAL (L/g y
+   L/dwt)"** en la tabla de kilates de `/precios` (aplica igual al valor por
+   penique/pennyweight agregado el mismo día). Hoy lleva una nota al pie: la ley
+   nominal (kilates ÷ 24) es referencia aritmética y el contenido de oro fino
+   se determina por **ensaye**, no por el kilataje declarado. Dado que el
+   repositorio separa cuidadosamente el Precio de Referencia de una oferta de
+   compra (§Precio de Referencia: "no constituye oferta de compra"), confirmar
+   con el abogado si esa nota basta para una cifra **por kilataje** o si hace
+   falta una fórmula literal en `lib/content/copy-legal.ts`.
+2. **Formato del boletín: dos lugares que pueden divergir en silencio.** El
+   código (`services/broadcastService.ts:generateDailyMessage`) y el template
+   del prompt (`lib/maria/systemPrompt.ts` §NOTIFICACIÓN DIARIA) deben
+   cambiarse **juntos** — divergieron desde PR #159 hasta 2026-08-07 sin que
+   ningún gate lo detectara (el código emitía viñetas `*`, el template texto
+   plano). No existe verificación automatizada de esa paridad; se comprobó a
+   mano comparando el esqueleto estructural contra la salida real. Candidato a
+   test de regresión si el boletín vuelve a tocarse.
+3. **[ENTORNO, no del repo] El harness de subagentes está roto en Claude Code
+   remoto.** Todo tool call de subagente (Bash, Read, Grep, Glob, ToolSearch y
+   el propio StructuredOutput) es rechazado por el permission handler con
+   "returned updatedInput ... failed schema validation ... The tool input from
+   the model was valid". Consecuencia práctica: **un workflow de revisión
+   devuelve `confirmed: []` sin haber leído un solo archivo** — un falso visto
+   bueno. Hasta que se corrija, la revisión de código en este entorno debe
+   hacerse en el hilo principal (los tools del agente principal sí funcionan).
+
 ## PRÓXIMA SESIÓN — pendientes al cierre 2026-08-03 (rama `claude/limpieza-blindaje-legal-islmar`, PR #220)
 
 1. **[BLOQUEANTE] Aplicar la reparación Plan 2 en producción.** Scripts listos y

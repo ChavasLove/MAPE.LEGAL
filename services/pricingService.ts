@@ -85,6 +85,12 @@ export function mapeGoldBuyLpsPerGram(
 // para que los cuatro canales muestren exactamente los mismos números.
 export const GOLD_KARATS = [16, 18, 20, 22] as const;
 
+// 1 penique (pennyweight, dwt) = 1/20 de onza troy = 1.55517384 g. Unidad de
+// uso corriente en la compra de oro artesanal en Centroamérica; los valores
+// por penique se derivan de los valores por gramo con esta constante — nunca
+// re-derivar desde la onza en un caller (drift de redondeo).
+export const PENNYWEIGHT_GRAMS = TROY_OUNCE_GRAMS / 20;
+
 export interface KaratPrice {
   kilates: number;
   /** Ley nominal — fracción de oro fino (kilates ÷ 24). */
@@ -95,6 +101,12 @@ export interface KaratPrice {
   oro_lps_g: number;
   /** Referencia MAPE.LEGAL aplicada al contenido nominal de oro fino, L por 1 g de material. */
   referencia_lps_g: number;
+  /** Valor internacional del oro contenido en 1 penique (dwt) de material, en USD. */
+  oro_usd_dwt: number;
+  /** Valor internacional del oro contenido en 1 penique (dwt) de material, en Lempiras. */
+  oro_lps_dwt: number;
+  /** Referencia MAPE.LEGAL aplicada al contenido nominal de oro fino, L por 1 penique (dwt) de material. */
+  referencia_lps_dwt: number;
 }
 
 export function buildKaratPrices(
@@ -107,12 +119,18 @@ export function buildKaratPrices(
   const usdPerFineGram = oroUsdOz / TROY_OUNCE_GRAMS;
   return GOLD_KARATS.map((kilates) => {
     const ley = kilates / 24;
+    const oro_usd_g = usdPerFineGram * ley;
+    const oro_lps_g = usdPerFineGram * usdHnl * ley;
+    const referencia_lps_g = refLpsPerFineGram * ley;
     return {
       kilates,
       ley,
-      oro_usd_g: usdPerFineGram * ley,
-      oro_lps_g: usdPerFineGram * usdHnl * ley,
-      referencia_lps_g: refLpsPerFineGram * ley,
+      oro_usd_g,
+      oro_lps_g,
+      referencia_lps_g,
+      oro_usd_dwt: oro_usd_g * PENNYWEIGHT_GRAMS,
+      oro_lps_dwt: oro_lps_g * PENNYWEIGHT_GRAMS,
+      referencia_lps_dwt: referencia_lps_g * PENNYWEIGHT_GRAMS,
     };
   });
 }

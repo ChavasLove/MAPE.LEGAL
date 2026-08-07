@@ -812,10 +812,13 @@ Comandos disponibles:
     const oroCompraLps = mapeGoldBuyLpsPerGram(preciosHoy?.oro, preciosHoy?.usd_hnl);
     const oroCompra = oroCompraLps != null ? `L ${fmt(oroCompraLps)}/gramo` : null;
     // Conversión por kilates — mismo helper canónico que /api/precios/live y el
-    // boletín diario, así María cita números idénticos a los del widget.
+    // boletín diario, así María cita números idénticos a los del widget. Cada
+    // kilataje trae valor por gramo y por penique (dwt = 1.5552 g).
     const kilatesRef = buildKaratPrices(preciosHoy?.oro, preciosHoy?.usd_hnl);
     const kilatesLine = kilatesRef
-      ? kilatesRef.map((k) => `${k.kilates}k L ${fmt(k.referencia_lps_g)}`).join(' · ')
+      ? kilatesRef
+          .map((k) => `${k.kilates}k L ${fmt(k.referencia_lps_g)}/g · L ${fmt(k.referencia_lps_dwt)}/dwt`)
+          .join(' | ')
       : null;
     const plataLBMA = preciosHoy?.plata  != null ? `$${fmt(preciosHoy.plata)} USD/oz troy` : null;
 
@@ -837,7 +840,7 @@ Comandos disponibles:
       ? `\n\nPRECIOS DE REFERENCIA (${preciosHoy.fecha ?? 'hoy'}${frescuraLabel ? ` — ${frescuraLabel}` : ''}):
 - Oro internacional: ${oroLBMA ?? 'no disponible'}
 - Precio de compra MAPE LEGAL (según la Política de Precios vigente): ${oroCompra ?? 'el equipo confirma hoy'}
-- Referencia por kilates (L por gramo de material, ley nominal = kilates ÷ 24): ${kilatesLine ?? 'no disponible'}
+- Referencia por kilates (por gramo y por penique/dwt de material; ley nominal = kilates ÷ 24; 1 dwt = 1.5552 g): ${kilatesLine ?? 'no disponible'}
 - Plata internacional: ${plataLBMA ?? 'no disponible'}
 - Tipo de cambio: ${tipoCambio ?? 'no disponible'}
 - Frescura: ${frescuraLabel || 'no disponible'}

@@ -7,20 +7,30 @@
 // (/api/precios/live → buildKaratPrices en services/pricingService.ts) y se
 // renderizan tal cual — el cliente no recalcula nada.
 //
-// Copy gate (R5, encargo Precio de Referencia): esta superficie nunca dice
-// "por gramo" sin el calificativo "de oro fino" — las unidades van como
-// "USD/g" / "L/g" y la nota aclara que la ley nominal es aritmética de
-// referencia, no un ensaye.
+// Unidades (regla R5, encargo Precio de Referencia): la expresión "por gramo" nunca va sin "de oro fino".
+// El precio de referencia de la tarjeta de arriba es por gramo de oro fino;
+// estas cifras son por unidad DE MATERIAL (gramo o penique) al kilataje
+// indicado — son números distintos y la nota introductoria los contrasta de
+// forma explícita. Las columnas usan unidades compactas ("USD/g", "L/dwt") y
+// el pie aclara que la ley nominal es aritmética de referencia, no un ensaye.
+//
+// Toggle gramo/penique: el penique (pennyweight, dwt = 1.55517384 g) es la
+// unidad de uso corriente en la compra de oro artesanal — mismas tres columnas
+// de valores, solo cambia la unidad. Sin animaciones continuas (DESIGN §4).
 
-import { type CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { type LivePrices } from './LivePricesWidget';
 
 const SHADOW_SM = '0 2px 6px rgba(31,42,56,0.05)';
 
-// Kilates publicados. La ley nominal (kilates ÷ 24) se conoce estáticamente,
-// así que las filas existen aunque el snapshot todavía no haya cargado — los
-// valores muestran "—" hasta que el servidor los entregue.
-const KARATS = [16, 18, 20, 22] as const;
+// Placeholder SOLO para el estado pre-carga: la ley nominal (kilates ÷ 24) se
+// conoce estáticamente, así que la tabla ya tiene forma antes de que llegue el
+// snapshot y los valores muestran "—". Una vez cargado, las filas salen de
+// data.kilates (servidor) — no de esta lista — para que agregar un kilataje a
+// GOLD_KARATS en services/pricingService.ts aparezca aquí sin tocar el cliente.
+const KARATS_PLACEHOLDER = [16, 18, 20, 22] as const;
+
+type Unit = 'g' | 'dwt';
 
 function fmtNum(n: number | null | undefined, decimals = 2): string {
   if (n == null || !Number.isFinite(n)) return '—';
@@ -38,17 +48,28 @@ export default function KaratPricesTable({
   data: LivePrices | null;
 }) {
   const t = (es: string, en: string) => (lang === 'es' ? es : en);
+  const [unit, setUnit] = useState<Unit>('g');
 
-  const rows = KARATS.map((k) => {
-    const match = data?.kilates?.find((r) => r.kilates === k) ?? null;
-    return {
-      kilates: k,
-      ley: k / 24,
-      oro_usd_g: match?.oro_usd_g ?? null,
-      oro_lps_g: match?.oro_lps_g ?? null,
-      referencia_lps_g: match?.referencia_lps_g ?? null,
-    };
-  });
+  // Servidor manda cuando hay datos; el placeholder sólo da forma pre-carga.
+  // Los campos dwt pueden faltar en respuestas cacheadas previas al rollout de
+  // peniques — esa fila muestra "—" en modo penique hasta que el cache expire.
+  const rows = data?.kilates?.length
+    ? data.kilates.map((r) => ({
+        kilates: r.kilates,
+        ley: r.ley,
+        oro_usd: unit === 'g' ? r.oro_usd_g : (r.oro_usd_dwt ?? null),
+        oro_lps: unit === 'g' ? r.oro_lps_g : (r.oro_lps_dwt ?? null),
+        referencia_lps: unit === 'g' ? r.referencia_lps_g : (r.referencia_lps_dwt ?? null),
+      }))
+    : KARATS_PLACEHOLDER.map((k) => ({
+        kilates: k,
+        ley: k / 24,
+        oro_usd: null as number | null,
+        oro_lps: null as number | null,
+        referencia_lps: null as number | null,
+      }));
+
+  const u = unit === 'g' ? t('g', 'g') : 'dwt';
 
   const thStyle: CSSProperties = {
     background: 'var(--ink)',
@@ -83,17 +104,69 @@ export default function KaratPricesTable({
     >
       <div
         style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: 11,
-          fontWeight: 600,
-          letterSpacing: '0.14em',
-          textTransform: 'uppercase',
-          color: 'var(--slate)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          flexWrap: 'wrap',
           marginBottom: 8,
         }}
       >
-        {t('Conversión por kilates', 'Karat conversion')}
+        <span
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            color: 'var(--slate)',
+          }}
+        >
+          {t('Conversión por kilates', 'Karat conversion')}
+        </span>
+
+        {/* Toggle de unidad — gramo / penique (dwt) */}
+        <div
+          role="group"
+          aria-label={t('Unidad de peso', 'Weight unit')}
+          style={{
+            display: 'inline-flex',
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            overflow: 'hidden',
+          }}
+        >
+          {(
+            [
+              ['g', t('Por gramo', 'Per gram')],
+              ['dwt', t('Por penique (dwt)', 'Per pennyweight (dwt)')],
+            ] as Array<[Unit, string]>
+          ).map(([value, label]) => {
+            const active = unit === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setUnit(value)}
+                style={{
+                  padding: '7px 12px',
+                  border: 'none',
+                  cursor: active ? 'default' : 'pointer',
+                  background: active ? 'var(--ink)' : 'transparent',
+                  color: active ? '#fff' : 'var(--t2)',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
       </div>
+
       <p
         style={{
           margin: '0 0 14px',
@@ -101,12 +174,12 @@ export default function KaratPricesTable({
           lineHeight: 1.55,
           color: 'var(--t2)',
           fontFamily: 'var(--font-body)',
-          maxWidth: 620,
+          maxWidth: 640,
         }}
       >
         {t(
-          'Valor del oro contenido en un gramo de material, según su ley nominal (kilates ÷ 24). Se deriva del mismo precio del día, capturado a las 8:00 a.m. (Honduras).',
-          'Value of the gold contained in one gram of material at its nominal fineness (karats ÷ 24). Derived from the same daily price, captured at 8:00 a.m. (Honduras).',
+          'A diferencia del precio de referencia de arriba, que es por gramo de oro fino, estas cifras son por unidad del material al kilataje indicado: el oro contenido según su ley nominal (kilates ÷ 24). 1 penique (dwt) = 1.5552 g. Se derivan del mismo precio del día, capturado a las 8:00 a.m. (Honduras).',
+          'Unlike the reference price above, which is per gram of fine gold, these figures are per unit of material at the stated karat: the gold it contains at its nominal fineness (karats ÷ 24). 1 pennyweight (dwt) = 1.5552 g. Derived from the same daily price, captured at 8:00 a.m. (Honduras).',
         )}
       </p>
 
@@ -129,13 +202,13 @@ export default function KaratPricesTable({
                 {t('Ley (oro fino)', 'Fineness (fine gold)')}
               </th>
               <th scope="col" style={thStyle}>
-                {t('Oro internacional (USD/g)', 'International gold (USD/g)')}
+                {t(`Oro internacional (USD/${u})`, `International gold (USD/${u})`)}
               </th>
               <th scope="col" style={thStyle}>
-                {t('Oro internacional (L/g)', 'International gold (L/g)')}
+                {t(`Oro internacional (L/${u})`, `International gold (L/${u})`)}
               </th>
               <th scope="col" style={{ ...thStyle, borderRadius: '0 8px 8px 0' }}>
-                {t('Referencia MAPE.LEGAL (L/g)', 'MAPE.LEGAL reference (L/g)')}
+                {t(`Referencia MAPE.LEGAL (L/${u})`, `MAPE.LEGAL reference (L/${u})`)}
               </th>
             </tr>
           </thead>
@@ -154,13 +227,13 @@ export default function KaratPricesTable({
                 </td>
                 <td style={{ ...tdStyle, color: 'var(--t2)' }}>{fmtNum(row.ley * 100, 1)} %</td>
                 <td style={tdStyle}>
-                  {row.oro_usd_g != null ? `$${fmtNum(row.oro_usd_g)}` : '—'}
+                  {row.oro_usd != null ? `$${fmtNum(row.oro_usd)}` : '—'}
                 </td>
                 <td style={tdStyle}>
-                  {row.oro_lps_g != null ? `L ${fmtNum(row.oro_lps_g)}` : '—'}
+                  {row.oro_lps != null ? `L ${fmtNum(row.oro_lps)}` : '—'}
                 </td>
                 <td style={{ ...tdStyle, fontWeight: 600, color: 'var(--earth)' }}>
-                  {row.referencia_lps_g != null ? `L ${fmtNum(row.referencia_lps_g)}` : '—'}
+                  {row.referencia_lps != null ? `L ${fmtNum(row.referencia_lps)}` : '—'}
                 </td>
               </tr>
             ))}

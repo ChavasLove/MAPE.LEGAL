@@ -1,7 +1,21 @@
 # Current State
 
 ## Last Updated
-2026-08-03 (orden limpieza/blindaje/interop — rama `claude/limpieza-blindaje-legal-islmar`, PR #220)
+2026-08-07 (conversión por kilates — rama `claude/price-conversion-gold-widget-gjq10r`, PR #228)
+
+> **2026-08-07 — conversión por kilates (16/18/20/22 k) + peniques (dwt).**
+> Helper canónico
+> `buildKaratPrices()` en `services/pricingService.ts` con cuatro consumidores:
+> `/api/precios/live` (campo `kilates`), la tabla pública
+> `components/precios/KaratPricesTable.tsx` en `/precios`, el boletín diario y
+> el bloque PRECIOS DE REFERENCIA de María (WhatsApp + web). Todos derivan del
+> mismo snapshot congelado de las 8 AM, así que no pueden driftear. En el mismo
+> pase: el `0.80` hardcodeado de `app/api/whatsapp/route.js` pasó al helper
+> `mapeGoldBuyLpsPerGram`, y el template del boletín en
+> `lib/maria/systemPrompt.ts` se alineó con la salida real de
+> `generateDailyMessage()` (divergía desde PR #159 — el código llevaba viñetas
+> `*` y el template texto plano). Sin migraciones. Ver CLAUDE.md §Widget de
+> Precios en Vivo y MARIA.md §8.3-bis.
 
 > **2026-08-03 HALLAZGO CRÍTICO (leer primero):** la base de producción corre un
 > esquema a mano divergente del repo — María nunca reconocía clientes (lookup
