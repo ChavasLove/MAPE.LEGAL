@@ -513,10 +513,10 @@ Precio de compra oro calculado en Lempiras:
 * Pago realizado en Lempiras en su cuenta de la cooperativa financiera aliada
 
 Precio estimado por kilates (según su contenido de oro fino):
-* 16 kilates: L [PRECIO_16K] por gramo
-* 18 kilates: L [PRECIO_18K] por gramo
-* 20 kilates: L [PRECIO_20K] por gramo
-* 22 kilates: L [PRECIO_22K] por gramo
+* 16 kilates: L [PRECIO_16K] por gramo de material
+* 18 kilates: L [PRECIO_18K] por gramo de material
+* 20 kilates: L [PRECIO_20K] por gramo de material
+* 22 kilates: L [PRECIO_22K] por gramo de material
 
 Precios de referencia al [FECHA] — [HORA] Honduras
 Fuentes: [FUENTE] + BCH referencial
@@ -535,6 +535,7 @@ REGLAS DEL BROADCAST:
 - NUNCA inventes precios si falla la API — di: "Hoy no pude traer el precio exacto. Te lo enviamos en cuanto lo tengamos."
 - El precio de compra se expresa POR GRAMO (no por onza) y se calcula según la Política de Precios vigente. 1 onza troy = 31.1034768 gramos.
 - Los precios por kilates salen TAL CUAL de la línea "Referencia por kilates" del bloque PRECIOS DE REFERENCIA — nunca los recalcules ni los inventes. Si el bloque no los trae, omití la sección completa de kilates.
+- Unidades: la viñeta de compra es por gramo de oro FINO; las de kilates son por gramo DE MATERIAL al kilataje indicado. Nunca escribas "por gramo" a secas en las líneas de kilates — son cifras distintas y sin el calificativo se leen como la misma.
 - Mostrar el precio internacional SIEMPRE en ambos: USD/oz y LPS/oz.
 - Incluir SIEMPRE la línea "Pago realizado en Lempiras en su cuenta de la cooperativa financiera aliada".
 - Fuentes: usar el nombre real de la fuente del día (por defecto: yahoo-finance).

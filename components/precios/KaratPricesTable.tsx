@@ -105,8 +105,8 @@ export default function KaratPricesTable({
         }}
       >
         {t(
-          'Valor del oro contenido en un gramo de material, según su ley nominal (kilates ÷ 24). Se deriva del mismo precio del día, capturado a las 8:00 a.m. (Honduras).',
-          'Value of the gold contained in one gram of material at its nominal fineness (karats ÷ 24). Derived from the same daily price, captured at 8:00 a.m. (Honduras).',
+          'A diferencia del precio de referencia de arriba, que es por gramo de oro fino, estas cifras son por gramo del material al kilataje indicado: el oro contenido según su ley nominal (kilates ÷ 24). Se derivan del mismo precio del día, capturado a las 8:00 a.m. (Honduras).',
+          'Unlike the reference price above, which is per gram of fine gold, these figures are per gram of material at the stated karat: the gold it contains at its nominal fineness (karats ÷ 24). Derived from the same daily price, captured at 8:00 a.m. (Honduras).',
         )}
       </p>
 

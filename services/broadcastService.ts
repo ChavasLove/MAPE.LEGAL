@@ -90,11 +90,17 @@ export async function generateDailyMessage(precios: PreciosDiarios): Promise<str
   // Conversión por kilates — mismo helper canónico que el widget de /precios y
   // el bloque PRECIOS DE REFERENCIA de María, para que los cuatro canales
   // muestren exactamente los mismos números.
+  //
+  // "por gramo de material" es deliberado y NO debe abreviarse a "por gramo":
+  // la viñeta de compra de arriba es por gramo de oro FINO, y estas son por
+  // gramo del material al kilataje indicado. Dos cifras distintas separadas por
+  // dos líneas — sin el calificativo se leen como la misma (misma ambigüedad
+  // que persigue la regla R5 del encargo Precio de Referencia).
   const kilates = buildKaratPrices(oroUsd, tc);
   const kilatesLines = kilates
     ? [
         `Precio estimado por kilates (según su contenido de oro fino):`,
-        ...kilates.map((k) => `* ${k.kilates} kilates: ${fmtLps(k.referencia_lps_g)} por gramo`),
+        ...kilates.map((k) => `* ${k.kilates} kilates: ${fmtLps(k.referencia_lps_g)} por gramo de material`),
         ``,
       ]
     : [];

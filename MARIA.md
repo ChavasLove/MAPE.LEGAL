@@ -173,6 +173,7 @@ El bloque `PRECIOS DE REFERENCIA` incluye la línea `Referencia por kilates` con
 - Las líneas obligatorias de tipo de cambio y `Actualizado` aplican igual que en §8.1.
 - Kilataje fuera de la lista (10k, 14k, 21k): cálculo proporcional — precio de compra por gramo × (kilates ÷ 24) — presentado como aproximado.
 - Aclaración obligatoria en una línea: el valor por kilates es estimado según la ley nominal; en la compra real el contenido de oro fino se determina por ensaye.
+- **Unidades — nunca "por gramo" a secas en líneas de kilates.** El precio de compra es por gramo de oro **fino**; las cifras por kilates son por gramo **de material** al kilataje indicado. Son números distintos: sin el calificativo, un minero los lee como el mismo precio.
 - **Etiqueta "Oro internacional" (no "LBMA").** El precio se obtiene de `goldapi.io` (spot XAU/USD) con fallback a Yahoo Finance COMEX `GC=F` (futuros) — ninguna fuente es el fixing oficial de la LBMA. El precio de compra de MAPE LEGAL se calcula sobre este precio internacional de referencia según la Política de Precios vigente, no sobre el LBMA fix. **No reintroducir la etiqueta "LBMA" en ningún surface** salvo que se integre una fuente real de LBMA (ver decisión de sourcing).
 
 ### 8.4 Precios en fines de semana
