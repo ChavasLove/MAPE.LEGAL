@@ -16,6 +16,15 @@
 > `generateDailyMessage()` (divergía desde PR #159 — el código llevaba viñetas
 > `*` y el template texto plano). Sin migraciones. Ver CLAUDE.md §Widget de
 > Precios en Vivo y MARIA.md §8.3-bis.
+>
+> **Estado de deploy al cierre (2026-08-07, verificado contra el API vivo):**
+> la tabla de kilates YA está en producción (oro $4,399.50/oz, TC 26.82,
+> referencia L 3,034.89/g fino ese día); los commits de peniques/dwt y la
+> desambiguación fino-vs-material están pusheados pero SIN desplegar — GitHub
+> dejó de entregar webhooks de la rama tras `06dc1f2`, así que ni CI ni Vercel
+> vieron los últimos 4 commits. Diésel desactualizado (valor semilla, lunes
+> 2026-08-03 sin ingresar) y guardián de frescura sin correos confirmados.
+> Acciones del operador en docs/tasks.md §Pendientes 2026-08-07, items 0/0-bis.
 
 > **2026-08-03 HALLAZGO CRÍTICO (leer primero):** la base de producción corre un
 > esquema a mano divergente del repo — María nunca reconocía clientes (lookup
