@@ -96,11 +96,18 @@ export async function generateDailyMessage(precios: PreciosDiarios): Promise<str
   // gramo del material al kilataje indicado. Dos cifras distintas separadas por
   // dos líneas — sin el calificativo se leen como la misma (misma ambigüedad
   // que persigue la regla R5 del encargo Precio de Referencia).
+  //
+  // El penique (pennyweight, dwt = 1.5552 g) es la unidad de compra corriente
+  // del oro artesanal — cada viñeta trae ambas unidades y el encabezado define
+  // la equivalencia para que la cifra sea verificable.
   const kilates = buildKaratPrices(oroUsd, tc);
   const kilatesLines = kilates
     ? [
-        `Precio estimado por kilates (según su contenido de oro fino):`,
-        ...kilates.map((k) => `* ${k.kilates} kilates: ${fmtLps(k.referencia_lps_g)} por gramo de material`),
+        `Precio estimado por kilates (según su contenido de oro fino; 1 penique/dwt = 1.5552 g):`,
+        ...kilates.map(
+          (k) =>
+            `* ${k.kilates} kilates: ${fmtLps(k.referencia_lps_g)} por gramo de material · ${fmtLps(k.referencia_lps_dwt)} por penique`,
+        ),
         ``,
       ]
     : [];

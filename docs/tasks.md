@@ -2,8 +2,9 @@
 
 ## Pendientes al cierre 2026-08-07 (rama `claude/price-conversion-gold-widget-gjq10r`, PR #228 — conversión por kilates)
 
-1. **[REVISIÓN LEGAL] Redacción de la columna "Referencia MAPE.LEGAL (L/g)"**
-   en la tabla de kilates de `/precios`. Hoy lleva una nota al pie: la ley
+1. **[REVISIÓN LEGAL] Redacción de la columna "Referencia MAPE.LEGAL (L/g y
+   L/dwt)"** en la tabla de kilates de `/precios` (aplica igual al valor por
+   penique/pennyweight agregado el mismo día). Hoy lleva una nota al pie: la ley
    nominal (kilates ÷ 24) es referencia aritmética y el contenido de oro fino
    se determina por **ensaye**, no por el kilataje declarado. Dado que el
    repositorio separa cuidadosamente el Precio de Referencia de una oferta de

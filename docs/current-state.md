@@ -3,7 +3,8 @@
 ## Last Updated
 2026-08-07 (conversión por kilates — rama `claude/price-conversion-gold-widget-gjq10r`, PR #228)
 
-> **2026-08-07 — conversión por kilates (16/18/20/22 k).** Helper canónico
+> **2026-08-07 — conversión por kilates (16/18/20/22 k) + peniques (dwt).**
+> Helper canónico
 > `buildKaratPrices()` en `services/pricingService.ts` con cuatro consumidores:
 > `/api/precios/live` (campo `kilates`), la tabla pública
 > `components/precios/KaratPricesTable.tsx` en `/precios`, el boletín diario y
