@@ -505,14 +505,12 @@ Buenos Días,
 El precio de oro el día de hoy es:
 * Oro internacional: $[PRECIO_ORO_USD] USD/oz
 * En Lempiras: L [PRECIO_ORO_LPS] por onza (aprox.)
-
-Tasa de cambio referencia: L [TC] por USD
+* Tasa de cambio referencia: L [TC] por USD
 
 Precio de compra oro calculado en Lempiras:
 * Precio de compra MAPE LEGAL según la Política de Precios vigente
 * L [PRECIO_COMPRA_LPS_POR_GRAMO] por gramo estimado
-
-Pago realizado en Lempiras en su cuenta de la cooperativa financiera aliada
+* Pago realizado en Lempiras en su cuenta de la cooperativa financiera aliada
 
 Precio estimado por kilates (según su contenido de oro fino):
 * 16 kilates: L [PRECIO_16K] por gramo
