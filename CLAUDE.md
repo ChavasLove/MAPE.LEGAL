@@ -493,13 +493,24 @@ Requiere env vars. Es idempotente — re-ejecutable sin efectos secundarios.
 
 ## Estilo / UI
 - **MAPE LEGAL Color Manual v1.0** es la fuente de verdad — ver [`README.md`](./README.md) §0 y [`DESIGN.md`](./DESIGN.md). Tokens canónicos viven en `app/globals.css` `:root`.
-- Tailwind v4 con `@theme inline` en `globals.css` — **no usar** `tailwind.config.js`.
+- Tailwind v4 con `@theme inline` en `globals.css` — **no usar** `tailwind.config.js`. **El bloque existe realmente desde 2026-08-05** (antes esta línea describía una convención que ningún archivo implementaba) y hoy mapea una sola variable: `--font-sans: var(--font-body)`. **Sin ese mapeo la clase `font-sans` ANULA Inter**: en Tailwind v4 la utilidad se emite como `.font-sans{font-family:var(--font-sans)}` y, si `@theme` no redefine `--font-sans`, conserva el default del framework (`ui-sans-serif, system-ui, …`) — es decir, la fuente del sistema operativo. Estuvo así en **190 puntos** de `app/dashboard/**`, `app/portal/**` y `app/auth/**`. Al añadir una utilidad de tema nueva, verificar el CSS compilado (`grep -oE '\.font-sans\{[^}]*\}' .next/**/*.css`), no el fuente. Notas: `--font-mono` **no** va en `@theme` (el `:root` de `globals.css` lo redefine después del de Tailwind, misma especificidad, gana el posterior — y declararlo con el mismo nombre sería autorreferencial); `--font-serif` tampoco (cero usos de `font-serif`).
 - Colores siempre con `style={{ color: 'var(--ink)' }}` inline o vía clases definidas en `globals.css` que ya consumen los tokens.
 - No usar clases genéricas de Tailwind (`green-*`, `gray-*`, `slate-*`, `primary-950`, `forest-800`, etc.) — solo `var(--ink)` / `var(--moss)` / `var(--sand)` / etc.
 - Fuentes cargadas en `app/layout.tsx` vía `next/font/google`: **Inter** (`--font-inter`), **Playfair Display** (`--font-playfair`), **JetBrains Mono** (`--font-jetbrains`). `<h1>`–`<h6>` heredan Playfair desde `globals.css`. Peso máximo: 700.
 - **Sidebar compartido**: `components/dashboard/SidebarNav.tsx` (client island con `usePathname`) lo usan tanto `app/admin/layout.tsx` como `app/dashboard/layout.tsx`. Recibe `items: { href, label, icon, exact? }[]` donde **`icon` es JSX pre-renderizado en el layout server-side**, no una referencia al componente Lucide. El flag `exact` se aplica a las rutas raíz (`/admin`, `/dashboard`) para que no queden activas en cada subruta. Estado activo per DESIGN.md §6: fondo `color-mix(in oklch, var(--moss) 14%, var(--ink))` + `boxShadow: 'inset 2px 0 0 var(--moss)'` (no genera layout shift) + `aria-current="page"`. Hover: `color-mix(in oklch, var(--slate) 18%, var(--ink))` con texto blanco.
 - **No pasar referencias de íconos Lucide como prop value desde un server component** — `lucide-react` exporta cada ícono con `'use client'`, así que dentro de un array prop (e.g. `Icon: Users`) se serializan como funciones y RSC falla con `Functions cannot be passed directly to Client Components`. La forma correcta es renderizar el ícono a JSX en el layout (`icon: <Users size={18} strokeWidth={1.5} />`) — el JSX apunta a la client reference y serializa OK. Patrón usado en `app/admin/layout.tsx` y `app/dashboard/layout.tsx` con la constante `ICON = { size: 18, strokeWidth: 1.5 }`.
-- **Admin + dashboard tokenizados (2026-05-10)**: ambas superficies migradas al Color Manual v1.0 — fondo de página `var(--bg-soft)`, sidebar `var(--ink)`, cards `var(--bg)` con `var(--border)` 1px, tablas siguen DESIGN.md §3 (header `var(--ink)` blanco, body claro), pills de rol vía `color-mix(... var(--token) 14%, white)`. Cero hex literales en `app/admin/**` ni en `app/dashboard/layout.tsx` — cualquier regression debe fallar el grep `#1F2A38\|#A3A8AB\|rgba(94,107,123` sobre esos paths.
+- **Admin + dashboard tokenizados (2026-05-10)**: ambas superficies migradas al Color Manual v1.0 — fondo de página `var(--bg-soft)`, sidebar `var(--ink)`, cards `var(--bg)` con `var(--border)` 1px, tablas siguen DESIGN.md §3 (header `var(--ink)` blanco, body claro), pills de rol vía `color-mix(... var(--token) 14%, white)`. Cero hex literales en `app/admin/**` ni en `app/dashboard/layout.tsx` — cualquier regression debe fallar el grep `#1F2A38\|#A3A8AB\|rgba(94,107,123` sobre esos paths. **Alcance real, medido 2026-08-05:** esa migración cubrió `app/admin/**` y `app/dashboard/layout.tsx`, **no las páginas del dashboard ni el portal**. `app/dashboard/**` (páginas) y `app/portal/**` siguen en el esquema oscuro previo — tarjetas `#1F2A38` opacas con texto `#A3A8AB`, campos `#0F1621` — bajo el layout claro. Es el grueso de los 565 literales de color del árbol. Ver §Iconos de marca abajo y `docs/auditoria-marca-2026-08.md` §2 y §5.
+
+### Iconos de marca (`app/favicon.ico`, `app/icon.png`, `app/apple-icon.png`)
+Convenciones de archivo del App Router: **no requieren nada en `app/layout.tsx`**; Next emite los tres `<link>` solo. Verificado en el HTML prerenderizado.
+- **Criterio de diseño: el lockup completo (marca + MAPE + LEGAL), idéntico en toda resolución.** Los tres salen de un único maestro de 628 px con el lockup al 80% del lienzo sobre el negro del logotipo (`#1E1E1E`). No recortar solo la marca ni variar el encuadre por archivo — se probó y se rechazó (se leía como un bloque amarillo en la pestaña).
+- **Nunca aplicar realce de saturación/contraste a los tamaños chicos.** Fue la causa del bloque amarillo a 16 px. Los tamaños chicos se generan con reducción **por etapas** (mitades sucesivas) + unsharp suave, que recupera nitidez sin tocar tono ni geometría; un `resize` directo de 628→16 pierde toda la estructura.
+- **Los frames del `.ico` deben ir en RGBA.** En RGB, Turbopack rompe el build entero con `Format error decoding Ico: The PNG is not in RGBA format!`. Este error **no lo detecta `tsc`** — solo `next build`.
+- Límite conocido: el lockup se lee de 48 px para arriba; a 32 px aún se distingue "MAPE"; a 16 px no (letras de ~4 px). Es física del formato. Usar solo la marca en 16/32 fue descartado expresamente por el dueño de marca.
+- **El activo fuente es una captura de pantalla.** `public/images/MAPE LEGAL LOGO 1.JPG` (916×908) tiene el indicador de inicio de iOS en `y 890–897`; el lockup real vive en `x 269–645, y 203–704`. Cualquier recorte nuevo debe excluir esa banda. Pendiente pedir el original al diseñador (SVG o PNG con alfa): el JPG no tiene transparencia y su negro `#1E1E1E` no coincide con `--ink` `#1F2A38`, así que sobre las barras laterales oscuras se ve como un recuadro de negro distinto.
+
+### Auditoría de marca — [`docs/auditoria-marca-2026-08.md`](./docs/auditoria-marca-2026-08.md)
+Contraste del código real contra DESIGN.md, esta sección y la skill `cht-brand`, con verificación empírica (CSS compilado, cálculo WCAG). Resuelto en la misma rama: el mapeo `--font-sans` y las cifras de `cht-brand`. **Pendiente:** dos insignias que reprueban WCAG a 12 px (`#5E6B7B` sobre `#2A3347` = 2.32; `#8B6A4A` sobre `#F2D8B0` = 3.58), la migración de `app/dashboard/**` + `app/portal/**` al Color Manual, y la regla de nomenclatura MAPE LEGAL / MAPE.LEGAL / mape.legal (propuesta en §7, sin decidir). Documenta también dos falsos positivos para no re-descubrirlos: los colores de la "G" de Google en el botón OAuth son marca de un tercero, y `animate-spin` en un `Loader2` no es animación continua en el sentido de DESIGN.md §4.
 
 ## Landing page — responsividad móvil
 Convenciones aplicables a `app/page.tsx` (los componentes en `components/landing/` están huérfanos — ver sección "Landing page" arriba):
@@ -858,7 +869,36 @@ La Sala de lo Constitucional de la CSJ (sentencia 18-mar-2026, expediente SCO-00
 - **`MARIA_LEY_MINERIA.md`** (nuevo — el playbook asumía su existencia; se creó) — Sección 0 VIGENCIA NORMATIVA: tabla anulados/validados/no impugnados, regla de precedencia y reglas R1–R5. Todo contenido futuro de la Ley en ese documento queda subordinado a la Sección 0.
 - **`docs/legal/sentencia-sco-0090-2014.md`** — resumen neutral citable (fallo, efectos, exhortación al Congreso, precedentes CLPI: RI-172-06, RI-089-16, Saramaka, Kaliña y Lokono). El texto auténtico es el publicado en La Gaceta No. 37,158; el PDF no se sube al repo (peso y derechos de reproducción de ENAG).
 - **`check:copy` — pase de vigencia** (cuarto alcance: `lib/`, `docs/`, `services/`, `*.md` raíz): falla ante Art. 22/39/43/48/67/68 en contexto de la Ley sin marca de anulación adyacente, y ante "Art. 47" sin "Reglamento" en la misma línea. Exclusiones: el resumen de la sentencia y `vigenciaLGM.ts`. Calibración documentada en el script: "Reglamento" en la línea exime (los Arts. 45 y 47 del Reglamento son válidos y frecuentes); la marca acepta `[ANULADO`, `SCO-0090-2014`, "anulado" e "inconstitucional"; los transcritos de la Ley General del AMBIENTE viven en `data/` (fuera del alcance del pase). <!-- check-copy:allow -->
-- **Pendientes del operador**: (a) seed opcional del resumen de la sentencia al RAG `maria_knowledge` vía runbook MARIA.md §12 — el bloque del prompt ya impone las reglas sin depender del RAG; (b) QA conductual de María con key real (las 4 preguntas del gate G5 del playbook — consulta del Art. 67 [ANULADO — SCO-0090-2014], hectáreas del permiso, definición de pequeña minería, validez de concesión de 2020); (c) divergencia de precios detectada y NO corregida (pertenece a la Parte 0 del playbook de limpieza): `.claude/commands/cht-brand.md:133` — precio base de titulación desactualizado frente al canónico de MARIA.md/systemPrompt.
+- **Pendientes del operador**: (a) seed opcional del resumen de la sentencia al RAG `maria_knowledge` vía runbook MARIA.md §12 — el bloque del prompt ya impone las reglas sin depender del RAG; (b) QA conductual de María con key real (las 4 preguntas del gate G5 del playbook — consulta del Art. 67 [ANULADO — SCO-0090-2014], hectáreas del permiso, definición de pequeña minería, validez de concesión de 2020); (c) ~~divergencia de precios detectada y NO corregida: `.claude/commands/cht-brand.md:133` — precio base de titulación desactualizado frente al canónico de MARIA.md/systemPrompt.~~ **Resuelto 2026-08-05** junto con tres discrepancias más de la misma skill que la auditoría de marca destapó — ver §Skill `cht-brand` abajo.
+
+## Skill `cht-brand` — contexto de marca, NO fuente de verdad (2026-08-05)
+
+`.claude/commands/cht-brand.md` replica precios, hitos y pasos del proceso. Es
+contexto de marca; **la fuente de verdad es `MARIA.md` + `lib/maria/systemPrompt.ts`**
+(y `lib/content/copy-legal.ts` para texto con consecuencia jurídica). Ante
+discrepancia manda esa fuente. Un dato replicado es un dato que se desincroniza:
+ya pasó dos veces.
+
+La auditoría de marca encontró cuatro divergencias, todas corregidas:
+
+| Dato | Estaba | Canónico |
+|---|---|---|
+| Hitos de formalización | 30/30/50 → L 480,000 · 480,000 · 800,000 (**sumaban L 1,760,000** contra un contrato de L 1,600,000 — la propia skill lo admitía en una nota) | **40/40/20 → L 640,000 · 640,000 · 320,000** |
+| Disparador H2 | "Obtención Constancia INHGEOMIN" | Ingreso del expediente completo a SERNA (paso 25) |
+| Disparador H3 | "Índice de Legalidad Absoluta al 100%" | Permiso INHGEOMIN + licencia ambiental (paso 32). El Índice se verifica en el **paso 36**, ya cerrado el Paquete Ancla, y los honorarios del paso 37 son servicio adicional con cotización separada |
+| Titulación | L 38,000 + L 8,000/mz | **L 60,000 + L 25,000/mz** |
+
+**Al tocar una cifra de §3 de esa skill, verificarla contra `MARIA.md` en el mismo
+cambio.** El archivo lleva una nota de precedencia en el encabezado.
+
+**Pendiente de decisión del dueño de marca (no es corrección de código):** las
+cinco frases aprobadas y el descriptor "Consultoría Estratégica" quedaron
+**marcados, no retirados**. Ninguno aparece en el producto tras el
+reposicionamiento de Fase 2C — el `h1` real es "Legalización de permisos de
+pequeña minería de oro en Honduras" — y el tagline principal ("**Legalizamos** tu
+proyecto minero") usa la primera persona del plural que §Voz canónica de la
+landing prohíbe expresamente. El sitio sí respeta esa regla: cero ocurrencias de
+`ofrecemos|brindamos|nos comprometemos|trabajamos para` en copy público.
 
 ## Auditoría — deuda técnica conocida (2026-05-03, parcialmente resuelta 2026-05-09)
 
