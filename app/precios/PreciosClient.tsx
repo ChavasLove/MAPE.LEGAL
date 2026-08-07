@@ -14,6 +14,7 @@ import LivePricesWidget, {
   PriceSourcesPanel,
   type LivePrices,
 } from '@/components/precios/LivePricesWidget';
+import KaratPricesTable from '@/components/precios/KaratPricesTable';
 import PriceHistoryChart from '@/components/precios/PriceHistoryChart';
 
 type Lang = 'es' | 'en';
@@ -103,6 +104,13 @@ export default function PreciosClient() {
               párrafo descriptivo se movió debajo de la gráfica. */}
           <div style={{ marginTop: 24 }}>
             <LivePricesWidget lang={lang} onData={setPrices} />
+          </div>
+
+          {/* Conversión por kilates — misma data del snapshot diario (bubbled
+              up vía onData), sin segundo fetch. Va junto a las demás cifras,
+              antes de la gráfica ("los números arriba"). */}
+          <div style={{ marginTop: 16 }}>
+            <KaratPricesTable lang={lang} data={prices} />
           </div>
 
           {/* Historial — daily 8 AM snapshots plotted over time so the price

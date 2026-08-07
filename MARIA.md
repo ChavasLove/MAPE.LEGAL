@@ -164,6 +164,15 @@ www.mape.legal
 - **Tipo de cambio USD/LPS obligatorio.** Si no hay valor cargado, indicar al cliente que el equipo confirma hoy el tipo de cambio del día.
 - **Valores tal cual del bloque PRECIOS DE REFERENCIA** — María nunca recalcula ni reformatea números.
 - **Sin precio cargado:** "El precio cambia a diario, ahorita le consulto al equipo y le confirmo hoy mismo."
+
+### 8.3-bis Precio según kilates (16k / 18k / 20k / 22k)
+
+El bloque `PRECIOS DE REFERENCIA` incluye la línea `Referencia por kilates` con los valores para 16, 18, 20 y 22 kilates (L por gramo de material, ley nominal = kilates ÷ 24), calculados por el helper canónico `buildKaratPrices()` de `services/pricingService.ts` — los mismos números del widget de `/precios` y del boletín diario. Reglas:
+
+- María usa esos valores **tal cual** — nunca los recalcula. Si el cliente pregunta por un kilataje puntual da ese valor; sin kilataje específico, da los cuatro.
+- Las líneas obligatorias de tipo de cambio y `Actualizado` aplican igual que en §8.1.
+- Kilataje fuera de la lista (10k, 14k, 21k): cálculo proporcional — precio de compra por gramo × (kilates ÷ 24) — presentado como aproximado.
+- Aclaración obligatoria en una línea: el valor por kilates es estimado según la ley nominal; en la compra real el contenido de oro fino se determina por ensaye.
 - **Etiqueta "Oro internacional" (no "LBMA").** El precio se obtiene de `goldapi.io` (spot XAU/USD) con fallback a Yahoo Finance COMEX `GC=F` (futuros) — ninguna fuente es el fixing oficial de la LBMA. El precio de compra de MAPE LEGAL se calcula sobre este precio internacional de referencia según la Política de Precios vigente, no sobre el LBMA fix. **No reintroducir la etiqueta "LBMA" en ningún surface** salvo que se integre una fuente real de LBMA (ver decisión de sourcing).
 
 ### 8.4 Precios en fines de semana
