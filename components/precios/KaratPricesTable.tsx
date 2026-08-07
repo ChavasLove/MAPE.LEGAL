@@ -7,20 +7,24 @@
 // (/api/precios/live → buildKaratPrices en services/pricingService.ts) y se
 // renderizan tal cual — el cliente no recalcula nada.
 //
-// Copy gate (R5, encargo Precio de Referencia): esta superficie nunca dice
-// "por gramo" sin el calificativo "de oro fino" — las unidades van como
-// "USD/g" / "L/g" y la nota aclara que la ley nominal es aritmética de
-// referencia, no un ensaye.
+// Unidades (regla R5, encargo Precio de Referencia): "por gramo" nunca va a
+// secas. El precio de referencia de la tarjeta de arriba es por gramo de oro
+// FINO; estas cifras son por gramo DE MATERIAL al kilataje indicado — son
+// números distintos y la nota introductoria los contrasta de forma explícita.
+// Las columnas usan unidades compactas ("USD/g", "L/g") y el pie aclara que la
+// ley nominal es aritmética de referencia, no un ensaye.
 
 import { type CSSProperties } from 'react';
 import { type LivePrices } from './LivePricesWidget';
 
 const SHADOW_SM = '0 2px 6px rgba(31,42,56,0.05)';
 
-// Kilates publicados. La ley nominal (kilates ÷ 24) se conoce estáticamente,
-// así que las filas existen aunque el snapshot todavía no haya cargado — los
-// valores muestran "—" hasta que el servidor los entregue.
-const KARATS = [16, 18, 20, 22] as const;
+// Placeholder SOLO para el estado pre-carga: la ley nominal (kilates ÷ 24) se
+// conoce estáticamente, así que la tabla ya tiene forma antes de que llegue el
+// snapshot y los valores muestran "—". Una vez cargado, las filas salen de
+// data.kilates (servidor) — no de esta lista — para que agregar un kilataje a
+// GOLD_KARATS en services/pricingService.ts aparezca aquí sin tocar el cliente.
+const KARATS_PLACEHOLDER = [16, 18, 20, 22] as const;
 
 function fmtNum(n: number | null | undefined, decimals = 2): string {
   if (n == null || !Number.isFinite(n)) return '—';
@@ -39,16 +43,22 @@ export default function KaratPricesTable({
 }) {
   const t = (es: string, en: string) => (lang === 'es' ? es : en);
 
-  const rows = KARATS.map((k) => {
-    const match = data?.kilates?.find((r) => r.kilates === k) ?? null;
-    return {
-      kilates: k,
-      ley: k / 24,
-      oro_usd_g: match?.oro_usd_g ?? null,
-      oro_lps_g: match?.oro_lps_g ?? null,
-      referencia_lps_g: match?.referencia_lps_g ?? null,
-    };
-  });
+  // Servidor manda cuando hay datos; el placeholder sólo da forma pre-carga.
+  const rows = data?.kilates?.length
+    ? data.kilates.map((r) => ({
+        kilates: r.kilates,
+        ley: r.ley,
+        oro_usd_g: r.oro_usd_g,
+        oro_lps_g: r.oro_lps_g,
+        referencia_lps_g: r.referencia_lps_g,
+      }))
+    : KARATS_PLACEHOLDER.map((k) => ({
+        kilates: k,
+        ley: k / 24,
+        oro_usd_g: null as number | null,
+        oro_lps_g: null as number | null,
+        referencia_lps_g: null as number | null,
+      }));
 
   const thStyle: CSSProperties = {
     background: 'var(--ink)',
