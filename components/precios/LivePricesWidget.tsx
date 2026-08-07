@@ -29,6 +29,16 @@ interface FuelLine {
   fuente: string;
 }
 
+// Mirrors KaratPrice in services/pricingService.ts (declared locally so this
+// client bundle never imports the server-only pricing module).
+export interface KaratPriceLine {
+  kilates: number;
+  ley: number;
+  oro_usd_g: number;
+  oro_lps_g: number;
+  referencia_lps_g: number;
+}
+
 export interface LivePrices {
   fecha: string;
   fetched_at: string | null;
@@ -40,6 +50,8 @@ export interface LivePrices {
   usd_hnl: number | null;
   oro_lps_oz: number | null;
   oro_compra_lps_gramo: number | null;
+  // Optional: absent on responses cached before the karat rollout.
+  kilates?: KaratPriceLine[] | null;
   diesel: Omit<FuelLine, 'combustible'> | null;
   combustibles: FuelLine[];
 }

@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { getUserByPhone, getOrCreateUserByPhone } from "@/services/userService";
 import { interpretAndExecute } from "@/services/adminCommandService";
 import { getOnboardingState, handleOnboarding, INSTITUTIONAL_ONBOARDING_REPLY } from "@/services/onboardingService";
-import { fetchAllPrices, storePrices, effectivePriceDate, TROY_OUNCE_GRAMS } from "@/services/pricingService";
+import { fetchAllPrices, storePrices, effectivePriceDate, mapeGoldBuyLpsPerGram, buildKaratPrices } from "@/services/pricingService";
 import { sanitizeIlikeTerm } from "@/services/concesionesService";
 import { embedQuery, toVectorText } from "@/lib/maria/embeddings";
 import { normalizePhone } from "@/lib/maria/normalizePhone";
@@ -807,8 +807,15 @@ Comandos disponibles:
       maximumFractionDigits: d,
     });
     const oroLBMA   = preciosHoy?.oro    != null ? `$${fmt(preciosHoy.oro)} USD/oz troy`   : null;
-    const oroCompra = (preciosHoy?.oro != null && preciosHoy?.usd_hnl != null)
-      ? `L ${fmt(preciosHoy.oro * 0.80 * preciosHoy.usd_hnl / TROY_OUNCE_GRAMS)}/gramo`
+    // Canonical helper — the inline 0.80 multiplication drifted from
+    // MAPE_GOLD_BUY_FACTOR's single source of truth in pricingService.
+    const oroCompraLps = mapeGoldBuyLpsPerGram(preciosHoy?.oro, preciosHoy?.usd_hnl);
+    const oroCompra = oroCompraLps != null ? `L ${fmt(oroCompraLps)}/gramo` : null;
+    // Conversión por kilates — mismo helper canónico que /api/precios/live y el
+    // boletín diario, así María cita números idénticos a los del widget.
+    const kilatesRef = buildKaratPrices(preciosHoy?.oro, preciosHoy?.usd_hnl);
+    const kilatesLine = kilatesRef
+      ? kilatesRef.map((k) => `${k.kilates}k L ${fmt(k.referencia_lps_g)}`).join(' · ')
       : null;
     const plataLBMA = preciosHoy?.plata  != null ? `$${fmt(preciosHoy.plata)} USD/oz troy` : null;
 
@@ -830,6 +837,7 @@ Comandos disponibles:
       ? `\n\nPRECIOS DE REFERENCIA (${preciosHoy.fecha ?? 'hoy'}${frescuraLabel ? ` — ${frescuraLabel}` : ''}):
 - Oro internacional: ${oroLBMA ?? 'no disponible'}
 - Precio de compra MAPE LEGAL (según la Política de Precios vigente): ${oroCompra ?? 'el equipo confirma hoy'}
+- Referencia por kilates (L por gramo de material, ley nominal = kilates ÷ 24): ${kilatesLine ?? 'no disponible'}
 - Plata internacional: ${plataLBMA ?? 'no disponible'}
 - Tipo de cambio: ${tipoCambio ?? 'no disponible'}
 - Frescura: ${frescuraLabel || 'no disponible'}

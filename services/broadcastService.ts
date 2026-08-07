@@ -4,7 +4,7 @@ import {
   checkWhatsAppTokenHealth,
   WhatsAppApiError,
 } from '@/services/whatsappService';
-import { type PreciosDiarios, mapeGoldBuyLpsPerGram } from '@/services/pricingService';
+import { type PreciosDiarios, mapeGoldBuyLpsPerGram, buildKaratPrices } from '@/services/pricingService';
 import { getActiveSubscribers, type BroadcastRol } from '@/services/userService';
 
 // ─── Honduras local time ──────────────────────────────────────────────────────
@@ -87,6 +87,17 @@ export async function generateDailyMessage(precios: PreciosDiarios): Promise<str
   // labeled "Oro internacional", not "LBMA". Footer lines are unprefixed so
   // they read as a separator from the data section.
   const tcLine = tc > 0 ? `L ${tc.toFixed(2)} por USD` : 'N/D';
+  // Conversión por kilates — mismo helper canónico que el widget de /precios y
+  // el bloque PRECIOS DE REFERENCIA de María, para que los cuatro canales
+  // muestren exactamente los mismos números.
+  const kilates = buildKaratPrices(oroUsd, tc);
+  const kilatesLines = kilates
+    ? [
+        `Precio estimado por kilates (según su contenido de oro fino):`,
+        ...kilates.map((k) => `* ${k.kilates} kilates: ${fmtLps(k.referencia_lps_g)} por gramo`),
+        ``,
+      ]
+    : [];
   const lines = [
     `BOLETIN DIARIO`,
     ``,
@@ -101,6 +112,7 @@ export async function generateDailyMessage(precios: PreciosDiarios): Promise<str
     `* ${fmtLps(compraLpsPorGramo)} por gramo estimado`,
     `* Pago realizado en Lempiras en su cuenta de la cooperativa financiera aliada`,
     ``,
+    ...kilatesLines,
     `Precios de referencia al ${fechaLarga} — ${horaCorta} Honduras`,
     `Fuentes: ${fuente} + BCH referencial`,
     ``,

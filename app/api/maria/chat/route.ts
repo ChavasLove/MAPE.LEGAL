@@ -24,7 +24,7 @@ import {
 } from '@/lib/maria/ragShared';
 import { supabase } from '@/services/supabase';
 import { getAdminClient } from '@/services/adminSupabase';
-import { fetchAllPrices, storePrices, mapeGoldBuyLpsPerGram, effectivePriceDate } from '@/services/pricingService';
+import { fetchAllPrices, storePrices, mapeGoldBuyLpsPerGram, buildKaratPrices, effectivePriceDate } from '@/services/pricingService';
 import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
@@ -284,6 +284,12 @@ async function buildPriceContext(): Promise<string> {
   const oroLBMA = `$${fmt(prices.oro)} USD/oz troy`;
   const oroCompraLps = mapeGoldBuyLpsPerGram(prices.oro, prices.usd_hnl);
   const oroCompra = oroCompraLps != null ? `L ${fmt(oroCompraLps)}/gramo` : null;
+  // Conversión por kilates — mismo helper canónico que /api/precios/live y el
+  // boletín diario, así María cita números idénticos a los del widget.
+  const kilatesRef = buildKaratPrices(prices.oro, prices.usd_hnl);
+  const kilatesLine = kilatesRef
+    ? kilatesRef.map((k) => `${k.kilates}k L ${fmt(k.referencia_lps_g)}`).join(' · ')
+    : null;
   const plataLBMA = prices.plata != null ? `$${fmt(prices.plata)} USD/oz troy` : null;
   const horaConsultaHN = new Date().toLocaleTimeString('es-HN', {
     timeZone: 'America/Tegucigalpa',
@@ -297,6 +303,7 @@ async function buildPriceContext(): Promise<string> {
   return `\n\nPRECIOS DE REFERENCIA (${prices.fecha ?? 'hoy'} — ${frescuraLabel}):
 - Oro internacional: ${oroLBMA}
 - Precio de compra MAPE LEGAL (según la Política de Precios vigente): ${oroCompra ?? 'el equipo confirma hoy'}
+- Referencia por kilates (L por gramo de material, ley nominal = kilates ÷ 24): ${kilatesLine ?? 'no disponible'}
 - Plata internacional: ${plataLBMA ?? 'no disponible'}
 - Tipo de cambio: ${tipoCambio ?? 'no disponible'}
 - Frescura: ${frescuraLabel}

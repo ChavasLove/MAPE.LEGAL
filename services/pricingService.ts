@@ -75,6 +75,48 @@ export function mapeGoldBuyLpsPerGram(
   return (oroUsdOz * MAPE_GOLD_BUY_FACTOR * usdHnl) / TROY_OUNCE_GRAMS;
 }
 
+// ─── Conversión por kilates ───────────────────────────────────────────────────
+//
+// Ley nominal = kilates ÷ 24 (fracción de oro fino contenida en el material).
+// Los valores por kilate son aritmética sobre el snapshot diario de las 8 AM —
+// en una compra real el contenido de oro fino se determina por ensaye, no por
+// el kilataje declarado. Single source of truth: /api/precios/live (widget de
+// /precios), el boletín diario y María (WhatsApp + web) consumen este helper
+// para que los cuatro canales muestren exactamente los mismos números.
+export const GOLD_KARATS = [16, 18, 20, 22] as const;
+
+export interface KaratPrice {
+  kilates: number;
+  /** Ley nominal — fracción de oro fino (kilates ÷ 24). */
+  ley: number;
+  /** Valor internacional del oro contenido en 1 g de material, en USD. */
+  oro_usd_g: number;
+  /** Valor internacional del oro contenido en 1 g de material, en Lempiras. */
+  oro_lps_g: number;
+  /** Referencia MAPE.LEGAL aplicada al contenido nominal de oro fino, L por 1 g de material. */
+  referencia_lps_g: number;
+}
+
+export function buildKaratPrices(
+  oroUsdOz: number | null | undefined,
+  usdHnl: number | null | undefined,
+): KaratPrice[] | null {
+  if (!oroUsdOz || oroUsdOz <= 0 || !usdHnl || usdHnl <= 0) return null;
+  const refLpsPerFineGram = mapeGoldBuyLpsPerGram(oroUsdOz, usdHnl);
+  if (refLpsPerFineGram == null) return null;
+  const usdPerFineGram = oroUsdOz / TROY_OUNCE_GRAMS;
+  return GOLD_KARATS.map((kilates) => {
+    const ley = kilates / 24;
+    return {
+      kilates,
+      ley,
+      oro_usd_g: usdPerFineGram * ley,
+      oro_lps_g: usdPerFineGram * usdHnl * ley,
+      referencia_lps_g: refLpsPerFineGram * ley,
+    };
+  });
+}
+
 // ─── Fuentes con prioridad ────────────────────────────────────────────────────
 
 async function fetchGoldFromGoldAPI(): Promise<number | null> {

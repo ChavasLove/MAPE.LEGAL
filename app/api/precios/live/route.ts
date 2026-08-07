@@ -4,6 +4,7 @@ import {
   fetchAllPrices,
   storePrices,
   mapeGoldBuyLpsPerGram,
+  buildKaratPrices,
   effectivePriceDate,
   MAPE_GOLD_BUY_FACTOR,
 } from '@/services/pricingService';
@@ -131,6 +132,10 @@ export async function GET(request: NextRequest) {
     const usd_hnl = row ? num(row.usd_hnl) : null;
     const oro_lps_oz = oro != null && usd_hnl != null ? oro * usd_hnl : null;
     const oro_compra_lps_gramo = mapeGoldBuyLpsPerGram(oro, usd_hnl);
+    // Per-karat conversion (16/18/20/22 k) derived server-side from the same
+    // frozen snapshot — the widget renders these values verbatim so the karat
+    // table can never drift from the daily price.
+    const kilates = buildKaratPrices(oro, usd_hnl);
 
     const hnStamp = (iso: string) =>
       new Date(iso).toLocaleString('es-HN', {
@@ -162,6 +167,7 @@ export async function GET(request: NextRequest) {
         usd_hnl,
         oro_lps_oz,
         oro_compra_lps_gramo,
+        kilates,
         diesel: diesel
           ? {
               precio_hnl: diesel.precio_hnl,
