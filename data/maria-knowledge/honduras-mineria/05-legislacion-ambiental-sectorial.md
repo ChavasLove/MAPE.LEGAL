@@ -44,7 +44,7 @@ Decreto legislativo de marzo de 2024. Reforma los artículos 18, 194 y 195 de la
 
 - Reglamento del Sistema Nacional de Áreas Protegidas (SINAPH): categorías de manejo y gobernanza.
 - Honduras cuenta con **91 áreas protegidas declaradas legalmente** (reservas de biosfera, parques nacionales, refugios de vida silvestre, reservas biológicas).
-- Serie legislativa sobre la Montaña de Botaderos: Decreto 127-2012 (creación), Decretos 252-2013 y 93-2016 (reducciones de la zona núcleo — **derogados**) y Decreto 18-2024 (recuperación integral del parque «Carlos Escaleras Mejía» y prohibición de derechos mineros en él).
+- Caso emblemático: el Parque Nacional Montaña de Botaderos «Carlos Escaleras Mejía», donde el Decreto 18-2024 prohíbe los derechos mineros (la serie legislativa completa se detalla en las fichas del régimen minero).
 - Relevancia minera: las áreas protegidas declaradas son zonas donde no proceden derechos mineros; verificar siempre si la zona de interés cae dentro de un área protegida antes de iniciar cualquier trámite.
 
 ## Cambio climático

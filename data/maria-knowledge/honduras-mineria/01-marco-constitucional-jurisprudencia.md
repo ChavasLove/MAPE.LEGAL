@@ -34,7 +34,7 @@ Sala de lo Constitucional de la Corte Suprema de Justicia, 4 de octubre de 2006 
 
 ### Sentencia de 2017 — inconstitucionalidad parcial de la Ley General de Minería de 2012
 
-Sentencia del 23 de junio de 2017 (firme el 9 de agosto de 2017; publicada en La Gaceta el 31 de octubre de 2017). Recurso presentado por CONROA y ciudadanos en octubre de 2014 contra el Decreto 238-2012. Resultado: se declararon inconstitucionales los artículos 22, 27, 56, 67, 68, 76 y 77 de la Ley General de Minería de 2012, con efectos ex nunc. La motivación fue extensa sobre la obligación estatal de protección ambiental y el desarrollo sostenible. Tras esta sentencia, el Congreso aprobó la reforma del Decreto 109-2019, que según organizaciones de sociedad civil reprodujo vicios de inconstitucionalidad y generó un nuevo recurso (de CONROA) aún pendiente de resolución.
+Sentencia del 23 de junio de 2017 (firme el 9 de agosto de 2017; publicada en La Gaceta el 31 de octubre de 2017). Recurso presentado por CONROA y ciudadanos en octubre de 2014 contra el Decreto 238-2012. Resultado: se declararon inconstitucionales los artículos 22, 27, 56, 67, 68, 76 y 77 de la Ley General de Minería de 2012, con efectos ex nunc. La motivación fue extensa sobre la obligación estatal de protección ambiental y el desarrollo sostenible. Tras esta sentencia, el Congreso aprobó la reforma del Decreto 109-2019.
 
 ### Sentencia de 2026 — SCO-0090-2014, la tercera anulación parcial
 

@@ -72,9 +72,7 @@ Publicado en La Gaceta N.º 36,629 del 3 de septiembre de 2024. Plataforma tecno
 - **Guía Técnica para Muestreo de Metales Preciosos** (INHGEOMIN, 2017): estándares técnicos de muestreo. Vigente.
 - **Manual de Política Ambiental Minera** (previsto en la Ley de 1998, arts. 81–84): estándares ambientales del sector y contenidos mínimos del EIA minero. Marco histórico, absorbido por el régimen SINEIA y los manuales de 2017.
 
-### Tabla de Categorización Ambiental — Acuerdo Ministerial 0740-2019
-
-Publicado en La Gaceta N.º 35,011 del 1 de agosto de 2019. Clasifica las actividades mineras (y todas las actividades económicas) en cuatro categorías de riesgo para el licenciamiento ambiental, según la clasificación CIIU Rev. 4. Estado: vigente.
+Para el licenciamiento ambiental de la actividad minera aplica además la Tabla de Categorización Ambiental (Acuerdo Ministerial 0740-2019) del régimen SINEIA, que clasifica las actividades en cuatro categorías de riesgo.
 
 ## Moratorias y restricciones vigentes
 

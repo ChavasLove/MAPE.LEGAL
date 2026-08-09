@@ -46,7 +46,7 @@ El cuatrienio 2022–2026 concentró la mayor actividad normativa reciente del s
 - **2024**: Decreto 18-2024 de recuperación del Parque Nacional Montaña de Botaderos «Carlos Escaleras Mejía»; reforma forestal que hace imprescriptibles las faltas ambientales; reforma penal ambiental (Decreto 59-2024); Plan «Cero Deforestación»; modernización del INHGEOMIN con los Acuerdos 17/2024 (carrera minera) y 88/2024 (SIGEM).
 - **2026**: sentencia SCO-0090-2014 publicada el 3 de junio de 2026 (anula los artículos 22, 39, 43, 47, 48, 67 y 68 de la Ley General de Minería [ANULADO — SCO-0090-2014]); cambio de gobierno el 27 de enero de 2026 (presidencia de Nasry Asfura); instalación de mesas técnicas en el Congreso para la reforma integral de la Ley General de Minería.
 
-La ausencia de una ley de prohibición legislativa de la minería a cielo abierto dejó la política restrictiva apoyada en medidas administrativas reversibles. Desde junio de 2026, el eje del debate es la reforma integral de la Ley General de Minería impulsada por la Comisión de Minería e Hidrocarburos tras el fallo constitucional, con participación del INHGEOMIN, la SERNA, el ICF, la FEMA y el sector minero, y con la exigencia de la sociedad civil de participación efectiva de comunidades, pueblos indígenas y academia.
+La ausencia de una ley de prohibición legislativa de la minería a cielo abierto dejó la política restrictiva apoyada en medidas administrativas reversibles. Desde junio de 2026, el eje del debate es la reforma integral de la Ley General de Minería en el Congreso Nacional (el proceso de mesas técnicas se detalla en la ficha "Situación del régimen minero a agosto de 2026").
 
 ### Advertencias metodológicas y fuentes
 

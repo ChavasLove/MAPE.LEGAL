@@ -26,23 +26,15 @@ Normas de saneamiento, protección del medio ambiente laboral, control de residu
 
 ### Código Penal — Decreto 130-2017, reformado por Decreto 59-2024
 
-Publicado el 10 de mayo de 2019, reformado por el Decreto 59-2024. Contiene el título de delitos ambientales: contaminación (artículo 324), explotación ilegal de recursos naturales (artículo 325), delitos forestales y el nuevo artículo 337-A introducido en 2024. Penas de 6 a 10 años de prisión y multas de 500 a 800 días para la contaminación de aire, aguas o suelos y la explotación ilegal de recursos hídricos, forestales, minerales o fósiles. Estado: vigente reformado.
+Publicado el 10 de mayo de 2019. Contiene el título de delitos ambientales: contaminación (artículo 324), explotación ilegal de recursos naturales (artículo 325), delitos forestales y el artículo 337-A adicionado por la reforma penal ambiental del Decreto 59-2024 (los tipos penales y penas de esa reforma se detallan en la ficha del Decreto 59-2024 del régimen minero). Estado: vigente reformado.
 
 ### Ley de Municipalidades — Decreto 134-90
 
 Competencias ambientales municipales: control ambiental local, ordenamiento, planes de arbitrios. Base legal de las Unidades Municipales Ambientales (UMA). Estado: vigente con reformas.
 
-### Ley Orgánica de la Procuraduría del Ambiente y los Recursos Naturales
-
-Decreto de 1993. Defensa jurídica del ambiente. Estado: vigente.
-
 ### Ley de Transparencia y Acceso a la Información Pública — Decreto 170-2006
 
 Acceso a la información ambiental y minera; portales de transparencia institucional (incluido el Portal Único de Transparencia donde el INHGEOMIN publica sus constancias). Estado: vigente.
-
-### Ley del Sistema Nacional de Gestión de Riesgos (SINAGER) — Decreto 151-2009
-
-Prevención y respuesta a desastres naturales y antrópicos; crea la COPECO como coordinadora. Estado: vigente.
 
 ## Evaluación de impacto ambiental — SINEIA
 
@@ -59,7 +51,7 @@ El Sistema Nacional de Evaluación de Impacto Ambiental es el eje operativo del 
 
 ### Tabla de Categorización Ambiental — Acuerdo Ministerial 0740-2019
 
-Publicado en La Gaceta N.º 35,011 del 1 de agosto de 2019. Categoriza taxativamente los proyectos en cuatro categorías de riesgo ambiental según la clasificación CIIU Rev. 4; revisión máxima cada 4 años; la DECA resuelve las consultas de encuadre. Las categorías bajas se licencian ante las municipalidades; las altas ante la SERNA/MiAmbiente.
+Publicado en La Gaceta N.º 35,011 del 1 de agosto de 2019. Categoriza taxativamente los proyectos —incluidas las actividades mineras— en cuatro categorías de riesgo ambiental según la clasificación CIIU Rev. 4; revisión máxima cada 4 años; la DECA resuelve las consultas de encuadre. Las categorías bajas se licencian ante las municipalidades; las altas ante la SERNA/MiAmbiente. Estado: vigente.
 
 ### Reglamento de Auditorías Ambientales — Acuerdo Ejecutivo 887-2009
 
