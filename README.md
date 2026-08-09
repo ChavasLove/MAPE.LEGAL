@@ -454,6 +454,7 @@ POST /api/expedientes/:id/transition
 - [ ] `node scripts/seed-super-admin.mjs` post-deploy
 - [ ] `node scripts/seed-concesiones-mineras.mjs` post-deploy (587 filas INHGEOMIN)
 - [ ] `node scripts/seed-maria-honduras-ambiental.mjs` post-deploy (165 chunks RAG legal — ver §RAG)
+- [ ] `node scripts/seed-maria-honduras-mineria.mjs` post-deploy (59 chunks RAG — inventario de legislación minera y ambiental de Honduras, corte 2026-08-10: marco constitucional, sentencia SCO-0090-2014, instituciones, leyes/reglamentos mineros, moratoria 2022, SINEIA, leyes sectoriales, convenios internacionales)
 - [ ] SPF + DKIM para `gerencia@mape.legal` en SendGrid
 - [ ] Webhook Meta Business Portal → `/api/webhook/whatsapp`
 - [ ] Webhook Twilio → `/api/whatsapp`
