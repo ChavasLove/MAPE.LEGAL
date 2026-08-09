@@ -45,6 +45,19 @@
   --font-mono:    var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+/* ── TAILWIND THEME ───────────────────────────────────────────────────────
+   Mapea las utilidades de Tailwind v4 a los tokens de la marca.
+   Convención del proyecto: @theme inline — nunca tailwind.config.js.
+
+   Sin este bloque, `--font-sans` conserva el valor por defecto de Tailwind
+   (ui-sans-serif, system-ui, …) y la clase `font-sans` ANULA Inter con la
+   fuente del sistema operativo. Ver docs/auditoria-marca-2026-08.md §1.
+   `--font-mono` no se declara aquí: el override de `:root` ya lo resuelve
+   a JetBrains, y repetirlo con el mismo nombre sería autorreferencial.  */
+@theme inline {
+  --font-sans: var(--font-body);
+}
+
 /* ── BASE ─────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }

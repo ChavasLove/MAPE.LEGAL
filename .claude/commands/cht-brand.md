@@ -5,6 +5,18 @@ o solicitud de crear algo "en el estilo de MAPE LEGAL".
 
 **Ver también:** `DESIGN.md` (tokens de diseño completos) · `CLAUDE.md` (arquitectura) · `docs/ai-context.md` (reglas de idioma en código)
 
+> **Precedencia — leer antes de citar una cifra.** Este archivo es contexto de
+> marca, **no** la fuente de verdad de precios, hitos ni pasos del proceso. Esa
+> fuente es `MARIA.md` y `lib/maria/systemPrompt.ts` (y, para el texto con
+> consecuencia jurídica, `lib/content/copy-legal.ts`). Ante cualquier
+> discrepancia manda esa fuente, no este documento.
+>
+> La auditoría de 2026-08 encontró aquí hitos 30/30/50 cuyo desglose no cuadraba
+> con el total del contrato, un precio de titulación desactualizado y un
+> disparador de H3 equivocado — todos corregidos. Al tocar una cifra de §3,
+> verificarla contra `MARIA.md` en el mismo cambio.
+> Ver `docs/auditoria-marca-2026-08.md` §4.
+
 ---
 
 ## Regla de oro de comunicación
@@ -35,7 +47,18 @@ o solicitud de crear algo "en el estilo de MAPE LEGAL".
 3. **Experiencia Territorial** — Conocimiento profundo del contexto local y regulatorio.
 4. **Responsabilidad Ambiental** — Minas legales, territorios sostenibles.
 
-**Frases de marca aprobadas:**
+**Frases de marca aprobadas:** ⚠️ **pendientes de revisión — no usar sin decisión de Willis.**
+
+Ninguna de las cuatro aparece hoy en el producto, y el descriptor "Consultoría
+Estratégica" tampoco. El sitio se reposicionó en Fase 2C (2026-07-28) hacia
+*"Legalización de permisos de pequeña minería de oro en Honduras"*, que es el
+`h1` real de `app/page.tsx`. Además, "Legalizamos…" está en primera persona del
+plural, que `CLAUDE.md` §Voz canónica prohíbe expresamente en copy público
+(la voz es tercera persona: "MAPE LEGAL formaliza…", no "legalizamos…").
+Se conservan tal cual hasta que el dueño de marca decida retirarlas o
+reformularlas — no es una corrección que corresponda hacer por código.
+Ver `docs/auditoria-marca-2026-08.md` §4.
+
 - "Legalizamos tu proyecto minero."
 - "Minería legal, territorio sostenible."
 - "Acompañamiento integral hasta el permiso."
@@ -93,11 +116,11 @@ Expediente {
 
 | Hito | Monto | Trigger |
 |---|---|---|
-| H1 | L 480,000 (30%) | Firma del contrato |
-| H2 | L 480,000 (30%) | Obtención Constancia INHGEOMIN |
-| H3 | L 800,000 (50%) | Índice de Legalidad Absoluta al 100% |
+| H1 | L 640,000 (40%) | Anticipo a la firma del contrato. Ningún trámite comienza sin este pago confirmado (paso 4) |
+| H2 | L 640,000 (40%) | Ingreso del expediente completo a SERNA (paso 25) |
+| H3 | L 320,000 (20%) | Entrega del permiso minero (INHGEOMIN) + licencia ambiental (SERNA) — paso 32 |
 
-> H1 + H2 + H3 = L 1,760,000. El total del contrato es L 1,600,000; el desglose interno cubre el anticipo.
+> H1 + H2 + H3 = L 1,600,000 = el total del contrato.
 
 **Fases:**
 | Fase | Pasos | Descripción |
@@ -110,7 +133,9 @@ Expediente {
 
 Plazo total estimado: **6–14 meses**
 
-**Índice de Legalidad Absoluta** (los 5 deben estar en verde para cobrar H3):
+**Índice de Legalidad Absoluta** — se verifica en el **paso 36**, ya cerrado el
+Paquete Ancla. No es el disparador de H3: el pago de honorarios que le sigue
+(paso 37) es un servicio adicional con cotización separada. Los 5 componentes:
 1. Tierra titulada o contrato registrado
 2. Permiso INHGEOMIN
 3. Licencia ambiental SERNA
@@ -130,7 +155,7 @@ Plazo total estimado: **6–14 meses**
 
 | Campo | Detalle |
 |---|---|
-| Precio base | L 38,000 (hasta 2 manzanas) + L 8,000/manzana adicional |
+| Precio base | L 60,000 (hasta 2 manzanas) + L 25,000/manzana adicional |
 | Pago | Único al inicio |
 | Plazo estimado | 4–8 meses |
 | Fases | Diagnóstico y clasificación → Gestión ante INA o IP → Inscripción en Registro de la Propiedad |

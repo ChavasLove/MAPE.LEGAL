@@ -92,6 +92,13 @@ export const LIBERTAD_VENTA =
   'producción a cualquier comprador.'
 
 /* ── Citas legales usadas en el sitio ───────────────────────────────── */
+/*
+ * Capa de vigencia (sentencia SCO-0090-2014, La Gaceta No. 37,158): antes de
+ * añadir una cita de la Ley General de Minería, contrastar el artículo contra
+ * LGM_ARTICULOS_ANULADOS en lib/legal/vigenciaLGM.ts — un artículo anulado no
+ * puede fundamentar copy público. Revisión 2026-08-04: ninguna entrada actual
+ * cita artículos anulados.
+ */
 
 export interface CitaLegal {
   norma: string
@@ -116,6 +123,8 @@ export const CITAS_LEGALES = {
       'El comprador de productos minerales responde solidariamente y ' +
       'está obligado a verificar el origen lícito de lo que adquiere.',
   },
+  // Verificado contra Gaceta 33,088; no impugnado en SCO-0090-2014.
+  // Refuerzo: Art. 5 Regl. MAPE.
   leyArt45: {
     norma: 'Ley General de Minería',
     articulo: 'Art. 45',

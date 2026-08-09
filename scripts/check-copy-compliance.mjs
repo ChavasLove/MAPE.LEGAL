@@ -22,6 +22,14 @@
  *  - app/dashboard  — superficie interna autenticada.
  *  - app/portal     — superficie interna autenticada.
  *
+ * Reglas de vigencia (Playbook CC, 2026-08 — sentencia SCO-0090-2014):
+ * cuarto alcance sobre lib/, docs/, services/ y los *.md de la raíz. La Sala
+ * de lo Constitucional anuló varios artículos de la Ley General de Minería;
+ * ninguna superficie del repo puede citarlos como derecho vigente sin la
+ * anotación [ANULADO — SCO-0090-2014] (ver checkVigencia abajo). Se excluyen
+ * docs/legal/sentencia-sco-0090-2014.md y lib/legal/vigenciaLGM.ts, que
+ * necesitan nombrar los artículos sin anotación inline.
+ *
  * Uso: node scripts/check-copy-compliance.mjs   (o: npm run check:copy)
  */
 
@@ -37,7 +45,7 @@ const SCAN_DIRS = ['app', 'components', 'lib/content']
 // histórica interna (p. ej. CLAUDE.md) describe esas mismas reglas y sus
 // violaciones pasadas, y no es superficie de copy.
 const INTERNAL_SCAN_DIRS = ['docs', 'lib/maria', 'services']
-const ROOT_FILES = ['README.md', 'CLAUDE.md', 'MARIA.md', 'AGENTS.md', 'DESIGN.md']
+const ROOT_FILES = ['README.md', 'CLAUDE.md', 'MARIA.md', 'MARIA_LEY_MINERIA.md', 'AGENTS.md', 'DESIGN.md']
 // Tercer alcance (orden "Blindaje institucional de María" 2026-08, T2.4):
 // app/api deja de estar totalmente exento — se escanea ÚNICAMENTE con las
 // reglas de confidencialidad (`scope: 'all'`: contrapartes sin convenio +
@@ -124,6 +132,67 @@ const RULES = [
   { re: /[™®]/, label: 'símbolo ™/® — la marca no está registrada ante DGPI' },
 ]
 
+/* ── Reglas de vigencia — sentencia SCO-0090-2014 (Playbook CC, 2026-08) ──
+ *
+ * La sentencia de la Sala de lo Constitucional (Gaceta No. 37,158,
+ * 2026-06-03) anuló los Arts. 22, 39, 43, 47, 48, 67 y 68 de la Ley General
+ * de Minería. Reglas:
+ *  1. FALLA un Art. 22/39/43/48/67/68 en contexto de "Ley General de
+ *     Minería" / "LGM" (misma línea o ±2) sin marca de anulación en la misma
+ *     línea o adyacente.
+ *  2. FALLA un "Art. 47" sin la palabra "Reglamento" en la misma línea
+ *     (el Art. 47 vigente y frecuente es el del Reglamento Especial MAPE;
+ *     el 47 de la Ley está anulado). Excepción: líneas con marca.
+ *
+ * Calibración contra falsos positivos (documentada):
+ *  - "Reglamento" en la misma línea exime también la regla 1 — los Arts. 45
+ *    y 47 del Reglamento son válidos y frecuentes, y la sección MARCO LEGAL
+ *    del prompt cita artículos del Acuerdo 042-2013 por número.
+ *  - La marca acepta, además de "[ANULADO" y "SCO-0090-2014", las palabras
+ *    "anulado/a(s)" e "inconstitucional(es)": una línea que declara la
+ *    anulación es exactamente el uso correcto, no una cita como derecho
+ *    vigente.
+ *  - Los transcritos de la Ley General del AMBIENTE viven en data/ (fuera de
+ *    este alcance) y la regla 1 exige contexto de minería.
+ */
+const VIGENCIA_SCAN_DIRS = ['lib', 'docs', 'services']
+const VIGENCIA_EXCLUDED_FILES = new Set([
+  join('docs', 'legal', 'sentencia-sco-0090-2014.md'),
+  join('lib', 'legal', 'vigenciaLGM.ts'),
+])
+const LGM_CONTEXT_RE = /ley\s+general\s+de\s+miner[íi]a|ley\s+de\s+miner[íi]a|\bLGM\b/i
+const VIGENCIA_MARK_RE = /\[ANULADO|SCO-0090-2014|\banulad[oa]s?\b|inconstitucional/i
+const ART_TOKEN = String.raw`\bart(?:s|ículos?|iculos?)?\.?\s*`
+const ART_ANULADO_RE = new RegExp(ART_TOKEN + String.raw`(22|39|43|48|67|68)\b`, 'i')
+const ART_47_RE = new RegExp(ART_TOKEN + String.raw`47\b`, 'i')
+const VIGENCIA_CONTEXT_WINDOW = 2 // líneas ±N para detectar contexto LGM
+const VIGENCIA_MARK_WINDOW = 1 // "misma línea o adyacente" para la marca
+
+function checkVigencia(rel, lines) {
+  let found = 0
+  const near = (re, i, w) => {
+    for (let j = Math.max(0, i - w); j <= Math.min(lines.length - 1, i + w); j++) {
+      if (re.test(lines[j])) return true
+    }
+    return false
+  }
+  lines.forEach((line, i) => {
+    if (line.includes(ALLOW_MARKER)) return
+    if (/reglamento/i.test(line)) return
+    const m = line.match(ART_ANULADO_RE)
+    if (m && near(LGM_CONTEXT_RE, i, VIGENCIA_CONTEXT_WINDOW) && !near(VIGENCIA_MARK_RE, i, VIGENCIA_MARK_WINDOW)) {
+      found++
+      console.log(`${rel}:${i + 1} — «${m[0]}» → artículo anulado por SCO-0090-2014 citado en contexto de la Ley General de Minería sin marca [ANULADO]`)
+    }
+    const m47 = line.match(ART_47_RE)
+    if (m47 && !near(VIGENCIA_MARK_RE, i, VIGENCIA_MARK_WINDOW)) {
+      found++
+      console.log(`${rel}:${i + 1} — «${m47[0]}» → "Art. 47" debe decir "Art. 47, literal (a), del Reglamento Especial MAPE" (el 47 de la Ley está anulado)`)
+    }
+  })
+  return found
+}
+
 function walk(dir, out = [], applyExcluded = true) {
   let entries
   try {
@@ -186,8 +255,23 @@ for (const { file, rules } of targets) {
   })
 }
 
+// Pase de vigencia (SCO-0090-2014): lib/, docs/, services/ y *.md de la raíz.
+const vigenciaRootMd = readdirSync(ROOT)
+  .filter((f) => f.endsWith('.md'))
+  .map((f) => join(ROOT, f))
+const vigenciaFiles = [
+  ...VIGENCIA_SCAN_DIRS.flatMap((d) => walk(join(ROOT, d))),
+  ...vigenciaRootMd,
+].filter((f) => !VIGENCIA_EXCLUDED_FILES.has(relative(ROOT, f)))
+
+for (const file of vigenciaFiles) {
+  const rel = relative(ROOT, file)
+  const lines = readFileSync(file, 'utf8').split('\n')
+  violations += checkVigencia(rel, lines)
+}
+
 if (violations > 0) {
   console.error(`\ncheck:copy — ${violations} violación(es) encontrada(s).`)
   process.exit(1)
 }
-console.log(`check:copy — sin violaciones (${targets.length} archivos escaneados).`)
+console.log(`check:copy — sin violaciones (${targets.length} archivos escaneados + ${vigenciaFiles.length} en el pase de vigencia).`)

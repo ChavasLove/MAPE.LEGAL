@@ -4,7 +4,7 @@ import {
   checkWhatsAppTokenHealth,
   WhatsAppApiError,
 } from '@/services/whatsappService';
-import { type PreciosDiarios, mapeGoldBuyLpsPerGram } from '@/services/pricingService';
+import { type PreciosDiarios, mapeGoldBuyLpsPerGram, buildKaratPrices } from '@/services/pricingService';
 import { getActiveSubscribers, type BroadcastRol } from '@/services/userService';
 
 // ─── Honduras local time ──────────────────────────────────────────────────────
@@ -87,6 +87,30 @@ export async function generateDailyMessage(precios: PreciosDiarios): Promise<str
   // labeled "Oro internacional", not "LBMA". Footer lines are unprefixed so
   // they read as a separator from the data section.
   const tcLine = tc > 0 ? `L ${tc.toFixed(2)} por USD` : 'N/D';
+  // Conversión por kilates — mismo helper canónico que el widget de /precios y
+  // el bloque PRECIOS DE REFERENCIA de María, para que los cuatro canales
+  // muestren exactamente los mismos números.
+  //
+  // "por gramo de material" es deliberado y NO debe abreviarse a "por gramo":
+  // la viñeta de compra de arriba es por gramo de oro FINO, y estas son por
+  // gramo del material al kilataje indicado. Dos cifras distintas separadas por
+  // dos líneas — sin el calificativo se leen como la misma (misma ambigüedad
+  // que persigue la regla R5 del encargo Precio de Referencia).
+  //
+  // El penique (pennyweight, dwt = 1.5552 g) es la unidad de compra corriente
+  // del oro artesanal — cada viñeta trae ambas unidades y el encabezado define
+  // la equivalencia para que la cifra sea verificable.
+  const kilates = buildKaratPrices(oroUsd, tc);
+  const kilatesLines = kilates
+    ? [
+        `Precio estimado por kilates (según su contenido de oro fino; 1 penique/dwt = 1.5552 g):`,
+        ...kilates.map(
+          (k) =>
+            `* ${k.kilates} kilates: ${fmtLps(k.referencia_lps_g)} por gramo de material · ${fmtLps(k.referencia_lps_dwt)} por penique`,
+        ),
+        ``,
+      ]
+    : [];
   const lines = [
     `BOLETIN DIARIO`,
     ``,
@@ -101,6 +125,7 @@ export async function generateDailyMessage(precios: PreciosDiarios): Promise<str
     `* ${fmtLps(compraLpsPorGramo)} por gramo estimado`,
     `* Pago realizado en Lempiras en su cuenta de la cooperativa financiera aliada`,
     ``,
+    ...kilatesLines,
     `Precios de referencia al ${fechaLarga} — ${horaCorta} Honduras`,
     `Fuentes: ${fuente} + BCH referencial`,
     ``,
