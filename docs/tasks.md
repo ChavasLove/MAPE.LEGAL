@@ -1,6 +1,25 @@
 # Tasks
 
-## CIERRE 2026-08-04 — Plan 2 EJECUTADO en producción (rama `claude/plan-2-produccion-imgq78`, PR #224)
+## Pendientes al cierre 2026-08-07 (rama `claude/price-conversion-gold-widget-gjq10r`, PR #228 — conversión por kilates + peniques)
+
+0. **[OPERADOR — HOY] Diésel desactualizado en producción.** Verificado contra
+   el API vivo (2026-08-07): el card muestra el valor SEMILLA de la migración
+   028 (L 124.26, vigente 2026-07-27). El precio SEN del **lunes 2026-08-03**
+   nunca se ingresó. No es bug: el diésel es manual por diseño (runbook del
+   lunes en CLAUDE.md §Widget de Precios). Acción: `/admin/precios` → editar
+   diésel con el precio SEN de la semana + `vigente_desde` 2026-08-03 →
+   guardar. **Además**: el guardián
+   diario (`/api/cron/diesel-freshness`, 8:30 AM HN) debió mandar un correo a
+   gerencia@mape.legal cada día desde el lunes — si no llegó ninguno, revisar
+   spam → Vercel Logs de esa ruta → env vars `CRON_SECRET` y `SENDGRID_API_KEY`.
+   Si el guardián está mudo, el próximo lunes olvidado tampoco avisará.
+0-bis. **[OPERADOR] Deploy pendiente de los últimos commits.** GitHub dejó de
+   entregar webhooks de esta rama tras `06dc1f2` (~17:30 UTC): ni CI ni Vercel
+   vieron `eeba6a6`/`c4a30a4`/`0a64060`/`b3c6f1a` (verificado: el API de
+   producción tiene `kilates` pero NO los campos `_dwt`). Los commits SÍ están
+   en el remoto (`git ls-remote` = `b3c6f1a`). Desbloqueo: Vercel dashboard →
+   Create Deployment desde la rama, o cerrar/reabrir el PR #228 (regenera los
+   eventos y corre CI). Confirmar CI verde antes de mergear.
 
 **La reparación Plan 2 se ejecutó completa contra producción el 2026-08-04** vía
 Management API (detalle: CLAUDE.md §Reparación → bullet ✅ EJECUTADO, y
