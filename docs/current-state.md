@@ -40,9 +40,10 @@
 > transiciones de expediente serializadas con `SELECT ... FOR UPDATE` (RPC
 > `avanzar_expediente_fase`, migración 033); llaves institucionales en `minas`
 > (034), `verificaciones_fuente` append-only (035) y huella SHA-256 del
-> certificado + frescura en `/verificar` (036). Migraciones 032–036 pendientes
-> de aplicar en Supabase Studio. El resto de este documento es un snapshot
-> 2026-05-10 — para el estado vivo, ver CLAUDE.md.
+> certificado + frescura en `/verificar` (036). Migraciones 032–037 aplicadas
+> en producción (032/033/035/037 el 2026-08-03; 034/036 el 2026-08-04 dentro de
+> la cadena Plan 2). El resto de este documento es un snapshot 2026-05-10 —
+> para el estado vivo, ver CLAUDE.md.
 
 ## Current Module
 Phase 1 — public-surface realignment shipped (PR #102 merged into `main`):

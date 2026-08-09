@@ -173,11 +173,14 @@ Para tonos derivados usa **`color-mix(in oklch, var(--ink) 80%, white)`** — nu
 
 > **Nota:** este proyecto usa Tailwind v4 con `@theme inline` en `globals.css` — **no** `tailwind.config.js`. Si introduces Tailwind config-based en otro repo (mobile, packaging), usa los mismos hex aliasados como `ink`, `moss`, `state.{ok,warn,block,info}`.
 
+> **Fuentes:** las utilidades de Tailwind que deban usar una fuente de marca tienen que estar mapeadas en `@theme inline` — hoy `--font-sans: var(--font-body)`. Sin ese mapeo la clase `font-sans` sustituye Inter por la fuente del sistema operativo. Ver `DESIGN.md` §10.
+
 ### 0.6 Documentos relacionados
 
 - [`DESIGN.md`](./DESIGN.md) — guía completa de componentes UI, escala tipográfica, reglas de uso.
 - [`app/globals.css`](./app/globals.css) — implementación canónica de los tokens.
 - [`components/decor/TopoBand.tsx`](./components/decor/TopoBand.tsx) — motivo topográfico.
+- [`docs/auditoria-marca-2026-08.md`](./docs/auditoria-marca-2026-08.md) — auditoría de cumplimiento del manual contra el código real (2026-08-05). Estado por área, deuda pendiente y falsos positivos ya descartados.
 
 ---
 
@@ -451,6 +454,7 @@ POST /api/expedientes/:id/transition
 - [ ] `node scripts/seed-super-admin.mjs` post-deploy
 - [ ] `node scripts/seed-concesiones-mineras.mjs` post-deploy (587 filas INHGEOMIN)
 - [ ] `node scripts/seed-maria-honduras-ambiental.mjs` post-deploy (165 chunks RAG legal — ver §RAG)
+- [ ] `node scripts/seed-maria-honduras-mineria.mjs` post-deploy (59 chunks RAG — inventario de legislación minera y ambiental de Honduras, corte 2026-08-10: marco constitucional, sentencia SCO-0090-2014, instituciones, leyes/reglamentos mineros, moratoria 2022, SINEIA, leyes sectoriales, convenios internacionales)
 - [ ] SPF + DKIM para `gerencia@mape.legal` en SendGrid
 - [ ] Webhook Meta Business Portal → `/api/webhook/whatsapp`
 - [ ] Webhook Twilio → `/api/whatsapp`
