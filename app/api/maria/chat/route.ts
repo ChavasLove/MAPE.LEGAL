@@ -20,6 +20,7 @@ import {
   CONCESION_TRIGGERS,
   CONCESION_STOPWORDS,
   formatKnowledgeRows,
+  stripMarkdown,
   type KnowledgeRow,
 } from '@/lib/maria/ragShared';
 import { supabase } from '@/services/supabase';
@@ -543,7 +544,9 @@ export async function POST(request: Request) {
       messages: cleanHistory,
     });
     const first = claudeRes.content[0];
-    const reply = first?.type === 'text' ? first.text.trim() : '';
+    // stripMarkdown antes de firmar: el widget muestra texto plano y la
+    // firma HMAC debe cubrir exactamente lo que se retorna.
+    const reply = stripMarkdown(first?.type === 'text' ? first.text.trim() : '');
     if (!reply) {
       console.error('[maria-web] empty reply from Claude');
       return NextResponse.json(
