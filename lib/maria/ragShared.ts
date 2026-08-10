@@ -29,7 +29,24 @@ export const CONCESION_STOPWORDS =
 
 export type KnowledgeRow = { category: string; title: string; content: string };
 
+// The RAG chunks are authored as markdown (data/maria-knowledge/**), but María
+// speaks over WhatsApp and the web widget — neither renders markdown, so when
+// she quotes the injected context verbatim the user sees literal `**`, `###`
+// and `[texto](url)`. Stripping here fixes every already-seeded chunk at
+// injection time (no re-seed needed) and removes the model's main incentive
+// to answer with markdown bold. The prompt also carries an explicit
+// no-markdown rule for the model's own habit.
+function stripMarkdownForPrompt(s: string): string {
+  return String(s ?? '')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1');
+}
+
 export function formatKnowledgeRows(rows: KnowledgeRow[]): string | null {
   if (!Array.isArray(rows) || rows.length === 0) return null;
-  return rows.map((c) => `[${c.category}] ${c.title}: ${c.content}`).join('\n\n');
+  return rows
+    .map((c) => `[${c.category}] ${stripMarkdownForPrompt(c.title)}: ${stripMarkdownForPrompt(c.content)}`)
+    .join('\n\n');
 }
