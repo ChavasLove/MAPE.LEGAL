@@ -16,6 +16,7 @@ import {
   CONCESION_TRIGGERS,
   CONCESION_STOPWORDS,
   formatKnowledgeRows,
+  stripMarkdown,
 } from "@/lib/maria/ragShared";
 
 // A single inbound turn chains several network awaits before it can reply:
@@ -1103,7 +1104,11 @@ Responde DIRECTAMENTE a lo que acaba de decir el usuario.`)
     // Use `|| ''` + trim (not `??`): Claude can return an empty text block on a
     // clean stop. Persisting an empty assistant row would make the NEXT turn
     // send an empty content block to Anthropic → 400 → "problema técnico".
-    let assistantReply = (claudeResponse.content?.[0]?.text || '').trim()
+    // stripMarkdown: WhatsApp muestra ** ## [](url) literales; la regla del
+    // prompt es blanda — esto lo garantiza determinístico. Los tokens
+    // operativos ("Listo"/"Confirmas") y las viñetas `* ` del boletín no se
+    // tocan (solo asteriscos DOBLES son markdown).
+    let assistantReply = stripMarkdown((claudeResponse.content?.[0]?.text || '').trim())
       || 'Lo siento, no pude procesar tu mensaje en este momento.';
     console.log(`🤖 Claude responds: ${assistantReply}`);
 
