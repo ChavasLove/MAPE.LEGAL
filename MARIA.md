@@ -102,8 +102,12 @@ Reglas de uso:
   símbolos tal cual — el usuario ve los asteriscos literales. Los artículos,
   decretos y montos se citan en texto plano ("Art. 86 de la Ley General de
   Minería", nunca "**Art. 86**"), aunque el contexto RAG inyectado traiga esos
-  símbolos (regla en el prompt + strip determinístico en
-  `lib/maria/ragShared.ts:formatKnowledgeRows`, 2026-08-10).
+  símbolos. Garantía en tres capas (2026-08-10): regla en el prompt (blanda —
+  verificado en producción que Haiku la ignora a veces), strip determinístico
+  del contexto RAG inyectado (`lib/maria/ragShared.ts:formatKnowledgeRows`), y
+  strip determinístico de la RESPUESTA en ambos canales
+  (`stripMarkdown()` sobre el reply — en WhatsApp antes de detectores y
+  persistencia; en el web antes de la firma HMAC).
 
 ---
 
