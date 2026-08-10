@@ -76,7 +76,7 @@ export async function generateDailyMessage(precios: PreciosDiarios): Promise<str
       `Precios de referencia al ${fechaLarga} — ${horaCorta} Honduras`,
       `Fuentes: ${fuente} + BCH referencial`,
       ``,
-      `Ver detalles: [www.mape.legal](https://www.mape.legal)`,
+      `Ver detalles: www.mape.legal`,
     ].join('\n');
   }
 
@@ -129,7 +129,7 @@ export async function generateDailyMessage(precios: PreciosDiarios): Promise<str
     `Precios de referencia al ${fechaLarga} — ${horaCorta} Honduras`,
     `Fuentes: ${fuente} + BCH referencial`,
     ``,
-    `Ver detalles: [www.mape.legal](https://www.mape.legal)`,
+    `Ver detalles: www.mape.legal`,
   ];
 
   return lines.join('\n');

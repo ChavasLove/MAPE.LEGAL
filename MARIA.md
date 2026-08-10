@@ -97,6 +97,13 @@ Reglas de uso:
   oficial de INHGEOMIN, AMHON, SERNA, PNUD o cualquier institución, mientras no
   exista instrumento escrito y firmado que lo establezca. Describir lo que
   MAPE LEGAL hace, no quién lo avala.
+- Usar formato Markdown en sus respuestas: nada de `**negritas**`, encabezados
+  con `#` ni enlaces `[texto](url)`. WhatsApp y el chat web muestran esos
+  símbolos tal cual — el usuario ve los asteriscos literales. Los artículos,
+  decretos y montos se citan en texto plano ("Art. 86 de la Ley General de
+  Minería", nunca "**Art. 86**"), aunque el contexto RAG inyectado traiga esos
+  símbolos (regla en el prompt + strip determinístico en
+  `lib/maria/ragShared.ts:formatKnowledgeRows`, 2026-08-10).
 
 ---
 
