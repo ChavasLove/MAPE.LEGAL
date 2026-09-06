@@ -28,7 +28,7 @@ export const TROY_OUNCE_GRAMS = 31.1034768;
 // truth so the boletín diario, María (WhatsApp + web) and the /precios widget
 // all quote the same purchase price — a divergent factor or troy-ounce
 // constant here is exactly the drift the codebase already guards against.
-export const MAPE_GOLD_BUY_FACTOR = 0.8;
+export const MAPE_GOLD_BUY_FACTOR = 0.75;
 
 // The public price is a single daily snapshot anchored to 08:00 Honduras time.
 // The cron, the cold-cache fetch, and María all key precios_diarios by
