@@ -172,12 +172,6 @@ export default function AdminPreciosClient({ initialCombustibles, metals, lunesS
     }
   };
 
-  // Diesel is the value miners look at: surface its staleness at the top of the
-  // page, not only inside its card.
-  const dieselRow = rows.diesel;
-  const dieselVencido =
-    dieselRow.exists && esVigenciaDesactualizada(dieselRow.saved_vigente_desde, lunesSemana);
-
   const metalRows = useMemo(() => {
     const oroLpsOz =
       metals?.oro != null && metals?.usd_hnl != null ? metals.oro * metals.usd_hnl : null;
@@ -202,33 +196,13 @@ export default function AdminPreciosClient({ initialCombustibles, metals, lunesS
 
   return (
     <div style={{ maxWidth: 900 }}>
-      <h1 style={{ fontSize: 28, color: 'var(--ink)', marginBottom: 6 }}>Precios · Diésel y combustibles</h1>
-      <p style={{ color: 'var(--t2)', fontSize: 15, lineHeight: 1.6, marginBottom: 24, maxWidth: 640 }}>
-        El diésel y los demás combustibles se administran aquí (precio oficial de la SEN, fijado
-        semanalmente). Actualiza el precio cada lunes cuando entra en vigor la nueva estructura. Los
-        metales (oro, tipo de cambio) se capturan automáticamente una vez al día y no se editan.
+      <h1 style={{ fontSize: 28, color: 'var(--ink)', marginBottom: 6 }}>Precios</h1>
+      <p style={{ color: 'var(--t2)', fontSize: 15, lineHeight: 1.6, marginBottom: 16, maxWidth: 640 }}>
+        Los metales (oro, tipo de cambio) se capturan automáticamente una vez al día y no se editan.
+        El editor de combustibles queda como respaldo de datos: desde el 15 de octubre de 2026 el
+        diésel <strong>ya no se muestra en el sitio público</strong> (la SEN no publica un feed y el
+        valor no se mantiene manualmente cada semana). Guardar aquí no cambia nada visible.
       </p>
-
-      {dieselVencido && (
-        <div
-          role="alert"
-          style={{
-            ...CARD,
-            marginBottom: 28,
-            borderColor: 'color-mix(in oklch, var(--amber) 30%, white)',
-            background: 'color-mix(in oklch, var(--amber) 14%, white)',
-          }}
-        >
-          <div style={{ ...LABEL, color: 'var(--amber)' }}>Diésel pendiente de actualización</div>
-          <p style={{ margin: 0, color: 'var(--ink)', fontSize: 14, lineHeight: 1.6 }}>
-            El precio del diésel publicado tiene vigencia del{' '}
-            <strong>{fmtDateEs(dieselRow.saved_vigente_desde ?? '')}</strong>, pero la estructura
-            SEN de esta semana entró en vigor el lunes <strong>{fmtDateEs(lunesSemana)}</strong>.
-            Mientras no se actualice, la página pública lo muestra marcado como pendiente.
-            Ingresa el precio nuevo, usa la vigencia del lunes y guarda.
-          </p>
-        </div>
-      )}
 
       {/* Live metals — read only */}
       <div style={{ ...CARD, marginBottom: 28 }}>

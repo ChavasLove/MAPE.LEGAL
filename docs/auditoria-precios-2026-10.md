@@ -54,3 +54,17 @@ El código funciona como está diseñado: el diésel es un precio regulado que l
 - `npm run typecheck`, `npm run check:copy`, `eslint` sobre los archivos tocados y `npm run build` en verde.
 - Prueba de fechas (`lunesSemanaSenHN`): 7 instantes incluyendo domingo 23:30 HN, lunes 00:30 HN, cambio de mes y de año — 7/7 correctos; `esVigenciaDesactualizada`: 5/5.
 - Pendiente del operador (requiere acceso a Vercel): configurar `CRON_SECRET`, redeploy, abrir `/api/cron/diesel-freshness` logueado como admin y confirmar que llega el correo a gerencia@mape.legal; luego actualizar el diésel del lunes en `/admin/precios`.
+
+## Decisión del operador (mismo día) — el diésel se retira del sitio público
+
+Willis prefirió **desactivar el diésel** antes que mantenerlo a mano cada lunes. Cambios aplicados en la misma rama:
+
+- `/precios` y el ticker de la landing ya no muestran la tarjeta ni la viñeta de diésel; la fila "Diésel y combustibles" desaparece de "Fuentes y actualización"; título, metadata y párrafo descriptivo de `/precios` hablan solo de oro y tipo de cambio.
+- `/api/precios/live` deja de devolver `diesel` y `combustibles`.
+- El cron `/api/cron/diesel-freshness` se elimina de `vercel.json` junto con su ruta y la plantilla de correo `emailDieselDesactualizado` (ya no hay nada que recordar).
+- `/admin/precios` queda como editor **dormante** de `precios_combustibles` (respaldo de datos, misma lógica que el stack admin de equipos), con una nota explícita de que guardar no cambia nada visible. El nav dice "Precios". Los helpers `lunesSemanaSenHN()`/`esVigenciaDesactualizada()` siguen en `lib/types/combustible.ts` para el pill informativo del editor.
+- La tabla `precios_combustibles` (migración 028) no se toca: es historia aplicada en producción.
+
+**Sigue vigente y pendiente del operador:** configurar `CRON_SECRET` en Vercel. Ya no afecta al diésel, pero sin él el cron de las 8 AM sigue muerto y el snapshot del oro sigue dependiendo del primer visitante (Hallazgo 3). La red de seguridad `ensureDailyPriceSnapshot()` queda en `/api/broadcast/run`.
+
+**Para reactivar el diésel en el futuro** (si la SEN publica una fuente consultable o alguien asume la actualización semanal): restaurar la tarjeta/viñeta/SourceRow desde el historial de git de esta rama y volver a servir `combustibles` en `/api/precios/live`; el editor admin y la tabla ya están listos.

@@ -16,9 +16,9 @@ export const dynamic = 'force-dynamic';
 // bypassing the time/idempotency gate.
 //
 // Both verbs are protected by CRON_SECRET. Without the secret configured in
-// production BOTH crons (this one and /api/cron/diesel-freshness) answer 500 on
-// every tick — that was the root cause of the 2026-10 audit: no gold snapshot
-// at 8 AM and no diesel reminders for 11 weeks.
+// production this cron answers 500 on every tick — that was the root cause of
+// the 2026-10 audit: no gold snapshot at 8 AM (the diesel reminder cron that
+// shared the secret was retired in the same audit).
 //
 // The daily gold/FX snapshot is captured here even when the bulletin is skipped
 // (ensureDailyPriceSnapshot) so the price of the day never depends on a visitor.
