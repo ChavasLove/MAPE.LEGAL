@@ -111,8 +111,17 @@ if (bruto.endsWith('%')) {
   nuevoFactor = Number(bruto.slice(0, -1)) / 100;
 } else {
   const n = Number(bruto);
-  // Aceptar "78" como 0.78 y "0.78" como 0.78.
-  nuevoFactor = n > 1 ? n / 100 : n;
+  // Aceptar "78" como 0.78 y "0.78" como 0.78. Solo un ENTERO entre 2 y 100
+  // se interpreta como porcentaje; un decimal mayor que 1 ("1.2") es casi
+  // seguro un error de tipeo y NO se adivina (antes se convertía en 0.012).
+  if (Number.isFinite(n) && n > 1) {
+    if (!Number.isInteger(n) || n > 100) {
+      abortar(`Factor ambiguo: "${bruto}". Usá una fracción (0.78), un porcentaje explícito (78%) o un entero 2-100 (78).`);
+    }
+    nuevoFactor = n / 100;
+  } else {
+    nuevoFactor = n;
+  }
 }
 if (!Number.isFinite(nuevoFactor) || nuevoFactor <= 0 || nuevoFactor > 1) {
   abortar(`Factor inválido: "${bruto}". Debe resolver a un número en (0, 1]. Ej.: 0.78 o 78%.`);
@@ -175,7 +184,8 @@ if (SINCRONIZAR) {
   // La versión y la vigencia se editan sobre el mismo archivo calculo.ts;
   // reprocesar sobre el contenido ya modificado en memoria.
   const idxCalc = pendientes.findIndex((p) => p.archivo === OBJETIVOS.politicaVersion.archivo);
-  let contenidoCalc = pendientes[idxCalc].nuevoContenido;
+  const contenidoCalcAntes = pendientes[idxCalc].nuevoContenido;
+  let contenidoCalc = contenidoCalcAntes;
   for (const key of ['politicaVersion', 'politicaVigencia']) {
     const obj = OBJETIVOS[key];
     const valor = key === 'politicaVersion' ? version : vigencia;
@@ -187,6 +197,10 @@ if (SINCRONIZAR) {
     }
   }
   pendientes[idxCalc].nuevoContenido = contenidoCalc;
+  // Si el factor ya estaba en el valor pedido, aplicarObjetivo marcó el
+  // archivo como "sin cambios"; los edits de versión/vigencia de arriba
+  // deben forzar la escritura igual (antes se reportaban pero no se escribían).
+  if (contenidoCalc !== contenidoCalcAntes) pendientes[idxCalc].sinCambios = false;
 }
 
 // --- Reporte de cambios -----------------------------------------------------
