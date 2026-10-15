@@ -3,10 +3,6 @@
     {
       "path": "/api/broadcast/run",
       "schedule": "0 14 * * *"
-    },
-    {
-      "path": "/api/cron/diesel-freshness",
-      "schedule": "30 14 * * *"
     }
   ]
 }

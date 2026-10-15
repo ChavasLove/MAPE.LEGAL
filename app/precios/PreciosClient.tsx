@@ -94,8 +94,8 @@ export default function PreciosClient() {
             style={{ maxWidth: 720 }}
           >
             {t(
-              'Precio del oro y del diésel, ',
-              'Gold and diesel prices, ',
+              'Precio del oro, ',
+              'Gold price, ',
             )}
             <em>{t('hoy en Honduras.', 'today in Honduras.')}</em>
           </h1>
@@ -129,8 +129,8 @@ export default function PreciosClient() {
             }}
           >
             {t(
-              'Consulta el precio internacional del oro, el precio de referencia de MAPE LEGAL en lempiras por gramo de oro fino, el tipo de cambio del día y el precio oficial del diésel. Actualizado diariamente.',
-              'Check the international gold price, the MAPE LEGAL reference price in lempiras per gram of fine gold, today’s exchange rate, and the official diesel price. Updated daily.',
+              'Consulta el precio internacional del oro, el precio de referencia de MAPE LEGAL en lempiras por gramo de oro fino, y el tipo de cambio del día. Actualizado diariamente.',
+              'Check the international gold price, the MAPE LEGAL reference price in lempiras per gram of fine gold, and today’s exchange rate. Updated daily.',
             )}
           </p>
           <p style={{ marginTop: 10, fontSize: 14, lineHeight: 1.6 }}>

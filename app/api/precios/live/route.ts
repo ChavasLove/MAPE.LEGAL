@@ -8,14 +8,14 @@ import {
   effectivePriceDate,
   MAPE_GOLD_BUY_FACTOR,
 } from '@/services/pricingService';
-import { getCombustibles } from '@/services/combustiblesService';
-import { type Combustible } from '@/lib/types/combustible';
 import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit';
 
 // Public, unauthenticated snapshot for the live-prices widget (/precios) and any
 // other surface that wants the same numbers María quotes. Reads gold/FX from
 // precios_diarios (service-role — anon has no SELECT on that table per migration
-// 009), and joins the SEN-set diesel/fuel prices.
+// 009). Fuel prices (precios_combustibles) are NO LONGER served here: the diesel
+// card was retired from the public site on 2026-10-15 — the SEN price has no
+// feed and the operator chose not to maintain it by hand each week.
 //
 // PRICE FREEZE — the gold snapshot updates once per day at 08:00 Honduras. The
 // row is keyed by effectivePriceDate() (the 8 AM window). When that row already
@@ -51,10 +51,6 @@ function num(v: unknown): number | null {
   if (v == null) return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
-}
-
-function dieselFrom(combustibles: Combustible[]): Combustible | null {
-  return combustibles.find((c) => c.combustible === 'diesel') ?? null;
 }
 
 export async function GET(request: NextRequest) {
@@ -118,15 +114,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Fuel prices are non-fatal — an empty list just hides the diesel card.
-    let combustibles: Combustible[] = [];
-    try {
-      combustibles = await getCombustibles();
-    } catch (e) {
-      console.error('[api/precios/live] combustibles read failed:', (e as Error)?.message);
-    }
-    const diesel = dieselFrom(combustibles);
-
     const oro = row ? num(row.oro) : null;
     const plata = row ? num(row.plata) : null;
     const usd_hnl = row ? num(row.usd_hnl) : null;
@@ -168,23 +155,6 @@ export async function GET(request: NextRequest) {
         oro_lps_oz,
         oro_compra_lps_gramo,
         kilates,
-        diesel: diesel
-          ? {
-              precio_hnl: diesel.precio_hnl,
-              unidad: diesel.unidad,
-              zona: diesel.zona,
-              vigente_desde: diesel.vigente_desde,
-              fuente: diesel.fuente,
-            }
-          : null,
-        combustibles: combustibles.map((c) => ({
-          combustible: c.combustible,
-          precio_hnl: c.precio_hnl,
-          unidad: c.unidad,
-          zona: c.zona,
-          vigente_desde: c.vigente_desde,
-          fuente: c.fuente,
-        })),
       },
       {
         headers: {

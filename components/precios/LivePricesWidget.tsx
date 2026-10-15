@@ -6,7 +6,7 @@
 // while the tab is hidden) and refetches when the tab regains focus. Shows the
 // international gold reference price, the gold price in Lempiras per troy ounce,
 // the MAPE.LEGAL reference price in Lempiras per gram of fine gold, the USD/LPS
-// rate, and the SEN-set Honduras diesel price. The reference-price concept
+// rate. (Diesel was removed from the public surface on 2026-10-15 — see CLAUDE.md §Widget de Precios.) The reference-price concept
 // (fórmula + requisitos + política versionada) lives at /precio — this card
 // links there instead of framing the number as a standing purchase offer
 // (encargo Precio de Referencia, 2026-07-29).
@@ -17,17 +17,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { RefreshCw } from 'lucide-react';
-import { type TipoCombustible } from '@/lib/types/combustible';
 import { VERSION_POLITICA_PRECIOS } from '@/lib/precio/calculo';
-
-interface FuelLine {
-  combustible: TipoCombustible;
-  precio_hnl: number;
-  unidad: string;
-  zona: string;
-  vigente_desde: string;
-  fuente: string;
-}
 
 // Mirrors KaratPrice in services/pricingService.ts (declared locally so this
 // client bundle never imports the server-only pricing module). The dwt fields
@@ -57,8 +47,6 @@ export interface LivePrices {
   oro_compra_lps_gramo: number | null;
   // Optional: absent on responses cached before the karat rollout.
   kilates?: KaratPriceLine[] | null;
-  diesel: Omit<FuelLine, 'combustible'> | null;
-  combustibles: FuelLine[];
 }
 
 const POLL_MS = 60_000;
@@ -77,17 +65,6 @@ function fmtNum(n: number | null | undefined, decimals = 2): string {
   return n.toLocaleString('es-HN', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
-  });
-}
-
-function fmtDate(iso: string, lang: 'es' | 'en'): string {
-  // iso is YYYY-MM-DD; pin to local midnight so the day doesn't shift by TZ.
-  const d = new Date(`${iso}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(lang === 'es' ? 'es-HN' : 'en-US', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
   });
 }
 
@@ -363,23 +340,6 @@ export default function LivePricesWidget({ lang, onData }: Props) {
               unit={t('por USD', 'per USD')}
               detail={t('Diario · 8:00 a.m.', 'Daily · 8:00 a.m.')}
             />
-            <MetricCard
-              eyebrow={t('Diésel Honduras', 'Honduras diesel')}
-              value={data?.diesel != null ? `L ${fmtNum(data.diesel.precio_hnl)}` : '—'}
-              unit={
-                data?.diesel != null
-                  ? t(`por ${data.diesel.unidad}`, `per ${data.diesel.unidad}`)
-                  : t('por galón', 'per gallon')
-              }
-              detail={
-                data?.diesel != null
-                  ? t(
-                      `SEN · semanal · vigente ${fmtDate(data.diesel.vigente_desde, 'es')} · ${data.diesel.zona}`,
-                      `SEN · weekly · from ${fmtDate(data.diesel.vigente_desde, 'en')} · ${data.diesel.zona}`,
-                    )
-                  : t('SEN · semanal', 'SEN · weekly')
-              }
-            />
           </div>
         </>
       )}
@@ -482,22 +442,6 @@ export function PriceSourcesPanel({
                   'Captura diaria a las 8:00 a.m. (Honduras).',
                   'Captured daily at 8:00 a.m. (Honduras).',
                 )}
-              />
-              <SourceRow
-                label={t('Diésel y combustibles (L/galón)', 'Diesel & fuels (L/gallon)')}
-                fuente={t(
-                  'Precio oficial de la Secretaría de Energía (SEN) de Honduras.',
-                  'Official price from Honduras’ Secretaría de Energía (SEN).',
-                )}
-                frecuencia={
-                  t(
-                    'Fijado semanalmente por decreto; entra en vigor cada lunes.',
-                    'Set weekly by decree; takes effect every Monday.',
-                  ) +
-                  (data?.diesel != null
-                    ? ` ${t('Vigente desde el', 'In effect since')} ${fmtDate(data.diesel.vigente_desde, lang)}.`
-                    : '')
-                }
                 last
               />
       </div>
@@ -510,11 +454,14 @@ function MetricCard({
   value,
   unit,
   detail,
+  warning,
 }: {
   eyebrow: string;
   value: string;
   unit: string;
   detail?: string;
+  // State signal (DESIGN.md §1.3 — amber = pending/warn), never decoration.
+  warning?: string;
 }) {
   return (
     <div
@@ -559,6 +506,24 @@ function MetricCard({
       {detail && (
         <div style={{ fontSize: 12, color: 'var(--slate)', fontFamily: 'var(--font-body)' }}>
           {detail}
+        </div>
+      )}
+      {warning && (
+        <div
+          role="note"
+          style={{
+            fontSize: 12,
+            lineHeight: 1.45,
+            fontWeight: 500,
+            color: 'var(--amber)',
+            fontFamily: 'var(--font-body)',
+            background: 'color-mix(in oklch, var(--amber) 14%, white)',
+            border: '1px solid color-mix(in oklch, var(--amber) 30%, white)',
+            borderRadius: 8,
+            padding: '6px 10px',
+          }}
+        >
+          {warning}
         </div>
       )}
     </div>

@@ -3,7 +3,7 @@
 // Minimalist price ticker — a thin sticky bar at the very top of the home page,
 // the first thing a visitor sees. Single line: MAPE.LEGAL reference price
 // (L/gram of fine gold), international gold (USD/oz), gold in Lempiras per troy
-// ounce, USD/LPS, and Honduras diesel. Horizontally scrollable on small
+// ounce and USD/LPS. Horizontally scrollable on small
 // screens. The commercialization factor is never shown here — only the computed
 // Lempiras amount; the formula lives at /precio. Data from /api/precios/live
 // (polled, hidden-guarded).
@@ -20,7 +20,6 @@ interface LivePrices {
   oro_lps_oz: number | null;
   usd_hnl: number | null;
   oro_compra_lps_gramo: number | null;
-  diesel: { precio_hnl: number; unidad: string } | null;
 }
 
 const POLL_MS = 60_000;
@@ -95,10 +94,6 @@ export default function PriceTickerBar({ lang }: Props) {
     { label: t('Oro LBMA', 'LBMA gold'), value: data?.oro_usd_oz != null ? `$${fmt(data.oro_usd_oz, 0)}/oz` : '—' },
     { label: t('Oro Lps', 'Gold Lps'), value: data?.oro_lps_oz != null ? `L ${fmt(data.oro_lps_oz, 0)}/oz` : '—' },
     { label: 'USD', value: data?.usd_hnl != null ? `L ${fmt(data.usd_hnl, 2)}` : '—' },
-    {
-      label: t('Diésel', 'Diesel'),
-      value: data?.diesel != null ? `L ${fmt(data.diesel.precio_hnl, 2)}/gal` : '—',
-    },
   ];
 
   return (

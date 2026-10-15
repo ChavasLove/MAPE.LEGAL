@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { runDailyBroadcast, type DailyBroadcastOptions } from '@/jobs/dailyBroadcast';
-import { validatePriceFreshness } from '@/services/pricingService';
+import { validatePriceFreshness, ensureDailyPriceSnapshot } from '@/services/pricingService';
 import { getBroadcastTime } from '@/services/configService';
 import { hondurasNow } from '@/services/broadcastService';
 import { getAdminClient } from '@/services/adminSupabase';
@@ -9,12 +9,19 @@ export const dynamic = 'force-dynamic';
 
 // /api/broadcast/run
 //
-// Vercel Cron sends GET every 15 minutes (vercel.json). The actual send time is
-// the DB-configured `broadcast_time` (Honduras local) — gated below so admins
-// can change the schedule without a redeploy. POST is a manual trigger that
-// always sends, bypassing the time/idempotency gate.
+// Vercel Cron sends GET once a day (vercel.json: 0 14 * * * = 8 AM Honduras on
+// the Hobby plan; */15 on Pro). The actual send time is the DB-configured
+// `broadcast_time` (Honduras local) — gated below so admins can change the
+// schedule without a redeploy. POST is a manual trigger that always sends,
+// bypassing the time/idempotency gate.
 //
-// Both verbs are protected by CRON_SECRET.
+// Both verbs are protected by CRON_SECRET. Without the secret configured in
+// production this cron answers 500 on every tick — that was the root cause of
+// the 2026-10 audit: no gold snapshot at 8 AM (the diesel reminder cron that
+// shared the secret was retired in the same audit).
+//
+// The daily gold/FX snapshot is captured here even when the bulletin is skipped
+// (ensureDailyPriceSnapshot) so the price of the day never depends on a visitor.
 
 // Fallback when no broadcast_time has been saved yet (preserves the historical
 // 8 AM Honduras behavior before the first admin save).
@@ -98,7 +105,11 @@ export async function GET(req: NextRequest) {
   const gate = await shouldFireNow();
   console.log(`[broadcast/run] cron tick — fire=${gate.fire} reason=${gate.reason}`);
   if (!gate.fire) {
-    return NextResponse.json({ skipped: true, reason: gate.reason });
+    // The bulletin is not going out, but the 8 AM price of the day still must
+    // exist — otherwise the first visitor of /precios captures it at a random hour.
+    const price_snapshot = await ensureDailyPriceSnapshot();
+    console.log(`[broadcast/run] price snapshot — ${price_snapshot.status} fecha=${price_snapshot.fecha}`);
+    return NextResponse.json({ skipped: true, reason: gate.reason, price_snapshot });
   }
   return runAndRespond({}, 'cron');
 }
