@@ -25,6 +25,11 @@ interface FuelLine {
   precio_hnl: number;
   unidad: string;
   zona: string;
+  // Optional: absent on responses cached before the staleness rollout.
+  // true = the stored value belongs to a previous SEN week (pending update).
+  desactualizado?: boolean;
+  // Monday (YYYY-MM-DD, Honduras) of the SEN week currently in force.
+  semana_sen?: string;
   vigente_desde: string;
   fuente: string;
 }
@@ -379,6 +384,18 @@ export default function LivePricesWidget({ lang, onData }: Props) {
                     )
                   : t('SEN · semanal', 'SEN · weekly')
               }
+              warning={
+                data?.diesel?.desactualizado
+                  ? t(
+                      `Pendiente de actualización: corresponde a una semana anterior. La estructura SEN vigente entró el ${
+                        data.diesel.semana_sen ? fmtDate(data.diesel.semana_sen, 'es') : 'lunes'
+                      }.`,
+                      `Pending update: this value belongs to a previous week. The SEN structure in force started ${
+                        data.diesel.semana_sen ? fmtDate(data.diesel.semana_sen, 'en') : 'Monday'
+                      }.`,
+                    )
+                  : undefined
+              }
             />
           </div>
         </>
@@ -496,6 +513,12 @@ export function PriceSourcesPanel({
                   ) +
                   (data?.diesel != null
                     ? ` ${t('Vigente desde el', 'In effect since')} ${fmtDate(data.diesel.vigente_desde, lang)}.`
+                    : '') +
+                  (data?.diesel?.desactualizado
+                    ? ` ${t(
+                        'El valor publicado corresponde a una semana anterior y está pendiente de actualización.',
+                        'The published value belongs to a previous week and is pending update.',
+                      )}`
                     : '')
                 }
                 last
@@ -510,11 +533,14 @@ function MetricCard({
   value,
   unit,
   detail,
+  warning,
 }: {
   eyebrow: string;
   value: string;
   unit: string;
   detail?: string;
+  // State signal (DESIGN.md §1.3 — amber = pending/warn), never decoration.
+  warning?: string;
 }) {
   return (
     <div
@@ -559,6 +585,24 @@ function MetricCard({
       {detail && (
         <div style={{ fontSize: 12, color: 'var(--slate)', fontFamily: 'var(--font-body)' }}>
           {detail}
+        </div>
+      )}
+      {warning && (
+        <div
+          role="note"
+          style={{
+            fontSize: 12,
+            lineHeight: 1.45,
+            fontWeight: 500,
+            color: 'var(--amber)',
+            fontFamily: 'var(--font-body)',
+            background: 'color-mix(in oklch, var(--amber) 14%, white)',
+            border: '1px solid color-mix(in oklch, var(--amber) 30%, white)',
+            borderRadius: 8,
+            padding: '6px 10px',
+          }}
+        >
+          {warning}
         </div>
       )}
     </div>

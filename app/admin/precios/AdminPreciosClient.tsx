@@ -9,6 +9,7 @@ import { useMemo, useState } from 'react';
 import {
   COMBUSTIBLE_LABELS,
   TIPOS_COMBUSTIBLE,
+  esVigenciaDesactualizada,
   type Combustible,
   type TipoCombustible,
 } from '@/lib/types/combustible';
@@ -30,11 +31,38 @@ interface RowState {
   fuente: string;
   activo: boolean;
   exists: boolean;
+  // Last PERSISTED vigente_desde (null if the row doesn't exist yet). The stale
+  // pill compares against this, not the input, so editing the date field
+  // doesn't make the warning vanish before the save actually happens.
+  saved_vigente_desde: string | null;
 }
 
 interface Props {
   initialCombustibles: Combustible[];
   metals: MetalsSnapshot | null;
+  // Monday (YYYY-MM-DD, Honduras) of the SEN week in force — computed server-side
+  // with the same helper the public API and the cron use.
+  lunesSemana: string;
+}
+
+const PILL_AMBER: React.CSSProperties = {
+  marginLeft: 10,
+  fontFamily: 'var(--font-mono)',
+  fontSize: 10,
+  fontWeight: 600,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  color: 'var(--amber)',
+  background: 'color-mix(in oklch, var(--amber) 14%, white)',
+  border: '1px solid color-mix(in oklch, var(--amber) 30%, white)',
+  padding: '2px 8px',
+  borderRadius: 20,
+};
+
+function fmtDateEs(iso: string): string {
+  const d = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('es-HN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 const CARD: React.CSSProperties = {
@@ -84,6 +112,7 @@ function buildRows(existing: Combustible[]): Record<TipoCombustible, RowState> {
       fuente: row?.fuente ?? 'Secretaría de Energía (SEN)',
       activo: row?.activo ?? true,
       exists: Boolean(row),
+      saved_vigente_desde: row?.vigente_desde ?? null,
     };
   }
   return out;
@@ -94,7 +123,7 @@ function fmt(n: number | null, d = 2): string {
   return n.toLocaleString('es-HN', { minimumFractionDigits: d, maximumFractionDigits: d });
 }
 
-export default function AdminPreciosClient({ initialCombustibles, metals }: Props) {
+export default function AdminPreciosClient({ initialCombustibles, metals, lunesSemana }: Props) {
   const [rows, setRows] = useState<Record<TipoCombustible, RowState>>(() =>
     buildRows(initialCombustibles),
   );
@@ -134,7 +163,7 @@ export default function AdminPreciosClient({ initialCombustibles, metals }: Prop
       });
       const json = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(json.error ?? `Error ${res.status}`);
-      setField(tipo, { exists: true });
+      setField(tipo, { exists: true, saved_vigente_desde: row.vigente_desde });
       setStatus({ tipo, ok: true, msg: 'Guardado.' });
     } catch (e) {
       setStatus({ tipo, ok: false, msg: (e as Error).message || 'No se pudo guardar.' });
@@ -142,6 +171,12 @@ export default function AdminPreciosClient({ initialCombustibles, metals }: Prop
       setBusy(null);
     }
   };
+
+  // Diesel is the value miners look at: surface its staleness at the top of the
+  // page, not only inside its card.
+  const dieselRow = rows.diesel;
+  const dieselVencido =
+    dieselRow.exists && esVigenciaDesactualizada(dieselRow.saved_vigente_desde, lunesSemana);
 
   const metalRows = useMemo(() => {
     const oroLpsOz =
@@ -171,8 +206,29 @@ export default function AdminPreciosClient({ initialCombustibles, metals }: Prop
       <p style={{ color: 'var(--t2)', fontSize: 15, lineHeight: 1.6, marginBottom: 24, maxWidth: 640 }}>
         El diésel y los demás combustibles se administran aquí (precio oficial de la SEN, fijado
         semanalmente). Actualiza el precio cada lunes cuando entra en vigor la nueva estructura. Los
-        metales (oro, tipo de cambio) son feeds en vivo y no se editan.
+        metales (oro, tipo de cambio) se capturan automáticamente una vez al día y no se editan.
       </p>
+
+      {dieselVencido && (
+        <div
+          role="alert"
+          style={{
+            ...CARD,
+            marginBottom: 28,
+            borderColor: 'color-mix(in oklch, var(--amber) 30%, white)',
+            background: 'color-mix(in oklch, var(--amber) 14%, white)',
+          }}
+        >
+          <div style={{ ...LABEL, color: 'var(--amber)' }}>Diésel pendiente de actualización</div>
+          <p style={{ margin: 0, color: 'var(--ink)', fontSize: 14, lineHeight: 1.6 }}>
+            El precio del diésel publicado tiene vigencia del{' '}
+            <strong>{fmtDateEs(dieselRow.saved_vigente_desde ?? '')}</strong>, pero la estructura
+            SEN de esta semana entró en vigor el lunes <strong>{fmtDateEs(lunesSemana)}</strong>.
+            Mientras no se actualice, la página pública lo muestra marcado como pendiente.
+            Ingresa el precio nuevo, usa la vigencia del lunes y guarda.
+          </p>
+        </div>
+      )}
 
       {/* Live metals — read only */}
       <div style={{ ...CARD, marginBottom: 28 }}>
@@ -219,6 +275,7 @@ export default function AdminPreciosClient({ initialCombustibles, metals }: Prop
           const row = rows[tipo];
           const isBusy = busy === tipo;
           const st = status?.tipo === tipo ? status : null;
+          const vencido = row.exists && esVigenciaDesactualizada(row.saved_vigente_desde, lunesSemana);
           return (
             <div key={tipo} style={CARD}>
               <div
@@ -233,23 +290,10 @@ export default function AdminPreciosClient({ initialCombustibles, metals }: Prop
               >
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600, color: 'var(--ink)' }}>
                   {COMBUSTIBLE_LABELS[tipo]}
-                  {!row.exists && (
-                    <span
-                      style={{
-                        marginLeft: 10,
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: 10,
-                        fontWeight: 600,
-                        letterSpacing: '0.08em',
-                        textTransform: 'uppercase',
-                        color: 'var(--amber)',
-                        background: 'color-mix(in oklch, var(--amber) 14%, white)',
-                        border: '1px solid color-mix(in oklch, var(--amber) 30%, white)',
-                        padding: '2px 8px',
-                        borderRadius: 20,
-                      }}
-                    >
-                      Sin registrar
+                  {!row.exists && <span style={PILL_AMBER}>Sin registrar</span>}
+                  {vencido && (
+                    <span style={PILL_AMBER}>
+                      Vencido · semana SEN del {fmtDateEs(lunesSemana)}
                     </span>
                   )}
                 </div>
@@ -301,6 +345,25 @@ export default function AdminPreciosClient({ initialCombustibles, metals }: Prop
                     onChange={(e) => setField(tipo, { vigente_desde: e.target.value })}
                     style={INPUT}
                   />
+                  {row.vigente_desde !== lunesSemana && (
+                    <button
+                      type="button"
+                      onClick={() => setField(tipo, { vigente_desde: lunesSemana })}
+                      style={{
+                        marginTop: 6,
+                        padding: 0,
+                        border: 'none',
+                        background: 'transparent',
+                        color: 'var(--moss)',
+                        fontFamily: 'var(--font-body)',
+                        fontSize: 12,
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                      }}
+                    >
+                      Usar lunes de esta semana ({fmtDateEs(lunesSemana)})
+                    </button>
+                  )}
                 </div>
                 <div>
                   <label style={LABEL} htmlFor={`zona-${tipo}`}>Zona</label>

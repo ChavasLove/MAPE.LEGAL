@@ -355,6 +355,58 @@ export async function fetchAndStorePrices(): Promise<{ id: string; precios: Prec
   return { id, precios };
 }
 
+export type DailySnapshotStatus = 'exists' | 'captured' | 'timeout' | 'failed';
+
+/**
+ * Garantiza que exista la fila de `precios_diarios` de la ventana 08:00 en curso
+ * (`effectivePriceDate()`). Si ya existe con oro > 0 no toca ningún upstream.
+ * Si falta, hace UNA captura acotada por `timeoutMs` y la persiste.
+ *
+ * Por qué existe (auditoría de precios 2026-10): la captura de las 8 AM vivía
+ * SOLO dentro de `runDailyBroadcast()`. Cualquier tick del cron que no enviara
+ * el boletín (gate `before_scheduled_time`, idempotencia, 500 por config) dejaba
+ * el día SIN snapshot, y el primer visitante de /precios lo capturaba a la hora
+ * que fuera (filas con `fetched_at` 09:11 y huecos en /api/precios/historial).
+ * Los cron la llaman como red de seguridad independiente del boletín.
+ */
+export async function ensureDailyPriceSnapshot(
+  timeoutMs = 8000,
+): Promise<{ status: DailySnapshotStatus; fecha: string }> {
+  const fecha = effectivePriceDate();
+  try {
+    const admin = getAdminClient();
+    const { data, error } = await admin
+      .from('precios_diarios')
+      .select('oro')
+      .eq('fecha', fecha)
+      .maybeSingle();
+    if (error) {
+      console.error('[pricingService] ensureDailyPriceSnapshot read failed:', error.message);
+    } else if (data && Number(data.oro) > 0) {
+      return { status: 'exists', fecha };
+    }
+
+    const live = await Promise.race<PreciosDiarios | null>([
+      fetchAllPrices(),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs)),
+    ]);
+    if (!live) {
+      console.error(`[pricingService] ensureDailyPriceSnapshot timed out after ${timeoutMs} ms`);
+      return { status: 'timeout', fecha };
+    }
+    if (live.oro == null || live.oro <= 0) {
+      console.error('[pricingService] ensureDailyPriceSnapshot: upstream returned no gold price');
+      return { status: 'failed', fecha };
+    }
+    await storePrices(live, fecha);
+    console.log(`[pricingService] ensureDailyPriceSnapshot captured fecha=${fecha} fuente=${live.fuente}`);
+    return { status: 'captured', fecha };
+  } catch (e) {
+    console.error('[pricingService] ensureDailyPriceSnapshot failed:', (e as Error)?.message);
+    return { status: 'failed', fecha };
+  }
+}
+
 export async function getLatestPrices(): Promise<(PreciosDiarios & { fecha: string; id: string }) | null> {
   const admin = getAdminClient();
   const { data } = await admin

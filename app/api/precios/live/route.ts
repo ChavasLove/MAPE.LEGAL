@@ -9,7 +9,11 @@ import {
   MAPE_GOLD_BUY_FACTOR,
 } from '@/services/pricingService';
 import { getCombustibles } from '@/services/combustiblesService';
-import { type Combustible } from '@/lib/types/combustible';
+import {
+  type Combustible,
+  lunesSemanaSenHN,
+  esVigenciaDesactualizada,
+} from '@/lib/types/combustible';
 import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit';
 
 // Public, unauthenticated snapshot for the live-prices widget (/precios) and any
@@ -55,6 +59,22 @@ function num(v: unknown): number | null {
 
 function dieselFrom(combustibles: Combustible[]): Combustible | null {
   return combustibles.find((c) => c.combustible === 'diesel') ?? null;
+}
+
+// Public shape of a fuel row. `desactualizado` = the stored value belongs to a
+// previous SEN week (vigente_desde < Monday of the current Honduras week) — the
+// widget shows it as pending update instead of presenting a stale number as
+// current. `semana_sen` is that Monday, so the UI can say which week is in force.
+function fuelOut(c: Combustible, semanaSen: string) {
+  return {
+    precio_hnl: c.precio_hnl,
+    unidad: c.unidad,
+    zona: c.zona,
+    vigente_desde: c.vigente_desde,
+    fuente: c.fuente,
+    desactualizado: esVigenciaDesactualizada(c.vigente_desde, semanaSen),
+    semana_sen: semanaSen,
+  };
 }
 
 export async function GET(request: NextRequest) {
@@ -126,6 +146,7 @@ export async function GET(request: NextRequest) {
       console.error('[api/precios/live] combustibles read failed:', (e as Error)?.message);
     }
     const diesel = dieselFrom(combustibles);
+    const semanaSen = lunesSemanaSenHN();
 
     const oro = row ? num(row.oro) : null;
     const plata = row ? num(row.plata) : null;
@@ -168,22 +189,10 @@ export async function GET(request: NextRequest) {
         oro_lps_oz,
         oro_compra_lps_gramo,
         kilates,
-        diesel: diesel
-          ? {
-              precio_hnl: diesel.precio_hnl,
-              unidad: diesel.unidad,
-              zona: diesel.zona,
-              vigente_desde: diesel.vigente_desde,
-              fuente: diesel.fuente,
-            }
-          : null,
+        diesel: diesel ? fuelOut(diesel, semanaSen) : null,
         combustibles: combustibles.map((c) => ({
           combustible: c.combustible,
-          precio_hnl: c.precio_hnl,
-          unidad: c.unidad,
-          zona: c.zona,
-          vigente_desde: c.vigente_desde,
-          fuente: c.fuente,
+          ...fuelOut(c, semanaSen),
         })),
       },
       {

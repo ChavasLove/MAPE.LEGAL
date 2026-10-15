@@ -1,6 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getAdminClient } from '@/services/adminSupabase';
 import { emailDieselDesactualizado, type DieselStaleMotivo } from '@/services/emailService';
+import { ensureDailyPriceSnapshot } from '@/services/pricingService';
+import { lunesSemanaSenHN, esVigenciaDesactualizada } from '@/lib/types/combustible';
+import { getServerAuth } from '@/lib/serverAuth';
 
 // Daily freshness guard for the SEN diesel price (vercel.json cron, 14:30 UTC =
 // 8:30 AM Honduras, right after the 8 AM gold capture).
@@ -18,38 +21,33 @@ import { emailDieselDesactualizado, type DieselStaleMotivo } from '@/services/em
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Same auth contract as /api/broadcast/run: Vercel Cron injects
-// Authorization: Bearer <CRON_SECRET> on the GET.
-function assertCron(req: NextRequest): NextResponse | null {
+type Caller = 'cron' | 'admin';
+
+// Two ways in:
+//  1. Vercel Cron — Authorization: Bearer <CRON_SECRET> (same contract as
+//     /api/broadcast/run).
+//  2. A logged-in admin opening this URL in the browser — lets the operator
+//     verify the guard end-to-end (check + reminder email) without knowing the
+//     secret. Added after the 2026-10 audit: the guard had been dead for 11 weeks
+//     (CRON_SECRET missing in production → 500 on every tick) and nobody could
+//     tell from the outside. A failing cron must be diagnosable from /admin.
+//
+// Without CRON_SECRET in production the cron path answers 500 (never open), but
+// the admin-session path still works so the misconfiguration is visible.
+async function authorize(req: NextRequest): Promise<Caller | NextResponse> {
   const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const auth = req.headers.get('authorization');
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-  } else if (process.env.NODE_ENV === 'production') {
+  const auth = req.headers.get('authorization');
+  if (secret && auth === `Bearer ${secret}`) return 'cron';
+
+  const session = await getServerAuth();
+  if (session?.role === 'admin') return 'admin';
+
+  if (!secret && process.env.NODE_ENV === 'production') {
     console.error('[/api/cron/diesel-freshness] CRON_SECRET not configured in production');
     return NextResponse.json({ error: 'CRON_SECRET not configured' }, { status: 500 });
   }
-  return null;
-}
-
-/**
- * Monday (YYYY-MM-DD) of the current week in Honduras time — the day this
- * week's SEN structure took effect. Date-only math on a UTC anchor, same
- * pattern as pricingService.effectivePriceDate().
- */
-function mondayOfCurrentWeekHN(now: Date = new Date()): string {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Tegucigalpa',
-    year: 'numeric', month: '2-digit', day: '2-digit',
-  }).formatToParts(now);
-  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? '0');
-  const anchor = new Date(Date.UTC(get('year'), get('month') - 1, get('day')));
-  // getUTCDay: 0=Sun … 6=Sat → days elapsed since Monday.
-  const sinceMonday = (anchor.getUTCDay() + 6) % 7;
-  anchor.setUTCDate(anchor.getUTCDate() - sinceMonday);
-  return anchor.toISOString().slice(0, 10);
+  if (!secret) return 'cron'; // dev without secret stays open, as before
+  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 }
 
 interface DieselRow {
@@ -58,11 +56,17 @@ interface DieselRow {
 }
 
 export async function GET(req: NextRequest) {
-  const denied = assertCron(req);
-  if (denied) return denied;
+  const caller = await authorize(req);
+  if (caller instanceof NextResponse) return caller;
+  const cronSecretConfigured = Boolean(process.env.CRON_SECRET);
+
+  // Safety net for the gold/FX snapshot of the day: if the 8 AM bulletin tick
+  // failed or was skipped, capture it now (08:30) instead of leaving it to the
+  // first visitor. Non-fatal and independent from the diesel check.
+  const price_snapshot = await ensureDailyPriceSnapshot();
 
   try {
-    const lunesSemana = mondayOfCurrentWeekHN();
+    const lunesSemana = lunesSemanaSenHN();
 
     // Service-role read (not the anon client): the check must also see a row
     // that an admin accidentally hid (activo=false) — anon RLS filters those.
@@ -92,7 +96,7 @@ export async function GET(req: NextRequest) {
     let motivo: DieselStaleMotivo | null = null;
     if (!row) motivo = 'sin_registro';
     else if (row.activo === false) motivo = 'oculto';
-    else if (!row.vigente_desde || row.vigente_desde < lunesSemana) motivo = 'desactualizado';
+    else if (esVigenciaDesactualizada(row.vigente_desde, lunesSemana)) motivo = 'desactualizado';
 
     if (motivo == null) {
       return NextResponse.json({
@@ -100,6 +104,9 @@ export async function GET(req: NextRequest) {
         fresh: true,
         vigente_desde: row?.vigente_desde ?? null,
         lunes_semana: lunesSemana,
+        caller,
+        cron_secret_configured: cronSecretConfigured,
+        price_snapshot,
       });
     }
 
@@ -124,6 +131,9 @@ export async function GET(req: NextRequest) {
       vigente_desde: row?.vigente_desde ?? null,
       lunes_semana: lunesSemana,
       emailed,
+      caller,
+      cron_secret_configured: cronSecretConfigured,
+      price_snapshot,
     });
   } catch (err) {
     console.error('[diesel-freshness] GET error:', err);

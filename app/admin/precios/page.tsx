@@ -1,6 +1,6 @@
 import { listCombustiblesAdmin } from '@/services/combustiblesService';
 import { getLatestPrices } from '@/services/pricingService';
-import { type Combustible } from '@/lib/types/combustible';
+import { type Combustible, lunesSemanaSenHN } from '@/lib/types/combustible';
 import AdminPreciosClient, { type MetalsSnapshot } from './AdminPreciosClient';
 
 // Auth enforced by app/admin/layout.tsx (getServerAuth + role === 'admin').
@@ -33,5 +33,11 @@ export default async function AdminPreciosPage() {
     console.error('[admin/precios] non-fatal — latest metals unavailable:', err);
   }
 
-  return <AdminPreciosClient initialCombustibles={combustibles} metals={metals} />;
+  return (
+    <AdminPreciosClient
+      initialCombustibles={combustibles}
+      metals={metals}
+      lunesSemana={lunesSemanaSenHN()}
+    />
+  );
 }
