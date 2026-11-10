@@ -11,7 +11,7 @@ import { NextResponse } from 'next/server';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { CHT_SYSTEM_PROMPT } from '@/lib/maria/systemPrompt';
+import { MARIA_SYSTEM_PROMPT } from '@/lib/maria/systemPrompt';
 import { isInstitutionalMessage, INSTITUTIONAL_CONTEXT_BLOCK } from '@/lib/maria/institutional';
 import { embedQuery, toVectorText } from '@/lib/maria/embeddings';
 import {
@@ -541,7 +541,7 @@ export async function POST(request: Request) {
     ? `\n\nCONTEXTO DEL SISTEMA (citas literales de la base de conocimiento legal y regulatoria de MAPE LEGAL — Ley General del Ambiente Decreto 104-93, Decreto 181-2007 que adiciona Arts. 28-A y 29-C, Decreto 47-2010, Requisitos SLAS-2 de MiAmbiente, Reglamento de Minería Acuerdo 042-2013, Manual Operativo MAPE LEGAL):\n${ragBlock}\n\nINSTRUCCIONES PARA USAR ESTE BLOQUE:\n- Si la respuesta a la pregunta del visitante está aquí, CITALA con la referencia específica (artículo, decreto, requisito). Resumí el texto en hondureño claro pero conservando los términos legales.\n- NO derives a gerencia@mape.legal cuando este bloque responde la pregunta — comunicar la norma es tu trabajo, no interpretación jurídica.\n- Solo derivá si la pregunta requiere análisis jurídico específico que este bloque no cubre (por ejemplo, estrategia de litigio, jurisprudencia, casos novedosos sin precedente en el bloque).`
     : '';
   const dynamicPrompt =
-    CHT_SYSTEM_PROMPT + WEB_CHANNEL_CONTEXT + priceContext + concesionContext + ragContext +
+    MARIA_SYSTEM_PROMPT + WEB_CHANNEL_CONTEXT + priceContext + concesionContext + ragContext +
     (esInstitucional ? INSTITUTIONAL_CONTEXT_BLOCK : '');
 
   try {

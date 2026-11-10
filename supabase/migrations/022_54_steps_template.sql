@@ -15,7 +15,7 @@ values
 -- ─── FASE 0 · ONBOARDING (Pasos 1–6) ────────────────────────────
 ('formalizacion', 0, 1,
  'Firma contrato de servicios CHT',
- 'Firma del contrato de servicios entre el cliente y CHT. Activa el Hito 1 (30%).',
+ 'Firma del contrato de servicios entre el cliente y CHT. Activa el Hito 1 (40%).',
  'admin', 3, true, 'Contrato firmado por ambas partes — original escaneado'),
 
 ('formalizacion', 0, 2,
@@ -120,10 +120,19 @@ values
  'Inspección del sitio minero por técnico ambiental. Fotos georreferenciadas y muestras.',
  'tecnico_ambiental', 7, true, 'Informe de campo ambiental + mínimo 10 fotos GPS'),
 
+-- Paso 22: texto corregido editorialmente el 10-nov-2026 (Modelo B / vigencia
+-- SCO-0090-2014). La consulta previa, libre e informada es un DERECHO VIGENTE
+-- de pueblos indígenas y tribales (Convenio 169 OIT, bloque de
+-- constitucionalidad) y un requisito CUANDO PROCEDE — no se presume cumplido ni
+-- se describe como trámite ya realizado. Esta migración YA ESTÁ APLICADA en
+-- producción: el cambio de texto aquí no la re-ejecuta. En producción debe
+-- actualizarse con un UPDATE aparte sobre plantillas_tareas (proceso =
+-- 'formalizacion', fase_numero = 2, numero_paso = 22) — ver el reporte de la
+-- sesión 2026-11-10; no crear una migración nueva para esto.
 ('formalizacion', 2, 22,
- 'Documentación consulta ILO 169',
- 'Preparación y registro de la constancia de la Consulta Previa Libre e Informada (ILO 169).',
- 'abogado', 14, true, 'Constancia ILO 169 firmada por comunidad y autoridades'),
+ 'Documentación de consulta previa (Convenio 169 OIT), cuando proceda',
+ 'Verificación de si el área involucra pueblos indígenas o tribales y, cuando proceda, registro de la evidencia del proceso de consulta previa, libre e informada conforme al Convenio 169 de la OIT — derecho vigente (SCO-0090-2014); no se presume cumplido. Si no procede, se documenta el fundamento.',
+ 'abogado', 14, true, 'Constancia del proceso de consulta previa, cuando proceda (acta firmada por la comunidad y las autoridades competentes), o nota fundamentada de no procedencia'),
 
 ('formalizacion', 2, 23,
  'Elaboración Estudio de Impacto Ambiental (EIA)',
@@ -267,20 +276,30 @@ values
  'Monitoreo del estado de aprobación del registro.',
  'abogado', 21, true, 'Estado de trámite documentado'),
 
+-- Pasos 51 y 53: texto corregido editorialmente el 10-nov-2026 (Modelo B).
+-- El Registro de Comercializadores de INHGEOMIN es del COMPRADOR de mineral;
+-- el titular vende su propia producción con su derecho minero vigente y la
+-- Certificación de Procedencia / Certificado de Origen. El documento oficial lo
+-- emite el TITULAR y lo autentica la Autoridad Minera o Municipal (Art. 35
+-- Regl. Especial MAPE); la plataforma lo registra y digitaliza y lleva un
+-- sello complementario voluntario — no lo "emite" ni lo sella CHT. Los
+-- porcentajes de hitos de los pasos 1 y 52 se alinearon al canónico 40/40/20.
+-- Migración YA APLICADA en producción: estos textos requieren UPDATEs aparte
+-- sobre plantillas_tareas (ver reporte de la sesión 2026-11-10).
 ('formalizacion', 4, 51,
- 'Recepción certificado de comercializador autorizado',
- 'Recepción del certificado que habilita al cliente para comercializar oro.',
- 'abogado', 30, true, 'Certificado de comercializador original'),
+ 'Registro de Comercializador (solo si el cliente comprará mineral de terceros)',
+ 'Paso opcional: aplica únicamente cuando el cliente vaya a comprar mineral de terceros. El titular que vende su propia producción no lo necesita.',
+ 'abogado', 30, false, 'Constancia de inscripción en el Registro de Comercializadores de INHGEOMIN, cuando proceda'),
 
 ('formalizacion', 4, 52,
  'Cierre del expediente — informe final y Hito 3',
- 'Cierre formal del proceso de formalización. Activa el Hito 3 (30%). Entrega de todos los originales.',
+ 'Cierre formal del proceso de formalización. Activa el Hito 3 (20%). Entrega de todos los originales.',
  'admin', 5, true, 'Informe final + acta de entrega de originales firmada por cliente'),
 
 ('formalizacion', 4, 53,
- 'Emisión Certificate of Origin (CoO)',
- 'Generación automática del Certificate of Origin con toda la evidencia compilada.',
- 'admin', 3, true, 'Certificate of Origin firmado y sellado CHT'),
+ 'Registro y digitalización del Certificado de Origen del primer lote',
+ 'El titular emite el Certificado de Origen / Certificación de Procedencia y la Autoridad Minera o Municipal lo autentica (Art. 35 Regl. Especial MAPE). La plataforma MAPE.LEGAL registra y digitaliza el documento y asigna el sello complementario (folio, QR, hash). No lo emite.',
+ 'admin', 3, true, 'Escaneo del documento oficial autenticado + registro del sello complementario con copia al titular'),
 
 ('formalizacion', 4, 54,
  'Archivado digital del expediente',
