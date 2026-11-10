@@ -29,6 +29,11 @@ import { validateAccessToken } from '@/lib/sessionValidator';
 //    solo cubre prefijos protegidos, así que todo lo no listado abajo queda
 //    público por defecto; isPublic() cubre además las rutas públicas que un
 //    prefijo protegido del matcher sí alcanza.
+//  - /api/debug/* exige sesión desde la revisión de seguridad del 10-nov-2026
+//    (el handler de /api/debug/prices además exige requireRole('admin')).
+//    /api/debug/auth-config se retiró del árbol: un diagnóstico de "login
+//    roto" pierde su valor si exige sesión, y público exponía la forma del
+//    entorno — no volver a añadirlo.
 
 // Rutas públicas que el matcher puede alcanzar — nunca se gatean.
 function isPublic(pathname: string): boolean {
@@ -57,7 +62,8 @@ function isProtectedApi(pathname: string): boolean {
     pathname.startsWith('/api/broadcast/config') ||
     pathname.startsWith('/api/broadcast/prices') ||
     pathname === '/api/broadcast' ||
-    pathname.startsWith('/api/prices')
+    pathname.startsWith('/api/prices') ||
+    pathname.startsWith('/api/debug/')          // diagnósticos (admin-only en el handler)
   );
 }
 
@@ -110,5 +116,6 @@ export const config = {
     '/api/broadcast',
     '/api/broadcast/:path*',
     '/api/prices',
+    '/api/debug/:path*',
   ],
 };
