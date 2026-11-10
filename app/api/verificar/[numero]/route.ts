@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit'
+import { pickCertificadoPublico } from '@/lib/certificados/sello'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,6 +39,15 @@ export async function GET(
 
   const supabase = createClient(url, anonKey, { auth: { persistSession: false } })
 
+  // select('*') sobre la vista: así la ruta sigue funcionando tanto antes como
+  // después de aplicar la 042 (que agrega numero_sello y copia_minero_estado al
+  // final de la vista). La proyección pública se hace en código con la lista
+  // cerrada CERTIFICADO_PUBLICO_FIELDS — un campo nuevo en la vista NO se filtra
+  // al JSON hasta que alguien lo agregue ahí a propósito. Las claves ausentes
+  // (migración sin aplicar) simplemente no aparecen.
+  //
+  // Lo que se verifica aquí es el SELLO complementario MAPE.LEGAL, no el
+  // documento oficial (que emite el titular y autentica la autoridad).
   const { data, error } = await supabase
     .from('certificados_origen_publicos')
     .select('*')
@@ -52,7 +62,7 @@ export async function GET(
   }
 
   return NextResponse.json(
-    { found: true, certificado: data },
+    { found: true, certificado: pickCertificadoPublico(data as Record<string, unknown>) },
     {
       status: 200,
       headers: {

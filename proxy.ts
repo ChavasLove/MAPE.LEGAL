@@ -55,6 +55,7 @@ function isProtectedApi(pathname: string): boolean {
   return (
     pathname.startsWith('/api/admin/') ||
     pathname.startsWith('/api/expedientes') ||
+    pathname.startsWith('/api/certificados') || // registro del certificado oficial + sello (dashboard)
     pathname.startsWith('/api/documentos') ||
     pathname.startsWith('/api/mensajes') ||
     pathname.startsWith('/api/email/') ||
@@ -109,6 +110,7 @@ export const config = {
     '/expedientes/:path*',
     '/api/admin/:path*',
     '/api/expedientes/:path*',
+    '/api/certificados/:path*',
     '/api/documentos/:path*',
     '/api/mensajes/:path*',
     '/api/email/:path*',

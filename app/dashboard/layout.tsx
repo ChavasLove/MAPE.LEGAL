@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Image from 'next/image';
-import { LayoutDashboard, FolderOpen, MessageSquare, Users, Mountain, Banknote, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, MessageSquare, Users, Mountain, FileCheck2, Banknote, Settings, LogOut } from 'lucide-react';
 import { getServerAuth, DASHBOARD_ROLES } from '@/lib/serverAuth';
 import SidebarNav from '@/components/dashboard/SidebarNav';
 
@@ -21,6 +21,7 @@ const navItems = [
   { href: '/dashboard/mensajes',     label: 'Mensajes WA',  icon: <MessageSquare   {...ICON} />              },
   { href: '/dashboard/clientes',     label: 'Clientes WA',  icon: <Users           {...ICON} />              },
   { href: '/dashboard/minas',        label: 'Minas',        icon: <Mountain        {...ICON} />              },
+  { href: '/dashboard/certificados', label: 'Certificados', icon: <FileCheck2      {...ICON} />              },
 ];
 
 const adminItems = [
