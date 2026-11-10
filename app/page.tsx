@@ -14,12 +14,15 @@ import {
   CERTIFICADO_ORIGEN_NOTA,
   CONTACTO,
   DOMICILIO_LINES,
+  RAZON_SOCIAL,
+  RAZON_SOCIAL_SERVICIOS_LEGALES,
+  ROL_CHT,
 } from '@/lib/content/copy-legal'
 
 export const metadata: Metadata = {
   title: 'Legalización de permisos de pequeña minería de oro en Honduras',
   description:
-    'Acompañamiento legal, ambiental y técnico para obtener el permiso de pequeña minería ante INHGEOMIN: expediente, licencia ambiental, trazabilidad y certificado de origen del oro en Honduras.',
+    'Acompañamiento legal, ambiental y técnico para obtener el permiso de pequeña minería ante INHGEOMIN: expediente, licencia ambiental y trazabilidad del oro en Honduras.',
   alternates: { canonical: '/' },
   openGraph: {
     // El merge de metadata de Next es shallow por segmento: sin `images`/
@@ -84,30 +87,36 @@ const CLASIFICACION = [
   },
 ] as const
 
-/* Qué hace CHT — cuatro bloques. */
+/* Qué hace cada quién — cuatro bloques, dos entidades (Modelo B, 10-nov-2026):
+   CHT presta los servicios legales y mineros; Inversiones Zekaii es dueña de la
+   plataforma, lleva el sello complementario y compra el oro. */
 const SERVICIOS = [
   {
+    entidad: RAZON_SOCIAL_SERVICIOS_LEGALES,
     titulo: 'Expediente ante INHGEOMIN',
     cuerpo:
       'Preparación y gestión del expediente de permiso de pequeña minería conforme al Art. 6 del Reglamento Especial MAPE, con representación legal colegiada y seguimiento hasta la resolución.',
     href: '/pequena-mineria#requisitos',
   },
   {
+    entidad: RAZON_SOCIAL_SERVICIOS_LEGALES,
     titulo: 'Licenciamiento ambiental',
     cuerpo:
       'Contratación del especialista ambiental, gestión de la licencia ambiental cuando procede y plan de cierre conforme al Manual de Buenas Prácticas.',
     href: '/pequena-mineria#requisitos',
   },
   {
-    titulo: 'Trazabilidad y Certificado de Origen',
+    entidad: `Plataforma MAPE.LEGAL · ${RAZON_SOCIAL}`,
+    titulo: 'Trazabilidad y sello complementario',
     cuerpo:
-      'Expediente digital por unidad minera, evidencia georreferenciada y respaldo documental para la emisión del Certificado de Origen, verificable públicamente en este sitio.',
+      'Expediente digital por unidad minera, evidencia georreferenciada y registro voluntario de trazabilidad, verificable públicamente en este sitio. El Certificado de Origen oficial lo emite el titular del derecho minero y lo autentica la autoridad.',
     href: '/mercados',
   },
   {
+    entidad: RAZON_SOCIAL,
     titulo: 'Comercialización formal',
     cuerpo:
-      'Compra de oro bajo condiciones publicadas: un solo precio de referencia, pago bancarizado en lempiras y registro documental por transacción.',
+      'Inversiones Zekaii compra oro bajo condiciones publicadas: precio de referencia comercial, pago en lempiras vía cooperativa financiera aliada y registro documental por lote.',
     href: '/comercializacion',
   },
 ] as const
@@ -216,21 +225,23 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* QUÉ HACE CHT */}
+      {/* QUÉ HACE CADA QUIÉN */}
       <section
         id="servicios"
         className="mape-section"
         style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)', scrollMarginTop: 116 }}
       >
-        <div className="section-label">Qué hace CHT</div>
+        <div className="section-label">Qué hace cada quién</div>
         <h2 className="section-title">Del expediente a la trazabilidad del oro.</h2>
         <p className="section-sub" style={{ maxWidth: 680 }}>
-          Corporación Hondureña Tenka, S.A. acompaña al operador de pequeña minería en
-          cuatro frentes que terminan en un mismo lugar: oro con origen documentado.
+          Dos entidades, roles distintos. {RAZON_SOCIAL_SERVICIOS_LEGALES} {ROL_CHT}{' '}
+          {RAZON_SOCIAL} es dueña de la plataforma MAPE.LEGAL, opera la base de datos,
+          lleva el sello complementario de trazabilidad y compra el oro.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6 mt-12">
           {SERVICIOS.map((bloque) => (
             <div key={bloque.titulo} style={CARD_STYLE}>
+              <div style={EYEBROW_STYLE}>{bloque.entidad}</div>
               <h3
                 style={{
                   fontFamily: 'var(--font-display)',

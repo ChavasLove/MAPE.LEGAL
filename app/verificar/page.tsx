@@ -1,10 +1,23 @@
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import TopoBand from '@/components/decor/TopoBand'
-import { VERIFICAR_CARGA_INICIAL, VERIFICAR_FRESCURA_NOTA } from '@/lib/content/copy-legal'
+import {
+  VERIFICAR_ABIERTO,
+  VERIFICAR_CARGA_INICIAL,
+  VERIFICAR_FRESCURA_NOTA,
+  VERIFICAR_INTRO,
+  VERIFICAR_TITULO,
+} from '@/lib/content/copy-legal'
 import VerificarForm from './VerificarForm'
 
 export const dynamic = 'force-dynamic'
+
+export const metadata = {
+  title: VERIFICAR_TITULO,
+  description:
+    'Compruebe si un número de registro del sello complementario de trazabilidad MAPE.LEGAL consta en la base operada por Inversiones Zekaii, S. de R.L. La consulta no sustituye el Certificado de Origen oficial.',
+  alternates: { canonical: '/verificar' },
+}
 
 // Conteo público de certificados: sostiene el estado inicial honesto del
 // registro (T2.4 — mientras no existan certificados se declara la fase de
@@ -66,7 +79,7 @@ export default async function VerificarEntryPage() {
               marginTop: 8,
             }}
           >
-            Verificación de Certificado de Origen
+            {VERIFICAR_TITULO}
           </h1>
           <p
             style={{
@@ -76,9 +89,17 @@ export default async function VerificarEntryPage() {
               marginTop: 16,
             }}
           >
-            Introduzca el número de certificado para validar su autenticidad.
-            La consulta es pública y devuelve únicamente información no
-            personal del registro.
+            {VERIFICAR_INTRO}
+          </p>
+          <p
+            style={{
+              fontSize: 14,
+              color: 'var(--t2)',
+              lineHeight: 1.7,
+              marginTop: 12,
+            }}
+          >
+            {VERIFICAR_ABIERTO}
           </p>
 
           {total === 0 && (
@@ -109,9 +130,9 @@ export default async function VerificarEntryPage() {
               lineHeight: 1.6,
             }}
           >
-            Esta verificación consulta el registro público de certificados
-            emitidos por MAPE LEGAL. Los datos personales del productor y los montos
-            de la transacción no son públicos.
+            Esta consulta se limita al registro público del sello complementario
+            MAPE.LEGAL. Los datos personales del productor y los montos de la
+            transacción no son públicos.
           </p>
           <p
             style={{

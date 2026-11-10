@@ -16,12 +16,17 @@ import LivePricesWidget, {
 } from '@/components/precios/LivePricesWidget';
 import KaratPricesTable from '@/components/precios/KaratPricesTable';
 import PriceHistoryChart from '@/components/precios/PriceHistoryChart';
+import {
+  PRECIO_REF_CARACTER_COMERCIAL,
+  PRECIOS_REFERENCIA_COMERCIAL,
+  RAZON_SOCIAL,
+} from '@/lib/content/copy-legal';
 
 type Lang = 'es' | 'en';
 
 const WHATSAPP_HREF =
   'https://wa.me/50497373139?text=' +
-  encodeURIComponent('Hola MAPE LEGAL, quiero información sobre la compra de oro.');
+  encodeURIComponent('Hola, quiero información sobre la venta de oro a Inversiones Zekaii.');
 
 export default function PreciosClient() {
   const [lang, setLang] = useState<Lang>('es');
@@ -129,15 +134,15 @@ export default function PreciosClient() {
             }}
           >
             {t(
-              'Consulta el precio internacional del oro, el precio de referencia de MAPE LEGAL en lempiras por gramo de oro fino, y el tipo de cambio del día. Actualizado diariamente.',
-              'Check the international gold price, the MAPE LEGAL reference price in lempiras per gram of fine gold, and today’s exchange rate. Updated daily.',
+              `Consulta el precio internacional del oro, el precio de referencia comercial de ${RAZON_SOCIAL} en lempiras por gramo de oro fino, y el tipo de cambio del día. Actualizado diariamente.`,
+              `Check the international gold price, the ${RAZON_SOCIAL} commercial reference price in lempiras per gram of fine gold, and today’s exchange rate. Updated daily.`,
             )}
           </p>
           <p style={{ marginTop: 10, fontSize: 14, lineHeight: 1.6 }}>
             <Link href="/precio" style={{ color: 'var(--moss)', fontWeight: 600, textDecoration: 'none' }}>
               {t(
-                'Precio de Referencia oficial, fórmula y requisitos para vender →',
-                'Official reference price, formula and selling requirements →',
+                `${PRECIOS_REFERENCIA_COMERCIAL} →`,
+                `${RAZON_SOCIAL} reference price, formula and selling requirements →`,
               )}
             </Link>
           </p>
@@ -172,8 +177,8 @@ export default function PreciosClient() {
               </div>
               <div style={{ fontSize: 14, color: 'var(--t2)', lineHeight: 1.5 }}>
                 {t(
-                  'Escribinos por WhatsApp para coordinar la verificación documental: Registro de Comercializador vigente y Certificado de Origen por lote. Pago en Lempiras vía cooperativa financiera aliada.',
-                  'Message us on WhatsApp to arrange the document verification: a current Trader Registry and a Certificate of Origin per lot. Paid in Lempiras via an allied financial cooperative.',
+                  `${RAZON_SOCIAL} compra a titulares de derecho minero vigente. Escribinos por WhatsApp para coordinar la verificación documental: derecho minero vigente y Certificado de Origen oficial por lote. Pago en Lempiras vía cooperativa financiera aliada.`,
+                  `${RAZON_SOCIAL} buys from holders of a current mining right. Message us on WhatsApp to arrange the document verification: a current mining right and an official Certificate of Origin per lot. Paid in Lempiras via an allied financial cooperative.`,
                 )}
               </div>
             </div>
@@ -199,6 +204,12 @@ export default function PreciosClient() {
               {t('Escribir por WhatsApp', 'Message on WhatsApp')}
             </a>
           </div>
+
+          {/* Carácter comercial del precio (Modelo B, 10-nov-2026). ES-only:
+              texto con consecuencia jurídica, importado de copy-legal. */}
+          <p style={{ marginTop: 16, fontSize: 13, lineHeight: 1.7, color: 'var(--t3)' }}>
+            {PRECIO_REF_CARACTER_COMERCIAL}
+          </p>
 
           {/* Fuentes y actualización — al final de la página por pedido del
               operador: la procedencia sigue publicada (contrato de

@@ -10,12 +10,13 @@ import SiteFooter from '@/components/landing/SiteFooter'
 import {
   CERTIFICADO_ORIGEN_NOTA,
   MERCADOS_ACCESO,
+  RAZON_SOCIAL,
 } from '@/lib/content/copy-legal'
 
 export const metadata: Metadata = {
   title: 'Acceso a mercados que exigen certificación de origen',
   description:
-    'El oro sin cadena de custodia documentada queda fuera de las cadenas de suministro con debida diligencia. Qué exige un comprador aguas abajo y cómo el certificado de origen del oro de Honduras se verifica públicamente.',
+    'El oro sin cadena de custodia documentada queda fuera de las cadenas de suministro con debida diligencia. Qué exige un comprador aguas abajo y cómo el sello complementario de trazabilidad se verifica públicamente.',
   alternates: { canonical: '/mercados' },
   openGraph: {
     type: 'website',
@@ -27,8 +28,10 @@ export const metadata: Metadata = {
   },
 }
 
-/** Número del certificado demostrativo sembrado por la migración 020. */
-const CERTIFICADO_DEMO = 'CO-2026-0001-DEMO'
+/* [PENDIENTE: reparar el demo o no anunciarlo] El certificado demostrativo
+   CO-2026-0001-DEMO (seed de la migración 020) devuelve "no encontrado" en
+   producción, así que el enlace al demo se retiró de la página (Modelo B,
+   10-nov-2026). Reactivar solo cuando el registro exista en la base real. */
 
 const SECTION_TITLE: React.CSSProperties = {
   fontFamily: 'var(--font-display)',
@@ -53,7 +56,7 @@ const EXIGENCIAS_COMPRADOR = [
   'Identificación del titular y de su derecho minero.',
   'Coordenadas del sitio de extracción.',
   'Evidencia fotográfica georreferenciada de la operación.',
-  'Certificado de Origen avalado por la Autoridad Minera o Municipal.',
+  'Certificación de Procedencia o Certificado de Origen oficial, emitido por el titular y autenticado por la Autoridad Minera o Municipal.',
   'Registro documental de la transacción.',
 ] as const
 
@@ -69,9 +72,9 @@ const PRODUCE_MAPE = [
       'Documentos, coordenadas y evidencia de cada unidad minera en un expediente que sobrevive a la transacción individual.',
   },
   {
-    titulo: 'Verificación pública del certificado',
+    titulo: 'Verificación pública del sello complementario',
     cuerpo:
-      'Cada certificado tiene un número consultable por cualquier tercero en la página de verificación de este sitio, sin exponer datos personales del productor.',
+      'Cada registro del sello tiene un número consultable por cualquier tercero en la página de verificación de este sitio, sin exponer datos personales del productor. La consulta no sustituye el documento oficial de procedencia.',
   },
 ] as const
 
@@ -86,9 +89,10 @@ export default function MercadosPage() {
           {MERCADOS_ACCESO}
         </h1>
         <p className="section-sub" style={{ maxWidth: 680 }}>
-          La exigencia de certificación no la impone CHT ni la autoridad hondureña al
-          minero: la imponen los mercados compradores que aplican debida diligencia
-          sobre su cadena de suministro. La certificación es la llave para entrar.
+          La exigencia de certificación no la impone {RAZON_SOCIAL} ni la autoridad
+          hondureña al minero: la imponen los mercados compradores que aplican debida
+          diligencia sobre su cadena de suministro. La certificación es la llave para
+          entrar.
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 56, maxWidth: 760, marginTop: 48 }}>
@@ -139,14 +143,7 @@ export default function MercadosPage() {
               ))}
             </div>
             <p style={BODY}>
-              Puede probar el verificador con el certificado demostrativo:{' '}
-              <Link
-                href={`/verificar/${CERTIFICADO_DEMO}`}
-                style={{ color: 'var(--moss)', fontWeight: 600, textDecoration: 'none', fontFamily: 'var(--font-mono)', fontSize: 14 }}
-              >
-                {CERTIFICADO_DEMO}
-              </Link>{' '}
-              o verificar cualquier número en{' '}
+              Puede verificar cualquier número de registro del sello complementario en{' '}
               <Link href="/verificar" style={{ color: 'var(--moss)', fontWeight: 600, textDecoration: 'none' }}>
                 mape.legal/verificar
               </Link>
@@ -163,7 +160,7 @@ export default function MercadosPage() {
           >
             <p style={{ fontSize: 14, color: 'var(--t2)', lineHeight: 1.7 }}>
               El acceso a estos mercados depende del cumplimiento del operador, no de una
-              relación preferente con CHT. {CERTIFICADO_ORIGEN_NOTA}
+              relación preferente con {RAZON_SOCIAL} ni con la plataforma. {CERTIFICADO_ORIGEN_NOTA}
             </p>
           </div>
         </div>

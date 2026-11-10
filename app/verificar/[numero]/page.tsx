@@ -2,7 +2,12 @@ import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import TopoBand from '@/components/decor/TopoBand'
 import { getAdminClient } from '@/services/adminSupabase'
-import { VERIFICAR_CARGA_INICIAL, VERIFICAR_FRESCURA_NOTA } from '@/lib/content/copy-legal'
+import {
+  VERIFICAR_CARGA_INICIAL,
+  VERIFICAR_FRESCURA_NOTA,
+  VERIFICAR_NO_ENCONTRADO,
+  VERIFICAR_REVOCADO,
+} from '@/lib/content/copy-legal'
 
 export const dynamic = 'force-dynamic'
 
@@ -103,22 +108,23 @@ const STATE_STYLE: Record<Estado, { color: string; label: string; description: s
   vigente: {
     color: 'var(--green)',
     label: 'Vigente',
-    description: 'Este certificado está activo y dentro de su período de validez.',
+    description:
+      'Este registro del sello complementario está vigente y dentro de su período de validez. No sustituye el documento oficial de procedencia.',
   },
   revocado: {
     color: 'var(--red)',
     label: 'Revocado',
-    description: 'Este certificado fue revocado por MAPE LEGAL y no debe considerarse válido.',
+    description: VERIFICAR_REVOCADO,
   },
   expirado: {
     color: 'var(--amber)',
     label: 'Expirado',
-    description: 'Este certificado ya superó su fecha de validez. No vigente.',
+    description: 'Este registro del sello complementario ya superó su fecha de validez. No vigente.',
   },
   suspendido: {
     color: 'var(--amber)',
     label: 'Suspendido',
-    description: 'Este certificado se encuentra suspendido temporalmente.',
+    description: 'Este registro del sello complementario se encuentra suspendido temporalmente.',
   },
 }
 
@@ -245,7 +251,7 @@ export default async function VerificarResultPage({
               marginTop: 8,
             }}
           >
-            {found ? 'Certificado de Origen' : 'Certificado no encontrado'}
+            {found ? 'Registro del sello complementario' : 'Registro no encontrado'}
           </h1>
 
           {found && cert ? (
@@ -282,7 +288,7 @@ export default async function VerificarResultPage({
                       color: 'rgba(255,255,255,0.65)',
                     }}
                   >
-                    Número de certificado
+                    Número de registro
                   </div>
                   <div
                     style={{
@@ -316,7 +322,7 @@ export default async function VerificarResultPage({
                   <FieldValue mono>{cert.valido_hasta}</FieldValue>
                 </div>
                 <div>
-                  <FieldLabel>Peso de oro certificado</FieldLabel>
+                  <FieldLabel>Peso de oro registrado</FieldLabel>
                   <FieldValue mono>{Number(cert.peso_oro_g).toFixed(3)} g</FieldValue>
                 </div>
                 <div>
@@ -401,13 +407,7 @@ export default async function VerificarResultPage({
                 <StatePill estado={'expirado' as Estado} />
               </div>
               <p style={{ fontSize: 15, color: 'var(--t1)', lineHeight: 1.6 }}>
-                No se encontró ningún certificado emitido por MAPE LEGAL con el
-                número{' '}
-                <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
-                  {numero || '(vacío)'}
-                </span>
-                . Verifique el número impreso en el documento físico o
-                contacte a MAPE LEGAL.
+                {VERIFICAR_NO_ENCONTRADO(numero || '(vacío)')}
               </p>
               {totalCertificados === 0 && (
                 <p
@@ -435,9 +435,10 @@ export default async function VerificarResultPage({
               lineHeight: 1.6,
             }}
           >
-            Esta verificación consulta el registro público de certificados
-            emitidos por MAPE LEGAL. Los datos personales del productor y los montos
-            de la transacción no son públicos.
+            Esta consulta se limita al registro público del sello complementario
+            MAPE.LEGAL. No consulta ni valida el Certificado de Origen oficial. Los
+            datos personales del productor y los montos de la transacción no son
+            públicos.
           </p>
           <p
             style={{
@@ -463,7 +464,7 @@ export default async function VerificarResultPage({
                 paddingBottom: 2,
               }}
             >
-              ← Verificar otro certificado
+              ← Verificar otro registro
             </Link>
           </div>
         </div>

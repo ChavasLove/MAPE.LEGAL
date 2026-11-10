@@ -3,6 +3,7 @@
 import { useState, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 import {
   Mail, Lock, User, Phone, Loader2, AlertCircle, CheckCircle,
   ChevronRight, Eye, EyeOff,
@@ -317,7 +318,11 @@ function RegistroForm() {
           </button>
         </p>
         <p className="text-center text-xs mt-4" style={{ color: C.textLight }}>
-          Al registrarte, aceptas nuestros términos de servicio y política de privacidad.
+          Al registrarte aceptas el{' '}
+          <Link href="/aviso-legal" className="font-semibold hover:underline" style={{ color: C.primary }}>
+            aviso legal
+          </Link>{' '}
+          de la plataforma MAPE.LEGAL, de la que es dueña Inversiones Zekaii, S. de R.L.
         </p>
       </div>
     </div>

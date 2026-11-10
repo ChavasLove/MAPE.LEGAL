@@ -1,12 +1,21 @@
-// /politica-de-precios — Política de Precios de MAPE.LEGAL, versionada.
+// /politica-de-precios — Política de Precios de Inversiones Zekaii, S. de R.L.
+// (aplicable a las compras de Zekaii), versionada.
+//
+// v1.2-BORRADOR (Modelo B, 10-nov-2026): la compradora y dueña de la
+// plataforma es Inversiones Zekaii; CHT solo presta servicios legales y
+// mineros. El factor de compra al productor está PENDIENTE
+// (FACTOR_COMPRA_ZEKAII_PENDIENTE) — nunca mostrar NaN ni una cifra "como si".
+// Es política comercial de Zekaii: no es norma de INHGEOMIN ni condición
+// obligatoria del estándar MAPE.LEGAL.
 //
 // v1.1 (Adenda 01, 2026-07-29): método de determinación de ley definido.
 // Las cláusulas 4, 5 y 6 son TEXTO LEGAL — LITERAL (lib/content/
 // copy-legal.ts, prohibido parafrasear; prohibido alterar la distinción
-// entre método de liquidación y método de contraste). El Anexo I renderiza
-// las constantes de lib/precio/calculo.ts — con el valor actual, el
-// laboratorio dirimente muestra "[PENDIENTE CHT]", lo cual es correcto y
-// deliberado: /precio no debe pasar a producción con ese campo pendiente.
+// entre método de liquidación y método de contraste; en v1.2-BORRADOR solo
+// se sustituyó la razón social). El Anexo I renderiza las constantes de
+// lib/precio/calculo.ts — el laboratorio dirimente sigue pendiente (marcador
+// a nombre de la compradora), lo cual es correcto y deliberado: /precio no
+// debe pasar a producción con ese campo pendiente.
 // La sección de verificaciones externas (Tarea 7) se alimenta de la tabla
 // `ensayes` (migración 031) — por eso la página es dinámica.
 
@@ -18,6 +27,9 @@ import {
   GRAMOS_POR_ONZA_TROY,
   VERSION_POLITICA_PRECIOS,
   FECHA_VIGENCIA_POLITICA,
+  VERSION_POLITICA_ANTERIOR,
+  FECHA_VIGENCIA_POLITICA_ANTERIOR,
+  FACTOR_POLITICA_ANTERIOR,
   FACTOR_COMERCIALIZACION_VIGENTE,
   METODO_LIQUIDACION,
   METODO_CONTRASTE,
@@ -25,6 +37,7 @@ import {
   TOPE_AJUSTE_LIQUIDACION_PP,
   DIAS_CONSERVACION_TESTIGO,
 } from '@/lib/precio/calculo'
+import { FACTOR_COMPRA_ZEKAII_PENDIENTE, factorCompraDefinido } from '@/lib/precio/factores'
 import {
   CITAS_LEGALES,
   PRECIO_REF_FORMULA,
@@ -37,25 +50,31 @@ import {
   POLITICA_CL6_TITULO,
   POLITICA_CL6,
   VERIFICACIONES_EXTERNAS_VACIO,
+  PRECIO_REF_REQUISITOS_NOTA_REGISTRO,
+  PRECIO_REF_CARACTER_COMERCIAL,
   RAZON_SOCIAL,
   type ClausulaPolitica,
 } from '@/lib/content/copy-legal'
 import { getVerificacionesExternas } from '@/lib/precio/ensayes'
 
+// Vigencia del borrador: FECHA_VIGENCIA_POLITICA vale "[CONFIRMAR]" mientras
+// Willis no la fije (lib/precio/calculo.ts). No se formatea como fecha.
+const VIGENCIA_BORRADOR = FECHA_VIGENCIA_POLITICA
+
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'Política de Precios',
+  title: 'Política de Precios de Inversiones Zekaii, S. de R.L.',
   description:
-    'Política de Precios de MAPE.LEGAL: fórmula de cálculo del precio de referencia, factor de comercialización vigente, cláusula de revisión, derecho de contramuestra y requisitos de elegibilidad del vendedor.',
+    'Política de Precios de Inversiones Zekaii, S. de R.L. (aplicable a sus compras de oro): fórmula de cálculo del precio de referencia comercial, factor de comercialización, cláusula de revisión, derecho de contramuestra y requisitos de elegibilidad del vendedor.',
   alternates: { canonical: '/politica-de-precios' },
   openGraph: {
     type: 'website',
     locale: 'es_HN',
-    title: 'Política de Precios · MAPE.LEGAL',
+    title: 'Política de Precios de Inversiones Zekaii · MAPE.LEGAL',
     description:
-      'Fórmula verificable, factor de comercialización publicado y cláusula de revisión del Precio de Referencia MAPE.LEGAL.',
+      'Fórmula verificable, factor de comercialización y cláusula de revisión del precio de referencia comercial de Inversiones Zekaii, S. de R.L.',
     images: [{ url: '/images/RIVER AND MOUNTAINS.png', width: 1200, height: 630, alt: 'MAPE LEGAL — territorio' }],
   },
 }
@@ -86,10 +105,19 @@ function fmtFechaLarga(iso: string): string {
 
 const VERSIONES: Array<{ version: string; vigencia: string; cambio: string }> = [
   {
-    version: '1.1',
-    vigencia: FECHA_VIGENCIA_POLITICA,
+    version: VERSION_POLITICA_PRECIOS,
+    vigencia: VIGENCIA_BORRADOR,
     cambio:
-      'Define el método de determinación de ley (cláusulas 5 y 6), añade el Anexo I y la publicación de verificaciones externas.',
+      `Borrador: la compradora pasa a ser ${RAZON_SOCIAL} (dueña de la plataforma); ` +
+      'el factor de compra al productor queda pendiente de definición. Pendiente de revisión legal.',
+  },
+  {
+    version: VERSION_POLITICA_ANTERIOR,
+    vigencia: FECHA_VIGENCIA_POLITICA_ANTERIOR,
+    cambio:
+      'Define el método de determinación de ley (cláusulas 5 y 6), añade el Anexo I y la publicación ' +
+      `de verificaciones externas. Factor de comercialización ${FACTOR_POLITICA_ANTERIOR.toLocaleString('es-HN', { minimumFractionDigits: 2 })}. ` +
+      'Versión anterior, accesible conforme a la cláusula 4.',
   },
   { version: '1.0', vigencia: '2026-07-29', cambio: 'Versión inicial.' },
 ]
@@ -107,9 +135,11 @@ function ClausulaBloque({ clausula }: { clausula: ClausulaPolitica }) {
 
 export default async function PoliticaDePreciosPage() {
   const verificaciones = await getVerificacionesExternas()
-  const factorPorcentaje = (FACTOR_COMERCIALIZACION_VIGENTE * 100).toLocaleString('es-HN', {
-    maximumFractionDigits: 2,
-  })
+  // El factor vigente puede ser null (pendiente de definición): nunca NaN.
+  const factorVigente: number | null = FACTOR_COMERCIALIZACION_VIGENTE
+  const factorTexto = factorCompraDefinido(factorVigente)
+    ? `${factorVigente.toLocaleString('es-HN', { minimumFractionDigits: 2 })} (${(factorVigente * 100).toLocaleString('es-HN', { maximumFractionDigits: 2 })}%)`
+    : FACTOR_COMPRA_ZEKAII_PENDIENTE
 
   return (
     <>
@@ -118,7 +148,7 @@ export default async function PoliticaDePreciosPage() {
       <section className="mape-section" style={{ background: 'var(--bg-soft)' }}>
         <div className="section-label">Política de Precios</div>
         <h1 className="section-title" style={{ maxWidth: 720 }}>
-          Política de Precios de MAPE.LEGAL.
+          Política de Precios de {RAZON_SOCIAL} (aplicable a las compras de Zekaii).
         </h1>
         <p
           style={{
@@ -128,7 +158,8 @@ export default async function PoliticaDePreciosPage() {
             color: 'var(--slate)',
           }}
         >
-          Versión {VERSION_POLITICA_PRECIOS} · Vigente desde el {fmtFechaLarga(FECHA_VIGENCIA_POLITICA)}
+          Versión {VERSION_POLITICA_PRECIOS} · Vigencia: {VIGENCIA_BORRADOR} · Versión anterior v
+          {VERSION_POLITICA_ANTERIOR}, vigente desde el {fmtFechaLarga(FECHA_VIGENCIA_POLITICA_ANTERIOR)}
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 48, maxWidth: 760, marginTop: 40 }}>
@@ -136,9 +167,13 @@ export default async function PoliticaDePreciosPage() {
           <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <h2 style={SECTION_TITLE}>1. Objeto y alcance.</h2>
             <p style={BODY}>
-              Esta política regula el cálculo, la publicación y la revisión del Precio de
-              Referencia MAPE.LEGAL. Aplica a las operaciones de compraventa de oro de{' '}
-              {RAZON_SOCIAL} (CHT).
+              Esta política regula el cálculo, la publicación y la revisión del precio de
+              referencia comercial de {RAZON_SOCIAL}. Aplica a las operaciones de compra de
+              oro de {RAZON_SOCIAL}, dueña de la plataforma MAPE.LEGAL.
+            </p>
+            <p style={BODY}>
+              Es una política comercial de {RAZON_SOCIAL}. No es norma de INHGEOMIN ni
+              condición obligatoria del estándar MAPE.LEGAL. {PRECIO_REF_CARACTER_COMERCIAL}
             </p>
             <p style={BODY}>
               El precio de referencia se fija una vez al día, a las 08:00 horas (Honduras), y no
@@ -170,9 +205,10 @@ export default async function PoliticaDePreciosPage() {
             </div>
             <ul style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingLeft: 18 }}>
               <li style={BODY}>
-                <strong style={{ color: 'var(--ink)' }}>Referencia LBMA:</strong> precio
-                internacional del oro en dólares por onza troy, tomado como referencia por CHT al
-                momento de la fijación. El valor usado cada día se publica junto al precio.
+                <strong style={{ color: 'var(--ink)' }}>Referencia internacional del oro:</strong>{' '}
+                precio internacional del oro en dólares por onza troy, tomado como referencia por{' '}
+                {RAZON_SOCIAL} al momento de la fijación. El valor usado cada día se publica junto
+                al precio.
               </li>
               <li style={BODY}>
                 <strong style={{ color: 'var(--ink)' }}>Constante de conversión:</strong> una onza
@@ -195,10 +231,14 @@ export default async function PoliticaDePreciosPage() {
             <h2 style={SECTION_TITLE}>3. Factor de comercialización.</h2>
             <div style={CARD}>
               <p style={{ fontSize: 16, color: 'var(--ink)', lineHeight: 1.7, fontWeight: 500 }}>
-                Valor vigente: {FACTOR_COMERCIALIZACION_VIGENTE.toLocaleString('es-HN', { minimumFractionDigits: 2 })}{' '}
-                ({factorPorcentaje}%).
+                Factor de compra al productor vigente: {factorTexto}.
               </p>
             </div>
+            <p style={BODY}>
+              El factor queda pendiente de definición por {RAZON_SOCIAL}. Se publicará como nueva
+              versión de esta política conforme a la cláusula 4. Las fijaciones registradas
+              muestran el factor aplicado en cada fecha.
+            </p>
             <p style={BODY}>
               La publicación del factor tiene por objeto permitir la verificación independiente
               del cálculo del precio de referencia por cualquier vendedor o tercero.
@@ -249,6 +289,9 @@ export default async function PoliticaDePreciosPage() {
               </ol>
               <p style={{ marginTop: 14, fontSize: 15, color: 'var(--ink)', lineHeight: 1.7 }}>
                 {PRECIO_REF_REQUISITOS_CIERRE}
+              </p>
+              <p style={{ marginTop: 12, fontSize: 14, color: 'var(--t2)', lineHeight: 1.7 }}>
+                {PRECIO_REF_REQUISITOS_NOTA_REGISTRO}
               </p>
             </div>
             <p style={BODY}>

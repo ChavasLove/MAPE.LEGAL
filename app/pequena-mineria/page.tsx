@@ -10,6 +10,8 @@ import {
   AVISO_RESOLUCIONES,
   CITAS_LEGALES,
   CONTACTO,
+  RAZON_SOCIAL,
+  RAZON_SOCIAL_SERVICIOS_LEGALES,
 } from '@/lib/content/copy-legal'
 
 export const metadata: Metadata = {
@@ -32,7 +34,7 @@ const ANCLAS = [
   { href: '#que-se-obtiene', label: 'Qué se obtiene' },
   { href: '#requisitos', label: 'Requisitos del expediente' },
   { href: '#rutas', label: 'Tres rutas legales' },
-  { href: '#que-hace-cht', label: 'Qué hace CHT y qué no' },
+  { href: '#que-hace-cht', label: 'Qué hace cada quién' },
   { href: '#antes-del-permiso', label: 'Antes del permiso' },
   { href: '#recuperacion', label: 'Recuperación metalúrgica' },
   { href: '#contacto-cta', label: 'Contacto' },
@@ -311,9 +313,15 @@ export default function PequenaMineriaPage() {
               </div>
             </section>
 
-            {/* 5 — QUÉ HACE CHT Y QUÉ NO HACE */}
+            {/* 5 — QUÉ HACE CADA QUIÉN (Modelo B: CHT servicios; Zekaii plataforma + compra) */}
             <section id="que-hace-cht" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <h2 style={SECTION_TITLE}>Qué hace CHT y qué no hace.</h2>
+              <h2 style={SECTION_TITLE}>Qué hace cada quién.</h2>
+              <p style={BODY}>
+                {RAZON_SOCIAL_SERVICIOS_LEGALES} (CHT) presta servicios legales y mineros al
+                operador. {RAZON_SOCIAL} es dueña de la plataforma MAPE.LEGAL, lleva el sello
+                complementario de trazabilidad y compra el oro. CHT no compra ni vende
+                mineral y no opera la plataforma.
+              </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div style={CARD}>
                   <div
@@ -365,7 +373,7 @@ export default function PequenaMineriaPage() {
                       No garantiza resultados: la resolución es potestad de la Autoridad Minera.
                     </li>
                     <li style={{ fontSize: 14, color: 'var(--t2)', lineHeight: 1.6 }}>
-                      No compra mineral antes de que exista derecho minero.
+                      No compra ni vende mineral, y no opera la plataforma MAPE.LEGAL.
                     </li>
                   </ul>
                 </div>
@@ -413,7 +421,7 @@ export default function PequenaMineriaPage() {
                 operador sin extraer más material.
               </p>
               <p style={BODY}>
-                CHT no publica cifras de recuperación mientras no existan mediciones
+                MAPE.LEGAL no publica cifras de recuperación mientras no existan mediciones
                 propias documentadas. El diagnóstico se hace por unidad minera, sobre
                 muestras del material real de la operación.
               </p>

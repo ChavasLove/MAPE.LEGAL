@@ -1,10 +1,16 @@
-// /precio — Precio de Referencia MAPE.LEGAL.
+// /precio — Precio de Referencia comercial de Inversiones Zekaii, S. de R.L.
 //
 // Registro institucional, no pieza comercial: publica el precio de
 // referencia diario (fijado a las 08:00 hora de Honduras, fijo durante la
-// jornada) y constituye evidencia documental de que CHT verifica el origen
-// del mineral antes de comprar. Sin lenguaje de venta, sin CTAs
-// comerciales, sin signos de exclamación.
+// jornada) y constituye evidencia documental de que la compradora
+// (Inversiones Zekaii, dueña de la plataforma — Modelo B, 10-nov-2026)
+// verifica el origen del mineral antes de comprar. Sin lenguaje de venta,
+// sin CTAs comerciales, sin signos de exclamación.
+//
+// Factor de compra al productor: PENDIENTE (FACTOR_COMPRA_ZEKAII_PENDIENTE).
+// Las filas de la BD muestran el factor registrado en cada fijación (son
+// indelebles), etiquetado como "registrado en la fijación", nunca como
+// vigente.
 //
 // Server component ES-only. Todo el texto con consecuencia jurídica se
 // importa de lib/content/copy-legal.ts (bloques TEXTO LEGAL — LITERAL del
@@ -22,6 +28,7 @@ import {
   type PrecioReferenciaRow,
 } from '@/lib/precio/consulta'
 import { VERSION_POLITICA_PRECIOS } from '@/lib/precio/calculo'
+import { FACTOR_COMPRA_ZEKAII_PENDIENTE } from '@/lib/precio/factores'
 import {
   PRECIO_REF_FORMULA,
   factorVigenteNota,
@@ -31,6 +38,9 @@ import {
   PRECIO_REF_REQUISITOS_CIERRE,
   PRECIO_REF_NATURALEZA_TITULO,
   PRECIO_REF_NATURALEZA,
+  PRECIO_REF_REQUISITOS_NOTA_REGISTRO,
+  PRECIO_REF_CARACTER_COMERCIAL,
+  RAZON_SOCIAL,
 } from '@/lib/content/copy-legal'
 
 export const runtime = 'nodejs'
@@ -39,14 +49,14 @@ export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
   title: 'Precio de Referencia — lempiras por gramo de oro fino',
   description:
-    'Precio de Referencia MAPE.LEGAL en lempiras por gramo de oro fino, fijado una vez al día con fórmula verificable: referencia LBMA, tipo de cambio del BCH y factor de comercialización publicado.',
+    'Precio de referencia comercial de Inversiones Zekaii, S. de R.L. en lempiras por gramo de oro fino, fijado una vez al día con fórmula verificable: referencia internacional del oro, tipo de cambio de referencia del BCH y factor de comercialización publicado.',
   alternates: { canonical: '/precio' },
   openGraph: {
     type: 'website',
     locale: 'es_HN',
     title: 'Precio de Referencia · MAPE.LEGAL',
     description:
-      'Precio de referencia diario en lempiras por gramo de oro fino, con fórmula verificable y política de precios versionada.',
+      'Precio de referencia comercial diario de Inversiones Zekaii en lempiras por gramo de oro fino, con fórmula verificable y política de precios versionada.',
     images: [{ url: '/images/RIVER AND MOUNTAINS.png', width: 1200, height: 630, alt: 'MAPE LEGAL — territorio' }],
   },
 }
@@ -139,8 +149,9 @@ export default async function PrecioReferenciaPage() {
           {/* ── BLOQUE 1 — Encabezado ─────────────────────────────────── */}
           <section aria-labelledby="precio-titulo" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <h1 id="precio-titulo" className="section-title" style={{ maxWidth: 720 }}>
-              Precio de Referencia MAPE.LEGAL
+              Precio de Referencia de {RAZON_SOCIAL}
             </h1>
+            <p style={BODY}>{PRECIO_REF_CARACTER_COMERCIAL}</p>
 
             {mostrado ? (
               <div
@@ -210,7 +221,7 @@ export default async function PrecioReferenciaPage() {
               </p>
               <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column' }}>
                 <InsumoRow
-                  etiqueta="Referencia LBMA del día"
+                  etiqueta="Referencia internacional del oro del día"
                   valor={mostrado ? `USD ${fmtL(mostrado.referencia_lbma_usd_oz)} por onza troy` : '—'}
                 />
                 <InsumoRow
@@ -218,12 +229,16 @@ export default async function PrecioReferenciaPage() {
                   valor={mostrado ? `L ${fmtL(mostrado.tipo_cambio_bch, 4)} por USD` : '—'}
                 />
                 <InsumoRow
-                  etiqueta="Factor de comercialización"
+                  etiqueta="Factor de comercialización registrado en la fijación"
                   valor={mostrado ? fmtL(mostrado.factor_comercializacion, 4) : '—'}
                   nota={factorVigenteNota(mostrado?.version_politica ?? VERSION_POLITICA_PRECIOS)}
                   last
                 />
               </div>
+              <p style={{ marginTop: 12, fontSize: 13, color: 'var(--t2)', lineHeight: 1.7 }}>
+                Factor de compra al productor vigente: {FACTOR_COMPRA_ZEKAII_PENDIENTE}. Se
+                publicará como nueva versión de la Política de Precios conforme a su cláusula 4.
+              </p>
             </div>
           </section>
 
@@ -239,7 +254,7 @@ export default async function PrecioReferenciaPage() {
             </div>
           </section>
 
-          {/* ── BLOQUE 4 — Requisitos para vender a CHT (LITERAL) ─────── */}
+          {/* ── BLOQUE 4 — Requisitos para vender a Inversiones Zekaii ──── */}
           {/* Misma jerarquía visual que el precio: card destacada, no
               colapsable, en el cuerpo de la página — nunca en el pie. */}
           <section aria-labelledby="requisitos-titulo" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -272,6 +287,9 @@ export default async function PrecioReferenciaPage() {
               <p style={{ marginTop: 16, fontSize: 15, color: 'var(--ink)', lineHeight: 1.7 }}>
                 {PRECIO_REF_REQUISITOS_CIERRE}
               </p>
+              <p style={{ marginTop: 12, fontSize: 14, color: 'var(--t2)', lineHeight: 1.7 }}>
+                {PRECIO_REF_REQUISITOS_NOTA_REGISTRO}
+              </p>
             </div>
           </section>
 
@@ -284,6 +302,9 @@ export default async function PrecioReferenciaPage() {
               <p style={{ fontSize: 15, color: 'var(--t2)', lineHeight: 1.7 }}>
                 {PRECIO_REF_NATURALEZA}
               </p>
+              <p style={{ marginTop: 12, fontSize: 15, color: 'var(--t2)', lineHeight: 1.7 }}>
+                {PRECIO_REF_CARACTER_COMERCIAL}
+              </p>
             </div>
           </section>
 
@@ -295,7 +316,7 @@ export default async function PrecioReferenciaPage() {
                 Política de Precios vigente →
               </Link>
               <Link href="/verificar" style={{ color: 'var(--moss)', fontWeight: 600, fontSize: 15, textDecoration: 'none' }}>
-                Verificación de Certificados de Origen →
+                Verificación del sello complementario →
               </Link>
               <a href="#historico" style={{ color: 'var(--moss)', fontWeight: 600, fontSize: 15, textDecoration: 'none' }}>
                 Histórico de precios de referencia →
@@ -315,7 +336,7 @@ export default async function PrecioReferenciaPage() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 560 }}>
                   <thead>
                     <tr>
-                      {['Fecha', 'L / gramo de oro fino', 'Referencia LBMA (USD/oz)', 'TC BCH', 'Factor', 'Política'].map((th) => (
+                      {['Fecha', 'L / gramo de oro fino', 'Referencia internacional (USD/oz)', 'TC BCH', 'Factor registrado', 'Política'].map((th) => (
                         <th
                           key={th}
                           scope="col"

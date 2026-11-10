@@ -9,24 +9,29 @@ import MariaWidget from '@/components/landing/MariaWidget'
 import PublicNav from '@/components/landing/PublicNav'
 import SiteFooter from '@/components/landing/SiteFooter'
 import {
+  CERTIFICADO_ORIGEN_NOTA,
   CITAS_LEGALES,
   CONDICION_COMPRA,
   CONTACTO,
   LIBERTAD_VENTA,
   POLITICA_PRECIO,
+  RAZON_SOCIAL,
+  RAZON_SOCIAL_SERVICIOS_LEGALES,
+  REGISTRO_COMERCIALIZADOR,
+  ROL_CHT,
 } from '@/lib/content/copy-legal'
 
 export const metadata: Metadata = {
   title: 'Condiciones de compra de oro — certificado de origen y pago bancarizado',
   description:
-    'Condiciones publicadas de compraventa de oro de pequeña minería en Honduras: un solo precio de referencia actualizado diariamente, certificado de origen del oro por transacción y pago bancarizado en lempiras.',
+    'Condiciones publicadas de compra de oro de pequeña minería por Inversiones Zekaii, S. de R.L.: precio de referencia comercial actualizado diariamente, certificado de origen oficial por lote y pago en lempiras.',
   alternates: { canonical: '/comercializacion' },
   openGraph: {
     type: 'website',
     locale: 'es_HN',
     title: 'Condiciones de compra de oro · MAPE.LEGAL',
     description:
-      'Precio publicado, certificado de origen por transacción y pago bancarizado. La verificación de origen es una obligación legal del comprador.',
+      'Precio publicado, certificado de origen oficial por lote y pago en lempiras. La verificación de origen es una obligación legal del comprador.',
     images: [{ url: '/images/RIVER AND MOUNTAINS.png', width: 1200, height: 630, alt: 'MAPE LEGAL — territorio' }],
   },
 }
@@ -53,11 +58,11 @@ const CARD: React.CSSProperties = {
 /* Contenido del estado de cuenta por transacción. */
 const ESTADO_CUENTA_CAMPOS = [
   'Peso entregado y ley del material.',
-  'Referencia LBMA y tipo de cambio del BCH aplicados a la transacción.',
+  'Referencia internacional del oro y tipo de cambio del BCH aplicados a la transacción.',
   'Monto bruto resultante.',
   'Deducciones expresamente autorizadas por escrito, si las hay.',
   'Monto neto depositado.',
-  'Número del Certificado de Origen asociado a la transacción.',
+  'Número del Certificado de Origen oficial del lote y, en su caso, del registro del sello complementario.',
 ] as const
 
 export default function ComercializacionPage() {
@@ -71,10 +76,10 @@ export default function ComercializacionPage() {
           Condiciones publicadas de compra de oro.
         </h1>
         <p className="section-sub" style={{ maxWidth: 680 }}>
-          Estas son las condiciones bajo las que Corporación Hondureña Tenka, S.A.
-          (CHT) compra oro de pequeña minería. Se publican para que el operador las
+          Estas son las condiciones bajo las que {RAZON_SOCIAL}, dueña de la plataforma
+          MAPE.LEGAL, compra oro de pequeña minería. Se publican para que el operador las
           conozca antes de cualquier transacción y para que cualquier tercero pueda
-          verificarlas.
+          verificarlas. {RAZON_SOCIAL_SERVICIOS_LEGALES} {ROL_CHT}
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 56, maxWidth: 760, marginTop: 48 }}>
@@ -117,7 +122,8 @@ export default function ComercializacionPage() {
                 Sin comisión de intermediación adicional.
               </li>
               <li style={{ fontSize: 15, color: 'var(--t2)', lineHeight: 1.7 }}>
-                Sin cargo por la emisión del Certificado de Origen.
+                Sin cargo por el registro en el sello complementario. El Certificado de
+                Origen oficial lo emite el titular; MAPE.LEGAL no lo emite ni cobra por él.
               </li>
               <li style={{ fontSize: 15, color: 'var(--t2)', lineHeight: 1.7 }}>
                 Sin descuento por servicio legal aplicado automáticamente al oro.
@@ -142,14 +148,16 @@ export default function ComercializacionPage() {
               </p>
             </div>
             <p style={BODY}>
-              La verificación de origen no es una política interna de CHT: es una
-              obligación legal del comprador. El {CITAS_LEGALES.regArt34.articulo} del
+              La verificación de origen no es una política interna del comprador: es una
+              obligación legal suya. El {CITAS_LEGALES.regArt34.articulo} del
               Reglamento Especial MAPE exige derecho minero vigente para comercializar
               producción, y el {CITAS_LEGALES.leyArt38.articulo} de la Ley General de
               Minería hace responsable solidario a quien compra sin verificar el origen.
               Por eso la exigencia existe, y por eso queda documentada en cada
               transacción.
             </p>
+            <p style={BODY}>{REGISTRO_COMERCIALIZADOR}</p>
+            <p style={{ fontSize: 14, color: 'var(--t2)', lineHeight: 1.7 }}>{CERTIFICADO_ORIGEN_NOTA}</p>
           </section>
 
           {/* PAGO */}
@@ -158,8 +166,8 @@ export default function ComercializacionPage() {
             <p style={BODY}>
               El pago se realiza por depósito en la cuenta minera del operador, el mismo
               día de la transacción, en lempiras, a través de una cooperativa financiera
-              aliada. Requisito no negociable: Certificado de Origen válido por
-              transacción.
+              aliada. Requisito no negociable: Certificación de Procedencia o Certificado
+              de Origen oficial válido por lote.
             </p>
           </section>
 
