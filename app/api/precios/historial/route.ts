@@ -2,13 +2,17 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { getAdminClient } from '@/services/adminSupabase';
 import { mapeGoldBuyLpsPerGram, effectivePriceDate } from '@/services/pricingService';
 import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit';
+import { factorCompraDefinido } from '@/lib/precio/factores';
 
 // Public, unauthenticated price history for the /precios chart. Reads the daily
 // 8 AM snapshots from precios_diarios (service-role — anon has no SELECT on that
 // table per migration 009) and derives the same numbers /api/precios/live serves:
 // international gold USD/oz, USD/HNL, gold in Lempiras per troy oz, and the
-// MAPE LEGAL purchase price in Lempiras/gram (computed here via the canonical
-// mapeGoldBuyLpsPerGram helper so history can never drift from the live quote).
+// Inversiones Zekaii purchase price in Lempiras per gram of fine gold (computed
+// here via the canonical mapeGoldBuyLpsPerGram helper so history can never
+// drift from the live quote). While the purchase factor is pending
+// (FACTOR_COMPRA_ZEKAII = null) oro_compra_lps_gramo is null on every point and
+// the response carries factor_compra_pendiente: true — no figure is invented.
 //
 // Read-only over the frozen daily rows — this route NEVER triggers an upstream
 // fetch; a missing day simply isn't in the series. /api/precios/live owns the
@@ -70,6 +74,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const factor_compra_pendiente = !factorCompraDefinido();
     const puntos = (data ?? [])
       .map((r) => {
         const oro = num(r.oro);
@@ -80,7 +85,7 @@ export async function GET(request: NextRequest) {
           oro_usd_oz: oro,
           usd_hnl: usdHnl,
           oro_lps_oz: usdHnl != null ? oro * usdHnl : null,
-          oro_compra_lps_gramo: mapeGoldBuyLpsPerGram(oro, usdHnl),
+          oro_compra_lps_gramo: factor_compra_pendiente ? null : mapeGoldBuyLpsPerGram(oro, usdHnl),
         };
       })
       .filter((p): p is NonNullable<typeof p> => p != null);
@@ -88,6 +93,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         dias: days,
+        factor_compra_pendiente,
         desde: puntos[0]?.fecha ?? cutoff,
         hasta: puntos[puntos.length - 1]?.fecha ?? null,
         puntos,

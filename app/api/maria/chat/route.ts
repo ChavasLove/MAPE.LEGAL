@@ -26,6 +26,7 @@ import {
 import { supabase } from '@/services/supabase';
 import { getAdminClient } from '@/services/adminSupabase';
 import { fetchAllPrices, storePrices, mapeGoldBuyLpsPerGram, buildKaratPrices, effectivePriceDate } from '@/services/pricingService';
+import { factorCompraDefinido } from '@/lib/precio/factores';
 import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
@@ -283,12 +284,16 @@ async function buildPriceContext(): Promise<string> {
   const fmt = (n: number, d = 2) =>
     Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
   const oroLBMA = `$${fmt(prices.oro)} USD/oz troy`;
+  // Deriva de FACTOR_COMPRA_ZEKAII (lib/precio/factores.ts, fuente única del
+  // modelo B). Null mientras el factor de compra al productor esté PENDIENTE.
+  const factorCompraPendiente = !factorCompraDefinido();
   const oroCompraLps = mapeGoldBuyLpsPerGram(prices.oro, prices.usd_hnl);
-  const oroCompra = oroCompraLps != null ? `L ${fmt(oroCompraLps)}/gramo` : null;
+  const oroCompra = oroCompraLps != null ? `L ${fmt(oroCompraLps)}/gramo de oro fino` : null;
   // Conversión por kilates — mismo helper canónico que /api/precios/live y el
   // boletín diario, así María cita números idénticos a los del widget. Cada
-  // kilataje trae valor por gramo y por penique (dwt = 1.5552 g).
-  const kilatesRef = buildKaratPrices(prices.oro, prices.usd_hnl);
+  // kilataje trae valor por gramo y por penique (dwt = 1.5552 g). Null con
+  // factor pendiente: sin factor no hay kilates en lempiras.
+  const kilatesRef = factorCompraPendiente ? null : buildKaratPrices(prices.oro, prices.usd_hnl);
   const kilatesLine = kilatesRef
     ? kilatesRef
         .map((k) => `${k.kilates}k L ${fmt(k.referencia_lps_g)}/g · L ${fmt(k.referencia_lps_dwt)}/dwt`)
@@ -306,8 +311,11 @@ async function buildPriceContext(): Promise<string> {
 
   return `\n\nPRECIOS DE REFERENCIA (${prices.fecha ?? 'hoy'} — ${frescuraLabel}):
 - Oro internacional: ${oroLBMA}
-- Precio de compra MAPE LEGAL (según la Política de Precios vigente): ${oroCompra ?? 'el equipo confirma hoy'}
-- Referencia por kilates (por gramo y por penique/dwt de material; ley nominal = kilates ÷ 24; 1 dwt = 1.5552 g): ${kilatesLine ?? 'no disponible'}
+${factorCompraPendiente
+  ? `- Precio de compra al productor (Inversiones Zekaii, S. de R.L.): PENDIENTE de publicación en la Política de Precios de Inversiones Zekaii. REGLA DURA: NO inventes, NO estimes ni calcules un precio de compra en lempiras; NO cites ningún porcentaje de la referencia internacional (ni 75 %, ni 80 %, ni otro). Si preguntan por el precio de compra, di que Inversiones Zekaii lo publicará en su Política de Precios y que por ahora solo podés dar la referencia internacional del oro y el tipo de cambio.
+- Referencia por kilates: no disponible mientras el precio de compra esté pendiente (no la calcules).`
+  : `- Precio de compra de Inversiones Zekaii al productor (según la Política de Precios vigente): ${oroCompra ?? 'el equipo confirma hoy'}
+- Referencia por kilates (por gramo y por penique/dwt de material; ley nominal = kilates ÷ 24; 1 dwt = 1.5552 g): ${kilatesLine ?? 'no disponible'}`}
 - Plata internacional: ${plataLBMA ?? 'no disponible'}
 - Tipo de cambio: ${tipoCambio ?? 'no disponible'}
 - Frescura: ${frescuraLabel}

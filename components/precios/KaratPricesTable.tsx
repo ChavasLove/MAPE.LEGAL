@@ -50,6 +50,12 @@ export default function KaratPricesTable({
   const t = (es: string, en: string) => (lang === 'es' ? es : en);
   const [unit, setUnit] = useState<Unit>('g');
 
+  // Modelo B: mientras Inversiones Zekaii no publique su factor de compra, la
+  // API manda kilates: null + factor_compra_pendiente: true. La tabla no
+  // muestra ninguna cifra — solo el estado pendiente.
+  const compraPendiente =
+    data != null && (data.factor_compra_pendiente === true || data.kilates == null);
+
   // Servidor manda cuando hay datos; el placeholder sólo da forma pre-carga.
   // Los campos dwt pueden faltar en respuestas cacheadas previas al rollout de
   // peniques — esa fila muestra "—" en modo penique hasta que el cache expire.
@@ -183,6 +189,31 @@ export default function KaratPricesTable({
         )}
       </p>
 
+      {compraPendiente ? (
+        <div
+          role="status"
+          style={{
+            padding: 20,
+            borderRadius: 12,
+            background: 'color-mix(in oklch, var(--amber) 14%, white)',
+            border: '1px solid color-mix(in oklch, var(--amber) 30%, white)',
+            color: 'var(--amber)',
+            fontFamily: 'var(--font-body)',
+            fontSize: 14,
+            lineHeight: 1.55,
+            fontWeight: 500,
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>
+            {t('Pendiente de la Política de Precios', 'Pending the Pricing Policy')}
+          </div>
+          {t(
+            'La conversión por kilates en lempiras se publicará cuando Inversiones Zekaii, S. de R.L. publique su precio de compra al productor. Hasta entonces no se muestra ninguna cifra.',
+            'The karat conversion in Lempiras will be published once Inversiones Zekaii, S. de R.L. publishes its purchase price to the producer. No figures are shown until then.',
+          )}
+        </div>
+      ) : (
+      <>
       {/* Wide table scrolls inside its own container — the page never scrolls
           horizontally (regla de responsividad de la landing). */}
       <div style={{ overflowX: 'auto' }}>
@@ -208,7 +239,7 @@ export default function KaratPricesTable({
                 {t(`Oro internacional (L/${u})`, `International gold (L/${u})`)}
               </th>
               <th scope="col" style={{ ...thStyle, borderRadius: '0 8px 8px 0' }}>
-                {t(`Referencia MAPE.LEGAL (L/${u})`, `MAPE.LEGAL reference (L/${u})`)}
+                {t(`Compra Inversiones Zekaii (L/${u})`, `Inversiones Zekaii purchase (L/${u})`)}
               </th>
             </tr>
           </thead>
@@ -256,6 +287,8 @@ export default function KaratPricesTable({
           'Nominal fineness is an arithmetic reference. In an actual purchase, the fine gold content is determined by assay, not by the declared karat.',
         )}
       </p>
+      </>
+      )}
     </div>
   );
 }

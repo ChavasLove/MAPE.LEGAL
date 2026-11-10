@@ -21,7 +21,18 @@ import {
   FACTOR_COMERCIALIZACION_VIGENTE,
   VERSION_POLITICA_PRECIOS,
 } from '@/lib/precio/calculo';
+import { factorCompraDefinido } from '@/lib/precio/factores';
 import type { PrecioReferenciaRow } from '@/lib/precio/consulta';
+
+// Modelo B (10-nov-2026): el factor de compra de Inversiones Zekaii, S. de R.L.
+// al productor deriva de FACTOR_COMPRA_ZEKAII (lib/precio/factores.ts). Mientras
+// sea null el panel NO permite calcular ni fijar — el operador no debe inventar
+// el factor en el formulario; se define a nivel de constante y se versiona la
+// política (cláusula 4). El POST /api/precio responde 409 en el mismo caso.
+const FACTOR_PENDIENTE_CONSTANTE = !factorCompraDefinido(FACTOR_COMERCIALIZACION_VIGENTE);
+const AVISO_FACTOR_PENDIENTE =
+  `Factor de compra pendiente de definición por Willis (Política de Precios v${VERSION_POLITICA_PRECIOS}). ` +
+  'No fijar precio hasta que esté definido.';
 
 interface Props {
   hoy: string;
@@ -116,7 +127,10 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
 
   const [lbma, setLbma] = useState('');
   const [tc, setTc] = useState('');
-  const [factor, setFactor] = useState(String(FACTOR_COMERCIALIZACION_VIGENTE));
+  // Con el factor pendiente el input arranca vacío y es obligatorio.
+  const [factor, setFactor] = useState(
+    FACTOR_COMERCIALIZACION_VIGENTE != null ? String(FACTOR_COMERCIALIZACION_VIGENTE) : '',
+  );
   const [motivo, setMotivo] = useState('');
   const [revisando, setRevisando] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -130,6 +144,10 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
     Number.isFinite(lbmaNum) && lbmaNum > 0 &&
     Number.isFinite(tcNum) && tcNum > 0 &&
     Number.isFinite(factorNum) && factorNum > 0 && factorNum <= 1;
+
+  // Gate del botón "Calcular y revisar": insumos válidos Y factor definido a
+  // nivel de constante (no basta con que el operador tipee un número).
+  const puedeCalcular = insumosValidos && !FACTOR_PENDIENTE_CONSTANTE;
 
   const previsualizacion = useMemo(() => {
     if (!insumosValidos) return null;
@@ -148,7 +166,7 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
   };
 
   const confirmar = async () => {
-    if (enviando || !revisando || !insumosValidos || !motivoOk) return;
+    if (enviando || !revisando || !puedeCalcular || !motivoOk) return;
     setEnviando(true);
     setStatus(null);
     try {
@@ -201,6 +219,26 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
           registran por reemplazo con motivo — los registros no se eliminan.
         </p>
       </div>
+
+      {FACTOR_PENDIENTE_CONSTANTE && (
+        <div
+          role="alert"
+          style={{
+            background: 'color-mix(in oklch, var(--red) 8%, white)',
+            border: '1px solid color-mix(in oklch, var(--red) 28%, white)',
+            borderRadius: 12,
+            padding: 16,
+            fontSize: 14,
+            color: 'var(--red)',
+            fontWeight: 600,
+            lineHeight: 1.6,
+          }}
+        >
+          {AVISO_FACTOR_PENDIENTE} El factor se define en lib/precio/factores.ts
+          (FACTOR_COMPRA_ZEKAII) y se publica con la nueva versión de la política — no se
+          captura en este panel.
+        </div>
+      )}
 
       {migracionPendiente && (
         <div
@@ -301,7 +339,7 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
             />
           </div>
           <div>
-            <label htmlFor="pr-factor" style={LABEL}>Factor de comercialización (0–1)</label>
+            <label htmlFor="pr-factor" style={LABEL}>Factor de compra al productor (0–1) *</label>
             <input
               id="pr-factor"
               type="number"
@@ -309,19 +347,37 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
               max="1"
               step="0.0001"
               inputMode="decimal"
+              required
+              aria-required="true"
+              aria-invalid={FACTOR_PENDIENTE_CONSTANTE || !(Number.isFinite(factorNum) && factorNum > 0 && factorNum <= 1)}
+              aria-describedby="pr-factor-nota"
               value={factor}
               onChange={(e) => editar(setFactor)(e.target.value)}
-              style={INPUT}
+              disabled={FACTOR_PENDIENTE_CONSTANTE}
+              style={{ ...INPUT, opacity: FACTOR_PENDIENTE_CONSTANTE ? 0.6 : 1 }}
+              placeholder={FACTOR_PENDIENTE_CONSTANTE ? 'pendiente' : undefined}
             />
-            <p style={{ marginTop: 4, fontSize: 12, color: 'var(--t3)' }}>
-              Política de Precios v{VERSION_POLITICA_PRECIOS}: {FACTOR_COMERCIALIZACION_VIGENTE}
+            <p
+              id="pr-factor-nota"
+              style={{
+                marginTop: 4,
+                fontSize: 12,
+                color: FACTOR_PENDIENTE_CONSTANTE ? 'var(--red)' : 'var(--t3)',
+                fontWeight: FACTOR_PENDIENTE_CONSTANTE ? 600 : 400,
+                lineHeight: 1.5,
+              }}
+            >
+              {FACTOR_PENDIENTE_CONSTANTE
+                ? AVISO_FACTOR_PENDIENTE
+                : `Política de Precios v${VERSION_POLITICA_PRECIOS}: ${FACTOR_COMERCIALIZACION_VIGENTE}`}
             </p>
           </div>
         </div>
         <button
           type="button"
-          onClick={() => insumosValidos && setRevisando(true)}
-          disabled={!insumosValidos || revisando}
+          onClick={() => puedeCalcular && setRevisando(true)}
+          disabled={!puedeCalcular || revisando}
+          title={FACTOR_PENDIENTE_CONSTANTE ? AVISO_FACTOR_PENDIENTE : undefined}
           style={{
             marginTop: 18,
             padding: '10px 18px',
@@ -332,8 +388,8 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
             fontFamily: 'var(--font-body)',
             fontSize: 14,
             fontWeight: 600,
-            cursor: !insumosValidos || revisando ? 'not-allowed' : 'pointer',
-            opacity: !insumosValidos || revisando ? 0.5 : 1,
+            cursor: !puedeCalcular || revisando ? 'not-allowed' : 'pointer',
+            opacity: !puedeCalcular || revisando ? 0.5 : 1,
           }}
         >
           Calcular y revisar
@@ -341,7 +397,7 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
       </div>
 
       {/* Paso 2 — previsualización + confirmación */}
-      {revisando && previsualizacion !== null && (
+      {revisando && !FACTOR_PENDIENTE_CONSTANTE && previsualizacion !== null && (
         <div
           style={{
             ...CARD,

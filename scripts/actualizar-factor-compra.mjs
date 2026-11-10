@@ -2,38 +2,50 @@
 // ---------------------------------------------------------------------------
 // actualizar-factor-compra.mjs
 //
-// Actualiza el factor de comercialización (precio de compra de oro de MAPE
-// LEGAL como fracción de la referencia LBMA) en el código, de forma
+// Actualiza el factor de compra de Inversiones Zekaii, S. de R.L. al productor
+// (fracción de la referencia internacional del oro) en el código, de forma
 // quirúrgica, idempotente y auditable.
 //
-// Ubicación sugerida en el repositorio: scripts/actualizar-factor-compra.mjs
-// Ejecutar desde la raíz del repositorio MAPE.LEGAL.
+// Modelo B (10-nov-2026): Inversiones Zekaii es la dueña de la plataforma
+// MAPE.LEGAL y la compradora del oro. El factor de compra al productor NO está
+// definido (FACTOR_COMPRA_ZEKAII = null = pendiente). Este script es la ÚNICA
+// vía prevista para pasar de `null` a una cifra — y solo con instrucción
+// escrita de Willis. Su revisión posterior se rige por la cláusula 4 de la
+// Política de Precios: toda revisión es una nueva versión publicada con al
+// menos 15 días calendario de anticipación.
 //
-// Fuentes de verdad que toca:
-//   A) services/pricingService.ts  ->  MAPE_GOLD_BUY_FACTOR
-//        Cotización en vivo de María (WhatsApp + web), boletín diario y
-//        widget /api/precios/live. Este es "aplicar precio a María".
-//   B) lib/precio/calculo.ts       ->  FACTOR_COMERCIALIZACION_VIGENTE
-//        Precarga del panel de fijación diaria y dato PUBLICADO en
-//        /precio y /politica-de-precios. Cambiarlo es un acto de política
-//        de precios; por eso es opt-in y exige versión + vigencia.
+// Ubicación: scripts/actualizar-factor-compra.mjs — ejecutar desde la raíz.
+//
+// Fuente de verdad que toca:
+//   A) lib/precio/factores.ts      ->  FACTOR_COMPRA_ZEKAII   (null | número)
+//        FUENTE ÚNICA del factor. De aquí derivan MAPE_GOLD_BUY_FACTOR
+//        (services/pricingService.ts → María WhatsApp + web, boletín diario,
+//        /api/precios/live, /api/precios/historial) y
+//        FACTOR_COMERCIALIZACION_VIGENTE (lib/precio/calculo.ts → panel de
+//        fijación /dashboard/precio y POST /api/precio). No hay un segundo
+//        objetivo numérico: cambiar aquí mueve todo.
+//   B) lib/precio/calculo.ts       ->  VERSION_POLITICA_PRECIOS +
+//                                      FECHA_VIGENCIA_POLITICA
+//        Dato PUBLICADO en /precio y /politica-de-precios. Cambiarlos es un
+//        acto de política de precios; por eso es opt-in y exige versión +
+//        vigencia explícitas (--sincronizar-politica).
 //
 // Diseño deliberado (regla: no incrustar decisiones sin autorización):
 //   - Por defecto SIMULA (dry-run): imprime el diff y no escribe nada.
-//   - Por defecto mueve SOLO a María (--maria-solo implícito).
+//   - Por defecto mueve SOLO el factor (factores.ts).
 //   - Sincronizar la política publicada requiere --sincronizar-politica
 //     junto con --version y --vigencia explícitos en la línea de comando.
 //   - No toca la tabla precios_diarios / precios_referencia: el número
-//     publicado del día se fija por el panel /dashboard/precio. El script
-//     te lo recuerda al terminar.
+//     publicado del día se fija por el panel /dashboard/precio.
 //   - No hace un reemplazo ciego de "0.8": ancla por identificador para no
-//     tocar opacidades CSS ni el objetivo de recuperación >= 80%.
+//     tocar opacidades CSS, el objetivo de recuperación >= 80 % ni
+//     FACTOR_VENTA_REFINERIA_LBMA (interno — NO es el factor de compra).
 //
 // Uso:
-//   node scripts/actualizar-factor-compra.mjs 0.78                 (simula, solo María)
-//   node scripts/actualizar-factor-compra.mjs 78%  --aplicar       (escribe, solo María)
+//   node scripts/actualizar-factor-compra.mjs 0.78                 (simula, solo factor)
+//   node scripts/actualizar-factor-compra.mjs 78%  --aplicar       (escribe, solo factor)
 //   node scripts/actualizar-factor-compra.mjs 0.78 --sincronizar-politica \
-//        --version 1.2 --vigencia 2026-XX-XX --aplicar             (escribe María + política)
+//        --version 1.2 --vigencia 2026-XX-XX --aplicar             (escribe factor + política)
 // ---------------------------------------------------------------------------
 
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -41,18 +53,12 @@ import { resolve } from 'node:path';
 
 // --- Objetivos de edición (anclados por identificador, nunca por valor) -----
 const OBJETIVOS = {
-  maria: {
-    archivo: 'services/pricingService.ts',
-    identificador: 'MAPE_GOLD_BUY_FACTOR',
+  factor: {
+    archivo: 'lib/precio/factores.ts',
+    identificador: 'FACTOR_COMPRA_ZEKAII',
     tipo: 'numero',
-    // Captura: (prefijo)(numero)(sufijo hasta el ;)
-    patron: /(export const MAPE_GOLD_BUY_FACTOR\s*=\s*)([0-9]*\.?[0-9]+)(\s*;)/,
-  },
-  politicaFactor: {
-    archivo: 'lib/precio/calculo.ts',
-    identificador: 'FACTOR_COMERCIALIZACION_VIGENTE',
-    tipo: 'numero',
-    patron: /(export const FACTOR_COMERCIALIZACION_VIGENTE\s*=\s*)([0-9]*\.?[0-9]+)(\s*;)/,
+    // Captura: (prefijo con la anotación de tipo)(null | numero)(sufijo hasta el ;)
+    patron: /(export const FACTOR_COMPRA_ZEKAII\s*:\s*number\s*\|\s*null\s*=\s*)(null|[0-9]*\.?[0-9]+)(\s*;)/,
   },
   politicaVersion: {
     archivo: 'lib/precio/calculo.ts',
@@ -65,6 +71,15 @@ const OBJETIVOS = {
     identificador: 'FECHA_VIGENCIA_POLITICA',
     tipo: 'texto',
     patron: /(export const FECHA_VIGENCIA_POLITICA\s*=\s*")([^"]*)("\s*;)/,
+  },
+  // Flag booleano que acompaña a FECHA_VIGENCIA_POLITICA: `true` mientras la
+  // fecha sea un marcador de texto ([CONFIRMAR]); al sincronizar con una
+  // fecha real pasa a `false`.
+  politicaVigenciaPendiente: {
+    archivo: 'lib/precio/calculo.ts',
+    identificador: 'FECHA_VIGENCIA_POLITICA_PENDIENTE',
+    tipo: 'booleano',
+    patron: /(export const FECHA_VIGENCIA_POLITICA_PENDIENTE\s*=\s*)(true|false)(\s*;)/,
   },
 };
 
@@ -171,24 +186,39 @@ if (SINCRONIZAR) {
 
 // --- Ejecución (recolecta, luego escribe) -----------------------------------
 console.log('\n──────────────────────────────────────────────────────────────');
-console.log(`  Factor de comercialización objetivo: ${nuevoFactorStr}  (${(nuevoFactor * 100).toFixed(2).replace(/\.00$/, '')}% de LBMA)`);
+console.log(`  Factor de compra al productor objetivo: ${nuevoFactorStr}  (${(nuevoFactor * 100).toFixed(2).replace(/\.00$/, '')}% de la referencia internacional)`);
+console.log(`  Comprador: Inversiones Zekaii, S. de R.L.`);
 console.log(`  Modo: ${APLICAR ? 'APLICAR (escribe en disco)' : 'SIMULACIÓN (no escribe)'}`);
-console.log(`  Alcance: ${SINCRONIZAR ? 'María + política publicada' : 'solo María (pricingService)'}`);
+console.log(`  Alcance: ${SINCRONIZAR ? 'factor (factores.ts) + política publicada (calculo.ts)' : 'solo factor (lib/precio/factores.ts)'}`);
 console.log('──────────────────────────────────────────────────────────────\n');
 
 const pendientes = [];
-pendientes.push(aplicarObjetivo(OBJETIVOS.maria, nuevoFactorStr));
+const resultadoFactor = aplicarObjetivo(OBJETIVOS.factor, nuevoFactorStr);
+const veniaPendiente = cambios.some(
+  (c) => c.identificador === OBJETIVOS.factor.identificador && c.antes === 'null',
+);
+pendientes.push(resultadoFactor);
 
 if (SINCRONIZAR) {
-  pendientes.push(aplicarObjetivo(OBJETIVOS.politicaFactor, nuevoFactorStr));
-  // La versión y la vigencia se editan sobre el mismo archivo calculo.ts;
-  // reprocesar sobre el contenido ya modificado en memoria.
-  const idxCalc = pendientes.findIndex((p) => p.archivo === OBJETIVOS.politicaVersion.archivo);
-  const contenidoCalcAntes = pendientes[idxCalc].nuevoContenido;
-  let contenidoCalc = contenidoCalcAntes;
-  for (const key of ['politicaVersion', 'politicaVigencia']) {
+  // Versión, vigencia y flag de vigencia pendiente viven en calculo.ts; el
+  // factor ya NO (deriva de factores.ts). Se editan sobre un único contenido
+  // en memoria y se escriben una sola vez.
+  const objCalc = OBJETIVOS.politicaVersion;
+  const rutaCalc = resolve(raiz, objCalc.archivo);
+  let contenidoCalc;
+  try {
+    contenidoCalc = readFileSync(rutaCalc, 'utf8');
+  } catch {
+    abortar(`No se encontró ${objCalc.archivo}. ¿Ejecutás desde la raíz del repositorio?`);
+  }
+  const contenidoCalcAntes = contenidoCalc;
+  const edicionesCalc = [
+    ['politicaVersion', version],
+    ['politicaVigencia', vigencia],
+    ['politicaVigenciaPendiente', 'false'],
+  ];
+  for (const [key, valor] of edicionesCalc) {
     const obj = OBJETIVOS[key];
-    const valor = key === 'politicaVersion' ? version : vigencia;
     const m = contenidoCalc.match(obj.patron);
     if (!m) abortar(`No se localizó ${obj.identificador} en ${obj.archivo}.`);
     if (m[2] !== valor) {
@@ -196,11 +226,12 @@ if (SINCRONIZAR) {
       contenidoCalc = contenidoCalc.replace(obj.patron, `$1${valor}$3`);
     }
   }
-  pendientes[idxCalc].nuevoContenido = contenidoCalc;
-  // Si el factor ya estaba en el valor pedido, aplicarObjetivo marcó el
-  // archivo como "sin cambios"; los edits de versión/vigencia de arriba
-  // deben forzar la escritura igual (antes se reportaban pero no se escribían).
-  if (contenidoCalc !== contenidoCalcAntes) pendientes[idxCalc].sinCambios = false;
+  pendientes.push({
+    archivo: objCalc.archivo,
+    ruta: rutaCalc,
+    nuevoContenido: contenidoCalc,
+    sinCambios: contenidoCalc === contenidoCalcAntes,
+  });
 }
 
 // --- Reporte de cambios -----------------------------------------------------
@@ -227,22 +258,32 @@ if (APLICAR) {
 
 // --- Advertencias y pasos obligatorios --------------------------------------
 console.log('Pasos obligatorios (no automatizados por diseño):');
+if (veniaPendiente) {
+  console.log('  [0] PRIMERA DEFINICIÓN: el factor pasa de PENDIENTE (null) a una cifra. Esto exige');
+  console.log('      instrucción escrita de Willis y la publicación de la nueva versión de la Política');
+  console.log('      de Precios de Inversiones Zekaii (hoy en BORRADOR) — sin ella, la cifra queda');
+  console.log('      visible en María, el boletín y /precios sin respaldo publicado.');
+}
 if (!SINCRONIZAR) {
-  console.log('  [1] COHERENCIA: moviste solo a María. /precio y /politica-de-precios');
-  console.log('      seguirán publicando el factor anterior bajo la versión de política vigente.');
-  console.log('      María cotizará un factor que la política publicada no autoriza hasta que');
-  console.log('      publiques la nueva versión. Decisión de Willis: formalizar como revisión');
-  console.log('      (v-nueva + aviso 15 días + --sincronizar-politica) o asumir desviación documentada.');
+  console.log('  [1] COHERENCIA: moviste solo el factor. FACTOR_COMERCIALIZACION_VIGENTE y');
+  console.log('      MAPE_GOLD_BUY_FACTOR ya derivan de factores.ts (se mueven solos), pero');
+  console.log('      VERSION_POLITICA_PRECIOS / FECHA_VIGENCIA_POLITICA siguen en su valor anterior:');
+  console.log('      /precio y /politica-de-precios publicarán el factor nuevo bajo la versión vieja.');
+  console.log('      Decisión de Willis: formalizar como revisión (v-nueva + aviso 15 días +');
+  console.log('      --sincronizar-politica) o asumir desviación documentada.');
 } else {
   console.log(`  [1] AVISO: la cláusula 4 de la Política de Precios prevé publicación con 15 días`);
   console.log('      calendario de anticipación. Confirmá que la vigencia indicada respeta ese plazo');
   console.log('      o que la desviación queda documentada por decisión de Willis.');
 }
 console.log('  [2] FIJACIÓN DIARIA: el número publicado en /precio se fija por el panel');
-console.log('      /dashboard/precio. María cotiza en vivo tras el deploy; la página solo cambia');
+console.log('      /dashboard/precio (deja de responder 409 factor_compra_pendiente tras el deploy).');
+console.log('      María, el boletín y /precios cotizan tras el deploy; la página /precio solo cambia');
 console.log('      en la próxima fijación. Fijá el precio del día con el nuevo factor para que no diverjan.');
 console.log('  [3] GATE INSTITUCIONAL: sin cambios — María sigue sin cotizar precio a contactos');
 console.log('      institucionales (esInstitucional). Verificado, no requiere acción.');
-console.log('  [4] Commit sugerido:');
-console.log(`      "precio: factor de comercialización ${nuevoFactorStr}${SINCRONIZAR ? ` (Política v${version}, vig. ${vigencia})` : ' (solo María, interino)'}"`);
+console.log('  [4] NO TOCADO (correcto): FACTOR_VENTA_REFINERIA_LBMA es el precio de venta de Zekaii');
+console.log('      a la refinería de destino — interno, no es el factor de compra al productor.');
+console.log('  [5] Commit sugerido:');
+console.log(`      "precio: factor de compra Zekaii ${nuevoFactorStr}${SINCRONIZAR ? ` (Política v${version}, vig. ${vigencia})` : ' (solo factor, interino)'}"`);
 console.log('');

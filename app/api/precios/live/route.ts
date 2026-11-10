@@ -9,6 +9,11 @@ import {
   MAPE_GOLD_BUY_FACTOR,
 } from '@/services/pricingService';
 import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit';
+import { factorCompraDefinido } from '@/lib/precio/factores';
+
+// Comprador del oro en el modelo B (10-nov-2026). Se publica en la respuesta
+// para que las superficies etiqueten el precio de compra con el comprador real.
+const COMPRADOR = 'Inversiones Zekaii, S. de R.L.';
 
 // Public, unauthenticated snapshot for the live-prices widget (/precios) and any
 // other surface that wants the same numbers María quotes. Reads gold/FX from
@@ -118,11 +123,17 @@ export async function GET(request: NextRequest) {
     const plata = row ? num(row.plata) : null;
     const usd_hnl = row ? num(row.usd_hnl) : null;
     const oro_lps_oz = oro != null && usd_hnl != null ? oro * usd_hnl : null;
-    const oro_compra_lps_gramo = mapeGoldBuyLpsPerGram(oro, usd_hnl);
+    // Modelo B: el factor de compra de Inversiones Zekaii al productor deriva de
+    // FACTOR_COMPRA_ZEKAII (lib/precio/factores.ts). Mientras sea null (PENDIENTE
+    // de definición por Willis) la API NO publica ningún factor ni precio de
+    // compra en lempiras: mape_factor, oro_compra_lps_gramo y kilates van null y
+    // factor_compra_pendiente = true. Nunca se inventa una cifra aquí.
+    const factor_compra_pendiente = !factorCompraDefinido(MAPE_GOLD_BUY_FACTOR);
+    const oro_compra_lps_gramo = factor_compra_pendiente ? null : mapeGoldBuyLpsPerGram(oro, usd_hnl);
     // Per-karat conversion (16/18/20/22 k) derived server-side from the same
     // frozen snapshot — the widget renders these values verbatim so the karat
-    // table can never drift from the daily price.
-    const kilates = buildKaratPrices(oro, usd_hnl);
+    // table can never drift from the daily price. Null while the factor is pending.
+    const kilates = factor_compra_pendiente ? null : buildKaratPrices(oro, usd_hnl);
 
     const hnStamp = (iso: string) =>
       new Date(iso).toLocaleString('es-HN', {
@@ -148,7 +159,9 @@ export async function GET(request: NextRequest) {
         fuente: row?.fuente ?? null,
         consultado_hn,
         actualizado_hn,
-        mape_factor: MAPE_GOLD_BUY_FACTOR,
+        comprador: COMPRADOR,
+        mape_factor: factor_compra_pendiente ? null : MAPE_GOLD_BUY_FACTOR,
+        factor_compra_pendiente,
         oro_usd_oz: oro,
         plata_usd_oz: plata,
         usd_hnl,
