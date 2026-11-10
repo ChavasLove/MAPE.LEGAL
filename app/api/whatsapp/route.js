@@ -357,19 +357,23 @@ export async function POST(request) {
 
     // Verify the POST genuinely came from Twilio before trusting its contents.
     //
-    // Enforcement is OPT-IN, not the default. A signature check that fails
-    // closed on a URL we can only *guess* (see twilioCandidateUrls) is a
-    // foot-gun: one URL/token mismatch black-holes every inbound message with a
-    // 403 and no TwiML — María just goes silent for everyone. That is exactly
-    // what happened after this check shipped. So:
-    //   - TWILIO_VALIDATE_SIGNATURE='false'  → skip the check entirely (kill switch)
-    //   - TWILIO_VALIDATE_SIGNATURE='true'   → hard-reject mismatches with 403 (enforce)
-    //   - unset / anything else (default)    → validate + log mismatches, but LET
-    //                                          THE TURN THROUGH (never a 403)
-    //   - TWILIO_SIGNATURE_LOG_ONLY='true'   → force log-only even when enforcing
-    // Flip to 'true' only after Vercel logs show the candidate URLs matching.
+    // ENFORCE POR DEFECTO (correcciones de seguridad 10-nov-2026): una firma
+    // que no calza se rechaza con 403. Interruptores de emergencia para un
+    // rollback consciente — NUNCA son el default:
+    //   - TWILIO_VALIDATE_SIGNATURE='false'  → salta el chequeo por completo (kill switch)
+    //   - TWILIO_SIGNATURE_LOG_ONLY='true'   → valida y loguea el mismatch pero deja pasar
+    //   - unset / cualquier otro valor       → ENFORCE (403 ante mismatch)
+    // Sin TWILIO_AUTH_TOKEN no se puede validar: el webhook rechaza con 500 y
+    // lo registra (fail-closed), en vez de aceptar cualquier POST anónimo.
+    // Antes de activar un deploy, confirmar en Vercel logs que alguna de las
+    // candidate URLs calza con la que Twilio firma (ver twilioCandidateUrls).
     const twilioToken = process.env.TWILIO_AUTH_TOKEN;
-    if (twilioToken && process.env.TWILIO_VALIDATE_SIGNATURE !== 'false') {
+    const skipSignature = process.env.TWILIO_VALIDATE_SIGNATURE === 'false';
+    if (!skipSignature) {
+      if (!twilioToken) {
+        console.error('[maria] TWILIO_AUTH_TOKEN no configurado — no se puede validar la firma; rechazando');
+        return new Response('Webhook no configurado', { status: 500 });
+      }
       const sigParams = {};
       for (const [k, v] of formData.entries()) sigParams[k] = typeof v === 'string' ? v : '';
       const signature = request.headers.get('x-twilio-signature');
@@ -378,14 +382,14 @@ export async function POST(request) {
         validateTwilioSignature({ authToken: twilioToken, signature, url, params: sigParams })
       );
       if (!signatureOk) {
-        const enforce =
-          process.env.TWILIO_VALIDATE_SIGNATURE === 'true' &&
-          process.env.TWILIO_SIGNATURE_LOG_ONLY !== 'true';
-        console.warn(`[maria] twilio signature mismatch enforce=${enforce} hasSig=${!!signature} candidates=${candidates.join(' | ')}`);
-        if (enforce) {
+        const logOnly = process.env.TWILIO_SIGNATURE_LOG_ONLY === 'true';
+        console.warn(`[maria] twilio signature mismatch enforce=${!logOnly} hasSig=${!!signature} candidates=${candidates.join(' | ')}`);
+        if (!logOnly) {
           return new Response('Firma inválida', { status: 403 });
         }
       }
+    } else {
+      console.warn('[maria] TWILIO_VALIDATE_SIGNATURE=false — validación de firma DESACTIVADA (kill switch)');
     }
 
     // Media messages (images, voice notes) arrive with no Body text
@@ -405,8 +409,8 @@ export async function POST(request) {
     // (MARIA_ADMIN_PASSPHRASE), never in the repo — unset ⇒ executive mode
     // disabled (fail-closed). And the passphrase alone NEVER suffices: the
     // sender's number must also hold rol='admin' in usuarios_broadcast,
-    // because sender numbers are spoofable while Twilio signature enforcement
-    // is staged (TWILIO_VALIDATE_SIGNATURE opt-in, see above).
+    // because sender numbers are spoofable if the Twilio signature check is
+    // ever disabled via the kill switch (TWILIO_VALIDATE_SIGNATURE=false).
     const ADMIN_PASSPHRASE = process.env.MARIA_ADMIN_PASSPHRASE || null;
     const ADMIN_TRIGGER_RE = /\bwillis\s+yang\b/i;
     const PASSPHRASE_RE = ADMIN_PASSPHRASE

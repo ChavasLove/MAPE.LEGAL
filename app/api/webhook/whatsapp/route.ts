@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { parseWebhookMessages } from '@/services/whatsappService';
-import { supabase } from '@/services/supabase';
+import { getAdminClient } from '@/services/adminSupabase';
 import { validateMetaSignature } from '@/lib/webhookSignatures';
 
 // GET: webhook verification handshake by Meta
@@ -26,25 +26,29 @@ export async function POST(req: NextRequest) {
     // the bytes exactly as received, not a re-serialized JSON.
     const raw = await req.text();
 
-    // Enforce Meta's signature when WHATSAPP_APP_SECRET is configured. Left
-    // unset, validation is skipped (logged) so the currently-working media flow
-    // keeps running until the secret is intentionally added.
+    // La firma de Meta es OBLIGATORIA (correcciones de seguridad 10-nov-2026).
+    // Sin WHATSAPP_APP_SECRET no hay forma de autenticar el POST: se responde
+    // error y NO se procesa el cuerpo (fail-closed). Antes se omitía la
+    // validación con un warning, lo que dejaba el endpoint abierto a cualquiera.
     const appSecret = process.env.WHATSAPP_APP_SECRET;
-    if (appSecret) {
-      const ok = validateMetaSignature({
-        appSecret,
-        signatureHeader: req.headers.get('x-hub-signature-256'),
-        rawBody: raw,
-      });
-      if (!ok) {
-        console.warn('[meta-webhook] signature validation failed — rejecting');
-        return NextResponse.json({ error: 'invalid signature' }, { status: 401 });
-      }
-    } else {
-      console.warn('[meta-webhook] WHATSAPP_APP_SECRET not set — skipping signature validation');
+    if (!appSecret) {
+      console.error('[meta-webhook] WHATSAPP_APP_SECRET no configurado — rechazando sin procesar');
+      return NextResponse.json({ error: 'webhook not configured' }, { status: 500 });
+    }
+    const ok = validateMetaSignature({
+      appSecret,
+      signatureHeader: req.headers.get('x-hub-signature-256'),
+      rawBody: raw,
+    });
+    if (!ok) {
+      console.warn('[meta-webhook] signature validation failed — rejecting');
+      return NextResponse.json({ error: 'invalid signature' }, { status: 401 });
     }
 
     const payload = JSON.parse(raw);
+    // mensajes_wa tiene RLS (migración 041): la escritura va por el cliente de
+    // servidor, nunca por la anon key, y solo después de validar la firma.
+    const db = getAdminClient();
     const messages = parseWebhookMessages(payload);
 
     for (const msg of messages) {
@@ -60,7 +64,7 @@ export async function POST(req: NextRequest) {
       const archivo = msg.mediaId ? `wa-media-${msg.mediaId}` : '';
 
       // Insert into mensajes_wa — admin assigns to an expediente later
-      await supabase.from('mensajes_wa').insert({
+      await db.from('mensajes_wa').insert({
         cliente:     msg.contactName ?? msg.from,
         hora:        msg.timestamp,
         archivo,

@@ -32,16 +32,16 @@ const DEFAULT_BROADCAST_TIME = '08:00';
 // unauthenticated caller can't probe broadcast state via the skip reason.
 function assertCron(req: NextRequest): NextResponse | null {
   const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const auth = req.headers.get('authorization');
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-  } else if (process.env.NODE_ENV === 'production') {
-    // A missing CRON_SECRET in production would expose this endpoint to anyone,
-    // letting them trigger broadcasts and burn Meta API quota. Fail loudly.
-    console.error('[/api/broadcast/run] CRON_SECRET not configured in production');
+  if (!secret) {
+    // CRON_SECRET es OBLIGATORIO en TODOS los entornos (correcciones de
+    // seguridad 10-nov-2026). Antes, fuera de producción el endpoint quedaba
+    // abierto y cualquier GET disparaba el boletín/snapshot sin Authorization.
+    console.error('[/api/broadcast/run] CRON_SECRET not configured — refusing to run');
     return NextResponse.json({ error: 'CRON_SECRET not configured' }, { status: 500 });
+  }
+  const auth = req.headers.get('authorization');
+  if (auth !== `Bearer ${secret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   return null;
 }
