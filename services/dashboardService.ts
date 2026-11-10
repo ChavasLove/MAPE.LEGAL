@@ -1,4 +1,16 @@
-import { supabase } from '@/services/supabase';
+import { getAdminClient } from '@/services/adminSupabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+// Server-only. Este módulo usa el cliente service-role (getAdminClient) y no
+// debe importarse desde client components salvo con `import type`. Sus callers
+// son rutas server-side ya protegidas por requireRole(). La instanciación es
+// lazy — nunca a nivel de módulo (regla §Framework de CLAUDE.md). Desde la
+// migración 041 estas tablas tienen RLS y la anon key no las ve.
+let _db: SupabaseClient | null = null;
+function db(): SupabaseClient {
+  if (!_db) _db = getAdminClient();
+  return _db;
+}
 
 // ─── Date helpers ────────────────────────────────────────────────────────────
 
@@ -105,7 +117,7 @@ export interface DashMensaje {
 const DASHBOARD_EXPEDIENTES_LIMIT = 200;
 
 export async function getDashExpedientes(): Promise<DashExpediente[]> {
-  const { data, error } = await supabase
+  const { data, error } = await db()
     .from('expedientes')
     .select(`
       id, numero_expediente, cliente, tipo, municipio, estado,
@@ -131,7 +143,7 @@ export async function getDashExpedientes(): Promise<DashExpediente[]> {
 export async function getDashExpedienteById(
   numeroExpediente: string
 ): Promise<DashExpediente | null> {
-  const { data, error } = await supabase
+  const { data, error } = await db()
     .from('expedientes')
     .select(`
       id, numero_expediente, cliente, tipo, municipio, estado,
@@ -154,7 +166,7 @@ export async function getDashExpedienteById(
 }
 
 export async function getDashMensajes(): Promise<DashMensaje[]> {
-  const { data, error } = await supabase
+  const { data, error } = await db()
     .from('mensajes_wa')
     .select(`
       id, cliente, hora, archivo, tipo, doc_tipo, estado, documento_id, campos,
@@ -205,7 +217,7 @@ export async function createDashExpediente(
   const year   = new Date().getFullYear();
   const prefix = `EXP-${year}-`;
 
-  const { data: rows } = await supabase
+  const { data: rows } = await db()
     .from('expedientes')
     .select('numero_expediente')
     .like('numero_expediente', `${prefix}%`);
@@ -219,7 +231,7 @@ export async function createDashExpediente(
   const num    = String(lastNum + 1).padStart(4, '0');
   const numero = `${prefix}${num}`;
 
-  const { data: exp, error: expErr } = await supabase
+  const { data: exp, error: expErr } = await db()
     .from('expedientes')
     .insert({
       numero_expediente:  numero,
@@ -253,14 +265,14 @@ export async function createDashExpediente(
   // lib/maria/systemPrompt.ts). Antes este bloque usaba 30/40/30 (320K/480K/800K),
   // desincronizado del prompt canónico — cada expediente nuevo nacía con el
   // calendario de pagos equivocado.
-  const { error: hitosErr } = await supabase.from('hitos').insert([
+  const { error: hitosErr } = await db().from('hitos').insert([
     { expediente_id: eid, numero: 1, monto: 640000, porcentaje: 40, trigger_evento: 'Anticipo a la firma del contrato',      estado: 'pendiente' },
     { expediente_id: eid, numero: 2, monto: 640000, porcentaje: 40, trigger_evento: 'Ingreso del expediente a SERNA',        estado: 'bloqueado' },
     { expediente_id: eid, numero: 3, monto: 320000, porcentaje: 20, trigger_evento: 'Permiso INHGEOMIN + licencia ambiental', estado: 'bloqueado' },
   ]);
   if (hitosErr) throw hitosErr;
 
-  const { error: docsErr } = await supabase.from('documentos').insert([
+  const { error: docsErr } = await db().from('documentos').insert([
     { expediente_id: eid, nombre: 'RTN autenticado',           estado: 'faltante', info: 'Pendiente del cliente' },
     { expediente_id: eid, nombre: 'Documento de identidad (DPI)', estado: 'faltante', info: 'Pendiente del cliente' },
     { expediente_id: eid, nombre: 'Escritura del terreno',     estado: 'faltante', info: 'Pendiente del cliente' },
@@ -268,7 +280,7 @@ export async function createDashExpediente(
   ]);
   if (docsErr) throw docsErr;
 
-  const { error: legErr } = await supabase.from('legalidad_items').insert([
+  const { error: legErr } = await db().from('legalidad_items').insert([
     { expediente_id: eid, nombre: 'Tierra',    estado: 'pendiente', orden: 1 },
     { expediente_id: eid, nombre: 'INHGEO',    estado: 'pendiente', orden: 2 },
     { expediente_id: eid, nombre: 'Ambiental', estado: 'pendiente', orden: 3 },
@@ -277,7 +289,7 @@ export async function createDashExpediente(
   ]);
   if (legErr) throw legErr;
 
-  const { data: pf, error: pfErr } = await supabase.from('progress_fases').insert({
+  const { data: pf, error: pfErr } = await db().from('progress_fases').insert({
     expediente_id:    eid,
     nombre:           'Fase 0 · Onboarding',
     estado:           'activa',
@@ -289,7 +301,7 @@ export async function createDashExpediente(
   }).select('id').single();
   if (pfErr || !pf) throw pfErr ?? new Error('Failed to create progress_fase');
 
-  const { error: subErr } = await supabase.from('progress_subpasos').insert({
+  const { error: subErr } = await db().from('progress_subpasos').insert({
     progress_fase_id: pf.id,
     nombre: 'Paso 1 · Consulta SIMHON/INHGEOMIN',
     estado: 'activo',
@@ -310,7 +322,7 @@ export async function updateDocumentoEstado(
   const updates: Record<string, unknown> = { estado, updated_at: new Date().toISOString() };
   if (info) updates.info = info;
 
-  const { error } = await supabase
+  const { error } = await db()
     .from('documentos')
     .update(updates)
     .eq('id', docId);
@@ -322,7 +334,7 @@ export async function updateMensajeEstado(
   mensajeId: string,
   estado: string
 ): Promise<void> {
-  const { error } = await supabase
+  const { error } = await db()
     .from('mensajes_wa')
     .update({ estado })
     .eq('id', mensajeId);

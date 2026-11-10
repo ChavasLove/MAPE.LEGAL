@@ -1,13 +1,24 @@
-import { supabase } from '@/services/supabase';
 import { getAdminClient } from '@/services/adminSupabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { notifyPhaseAdvance } from '@/modules/notifications';
 import type { Expediente } from '@/modules/types';
+
+// Server-only. Este módulo usa el cliente service-role (getAdminClient) y no
+// debe importarse desde client components salvo con `import type`. Sus callers
+// son rutas server-side ya protegidas por requireRole(). La instanciación es
+// lazy — nunca a nivel de módulo (regla §Framework de CLAUDE.md). Desde la
+// migración 041 estas tablas tienen RLS y la anon key no las ve.
+let _db: SupabaseClient | null = null;
+function db(): SupabaseClient {
+  if (!_db) _db = getAdminClient();
+  return _db;
+}
 
 export async function validatePaymentForPhase(
   expedienteId: string,
   faseId: string
 ): Promise<boolean> {
-  const { data } = await supabase
+  const { data } = await db()
     .from('pagos')
     .select('id')
     .eq('expediente_id', expedienteId)
@@ -23,7 +34,7 @@ export async function logAction(
   metadata: Record<string, unknown> = {},
   userId?: string
 ): Promise<void> {
-  await supabase.from('registro_auditoria').insert({
+  await db().from('registro_auditoria').insert({
     expediente_id: expedienteId,
     accion,
     metadata,
@@ -67,7 +78,7 @@ export async function advancePhase(
 
   if (!chosen) throw new Error('Transición no encontrada o no disponible');
 
-  const { data: expediente } = await supabase
+  const { data: expediente } = await db()
     .from('expedientes')
     .select('fase_actual_id, fase_numero')
     .eq('id', expedienteId)
@@ -84,7 +95,7 @@ export async function advancePhase(
   // ran above via getNextActions — the RPC re-verifies only what a race can
   // invalidate. EXECUTE is service_role-only: the route handler passed
   // requireRole() before reaching this module.
-  const admin = getAdminClient();
+  const admin = db();
   const { data: rpcRows, error: rpcError } = await admin.rpc('avanzar_expediente_fase', {
     p_expediente_id:  expedienteId,
     p_fase_origen_id: faseAnteriorId,
@@ -142,7 +153,7 @@ async function advanceOptimistic(
   faseAnteriorId: string | null,
   faseAnteriorNumero: number | null
 ): Promise<Expediente> {
-  let advanceQuery = supabase
+  let advanceQuery = db()
     .from('expedientes')
     .update({ fase_actual_id: fase.id, fase_numero: fase.orden })
     .eq('id', expedienteId);
@@ -161,7 +172,7 @@ async function advanceOptimistic(
 
   // We own the advance now — close the previous fase's open history record.
   if (faseAnteriorId) {
-    await supabase
+    await db()
       .from('expediente_fases')
       .update({ salida_en: new Date().toISOString() })
       .eq('expediente_id', expedienteId)
@@ -170,7 +181,7 @@ async function advanceOptimistic(
   }
 
   // Open new fase history record — revert expediente update if this fails
-  const { error: historyError } = await supabase.from('expediente_fases').insert({
+  const { error: historyError } = await db().from('expediente_fases').insert({
     expediente_id: expedienteId,
     fase_id: fase.id,
     ingresado_por: userId ?? null,
@@ -179,7 +190,7 @@ async function advanceOptimistic(
   if (historyError) {
     // Restore both columns to keep fase_numero ↔ fase_actual_id in sync. Guard
     // on the fase we just set so we don't clobber a newer concurrent advance.
-    await supabase
+    await db()
       .from('expedientes')
       .update({ fase_actual_id: faseAnteriorId, fase_numero: faseAnteriorNumero })
       .eq('id', expedienteId)
