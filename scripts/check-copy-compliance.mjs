@@ -16,8 +16,8 @@
  *  - app/api        — código de servidor, no copy público: exento de las
  *                     reglas de copy PÚBLICO, pero desde la orden "Blindaje
  *                     institucional de María" (2026-08) SÍ se escanea con las
- *                     reglas de confidencialidad (scope: 'all') — la exención
- *                     total de §1.3 quedó superseded para ese propósito.
+ *                     reglas de confidencialidad (scope: 'all') y, desde el
+ *                     hotfix 2026-11-11, con las de código (scope: 'code').
  *  - app/admin      — panel interno autenticado, fuera del sitio público.
  *  - app/dashboard  — superficie interna autenticada.
  *  - app/portal     — superficie interna autenticada.
@@ -30,42 +30,41 @@
  * docs/legal/sentencia-sco-0090-2014.md y lib/legal/vigenciaLGM.ts, que
  * necesitan nombrar los artículos sin anotación inline.
  *
- * Reglas del Modelo B (confirmado por Willis, 10-nov-2026): Inversiones
- * Zekaii, S. de R.L. es la dueña de la plataforma MAPE.LEGAL y la compradora
- * del oro; Corporación Hondureña Tenka, S.A. (CHT) presta los servicios legales
- * y mineros y NO compra, vende ni opera la plataforma. El sello MAPE.LEGAL es
- * voluntario y complementario (no sustituye el Certificado de Origen oficial,
- * que emite el titular y autentica la autoridad); el Registro de
- * Comercializadores de INHGEOMIN es del COMPRADOR, no del minero que vende su
- * propia producción; el factor de compra al productor está PENDIENTE
- * (`FACTOR_COMPRA_ZEKAII` en lib/precio/factores.ts). Reglas de copy público
- * nuevas (alcance SCAN_DIRS):
- *  - "certificado(s) emitido(s) por MAPE…" — la plataforma registra, no emite.
- *  - "precio de referencia oficial" / "precio oficial de Zekaii|MAPE|Inversiones"
- *    — el precio de referencia es comercial, no oficial.
- *  - "Registro INHGEOMIN" como título a secas (sin "de") — ambiguo; las formas
- *    correctas "Registro de Comercializadores de INHGEOMIN" y "Registro Minero y
- *    Catastral de INHGEOMIN" pasan.
- *  - "CHT compra" / "vender (mineral) a CHT" — CHT no compra mineral.
- *  - CHT (o Corporación Hondureña Tenka) como operadora / dueña / propietaria /
- *    titular de la plataforma — con exclusión de la negación requerida ("no es
- *    dueña ni operadora de la plataforma" PASA).
- *  - "a nombre del vendedor" — el Registro de Comercializador no se exige al
- *    minero titular que vende su producción.
- *  - "adoptado/aprobado/reconocido/certificado/avalado por INHGEOMIN" y
- *    "Acuerdo (de) INHGEOMIN" — salvo que la misma línea diga "no existe" /
- *    "no consta" (negación requerida).
- *  - "consulta (previa) (del Convenio 169) completada|cumplida|realizada" —
- *    la consulta previa es un derecho vigente, no un trámite cumplido.
- *  - "MAPE LEGAL emite" / "MAPE.LEGAL emite" — la plataforma no emite
- *    certificados.
- * Relajación: la regla `chiopa` de alcance 'all' ya NO bloquea el nombre como
- * destino lícito de venta (modelo B); solo prohíbe el modelo descartado
- * ("Chiopa compra directo|directamente"). El nombre sigue vedado en superficies
- * públicas (regla de alcance SCAN_DIRS → "refinería de destino").
- * Nunca se bloquean: `FACTOR_COMPRA_ZEKAII`, "[POR DEFINIR POR WILLIS]",
- * "Inversiones Zekaii". lib/precio entra en INTERNAL_SCAN_DIRS
- * (confidencialidad).
+ * ─── Hotfix neutralidad (11-nov-2026) — modelo público correcto ───────────
+ * Corporación Hondureña Tenka, S.A. (CHT) es titular, desarrolladora y
+ * operadora de MAPE.LEGAL; presta servicios legales y mineros; NO compra ni
+ * vende mineral. MAPE.LEGAL no compra, no vende ni intermedia oro. NUNCA se
+ * nombra a un comprador. El precio público es el "Precio referencial (75%)"
+ * (L por gramo de oro fino) SIEMPRE con el aviso literal AVISO_PRECIO_REFERENCIAL.
+ * Cambios de reglas respecto del "Modelo B" del PR #240:
+ *  - QUITADA: la regla que prohibía a CHT como operadora / dueña / titular de la
+ *    plataforma — hoy es la formulación correcta. Se MANTIENEN "CHT compra" y
+ *    "vender (mineral) a CHT" (CHT no compra mineral).
+ *  - QUITADA: la regla pública `chiopa` (queda cubierta por la de compradores).
+ *  - NUEVA (scope 'code' = público + lib/ + services/ + app/api; no docs/ ni
+ *    *.md raíz, que Willis decidirá aparte): comprador nombrado
+ *    (zekaii|chiopa|liopa|alfilo) — prohibido en código y superficies públicas.
+ *  - NUEVA (público): "precio de compra" y "compra(mos) (de) oro" — la
+ *    plataforma no compra: usar "precio referencial (75%)". Pasan las
+ *    negaciones ("no es una oferta de compra", "MAPE.LEGAL no compra, no vende
+ *    ni intermedia oro", "Nadie compra oro", "nunca un precio de compra").
+ *  - NUEVA (público): "80 %/85 % del precio | de la referencia | LBMA" como
+ *    precio al productor — el único porcentaje publicable es el 75% referencial
+ *    (ningún patrón dispara con "75 %").
+ *  - NUEVA (scope 'maria' = público + lib/maria): "pago/depósito (el) mismo
+ *    día" — promesa de pago prohibida; pasa cuando la línea la niega ("NUNCA
+ *    prometas …", "no prometer …").
+ *  - Etiquetas actualizadas: ya no se cita a ningún comprador en las razones.
+ *  - Se mantienen: ™/®, FINACOOP, PNUD/Naciones Unidas, aval de INHGEOMIN,
+ *    consulta 169 "completada", "certificados emitidos por MAPE", "Registro
+ *    INHGEOMIN" a secas, "MAPE.LEGAL emite" y el pase de vigencia SCO-0090-2014.
+ *
+ * Alcances (`scope` de cada regla):
+ *  - (sin scope) → copy público: SCAN_DIRS (app/ sin api|admin|dashboard|portal,
+ *    components/, lib/content/).
+ *  - 'all'   → público + INTERNAL_SCAN_DIRS + ROOT_FILES + app/api (confidencialidad).
+ *  - 'code'  → público + lib/ (completo) + services/ + app/api.
+ *  - 'maria' → público + lib/maria.
  *
  * Una regla puede llevar `exclude`: si la línea también matchea esa expresión
  * (negación requerida), no se reporta.
@@ -87,12 +86,16 @@ const SCAN_DIRS = ['app', 'components', 'lib/content']
 const INTERNAL_SCAN_DIRS = ['docs', 'lib/maria', 'lib/precio', 'services']
 const ROOT_FILES = ['README.md', 'CLAUDE.md', 'MARIA.md', 'MARIA_LEY_MINERIA.md', 'AGENTS.md', 'DESIGN.md']
 // Tercer alcance (orden "Blindaje institucional de María" 2026-08, T2.4):
-// app/api deja de estar totalmente exento — se escanea ÚNICAMENTE con las
-// reglas de confidencialidad (`scope: 'all'`: contrapartes sin convenio +
-// cifras de margen), no con las reglas de copy público (es código de
-// servidor, no copy). La exención total de §1.3 quedó superseded por esa
-// orden para este propósito.
+// app/api deja de estar totalmente exento — se escanea con las reglas de
+// confidencialidad (`scope: 'all'`) y de código (`scope: 'code'`), no con las
+// reglas de copy público (es código de servidor, no copy).
 const CONFIDENTIALITY_ALSO_DIRS = [join('app', 'api')]
+// Alcance 'code' (hotfix 2026-11-11): todo el código que puede terminar en una
+// respuesta o superficie — lib/ completo, services/ y app/api. Excluye docs/ y
+// los *.md de la raíz (decisión pendiente de Willis).
+const CODE_SCAN_DIRS = ['lib', 'services', join('app', 'api')]
+// Alcance 'maria' (hotfix 2026-11-11): promesas de pago — público + prompt de María.
+const MARIA_SCAN_DIRS = ['lib/maria']
 const EXCLUDED = [
   join('app', 'api'),
   join('app', 'admin'),
@@ -105,6 +108,10 @@ const EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.md', '.mdx', '.css',
 // un comentario HTML al final de la línea. Usarlo SOLO para documentación de
 // reglas — nunca para copy real.
 const ALLOW_MARKER = 'check-copy:allow'
+
+// Negación / prohibición en la misma línea: "no compra", "nunca un precio de
+// compra", "nadie compra oro", "NUNCA prometas …", "no es una oferta de compra".
+const NEGACION_RE = /\b(?:no|nunca|nadie|jam[aá]s|ni|tampoco|prohibid[oa]s?)\b/i
 
 /**
  * Cada regla: expresión regular (insensible a mayúsculas donde aplica) y
@@ -161,42 +168,48 @@ const RULES = [
   // "cooperativa financiera aliada".
   { re: /finacoop/i, label: 'FINACOOP — usar "cooperativa financiera aliada" hasta convenio firmado', scope: 'all' },
 
-  // Contrapartes y términos económicos (limpieza 2026-08): el repositorio es
-  // público — ningún archivo expone contrapartes sin convenio ni márgenes.
-  // Modelo B (10-nov-2026): la refinería de destino es el comprador aguas
-  // abajo de Inversiones Zekaii — nombrarla en código y docs internos es
-  // lícito; lo prohibido en todo el repo es el modelo descartado (venta directa
-  // del productor a la refinería). En superficies públicas el nombre sigue
-  // vedado (regla pública abajo).
-  { re: /chiopa\s+compra\s+(directo|directamente)/i, label: '"Chiopa compra directo" — modelo descartado; el productor vende a Inversiones Zekaii', scope: 'all' },
-  { re: /chiopa/i, label: 'nombrar la refinería en superficies públicas — usar "refinería de destino"' },
+  // Compradores nombrados (hotfix 2026-11-11): prohibidos en código y en
+  // superficies públicas — María y el sitio no nombran a ningún comprador.
+  // docs/ y los *.md de la raíz quedan fuera (decisión pendiente de Willis).
+  { re: /\b(zekaii|chiopa|liopa|alfilo)\b/i, label: 'comprador nombrado — prohibido en código y superficies públicas', scope: 'code' },
+  // Modelo descartado (venta directa del productor a la refinería) — sigue
+  // prohibido en todo el repo, docs incluidos.
+  { re: /chiopa\s+compra\s+(directo|directamente)/i, label: '"… compra directo" — modelo descartado; la plataforma no intermedia ventas', scope: 'all' },
+
+  // Cifras de margen comercial (confidencialidad, todo el repo).
   { re: /8[05]\s*%\s*del\s+precio/i, label: 'cifra de margen comercial — remite a la Política de Precios versionada', scope: 'all' },
   { re: /8[05]\s*%\s*of\s+the\s+(international|reference)/i, label: 'cifra de margen comercial (variante EN) — remite a la Política de Precios versionada', scope: 'all' },
+  // Precio al productor con 80 %/85 % (público): el único porcentaje publicable
+  // es el 75 % referencial.
+  { re: /8[05]\s*%\s*(?:del\s+precio|de\s+la\s+referencia|LBMA)/i, label: '80 %/85 % como precio al productor — el único porcentaje público es el 75 % referencial' },
 
-  // Modelo B (10-nov-2026) — quién es quién: Inversiones Zekaii compra y es
-  // dueña de la plataforma; CHT presta servicios y no compra ni opera; el sello
-  // es complementario; el Registro de Comercializadores es del comprador.
+  // La plataforma no compra (hotfix 2026-11-11): rótulo "precio referencial (75%)".
+  // Las negaciones ("no es una oferta de compra", "MAPE.LEGAL no compra, no
+  // vende ni intermedia oro", "Nadie compra oro", "nunca un precio de compra")
+  // son copy requerido y pasan vía `exclude`.
+  { re: /precio\s+de\s+compra/i, exclude: NEGACION_RE, label: '"precio de compra" — la plataforma no compra: usar "precio referencial (75%)"' },
+  { re: /\bcompra(?:mos)?\s+(?:de\s+)?oro\b/i, exclude: NEGACION_RE, label: '"compra(mos) (de) oro" — la plataforma no compra: usar "precio referencial (75%)"' },
+
+  // Promesas de pago (hotfix 2026-11-11): la plataforma no paga ni cobra el oro.
+  // Pasa cuando la línea lo prohíbe ("NUNCA prometas 'pago el mismo día'").
+  { re: /pago\s+(?:el\s+)?mismo\s+d[ií]a|dep[óo]sito\s+(?:el\s+)?mismo\s+d[ií]a/i, exclude: /\b(?:nunca|no|ni|jam[aá]s)\b[^.]{0,40}\b(?:promet|afirm|dig[aá]s|garantic|ofrezc)/i, label: '"pago/depósito el mismo día" — promesa de pago prohibida; la plataforma no paga ni cobra el oro', scope: 'maria' },
+
+  // Quién es quién (hotfix 2026-11-11): CHT es titular y operadora, pero no
+  // compra mineral; el sello es complementario; el Registro de
+  // Comercializadores es del comprador.
   { re: /certificados?\s+emitid[oa]s?\s+por\s+MAPE/i, label: '"certificado emitido por MAPE…" — la plataforma registra y digitaliza; el certificado lo emite el titular y lo autentica la autoridad' },
-  { re: /precio\s+de\s+referencia\s+oficial/i, label: '"precio de referencia oficial" — el precio de referencia es comercial (Inversiones Zekaii), no oficial' },
-  { re: /precio\s+oficial\s+de\s+(?:zekaii|mape|inversiones)/i, label: '"precio oficial de …" — el precio de referencia es comercial, no oficial' },
+  { re: /precio\s+de\s+referencia\s+oficial|precio\s+referencial\s+oficial/i, label: '"precio referencial oficial" — el precio referencial es informativo, no oficial' },
+  { re: /precio\s+oficial\s+de\s+(?:mape|cht|la\s+plataforma)/i, label: '"precio oficial de …" — el precio referencial es informativo, no oficial' },
   // Solo la forma exacta "Registro INHGEOMIN" (sin "de"): "Registro de
   // Comercializadores de INHGEOMIN" y "Registro Minero y Catastral de
   // INHGEOMIN" son correctas y pasan.
   { re: /\bregistro\s+inhgeomin\b/i, label: '"Registro INHGEOMIN" a secas — nombrar el registro concreto ("Registro de Comercializadores de INHGEOMIN", "Registro Minero y Catastral de INHGEOMIN")' },
-  { re: /\bCHT\s+compra/i, label: '"CHT compra" — CHT no compra mineral; la compradora es Inversiones Zekaii' },
-  { re: /vender\s+(?:mineral\s+)?a\s+CHT\b/i, label: '"vender (mineral) a CHT" — CHT no compra mineral; la compradora es Inversiones Zekaii' },
-  // CHT como operadora / dueña / propietaria / titular de la plataforma. La
-  // negación requerida ("CHT no es dueña ni operadora de la plataforma") pasa
-  // vía `exclude`.
-  {
-    re: /(?:Corporaci[óo]n\s+Hondure[ñn]a\s+Tenka|\bCHT\b)[^.]{0,40}?\b(?:opera|administra|operador[a]?\s+de|dueñ[oa]\s+de|propietari[oa]\s+de|titular\s+de)\s+(?:la\s+)?plataforma/i,
-    exclude: /\b(?:no|ni|tampoco)\s+(?:es\s+)?(?:la\s+)?(?:dueñ|operador|propietari|titular|opera|administra)/i,
-    label: 'CHT como operadora/dueña de la plataforma — la dueña y operadora es Inversiones Zekaii; CHT solo presta servicios',
-  },
+  { re: /\bCHT\s+compra/i, exclude: NEGACION_RE, label: '"CHT compra" — CHT no compra ni vende mineral' },
+  { re: /vender\s+(?:mineral\s+)?a\s+CHT\b/i, exclude: NEGACION_RE, label: '"vender (mineral) a CHT" — CHT no compra ni vende mineral' },
   { re: /a\s+nombre\s+del\s+vendedor/i, label: '"a nombre del vendedor" — el Registro de Comercializador es del comprador, no se exige al minero titular que vende su producción' },
-  // Aval institucional (variantes del modelo B). "no existe" / "no consta" en
-  // la misma línea es la negación requerida y pasa.
-  { re: /(?:adoptad|aprobad|reconocid|certificad|avalad)[oa]s?\s+por\s+INHGEOMIN/i, exclude: /no\s+(?:existe|consta)/i, label: 'aval/adopción/reconocimiento de INHGEOMIN — no existe instrumento formal' },
+  // Aval institucional (variantes). "no existe" / "no consta" en la misma
+  // línea es la negación requerida y pasa.
+  { re: /(?:adoptad|aprobad|reconocid|certificad|avalad)[oa]s?\s+por\s+INHGEOMIN/i, exclude: /no\s+(?:existe|consta|es|debe)/i, label: 'aval/adopción/reconocimiento de INHGEOMIN — no existe instrumento formal' },
   { re: /acuerdo\s+(?:de\s+)?inhgeomin/i, exclude: /no\s+(?:existe|consta)/i, label: '"Acuerdo (de) INHGEOMIN" — no existe Acuerdo en La Gaceta que respalde el sello' },
   { re: /consulta\s+(?:previa\s+)?(?:del\s+convenio\s+169\s+)?(?:completada|cumplida|realizada)/i, label: 'consulta previa "completada/cumplida/realizada" — es un derecho vigente (Convenio 169 OIT; SCO-0090-2014), no un trámite cumplido; solo consta con acta' },
   { re: /\bMAPE\s*\.?\s*LEGAL\s+emite/i, label: '"MAPE LEGAL emite" — la plataforma registra y digitaliza; no emite certificados' },
@@ -289,6 +302,8 @@ function walk(dir, out = [], applyExcluded = true) {
 }
 
 const CONFIDENTIAL_RULES = RULES.filter((r) => r.scope === 'all')
+const CODE_RULES = RULES.filter((r) => r.scope === 'code')
+const MARIA_RULES = RULES.filter((r) => r.scope === 'maria')
 
 const publicFiles = SCAN_DIRS.flatMap((d) => walk(join(ROOT, d)))
 const internalFiles = [
@@ -302,16 +317,26 @@ const internalFiles = [
   }),
 ]
 // app/api está en EXCLUDED para el alcance público — se recorre aparte, sin
-// aplicar EXCLUDED, y solo con las reglas de confidencialidad.
+// aplicar EXCLUDED, y solo con las reglas de confidencialidad y de código.
 const confidentialityAlsoFiles = CONFIDENTIALITY_ALSO_DIRS.flatMap((d) =>
   walk(join(ROOT, d), [], false)
 )
-const publicSet = new Set(publicFiles)
-const confidentialFiles = [...internalFiles, ...confidentialityAlsoFiles]
-const targets = [
-  ...publicFiles.map((f) => ({ file: f, rules: RULES })),
-  ...confidentialFiles.filter((f) => !publicSet.has(f)).map((f) => ({ file: f, rules: CONFIDENTIAL_RULES })),
-]
+const codeFiles = CODE_SCAN_DIRS.flatMap((d) => walk(join(ROOT, d), [], false))
+const mariaFiles = MARIA_SCAN_DIRS.flatMap((d) => walk(join(ROOT, d)))
+
+// Un conjunto de reglas por archivo: el público recibe TODAS; el resto, la
+// unión de los alcances que lo cubren.
+const ruleSets = new Map()
+const addRules = (file, rules) => {
+  const set = ruleSets.get(file) ?? new Set()
+  for (const r of rules) set.add(r)
+  ruleSets.set(file, set)
+}
+for (const f of publicFiles) addRules(f, RULES)
+for (const f of [...internalFiles, ...confidentialityAlsoFiles]) addRules(f, CONFIDENTIAL_RULES)
+for (const f of codeFiles) addRules(f, CODE_RULES)
+for (const f of mariaFiles) addRules(f, MARIA_RULES)
+const targets = [...ruleSets.entries()].map(([file, set]) => ({ file, rules: [...set] }))
 let violations = 0
 
 for (const { file, rules } of targets) {
