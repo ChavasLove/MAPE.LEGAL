@@ -12,6 +12,9 @@
     "check:neutralidad": "node scripts/check-neutralidad-politica.mjs",
     "test": "node --experimental-strip-types --no-warnings --import ./tests/register-loader.mjs --test 'tests/**/*.test.ts'"
   },
+  "engines": {
+    "node": ">=22.6.0"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",
     "@supabase/supabase-js": "^2.104.1",

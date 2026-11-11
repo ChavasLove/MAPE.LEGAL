@@ -238,7 +238,8 @@ No. MAPE.LEGAL es un estándar **privado** de debida diligencia. Se inspira en C
 - No nombrar compradores (empresas que compran el oro).
 - No prometer que, por seguir CRAFT, el minero recibirá un precio, un pago o un contrato.
 - No hablar de política partidaria ni de candidatos.
-- No dar asesoría legal definitiva («usted ya está legal» o «con esto no le pueden sancionar»). Si el minero necesita un trámite concreto, María lo deriva a un **abogado colegiado en el Colegio de Abogados de Honduras (CAH)** o a la municipalidad o a INHGEOMIN, según corresponda.$ficha$, 'rag-maria/01_craft_explicado.md', '{"origen":"SCRIPT_FINAL_MAPE_LEGAL_v2.1 — ANEXO A","hotfix":"neutralidad-politica","fecha":"2026-11-11","archivo":"docs/rag-maria/01_craft_explicado.md"}'::jsonb, null),
+- No dar asesoría legal definitiva («usted ya está legal» o «con esto no le pueden sancionar»). Si el minero necesita un trámite concreto, María lo deriva a un **abogado colegiado en el Colegio de Abogados de Honduras (CAH)** o a la municipalidad o a INHGEOMIN, según corresponda.
+$ficha$, 'rag-maria/01_craft_explicado.md', '{"origen":"SCRIPT_FINAL_MAPE_LEGAL_v2.1 — ANEXO A","hotfix":"neutralidad-politica","fecha":"2026-11-11","archivo":"docs/rag-maria/01_craft_explicado.md"}'::jsonb, null),
   ('debida-diligencia', 'Qué piden los bancos y los compradores responsables', $ficha$# Qué piden los bancos y los compradores responsables
 
 **Uso:** respuestas listas para el RAG de María. Lenguaje claro. No es asesoría legal definitiva.
@@ -292,7 +293,8 @@ Un comprador o un banco formal casi siempre exigirá **pago por transferencia o 
 - No asegurar que el minero ya cumplió o no cumplió como APNFD; esa calificación la hace la autoridad o un abogado.
 - No afirmar aval de INHGEOMIN, de la CNBS, de la LBMA ni del GAFI.
 - No hablar de política.
-- No dar asesoría legal definitiva. Para trámites bancarios o de registro, derivar a un **abogado colegiado en el CAH** o a la institución competente (banco, CNBS, URMOPRELAFT).$ficha$, 'rag-maria/02_que_piden_bancos_y_compradores.md', '{"origen":"SCRIPT_FINAL_MAPE_LEGAL_v2.1 — ANEXO A","hotfix":"neutralidad-politica","fecha":"2026-11-11","archivo":"docs/rag-maria/02_que_piden_bancos_y_compradores.md"}'::jsonb, null),
+- No dar asesoría legal definitiva. Para trámites bancarios o de registro, derivar a un **abogado colegiado en el CAH** o a la institución competente (banco, CNBS, URMOPRELAFT).
+$ficha$, 'rag-maria/02_que_piden_bancos_y_compradores.md', '{"origen":"SCRIPT_FINAL_MAPE_LEGAL_v2.1 — ANEXO A","hotfix":"neutralidad-politica","fecha":"2026-11-11","archivo":"docs/rag-maria/02_que_piden_bancos_y_compradores.md"}'::jsonb, null),
   ('debida-diligencia', 'Documentos que necesita un minero para vender legalmente', $ficha$# Documentos que necesita un minero para vender legalmente
 
 **Uso:** respuestas listas para el RAG de María. Lenguaje claro. No es asesoría legal definitiva.
@@ -344,7 +346,8 @@ Para exportar, la Ley General de Minería exige, entre otros, certificado de **a
 - No afirmar aval o certificación de INHGEOMIN.
 - No nombrar compradores ni prometer que le van a comprar o a pagar un precio.
 - No hablar de política.
-- No dar asesoría legal definitiva. Para tramitar un permiso o un certificado, el minero debe acudir a su **municipalidad**, a **INHGEOMIN** cuando corresponda, y, si necesita representación, a un **abogado colegiado en el CAH**.$ficha$, 'rag-maria/03_documentos_para_vender_legalmente.md', '{"origen":"SCRIPT_FINAL_MAPE_LEGAL_v2.1 — ANEXO A","hotfix":"neutralidad-politica","fecha":"2026-11-11","archivo":"docs/rag-maria/03_documentos_para_vender_legalmente.md"}'::jsonb, null),
+- No dar asesoría legal definitiva. Para tramitar un permiso o un certificado, el minero debe acudir a su **municipalidad**, a **INHGEOMIN** cuando corresponda, y, si necesita representación, a un **abogado colegiado en el CAH**.
+$ficha$, 'rag-maria/03_documentos_para_vender_legalmente.md', '{"origen":"SCRIPT_FINAL_MAPE_LEGAL_v2.1 — ANEXO A","hotfix":"neutralidad-politica","fecha":"2026-11-11","archivo":"docs/rag-maria/03_documentos_para_vender_legalmente.md"}'::jsonb, null),
   ('debida-diligencia', 'Mercurio y medio ambiente', $ficha$# Mercurio y medio ambiente
 
 **Uso:** respuestas listas para el RAG de María. Lenguaje claro. No es asesoría legal definitiva.
@@ -397,7 +400,8 @@ A la **Unidad Municipal Ambiental (UMA)** de su municipio, a la autoridad ambien
 - No nombrar compradores ni prometer que «si deja el mercurio le pagan más».
 - No afirmar aval de INHGEOMIN ni de SERNA.
 - No hablar de política.
-- No dar asesoría legal definitiva. Derivar a la UMA, a SERNA / MiAmbiente+ o a un **abogado colegiado en el CAH**.$ficha$, 'rag-maria/04_mercurio_y_medio_ambiente.md', '{"origen":"SCRIPT_FINAL_MAPE_LEGAL_v2.1 — ANEXO A","hotfix":"neutralidad-politica","fecha":"2026-11-11","archivo":"docs/rag-maria/04_mercurio_y_medio_ambiente.md"}'::jsonb, null),
+- No dar asesoría legal definitiva. Derivar a la UMA, a SERNA / MiAmbiente+ o a un **abogado colegiado en el CAH**.
+$ficha$, 'rag-maria/04_mercurio_y_medio_ambiente.md', '{"origen":"SCRIPT_FINAL_MAPE_LEGAL_v2.1 — ANEXO A","hotfix":"neutralidad-politica","fecha":"2026-11-11","archivo":"docs/rag-maria/04_mercurio_y_medio_ambiente.md"}'::jsonb, null),
   ('debida-diligencia', 'Señales de alerta en la compraventa de oro', $ficha$# Señales de alerta en la compraventa de oro
 
 **Uso:** respuestas listas para el RAG de María. Lenguaje claro. No es asesoría legal definitiva ni una guía para evadir controles.
@@ -443,7 +447,8 @@ No aceptar condiciones que oculten el origen, el peso o el pago. Conservar sus p
 - No prometer precios, pagos ni que «con estos papeles el banco no pregunta».
 - No afirmar aval de INHGEOMIN, de la UIF o de la CNBS.
 - No hablar de política.
-- No dar asesoría legal definitiva. Derivar a un **abogado colegiado en el CAH** o, si hay un posible delito, al **Ministerio Público**.$ficha$, 'rag-maria/05_senales_de_alerta.md', '{"origen":"SCRIPT_FINAL_MAPE_LEGAL_v2.1 — ANEXO A","hotfix":"neutralidad-politica","fecha":"2026-11-11","archivo":"docs/rag-maria/05_senales_de_alerta.md"}'::jsonb, null),
+- No dar asesoría legal definitiva. Derivar a un **abogado colegiado en el CAH** o, si hay un posible delito, al **Ministerio Público**.
+$ficha$, 'rag-maria/05_senales_de_alerta.md', '{"origen":"SCRIPT_FINAL_MAPE_LEGAL_v2.1 — ANEXO A","hotfix":"neutralidad-politica","fecha":"2026-11-11","archivo":"docs/rag-maria/05_senales_de_alerta.md"}'::jsonb, null),
   ('debida-diligencia', 'Qué es y qué no es MAPE.LEGAL', $ficha$# Qué es y qué no es MAPE.LEGAL
 
 **Uso:** respuestas listas para el RAG de María. Lenguaje claro. No es asesoría legal definitiva.
@@ -485,7 +490,8 @@ No. María orienta al público sobre derecho minero y ambiental, en lenguaje cla
 - No nombrar empresas compradoras.
 - No prometer precios, pagos, ni que «con el sello ya puede exportar».
 - No hablar de política partidaria.
-- No dar asesoría legal definitiva («usted ya puede vender» o «no le pueden multar»). Derivar a un **abogado colegiado en el CAH**, a la municipalidad o a INHGEOMIN, según el trámite.$ficha$, 'rag-maria/06_que_es_y_que_no_es_mape_legal.md', '{"origen":"SCRIPT_FINAL_MAPE_LEGAL_v2.1 — ANEXO A","hotfix":"neutralidad-politica","fecha":"2026-11-11","archivo":"docs/rag-maria/06_que_es_y_que_no_es_mape_legal.md"}'::jsonb, null),
+- No dar asesoría legal definitiva («usted ya puede vender» o «no le pueden multar»). Derivar a un **abogado colegiado en el CAH**, a la municipalidad o a INHGEOMIN, según el trámite.
+$ficha$, 'rag-maria/06_que_es_y_que_no_es_mape_legal.md', '{"origen":"SCRIPT_FINAL_MAPE_LEGAL_v2.1 — ANEXO A","hotfix":"neutralidad-politica","fecha":"2026-11-11","archivo":"docs/rag-maria/06_que_es_y_que_no_es_mape_legal.md"}'::jsonb, null),
   ('debida-diligencia', 'La debida diligencia de la OCDE, en cinco pasos', $ficha$# La debida diligencia de la OCDE, en cinco pasos
 
 **Uso:** respuestas listas para el RAG de María. Lenguaje claro. No es asesoría legal definitiva.
@@ -526,7 +532,8 @@ Es el modelo de política de la propia Guía. Resume lo que no se tolera (abusos
 - No nombrar compradores.
 - No prometer precios ni pagos por «cumplir la OCDE».
 - No hablar de política.
-- No dar asesoría legal definitiva. Derivar a un **abogado colegiado en el CAH** cuando el minero necesite un dictamen sobre su caso.$ficha$, 'rag-maria/07_debida_diligencia_ocde_cinco_pasos.md', '{"origen":"SCRIPT_FINAL_MAPE_LEGAL_v2.1 — ANEXO A","hotfix":"neutralidad-politica","fecha":"2026-11-11","archivo":"docs/rag-maria/07_debida_diligencia_ocde_cinco_pasos.md"}'::jsonb, null),
+- No dar asesoría legal definitiva. Derivar a un **abogado colegiado en el CAH** cuando el minero necesite un dictamen sobre su caso.
+$ficha$, 'rag-maria/07_debida_diligencia_ocde_cinco_pasos.md', '{"origen":"SCRIPT_FINAL_MAPE_LEGAL_v2.1 — ANEXO A","hotfix":"neutralidad-politica","fecha":"2026-11-11","archivo":"docs/rag-maria/07_debida_diligencia_ocde_cinco_pasos.md"}'::jsonb, null),
   ('debida-diligencia', 'Cadena de custodia y pagos identificables', $ficha$# Cadena de custodia y pagos identificables
 
 **Uso:** respuestas listas para el RAG de María. Lenguaje claro. No es asesoría legal definitiva.
@@ -573,7 +580,8 @@ Eso depende del acuerdo y de la plataforma que se use. En el diseño de este est
 - No nombrar compradores.
 - No prometer precios, plazos de pago ni que «le pagan el mismo día».
 - No hablar de política.
-- No dar asesoría legal definitiva. Derivar a un **abogado colegiado en el CAH** para revisar contratos o pagos.$ficha$, 'rag-maria/08_cadena_de_custodia_y_pagos.md', '{"origen":"SCRIPT_FINAL_MAPE_LEGAL_v2.1 — ANEXO A","hotfix":"neutralidad-politica","fecha":"2026-11-11","archivo":"docs/rag-maria/08_cadena_de_custodia_y_pagos.md"}'::jsonb, null);
+- No dar asesoría legal definitiva. Derivar a un **abogado colegiado en el CAH** para revisar contratos o pagos.
+$ficha$, 'rag-maria/08_cadena_de_custodia_y_pagos.md', '{"origen":"SCRIPT_FINAL_MAPE_LEGAL_v2.1 — ANEXO A","hotfix":"neutralidad-politica","fecha":"2026-11-11","archivo":"docs/rag-maria/08_cadena_de_custodia_y_pagos.md"}'::jsonb, null);
 
 
 commit;
