@@ -17,7 +17,7 @@ import LivePricesWidget, {
 import KaratPricesTable from '@/components/precios/KaratPricesTable';
 import PriceHistoryChart from '@/components/precios/PriceHistoryChart';
 import {
-  PRECIO_REF_CARACTER_COMERCIAL,
+  AVISO_PRECIO_REFERENCIAL,
   PRECIOS_REFERENCIA_COMERCIAL,
   RAZON_SOCIAL,
 } from '@/lib/content/copy-legal';
@@ -26,7 +26,7 @@ type Lang = 'es' | 'en';
 
 const WHATSAPP_HREF =
   'https://wa.me/50497373139?text=' +
-  encodeURIComponent('Hola, quiero información sobre la venta de oro a Inversiones Zekaii.');
+  encodeURIComponent('Hola, tengo una consulta sobre el precio referencial del oro publicado en mape.legal.');
 
 export default function PreciosClient() {
   const [lang, setLang] = useState<Lang>('es');
@@ -173,12 +173,12 @@ export default function PreciosClient() {
                   marginBottom: 4,
                 }}
               >
-                {t('¿Vendés oro?', 'Selling gold?')}
+                {t('¿Consultas sobre el precio referencial?', 'Questions about the reference price?')}
               </div>
               <div style={{ fontSize: 14, color: 'var(--t2)', lineHeight: 1.5 }}>
                 {t(
-                  `${RAZON_SOCIAL} compra a titulares de derecho minero vigente. Escribinos por WhatsApp para coordinar la verificación documental: derecho minero vigente y Certificado de Origen oficial por lote. Pago en Lempiras vía cooperativa financiera aliada.`,
-                  `${RAZON_SOCIAL} buys from holders of a current mining right. Message us on WhatsApp to arrange the document verification: a current mining right and an official Certificate of Origin per lot. Paid in Lempiras via an allied financial cooperative.`,
+                  'Escribinos por WhatsApp si tenés dudas sobre cómo se calcula el precio referencial, la fórmula publicada o la conversión por kilates. Es información general, sin oferta ni intermediación.',
+                  'Message us on WhatsApp with questions about how the reference price is calculated, the published formula or the karat conversion. General information only — no offer or brokerage.',
                 )}
               </div>
             </div>
@@ -205,10 +205,10 @@ export default function PreciosClient() {
             </a>
           </div>
 
-          {/* Carácter comercial del precio (Modelo B, 10-nov-2026). ES-only:
+          {/* Aviso literal del precio referencial (hotfix 11-nov-2026). ES-only:
               texto con consecuencia jurídica, importado de copy-legal. */}
           <p style={{ marginTop: 16, fontSize: 13, lineHeight: 1.7, color: 'var(--t3)' }}>
-            {PRECIO_REF_CARACTER_COMERCIAL}
+            {AVISO_PRECIO_REFERENCIAL}
           </p>
 
           {/* Fuentes y actualización — al final de la página por pedido del
@@ -220,7 +220,7 @@ export default function PreciosClient() {
         </div>
       </section>
 
-      {/* FOOTER — el compartido: la página que publica el precio de compra
+      {/* FOOTER — el compartido: la página que publica el precio referencial
           debe llevar las notas legales (registro de comercializador, nota
           del Certificado de Origen, aviso de plataforma). ES-only. */}
       <SiteFooter />

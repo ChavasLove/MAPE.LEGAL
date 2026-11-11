@@ -4,13 +4,13 @@
 //
 // Fetches /api/precios/live on mount, then polls every 60 s (skipping the tick
 // while the tab is hidden) and refetches when the tab regains focus. Shows the
-// international gold reference price, the gold price in Lempiras per troy ounce,
-// the purchase price of Inversiones Zekaii, S. de R.L. to the producer in
-// Lempiras per gram of fine gold (or its pending state while the purchase
-// factor is undefined — modelo B, 10-nov-2026), the USD/LPS rate. (Diesel was removed from the public surface on 2026-10-15 — see CLAUDE.md §Widget de Precios.) The reference-price concept
-// (fórmula + requisitos + política versionada) lives at /precio — this card
-// links there instead of framing the number as a standing purchase offer
-// (encargo Precio de Referencia, 2026-07-29).
+// "Precio referencial (75%)" in Lempiras per gram of fine gold — an informative
+// estimate, always accompanied by the literal AVISO_PRECIO_REFERENCIAL (hotfix
+// de neutralidad, 11-nov-2026) — plus the international gold reference, gold in
+// Lempiras per troy ounce and the market reference exchange rate with its real
+// source (exchangerate-api.com) and capture time. (Diesel was removed from the
+// public surface on 2026-10-15 — see CLAUDE.md §Widget de Precios.) The formula
+// + policy live at /precio — this card links there.
 //
 // Prices are numbers; chrome (labels, notes) respects the ES/EN toggle via the
 // `lang` prop. No continuous animations per DESIGN.md — the status dot is static.
@@ -19,6 +19,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { RefreshCw } from 'lucide-react';
 import { VERSION_POLITICA_PRECIOS } from '@/lib/precio/calculo';
+import { ROTULO_PRECIO_REFERENCIAL } from '@/lib/precio/factores';
+import {
+  AVISO_PRECIO_REFERENCIAL,
+  ETIQUETA_TIPO_CAMBIO,
+  FORMULA_PRECIO_REFERENCIAL,
+  FUENTE_TIPO_CAMBIO,
+} from '@/lib/content/copy-legal';
 
 // Mirrors KaratPrice in services/pricingService.ts (declared locally so this
 // client bundle never imports the server-only pricing module). The dwt fields
@@ -41,20 +48,31 @@ export interface LivePrices {
   fuente: string | null;
   consultado_hn: string;
   actualizado_hn: string | null;
-  // Comprador del oro (modelo B): 'Inversiones Zekaii, S. de R.L.'. Optional:
-  // absent on responses cached before the rollout.
-  comprador?: string;
-  // null while the purchase factor is pending (FACTOR_COMPRA_ZEKAII = null).
+  // Factor del precio referencial público (0.75). `mape_factor` is a numeric
+  // alias with the same value kept for cached clients.
+  factor_referencia?: number | null;
   mape_factor: number | null;
-  // true while Inversiones Zekaii has not published its purchase factor — the
-  // UI must show a pending state, never a figure or a percentage.
-  factor_compra_pendiente?: boolean;
   oro_usd_oz: number | null;
   usd_hnl: number | null;
+  // Real source + capture of the exchange rate (shown next to the value).
+  tipo_cambio_fuente?: string | null;
+  tipo_cambio_fecha?: string | null;
   oro_lps_oz: number | null;
+  // Canonical: precio referencial (75%) in L per gram of fine gold.
+  oro_referencial_lps_gramo?: number | null;
+  // Compatibility alias — same value as oro_referencial_lps_gramo. Never used
+  // as a label anywhere in the UI.
   oro_compra_lps_gramo: number | null;
   // Optional: absent on responses cached before the karat rollout.
   kilates?: KaratPriceLine[] | null;
+  // Literal AVISO_PRECIO_REFERENCIAL echoed by the API.
+  aviso?: string;
+}
+
+/** Precio referencial del snapshot — canonical field with alias fallback. */
+export function referencialDe(data: LivePrices | null | undefined): number | null {
+  if (!data) return null;
+  return data.oro_referencial_lps_gramo ?? data.oro_compra_lps_gramo ?? null;
 }
 
 const POLL_MS = 60_000;
@@ -164,11 +182,9 @@ export default function LivePricesWidget({ lang, onData }: Props) {
     load();
   };
 
-  // Pending purchase factor (modelo B): the API sends no purchase price at all.
-  // Treat an explicit flag OR a loaded snapshot without a price as pending so a
-  // cached pre-rollout response never renders a stale figure as current.
-  const compraPendiente =
-    data != null && (data.factor_compra_pendiente === true || data.oro_compra_lps_gramo == null);
+  const referencial = referencialDe(data);
+  const tcFuente = data?.tipo_cambio_fuente ?? FUENTE_TIPO_CAMBIO;
+  const tcFecha = data?.tipo_cambio_fecha ?? data?.actualizado_hn ?? null;
 
   return (
     <div>
@@ -258,7 +274,7 @@ export default function LivePricesWidget({ lang, onData }: Props) {
         <PriceSkeleton />
       ) : (
         <>
-          {/* Primary — MAPE.LEGAL reference price (L / gram of fine gold) */}
+          {/* Primary — Precio referencial (75%) (L / gram of fine gold) */}
           <div
             style={{
               background: 'color-mix(in oklch, var(--moss) 7%, white)',
@@ -280,7 +296,7 @@ export default function LivePricesWidget({ lang, onData }: Props) {
                 marginBottom: 10,
               }}
             >
-              {t('Precio de referencia MAPE.LEGAL', 'MAPE.LEGAL reference price')}
+              {ROTULO_PRECIO_REFERENCIAL}
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
               <span
@@ -293,11 +309,9 @@ export default function LivePricesWidget({ lang, onData }: Props) {
                   letterSpacing: '-0.02em',
                 }}
               >
-                {data?.oro_compra_lps_gramo != null && !compraPendiente
-                  ? `L ${fmtNum(data.oro_compra_lps_gramo)}`
-                  : t('Pendiente de publicación', 'Pending publication')}
+                {referencial != null ? `L ${fmtNum(referencial)}` : '—'}
               </span>
-              {data?.oro_compra_lps_gramo != null && !compraPendiente && (
+              {referencial != null && (
                 <span
                   style={{
                     fontFamily: 'var(--font-mono)',
@@ -318,18 +332,42 @@ export default function LivePricesWidget({ lang, onData }: Props) {
                 fontFamily: 'var(--font-body)',
               }}
             >
-              {compraPendiente
-                ? t(
-                    'El precio de compra al productor lo publicará Inversiones Zekaii, S. de R.L. en su Política de Precios. ',
-                    'The purchase price paid to the producer will be published by Inversiones Zekaii, S. de R.L. in its Pricing Policy. ',
-                  )
-                : t(
-                    'Aplica sobre el contenido de oro fino, no sobre el peso bruto del material. ',
-                    'Applies to the fine gold content, not the gross weight of the material. ',
-                  )}
+              {t(
+                'Aplica sobre el contenido de oro fino, no sobre el peso bruto del material. ',
+                'Applies to the fine gold content, not the gross weight of the material. ',
+              )}
               <Link href="/precio" style={{ color: 'var(--moss)', fontWeight: 600, textDecoration: 'none' }}>
-                {t('Fórmula y requisitos para vender →', 'Formula and selling requirements →')}
+                {t('Fórmula y política de precios →', 'Formula and pricing policy →')}
               </Link>
+            </p>
+            {/* Fórmula pública + fuente y fecha de los insumos (ES-only: texto
+                legal literal de copy-legal). */}
+            <p
+              style={{
+                marginTop: 10,
+                fontFamily: 'var(--font-mono)',
+                fontSize: 11,
+                lineHeight: 1.6,
+                color: 'var(--slate)',
+              }}
+            >
+              {FORMULA_PRECIO_REFERENCIAL}
+              {data?.fuente ? ` · ${t('Oro', 'Gold')}: ${data.fuente}` : ''}
+              {` · ${t('Tipo de cambio', 'Exchange rate')}: ${tcFuente}`}
+              {tcFecha ? ` · ${t('Capturado', 'Captured')}: ${tcFecha} (Honduras)` : ''}
+            </p>
+            {/* Aviso literal — obligatorio junto a toda vista de precio. */}
+            <p
+              role="note"
+              style={{
+                marginTop: 10,
+                fontSize: 12,
+                lineHeight: 1.6,
+                color: 'var(--t2)',
+                fontFamily: 'var(--font-body)',
+              }}
+            >
+              {AVISO_PRECIO_REFERENCIAL}
             </p>
           </div>
 
@@ -354,10 +392,10 @@ export default function LivePricesWidget({ lang, onData }: Props) {
               detail={t('Oro × tipo de cambio', 'Gold × exchange rate')}
             />
             <MetricCard
-              eyebrow={t('Tipo de cambio', 'Exchange rate')}
+              eyebrow={t(ETIQUETA_TIPO_CAMBIO, 'Market reference exchange rate')}
               value={data?.usd_hnl != null ? `L ${fmtNum(data.usd_hnl, 4)}` : '—'}
               unit={t('por USD', 'per USD')}
-              detail={t('Diario · 8:00 a.m.', 'Daily · 8:00 a.m.')}
+              detail={`${tcFuente}${tcFecha ? ` · ${t('capturado', 'captured')} ${tcFecha}` : ` · ${t('Diario · 8:00 a.m.', 'Daily · 8:00 a.m.')}`}`}
             />
           </div>
         </>
@@ -380,11 +418,8 @@ export function PriceSourcesPanel({
   data: LivePrices | null;
 }) {
   const t = (es: string, en: string) => (lang === 'es' ? es : en);
-  // Mirrors the widget: no figure and no percentage while the purchase factor
-  // is pending. With `data` null (loading) we also describe the pending state —
-  // it is the current contractual situation, not a transient.
-  const compraPendiente =
-    data == null || data.factor_compra_pendiente === true || data.oro_compra_lps_gramo == null;
+  const tcFuente = data?.tipo_cambio_fuente ?? FUENTE_TIPO_CAMBIO;
+  const tcFecha = data?.tipo_cambio_fecha ?? data?.actualizado_hn ?? null;
 
   return (
     <div
@@ -431,31 +466,17 @@ export function PriceSourcesPanel({
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <SourceRow
                 label={t(
-                  'Precio de referencia MAPE.LEGAL (L/gramo de oro fino)',
-                  'MAPE.LEGAL reference price (L/gram of fine gold)',
+                  `${ROTULO_PRECIO_REFERENCIAL} (L/gramo de oro fino)`,
+                  `${ROTULO_PRECIO_REFERENCIAL} (L/gram of fine gold)`,
                 )}
-                fuente={
-                  compraPendiente
-                    ? t(
-                        'Precio de compra al productor pendiente de publicación en la Política de Precios de Inversiones Zekaii, S. de R.L. No se publica ningún porcentaje ni cifra hasta entonces.',
-                        'Purchase price paid to the producer pending publication in the Pricing Policy of Inversiones Zekaii, S. de R.L. No percentage or figure is published until then.',
-                      )
-                    : t(
-                        `Cálculo verificable conforme a la Política de Precios v${VERSION_POLITICA_PRECIOS}: referencia internacional del oro ÷ 31.1035, por el factor de compra publicado por Inversiones Zekaii, S. de R.L. y el tipo de cambio.`,
-                        `Verifiable calculation per Pricing Policy v${VERSION_POLITICA_PRECIOS}: international gold reference ÷ 31.1035, times the purchase factor published by Inversiones Zekaii, S. de R.L. and the exchange rate.`,
-                      )
-                }
-                frecuencia={
-                  compraPendiente
-                    ? t(
-                        'Se publicará con la nueva versión de la Política de Precios.',
-                        'To be published with the new version of the Pricing Policy.',
-                      )
-                    : t(
-                        'Se fija una vez al día, a las 8:00 a.m. (Honduras), y no cambia durante el día.',
-                        'Set once a day at 8:00 a.m. (Honduras); it does not change during the day.',
-                      )
-                }
+                fuente={t(
+                  `${FORMULA_PRECIO_REFERENCIAL}. Cálculo verificable conforme a la Política de Precios v${VERSION_POLITICA_PRECIOS}. ${AVISO_PRECIO_REFERENCIAL}`,
+                  `${FORMULA_PRECIO_REFERENCIAL}. Verifiable calculation per Pricing Policy v${VERSION_POLITICA_PRECIOS}. ${AVISO_PRECIO_REFERENCIAL}`,
+                )}
+                frecuencia={t(
+                  'Se fija una vez al día, a las 8:00 a.m. (Honduras), y no cambia durante el día.',
+                  'Set once a day at 8:00 a.m. (Honduras); it does not change during the day.',
+                )}
               />
               <SourceRow
                 label={t('Oro internacional (USD/onza troy)', 'International gold (USD/troy oz)')}
@@ -471,10 +492,10 @@ export function PriceSourcesPanel({
                 )}
               />
               <SourceRow
-                label={t('Tipo de cambio USD/LPS', 'USD/LPS exchange rate')}
+                label={t(`${ETIQUETA_TIPO_CAMBIO} (USD/LPS)`, 'Market reference exchange rate (USD/LPS)')}
                 fuente={t(
-                  'Tipo de cambio de referencia (BCH).',
-                  'Reference exchange rate (BCH).',
+                  `${ETIQUETA_TIPO_CAMBIO} · ${tcFuente}${tcFecha ? ` · capturado ${tcFecha} (Honduras)` : ''}.`,
+                  `Market reference exchange rate · ${tcFuente}${tcFecha ? ` · captured ${tcFecha} (Honduras)` : ''}.`,
                 )}
                 frecuencia={t(
                   'Captura diaria a las 8:00 a.m. (Honduras).',

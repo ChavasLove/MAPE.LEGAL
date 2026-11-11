@@ -2,51 +2,45 @@
 // ---------------------------------------------------------------------------
 // Escalera de precios por eslabón — tipada sobre lib/precio/factores.ts.
 //
-// Modelo B (10-nov-2026): Inversiones Zekaii, S. de R.L. es la dueña de la
-// plataforma MAPE.LEGAL y la compradora del oro a los productores. La escalera
-// tiene exactamente DOS eslabones:
-//   - minero            : lo que Zekaii PAGA al productor. Naturaleza 'origen'.
-//                         Cotizable por María a un contacto externo — PERO su
-//                         factor (FACTOR_COMPRA_ZEKAII) está PENDIENTE de
-//                         definición por Willis. Mientras sea null no hay cifra
-//                         que cotizar: María declara el precio como pendiente de
-//                         la Política de Precios de Inversiones Zekaii.
-//   - refineria_destino : lo que la refinería de destino le paga a Zekaii
-//                         (FACTOR_VENTA_REFINERIA_LBMA). Naturaleza 'venta',
-//                         INTERNO: nunca cotizable por María a un externo, nunca
-//                         publicado como precio de compra.
-//
-// Eslabones eliminados respecto a la versión anterior (ya no existen en el
-// modelo B): `cooperativa` (la cooperativa financiera aliada paga, no compra) y
-// `mape_venta` ("MAPE LEGAL" no revende — Zekaii compra directamente).
+// Modelo público (hotfix de neutralidad, 11-nov-2026): la plataforma no
+// interviene en la transacción del mineral. La escalera tiene exactamente DOS eslabones:
+//   - referencia        : el PRECIO REFERENCIAL público (FACTOR_REFERENCIA,
+//                         75 % de la referencia internacional del oro).
+//                         Cotizable por María a un contacto externo, SIEMPRE
+//                         con el aviso literal AVISO_PRECIO_REFERENCIAL: es
+//                         un precio referencial estimado, informativo, no una
+//                         oferta ni una garantía de pago.
+//   - refineria_destino : factor de venta a la refinería de destino
+//                         (FACTOR_VENTA_REFINERIA_LBMA). INTERNO: nunca
+//                         cotizable por María a un externo, nunca publicado.
 //
 // Ningún factor se escribe aquí: todo deriva de factores.ts. La cotización en
 // Lps/gramo de oro fino se calcula con calcularPrecioLempirasGramoFino() de
-// lib/precio/calculo.ts. Este archivo define QUÉ factor aplica según la
-// contraparte; aquel, CÓMO.
+// lib/precio/calculo.ts. Este archivo define QUÉ factor aplica según el
+// eslabón; aquel, CÓMO.
+//
+// Nadie importa este módulo hoy (verificado con grep); se conserva como
+// definición tipada de los eslabones para futuros consumidores.
 // ---------------------------------------------------------------------------
 
 import {
-  FACTOR_COMPRA_ZEKAII,
-  FACTOR_COMPRA_ZEKAII_PENDIENTE,
+  FACTOR_REFERENCIA,
   FACTOR_VENTA_REFINERIA_LBMA,
-  factorCompraDefinido,
+  ROTULO_PRECIO_REFERENCIAL,
+  factorReferenciaDefinido,
 } from './factores';
 
-export type NaturalezaPrecio = 'origen' | 'venta';
+export type NaturalezaPrecio = 'referencial' | 'venta';
 
-export type ActorPrecio = 'minero' | 'refineria_destino';
+export type EslabonId = 'referencia' | 'refineria_destino';
 
 export interface EslabonPrecio {
-  /** Identificador de contraparte. */
-  actor: ActorPrecio;
+  /** Identificador del eslabón. */
+  id: EslabonId;
   /** Etiqueta para prompt / UI interna. */
   etiqueta: string;
-  /**
-   * Fracción de la referencia internacional del oro. `null` = PENDIENTE
-   * (el factor no ha sido definido por Willis).
-   */
-  factor: number | null;
+  /** Fracción de la referencia internacional del oro. */
+  factor: number;
   naturaleza: NaturalezaPrecio;
   /** Si María puede citarlo a un contacto externo por WhatsApp/web. */
   cotizableExterno: boolean;
@@ -54,60 +48,46 @@ export interface EslabonPrecio {
   encuadre?: string;
 }
 
-export const ESCALERA_PRECIOS: Record<ActorPrecio, EslabonPrecio> = {
-  minero: {
-    actor: 'minero',
-    etiqueta: 'Precio de compra de Inversiones Zekaii al productor',
-    factor: FACTOR_COMPRA_ZEKAII,
-    naturaleza: 'origen',
+export const ESCALERA_PRECIOS: Record<EslabonId, EslabonPrecio> = {
+  referencia: {
+    id: 'referencia',
+    etiqueta: ROTULO_PRECIO_REFERENCIAL,
+    factor: FACTOR_REFERENCIA,
+    naturaleza: 'referencial',
     cotizableExterno: true,
     encuadre:
-      'Precio de compra al productor. Lo publica Inversiones Zekaii, S. de R.L. en su ' +
-      'Política de Precios. Si el factor está pendiente, decir que está pendiente de ' +
-      'publicación — nunca estimar ni inventar un porcentaje o una cifra en lempiras.',
+      'Precio referencial estimado, informativo. No es una oferta, ni un precio ' +
+      'oficial, ni una garantía de pago. Citar siempre con el aviso literal ' +
+      'AVISO_PRECIO_REFERENCIAL; nunca nombrar contrapartes ni prometer pago.',
   },
   refineria_destino: {
-    actor: 'refineria_destino',
-    etiqueta: 'Precio de venta de Zekaii a la refinería de destino',
+    id: 'refineria_destino',
+    etiqueta: 'Factor de venta a la refinería de destino',
     factor: FACTOR_VENTA_REFINERIA_LBMA,
     naturaleza: 'venta',
     cotizableExterno: false, // INTERNO — María no lo cita jamás a externos.
   },
 };
 
-/** Eslabón por defecto para María cuando no hay identificación de actor. */
-export const ESLABON_POR_DEFECTO = ESCALERA_PRECIOS.minero;
+/** Eslabón por defecto para María cuando no hay identificación de eslabón. */
+export const ESLABON_POR_DEFECTO = ESCALERA_PRECIOS.referencia;
 
-/**
- * Resultado de la compuerta de cotización externa. `pendiente: true` cuando el
- * eslabón es cotizable pero su factor aún no ha sido definido — el caller debe
- * tratarlo como "sin cifra", no como factor 0.
- */
+/** Resultado de la compuerta de cotización externa. */
 export interface EslabonCotizable {
   eslabon: EslabonPrecio;
-  /** `true` si el factor del eslabón está definido y es cotizable con cifra. */
+  /** `true` si el factor del eslabón es un número válido y es cotizable. */
   cotizable: boolean;
-  /** `true` si el eslabón es cotizable externamente pero su factor es null. */
-  pendiente: boolean;
-  /** Texto a usar en lugar de la cifra mientras `pendiente` sea true. */
-  textoPendiente: string | null;
 }
 
 /**
  * Devuelve el eslabón que María puede cotizar a un contacto externo.
- * Cae al minero si el actor es desconocido o si el eslabón pedido no es
+ * Cae al referencial si el eslabón es desconocido o si el pedido no es
  * cotizable externamente (venta). Es la compuerta de seguridad: por
  * construcción no puede devolver el factor de venta a la refinería a un
- * externo, y mientras FACTOR_COMPRA_ZEKAII sea null señala `pendiente`.
+ * externo.
  */
-export function eslabonCotizableExterno(actor?: ActorPrecio | null): EslabonCotizable {
-  const pedido = actor ? ESCALERA_PRECIOS[actor] : undefined;
+export function eslabonCotizableExterno(id?: EslabonId | null): EslabonCotizable {
+  const pedido = id ? ESCALERA_PRECIOS[id] : undefined;
   const eslabon = pedido && pedido.cotizableExterno ? pedido : ESLABON_POR_DEFECTO;
-  const definido = factorCompraDefinido(eslabon.factor);
-  return {
-    eslabon,
-    cotizable: definido,
-    pendiente: !definido,
-    textoPendiente: definido ? null : FACTOR_COMPRA_ZEKAII_PENDIENTE,
-  };
+  return { eslabon, cotizable: factorReferenciaDefinido(eslabon.factor) };
 }
