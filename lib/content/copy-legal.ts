@@ -40,6 +40,45 @@ export const ROL_CHT =
   'presta servicios legales y mineros a los productores artesanales; no es ' +
   'dueña ni operadora de la plataforma y no compra ni vende mineral.'
 
+/* ── Precio referencial y tipo de cambio (hotfix neutralidad, 11-nov-2026) ── */
+
+/**
+ * AVISO LITERAL — mostrarlo junto a toda vista de precio, calculadora y
+ * boletín, y cada vez que María cotice. No parafrasear.
+ */
+export const AVISO_PRECIO_REFERENCIAL =
+  'Precio referencial estimado al 75% del precio internacional de referencia ' +
+  'del oro, convertido a lempiras con un tipo de cambio de referencia de ' +
+  'mercado (fuente y fecha indicadas). Es solo informativo: no es una oferta ' +
+  'de compra, ni un precio oficial, ni una garantía de pago. MAPE.LEGAL no ' +
+  'compra, no vende ni intermedia oro. Toda transacción se negocia libremente ' +
+  'entre el productor y el comprador.'
+
+/** Fórmula pública del precio referencial (mostrar junto al precio, con fuente y fecha). */
+export const FORMULA_PRECIO_REFERENCIAL =
+  'Precio referencial (L por gramo de oro fino) = precio internacional del oro ' +
+  '× tipo de cambio de referencia de mercado × 0.75'
+
+/**
+ * Fuente REAL del tipo de cambio que usa la plataforma. No atribuir al BCH un
+ * valor que proviene de este feed; la fuente y la fecha/hora se muestran junto
+ * a cada precio y a cada tipo de cambio.
+ */
+export const FUENTE_TIPO_CAMBIO = 'exchangerate-api.com'
+
+/** Etiqueta pública del tipo de cambio (sin "BCH"). */
+export const ETIQUETA_TIPO_CAMBIO = 'Tipo de cambio de referencia de mercado'
+
+/**
+ * TEXTO LITERAL — declaración de conflicto de interés (Quiénes somos y
+ * /aviso-legal). No nombra compradores. Willis confirma la redacción.
+ */
+export const CONFLICTO_INTERES_CHT =
+  'Los socios de CHT tienen intereses en empresas del sector aurífero, ' +
+  'incluida la comercialización de oro. Por eso el precio referencial se ' +
+  'calcula con una fórmula pública y fija, y cada productor es libre de vender ' +
+  'a quien quiera.'
+
 export const AVISO_PLATAFORMA =
   `MAPE.LEGAL es una plataforma de la que es dueña y titular ${RAZON_SOCIAL}. ` +
   `${RAZON_SOCIAL_SERVICIOS_LEGALES}, ${ROL_CHT}`

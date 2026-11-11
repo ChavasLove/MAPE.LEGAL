@@ -1,45 +1,41 @@
 // lib/precio/factores.ts
 // ---------------------------------------------------------------------------
-// Factores de precio del modelo B (10-nov-2026) — FUENTE ÚNICA.
+// Factores de precio — FUENTE ÚNICA (hotfix de neutralidad, 11-nov-2026).
 //
-// Modelo B: Inversiones Zekaii, S. de R.L. es la dueña de la plataforma
-// MAPE.LEGAL y la compradora del oro a los productores. El precio que publica
-// la plataforma es el precio de compra de Zekaii a los productores.
+// Modelo público vigente: Corporación Hondureña Tenka, S.A. (CHT) es titular,
+// desarrolladora y operadora de MAPE.LEGAL y NO compra ni vende mineral. La
+// plataforma publica un PRECIO REFERENCIAL ESTIMADO al 75 % de la referencia
+// internacional del oro, en lempiras por gramo de oro fino, siempre con el
+// aviso literal AVISO_PRECIO_REFERENCIAL (lib/content/copy-legal.ts). No es
+// una oferta de compra, ni un precio oficial, ni una garantía de pago. Ninguna
+// superficie pública nombra compradores ni usa la palabra "compra".
 //
-// Regla dura del brief: el factor de compra al productor NO ha sido definido
-// por Willis. Hasta que lo defina por escrito, es un MARCADOR PENDIENTE —
-// ninguna superficie (web, María, boletín, API) puede calcular ni mostrar un
-// precio en lempiras usando 0.75, 0.80 u otra cifra "como si ya fuera" el
-// factor de compra. Cuando Willis lo defina, basta con sustituir `null` por
-// el número y versionar la Política de Precios (cláusula 4).
-//
-// El 80 % de la referencia internacional es ÚNICAMENTE el precio de venta de
-// Zekaii a la refinería de destino (uso interno). No es el precio al minero,
-// María no lo cotiza y ninguna superficie pública lo publica como precio de
-// compra. El margen restante no se declara.
+// El factor de venta a la refinería de destino (80 %) y cualquier margen son
+// INTERNOS: no se publican, María no los cita y ninguna API pública los expone.
 // ---------------------------------------------------------------------------
 
 /**
- * Factor de compra de Zekaii al productor, como fracción de la referencia
- * internacional del oro. `null` = PENDIENTE DE DEFINICIÓN POR WILLIS.
- *
- * No reemplazar por una cifra sin instrucción escrita de Willis.
+ * Factor del precio referencial público, como fracción de la referencia
+ * internacional del oro. Rótulo público: "Precio referencial (75%)".
  */
-export const FACTOR_COMPRA_ZEKAII: number | null = null;
+export const FACTOR_REFERENCIA = 0.75;
 
-/** Texto que las superficies muestran mientras el factor está pendiente. */
-export const FACTOR_COMPRA_ZEKAII_PENDIENTE = '[POR DEFINIR POR WILLIS]';
+/** Porcentaje del factor referencial, para rótulos ("75"). */
+export const FACTOR_REFERENCIA_PCT = Math.round(FACTOR_REFERENCIA * 100);
 
-/** `true` cuando Willis ya definió el factor y es un número válido en (0, 1]. */
-export function factorCompraDefinido(
-  factor: number | null = FACTOR_COMPRA_ZEKAII,
+/** Rótulo público canónico del precio. Nunca "Compra" ni "precio de compra". */
+export const ROTULO_PRECIO_REFERENCIAL = `Precio referencial (${FACTOR_REFERENCIA_PCT}%)`;
+
+/** `true` cuando el factor es un número válido en (0, 1]. */
+export function factorReferenciaDefinido(
+  factor: number | null | undefined = FACTOR_REFERENCIA,
 ): factor is number {
   return typeof factor === 'number' && Number.isFinite(factor) && factor > 0 && factor <= 1;
 }
 
 /**
- * Factor de VENTA de Zekaii a la refinería de destino (fracción de la
- * referencia internacional). INTERNO: no es precio de compra al minero, no lo
- * cotiza María y no se publica en superficies públicas.
+ * Factor de VENTA a la refinería de destino (fracción de la referencia
+ * internacional). INTERNO: no se publica, no lo cita María y no sale por
+ * ninguna API pública.
  */
 export const FACTOR_VENTA_REFINERIA_LBMA = 0.8;
