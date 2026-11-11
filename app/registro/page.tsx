@@ -13,6 +13,7 @@
  * primeras 25 concesiones; el cliente hace búsquedas inmediatas contra el
  * endpoint público.
  */
+import { registroPublicoHabilitado } from '@/lib/registroPublico'
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Mountain, Search } from 'lucide-react';
@@ -28,7 +29,7 @@ export const metadata = {
     'Consulta informativa de concesiones mineras y solicitudes pendientes en Honduras, transcritas de listados que INHGEOMIN ha hecho públicos. No es el Registro Minero y Catastral ni una base oficial del Instituto.',
 };
 
-const REGISTRO_PUBLICO = process.env.NEXT_PUBLIC_REGISTRO_PUBLICO === 'true';
+const REGISTRO_PUBLICO = registroPublicoHabilitado();
 
 export default function RegistroPage() {
   if (!REGISTRO_PUBLICO) notFound();

@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next'
+import { registroPublicoHabilitado } from '@/lib/registroPublico'
 
 const BASE = (process.env.NEXT_PUBLIC_SITE_URL || 'https://mape.legal').replace(/\/+$/, '')
 
@@ -18,7 +19,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   ]
   // La consulta informativa de derechos mineros está apagada por defecto
   // (app/registro/page.tsx → notFound()). Solo se indexa con el flag activo.
-  if (process.env.NEXT_PUBLIC_REGISTRO_PUBLICO === 'true') {
+  if (registroPublicoHabilitado()) {
     rutas.push({ path: '/registro', priority: 0.6, changeFrequency: 'weekly' })
   }
   return rutas.map((r) => ({

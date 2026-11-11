@@ -9,7 +9,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "check:copy": "node scripts/check-copy-compliance.mjs",
-    "check:neutralidad": "node scripts/check-neutralidad-politica.mjs"
+    "check:neutralidad": "node scripts/check-neutralidad-politica.mjs",
+    "test": "node --experimental-strip-types --no-warnings --import ./tests/register-loader.mjs --test 'tests/**/*.test.ts'"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",
