@@ -14,7 +14,7 @@ procesado_en: "2026-08-09"
 
 ### SERNA / MiAmbiente — Secretaría de Recursos Naturales y Ambiente
 
-Secretaría de Estado; su denominación ha variado (en algunos períodos: Secretaría de Energía, Recursos Naturales, Ambiente y Minas). Ejerce la rectoría de la política ambiental y del licenciamiento ambiental a través de la Dirección de Evaluación y Control Ambiental (DECA). El INHGEOMIN le fue adscrito por Decreto Ejecutivo PCM-042-2014. Desde el 27 de enero de 2026, la titularidad recayó en Juan Carlos Ramos, bajo la presidencia de Nasry Asfura (período 2026–2030).
+Secretaría de Estado; su denominación ha variado (en algunos períodos: Secretaría de Energía, Recursos Naturales, Ambiente y Minas). Ejerce la rectoría de la política ambiental y del licenciamiento ambiental a través de la Dirección de Evaluación y Control Ambiental (DECA). El INHGEOMIN le fue adscrito por Decreto Ejecutivo PCM-042-2014. Desde el 27 de enero de 2026, la titularidad recayó en Juan Carlos Ramos, en la administración del período 2026–2030.
 
 ### INHGEOMIN — Instituto Hondureño de Geología y Minas
 
