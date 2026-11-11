@@ -13,8 +13,11 @@ import {
   CITAS_LEGALES,
   CONDICION_COMPRA,
   LIBERTAD_VENTA,
+  PIE_NOTA_LEGAL,
   POLITICA_PRECIO,
   RAZON_SOCIAL,
+  RAZON_SOCIAL_SERVICIOS_LEGALES,
+  REGISTRO_COMERCIALIZADOR,
 } from '@/lib/content/copy-legal'
 
 export const metadata: Metadata = {
@@ -37,8 +40,10 @@ const SECTION_TITLE: React.CSSProperties = {
 const BODY: React.CSSProperties = { fontSize: 15, color: 'var(--t2)', lineHeight: 1.7 }
 
 const NOTAS: Array<{ titulo: string; texto: string }> = [
-  { titulo: 'Certificado de Origen', texto: CERTIFICADO_ORIGEN_NOTA },
+  { titulo: 'Certificado de Origen y sello complementario', texto: CERTIFICADO_ORIGEN_NOTA },
+  { titulo: 'Nota legal del sello MAPE.LEGAL', texto: PIE_NOTA_LEGAL },
   { titulo: 'Condición de compra', texto: CONDICION_COMPRA },
+  { titulo: 'Registro de Comercializadores', texto: REGISTRO_COMERCIALIZADOR },
   { titulo: 'Política de precio', texto: POLITICA_PRECIO },
   { titulo: 'Libertad de venta', texto: LIBERTAD_VENTA },
   { titulo: 'Resoluciones de la Autoridad Minera', texto: AVISO_RESOLUCIONES },
@@ -62,9 +67,14 @@ export default function AvisoLegalPage() {
             <p style={BODY}>{AVISO_NATURALEZA_INFORMATIVA}</p>
             <p style={BODY}>{AVISO_PLATAFORMA}</p>
             <p style={BODY}>
-              Para asesoría sobre un caso concreto, {RAZON_SOCIAL} atiende por los canales
-              de contacto publicados en este sitio, previa evaluación del caso y acuerdo
-              expreso de representación.
+              {RAZON_SOCIAL} es dueña y titular de la plataforma, opera la base de datos,
+              lleva el sello complementario de trazabilidad y compra el oro. El sello no es
+              un acto de INHGEOMIN y no sustituye el documento oficial de procedencia.
+            </p>
+            <p style={BODY}>
+              Para asesoría sobre un caso concreto, {RAZON_SOCIAL_SERVICIOS_LEGALES} atiende
+              por los canales de contacto publicados en este sitio, previa evaluación del
+              caso y acuerdo expreso de representación.
             </p>
           </section>
 

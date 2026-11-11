@@ -28,6 +28,7 @@ import {
   VERSION_POLITICA_PRECIOS,
 } from '@/lib/precio/calculo';
 import { fechaHondurasHoy, getPrecioReferenciaHoy } from '@/lib/precio/consulta';
+import { FACTOR_COMPRA_ZEKAII, factorCompraDefinido } from '@/lib/precio/factores';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -119,9 +120,27 @@ const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
 export async function POST(request: NextRequest) {
   try {
     // 1–2. Sesión + rol dentro del handler (R3). 401 sin sesión, 403 si el
-    // rol no es administración de CHT (admin).
+    // rol no es administración de Inversiones Zekaii, S. de R.L. (admin).
     const auth = await requireRole('admin');
     if (auth instanceof NextResponse) return auth;
+
+    // 2b. Modelo B (10-nov-2026): el factor de compra de Inversiones Zekaii al
+    // productor debe estar definido A NIVEL DE CONSTANTE (lib/precio/factores.ts)
+    // antes de poder fijar un precio. Mientras sea null no se inserta nada —
+    // tampoco si el cliente manda un factor en el body: el factor no lo decide
+    // el operador en el panel, lo publica la Política de Precios (cláusula 4).
+    if (!factorCompraDefinido(FACTOR_COMPRA_ZEKAII)) {
+      return NextResponse.json(
+        {
+          error: 'factor_compra_pendiente',
+          detalle:
+            'El factor de compra al productor está pendiente de definición por Willis (Política de Precios v' +
+            VERSION_POLITICA_PRECIOS +
+            '). No se puede fijar un precio hasta que esté definido en lib/precio/factores.ts.',
+        },
+        { status: 409 },
+      );
+    }
 
     // 3. Validación del cuerpo.
     let body: FijacionBody;

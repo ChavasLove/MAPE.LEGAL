@@ -27,10 +27,13 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://mape.legal";
 const siteTitle =
   "MAPE LEGAL — Legalización de permisos de pequeña minería de oro en Honduras";
 const siteDescription =
-  "Acompañamiento legal, ambiental y técnico para el permiso de pequeña minería ante INHGEOMIN: requisitos del expediente, licencia ambiental, certificado de origen del oro y comercialización formal en Honduras.";
+  "Acompañamiento legal, ambiental y técnico para el permiso de pequeña minería ante INHGEOMIN: requisitos del expediente, licencia ambiental, trazabilidad del oro y comercialización formal en Honduras.";
 const ogImage = "/images/RIVER AND MOUNTAINS.png";
 
-/* JSON-LD Organization — datos institucionales de la operadora del sitio. */
+/* JSON-LD Organization — datos institucionales de la dueña de la plataforma
+   (Inversiones Zekaii, S. de R.L., Modelo B 10-nov-2026). La dirección es el
+   domicilio actual heredado (local Nexcrea): [CONFIRMAR CON WILLIS la
+   dirección de Inversiones Zekaii, S. de R.L.]. No inventar dirección. */
 const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",

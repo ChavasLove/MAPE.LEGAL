@@ -1,5 +1,7 @@
 /**
- * /registro — superficie pública para búsqueda en el registro INHGEOMIN.
+ * /registro — consulta informativa de derechos mineros (transcripción no
+ * oficial de listados publicados por INHGEOMIN). NO es el Registro Minero y
+ * Catastral ni un portal oficial del Instituto (Modelo B, 10-nov-2026).
  *
  * Es un punto de entrada con un input que redirige a la API pública
  * `/api/concesiones/buscar`. Server component que consume la vista
@@ -11,13 +13,14 @@ import Link from 'next/link';
 import { Mountain, Search } from 'lucide-react';
 import TopoBand from '@/components/decor/TopoBand';
 import RegistroSearch from './RegistroSearch';
+import { REGISTRO_CONSULTA_NOTA, REGISTRO_CONSULTA_TITULO } from '@/lib/content/copy-legal';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'Registro INHGEOMIN — MAPE.LEGAL',
+  title: `${REGISTRO_CONSULTA_TITULO} — MAPE.LEGAL`,
   description:
-    'Búsqueda pública del registro de concesiones mineras y solicitudes pendientes en Honduras (INHGEOMIN).',
+    'Consulta informativa de concesiones mineras y solicitudes pendientes en Honduras, transcritas de listados que INHGEOMIN ha hecho públicos. No es el Registro Minero y Catastral ni una base oficial del Instituto.',
 };
 
 export default function RegistroPage() {
@@ -55,7 +58,7 @@ export default function RegistroPage() {
               fontWeight:    600,
             }}
           >
-            Registro INHGEOMIN
+            Consulta informativa · Transcripción no oficial
           </div>
           <h1
             style={{
@@ -68,7 +71,7 @@ export default function RegistroPage() {
               marginTop:  8,
             }}
           >
-            Concesiones mineras de Honduras
+            {REGISTRO_CONSULTA_TITULO}
           </h1>
           <p
             style={{
@@ -81,8 +84,8 @@ export default function RegistroPage() {
             }}
           >
             Búsqueda pública de las concesiones mineras de exploración y explotación otorgadas, y de las
-            solicitudes pendientes de aprobación, registradas ante el Instituto Hondureño de Geología y Minas
-            (INHGEOMIN). Datos transcritos del listado oficial — la mayoría de los registros marcados
+            solicitudes pendientes de aprobación, ante el Instituto Hondureño de Geología y Minas
+            (INHGEOMIN). Datos transcritos de listados que INHGEOMIN ha hecho públicos — la mayoría de los registros marcados
             <strong style={{ color: 'var(--amber)' }}> En Solicitud </strong>
             siguen pendientes de aprobación.
           </p>
@@ -125,13 +128,12 @@ export default function RegistroPage() {
                 style={{ color: 'var(--moss)', marginTop: 2 }}
               />
               <div style={{ fontSize: 13, color: 'var(--t2)', lineHeight: 1.55 }}>
-                Esta consulta es de carácter informativo. Para validar el estado actual o solicitar
-                documentación oficial, contacta a{' '}
+                {REGISTRO_CONSULTA_NOTA} Para dudas sobre esta consulta, escriba a{' '}
                 <a href="mailto:gerencia@mape.legal" style={{ color: 'var(--moss)', textDecoration: 'underline' }}>
                   gerencia@mape.legal
-                </a>{' '}
-                o al portal INHGEOMIN. Las clasificaciones <em>Metálica</em>, <em>No Metálica</em> y
-                <em> Pequeña Minería Metálica</em> corresponden a la tipología del registro oficial.
+                </a>
+                . Las clasificaciones <em>Metálica</em>, <em>No Metálica</em> y
+                <em> Pequeña Minería Metálica</em> corresponden a la tipología del listado publicado por INHGEOMIN.
               </div>
             </div>
           </div>

@@ -16,6 +16,17 @@ o solicitud de crear algo "en el estilo de MAPE LEGAL".
 > disparador de H3 equivocado — todos corregidos. Al tocar una cifra de §3,
 > verificarla contra `MARIA.md` en el mismo cambio.
 > Ver `docs/auditoria-marca-2026-08.md` §4.
+>
+> **Modelo B (confirmado por Willis, 10-nov-2026) — precedencia sobre cualquier
+> lectura previa de este archivo:** la plataforma MAPE.LEGAL es de **Inversiones
+> Zekaii, S. de R.L.**, que es quien **compra el oro** a los productores y publica
+> su precio de referencia (comercial, no "oficial"). **Corporación Hondureña
+> Tenka, S.A. (CHT)** presta los servicios legales y mineros de §3 (sus
+> honorarios) y **no compra ni vende mineral ni opera la plataforma**. Ni "MAPE
+> LEGAL compra" ni "CHT compra". El factor de compra al productor está
+> **pendiente** (`FACTOR_COMPRA_ZEKAII` en `lib/precio/factores.ts`,
+> `[POR DEFINIR POR WILLIS]`) — no citar 75 %, 80 % ni ningún porcentaje como
+> precio al minero. Fuente de verdad: `MARIA.md` §16.
 
 ---
 
@@ -34,6 +45,8 @@ o solicitud de crear algo "en el estilo de MAPE LEGAL".
 | Nombre institucional | MAPE LEGAL |
 | Marca comercial | MAPE LEGAL |
 | Sub-marca digital | mape.legal |
+| Titular de la plataforma / compradora del oro | Inversiones Zekaii, S. de R.L. |
+| Prestadora de los servicios legales y mineros | Corporación Hondureña Tenka, S.A. (CHT) — no compra ni vende mineral |
 | Descriptor | Consultoría Estratégica |
 | Tagline principal | "Legalizamos tu proyecto minero." |
 | Tagline secundario | Consultoría legal y estratégica para una minería artesanal y de pequeña escala, responsable y en cumplimiento con la ley hondureña. |
@@ -201,7 +214,7 @@ Paquete Ancla. No es el disparador de H3: el pago de honorarios que le sigue
 | PSA | Prestador de Servicios Ambientales (Técnico Ambiental habilitado) |
 | MAPE | Minería Artesanal y de Pequeña Escala |
 | EIA | Estudio de Impacto Ambiental (categoría 4 SLAS-2) |
-| Índice de Legalidad | Verificación de los 5 componentes legales completos |
+| Índice de Legalidad | Verificación de los 5 componentes legales completos (el 5.º, Registro de Comercializador, es obligación del comprador — aplica solo si el operador va a comprar mineral de terceros) |
 | T.G.R. 1 | Pago a la Tesorería General de la República (requisito 16 SERNA) |
 | DECA | Dirección de Evaluación y Control Ambiental |
 | Fondo Rotatorio DECA | Cuenta BANADESA Nº 02001-000131-0 |

@@ -1,4 +1,5 @@
-import { supabase } from '@/services/supabase';
+import { getAdminClient } from '@/services/adminSupabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { validatePaymentForPhase } from '@/modules/expedientes';
 import type {
   BlockingReason,
@@ -7,10 +8,21 @@ import type {
   TransicionFase,
 } from '@/modules/types';
 
+// Server-only. Este módulo usa el cliente service-role (getAdminClient) y no
+// debe importarse desde client components salvo con `import type`. Sus callers
+// son rutas server-side ya protegidas por requireRole(). La instanciación es
+// lazy — nunca a nivel de módulo (regla §Framework de CLAUDE.md). Desde la
+// migración 041 estas tablas tienen RLS y la anon key no las ve.
+let _db: SupabaseClient | null = null;
+function db(): SupabaseClient {
+  if (!_db) _db = getAdminClient();
+  return _db;
+}
+
 export async function getAvailableTransitions(
   faseOrigenId: string
 ): Promise<TransicionFase[]> {
-  const { data, error } = await supabase
+  const { data, error } = await db()
     .from('transiciones_fase')
     .select(
       'id, fase_origen_id, fase_destino_id, condicion, fase_destino:fases!fase_destino_id(id, nombre, orden)'
@@ -35,7 +47,7 @@ async function checkDocumentos(
 ): Promise<BlockingReason[]> {
   if (!nombresRequeridos.length) return [];
 
-  const { data, error } = await supabase
+  const { data, error } = await db()
     .from('documentos')
     .select('nombre, estado')
     .eq('expediente_id', expedienteId)
@@ -79,7 +91,7 @@ export async function getBlockingReasons(
 export async function getNextActions(
   expedienteId: string
 ): Promise<NextActionsResult> {
-  const { data: expediente, error } = await supabase
+  const { data: expediente, error } = await db()
     .from('expedientes')
     .select('id, fase_actual_id')
     .eq('id', expedienteId)
@@ -89,7 +101,7 @@ export async function getNextActions(
 
   // Expediente has not yet entered any fase — find entry point
   if (!expediente.fase_actual_id) {
-    const { data: primeraFase } = await supabase
+    const { data: primeraFase } = await db()
       .from('fases')
       .select('id, nombre, orden')
       .eq('orden', 1)

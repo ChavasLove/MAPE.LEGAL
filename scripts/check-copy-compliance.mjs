@@ -30,6 +30,46 @@
  * docs/legal/sentencia-sco-0090-2014.md y lib/legal/vigenciaLGM.ts, que
  * necesitan nombrar los artículos sin anotación inline.
  *
+ * Reglas del Modelo B (confirmado por Willis, 10-nov-2026): Inversiones
+ * Zekaii, S. de R.L. es la dueña de la plataforma MAPE.LEGAL y la compradora
+ * del oro; Corporación Hondureña Tenka, S.A. (CHT) presta los servicios legales
+ * y mineros y NO compra, vende ni opera la plataforma. El sello MAPE.LEGAL es
+ * voluntario y complementario (no sustituye el Certificado de Origen oficial,
+ * que emite el titular y autentica la autoridad); el Registro de
+ * Comercializadores de INHGEOMIN es del COMPRADOR, no del minero que vende su
+ * propia producción; el factor de compra al productor está PENDIENTE
+ * (`FACTOR_COMPRA_ZEKAII` en lib/precio/factores.ts). Reglas de copy público
+ * nuevas (alcance SCAN_DIRS):
+ *  - "certificado(s) emitido(s) por MAPE…" — la plataforma registra, no emite.
+ *  - "precio de referencia oficial" / "precio oficial de Zekaii|MAPE|Inversiones"
+ *    — el precio de referencia es comercial, no oficial.
+ *  - "Registro INHGEOMIN" como título a secas (sin "de") — ambiguo; las formas
+ *    correctas "Registro de Comercializadores de INHGEOMIN" y "Registro Minero y
+ *    Catastral de INHGEOMIN" pasan.
+ *  - "CHT compra" / "vender (mineral) a CHT" — CHT no compra mineral.
+ *  - CHT (o Corporación Hondureña Tenka) como operadora / dueña / propietaria /
+ *    titular de la plataforma — con exclusión de la negación requerida ("no es
+ *    dueña ni operadora de la plataforma" PASA).
+ *  - "a nombre del vendedor" — el Registro de Comercializador no se exige al
+ *    minero titular que vende su producción.
+ *  - "adoptado/aprobado/reconocido/certificado/avalado por INHGEOMIN" y
+ *    "Acuerdo (de) INHGEOMIN" — salvo que la misma línea diga "no existe" /
+ *    "no consta" (negación requerida).
+ *  - "consulta (previa) (del Convenio 169) completada|cumplida|realizada" —
+ *    la consulta previa es un derecho vigente, no un trámite cumplido.
+ *  - "MAPE LEGAL emite" / "MAPE.LEGAL emite" — la plataforma no emite
+ *    certificados.
+ * Relajación: la regla `chiopa` de alcance 'all' ya NO bloquea el nombre como
+ * destino lícito de venta (modelo B); solo prohíbe el modelo descartado
+ * ("Chiopa compra directo|directamente"). El nombre sigue vedado en superficies
+ * públicas (regla de alcance SCAN_DIRS → "refinería de destino").
+ * Nunca se bloquean: `FACTOR_COMPRA_ZEKAII`, "[POR DEFINIR POR WILLIS]",
+ * "Inversiones Zekaii". lib/precio entra en INTERNAL_SCAN_DIRS
+ * (confidencialidad).
+ *
+ * Una regla puede llevar `exclude`: si la línea también matchea esa expresión
+ * (negación requerida), no se reporta.
+ *
  * Uso: node scripts/check-copy-compliance.mjs   (o: npm run check:copy)
  */
 
@@ -44,7 +84,7 @@ const SCAN_DIRS = ['app', 'components', 'lib/content']
 // Las reglas de copy público siguen limitadas a SCAN_DIRS: la documentación
 // histórica interna (p. ej. CLAUDE.md) describe esas mismas reglas y sus
 // violaciones pasadas, y no es superficie de copy.
-const INTERNAL_SCAN_DIRS = ['docs', 'lib/maria', 'services']
+const INTERNAL_SCAN_DIRS = ['docs', 'lib/maria', 'lib/precio', 'services']
 const ROOT_FILES = ['README.md', 'CLAUDE.md', 'MARIA.md', 'MARIA_LEY_MINERIA.md', 'AGENTS.md', 'DESIGN.md']
 // Tercer alcance (orden "Blindaje institucional de María" 2026-08, T2.4):
 // app/api deja de estar totalmente exento — se escanea ÚNICAMENTE con las
@@ -123,9 +163,43 @@ const RULES = [
 
   // Contrapartes y términos económicos (limpieza 2026-08): el repositorio es
   // público — ningún archivo expone contrapartes sin convenio ni márgenes.
-  { re: /chiopa/i, label: '"Chiopa" — contraparte sin anexo contractual público; usar "refinería de destino"', scope: 'all' },
+  // Modelo B (10-nov-2026): la refinería de destino es el comprador aguas
+  // abajo de Inversiones Zekaii — nombrarla en código y docs internos es
+  // lícito; lo prohibido en todo el repo es el modelo descartado (venta directa
+  // del productor a la refinería). En superficies públicas el nombre sigue
+  // vedado (regla pública abajo).
+  { re: /chiopa\s+compra\s+(directo|directamente)/i, label: '"Chiopa compra directo" — modelo descartado; el productor vende a Inversiones Zekaii', scope: 'all' },
+  { re: /chiopa/i, label: 'nombrar la refinería en superficies públicas — usar "refinería de destino"' },
   { re: /8[05]\s*%\s*del\s+precio/i, label: 'cifra de margen comercial — remite a la Política de Precios versionada', scope: 'all' },
   { re: /8[05]\s*%\s*of\s+the\s+(international|reference)/i, label: 'cifra de margen comercial (variante EN) — remite a la Política de Precios versionada', scope: 'all' },
+
+  // Modelo B (10-nov-2026) — quién es quién: Inversiones Zekaii compra y es
+  // dueña de la plataforma; CHT presta servicios y no compra ni opera; el sello
+  // es complementario; el Registro de Comercializadores es del comprador.
+  { re: /certificados?\s+emitid[oa]s?\s+por\s+MAPE/i, label: '"certificado emitido por MAPE…" — la plataforma registra y digitaliza; el certificado lo emite el titular y lo autentica la autoridad' },
+  { re: /precio\s+de\s+referencia\s+oficial/i, label: '"precio de referencia oficial" — el precio de referencia es comercial (Inversiones Zekaii), no oficial' },
+  { re: /precio\s+oficial\s+de\s+(?:zekaii|mape|inversiones)/i, label: '"precio oficial de …" — el precio de referencia es comercial, no oficial' },
+  // Solo la forma exacta "Registro INHGEOMIN" (sin "de"): "Registro de
+  // Comercializadores de INHGEOMIN" y "Registro Minero y Catastral de
+  // INHGEOMIN" son correctas y pasan.
+  { re: /\bregistro\s+inhgeomin\b/i, label: '"Registro INHGEOMIN" a secas — nombrar el registro concreto ("Registro de Comercializadores de INHGEOMIN", "Registro Minero y Catastral de INHGEOMIN")' },
+  { re: /\bCHT\s+compra/i, label: '"CHT compra" — CHT no compra mineral; la compradora es Inversiones Zekaii' },
+  { re: /vender\s+(?:mineral\s+)?a\s+CHT\b/i, label: '"vender (mineral) a CHT" — CHT no compra mineral; la compradora es Inversiones Zekaii' },
+  // CHT como operadora / dueña / propietaria / titular de la plataforma. La
+  // negación requerida ("CHT no es dueña ni operadora de la plataforma") pasa
+  // vía `exclude`.
+  {
+    re: /(?:Corporaci[óo]n\s+Hondure[ñn]a\s+Tenka|\bCHT\b)[^.]{0,40}?\b(?:opera|administra|operador[a]?\s+de|dueñ[oa]\s+de|propietari[oa]\s+de|titular\s+de)\s+(?:la\s+)?plataforma/i,
+    exclude: /\b(?:no|ni|tampoco)\s+(?:es\s+)?(?:la\s+)?(?:dueñ|operador|propietari|titular|opera|administra)/i,
+    label: 'CHT como operadora/dueña de la plataforma — la dueña y operadora es Inversiones Zekaii; CHT solo presta servicios',
+  },
+  { re: /a\s+nombre\s+del\s+vendedor/i, label: '"a nombre del vendedor" — el Registro de Comercializador es del comprador, no se exige al minero titular que vende su producción' },
+  // Aval institucional (variantes del modelo B). "no existe" / "no consta" en
+  // la misma línea es la negación requerida y pasa.
+  { re: /(?:adoptad|aprobad|reconocid|certificad|avalad)[oa]s?\s+por\s+INHGEOMIN/i, exclude: /no\s+(?:existe|consta)/i, label: 'aval/adopción/reconocimiento de INHGEOMIN — no existe instrumento formal' },
+  { re: /acuerdo\s+(?:de\s+)?inhgeomin/i, exclude: /no\s+(?:existe|consta)/i, label: '"Acuerdo (de) INHGEOMIN" — no existe Acuerdo en La Gaceta que respalde el sello' },
+  { re: /consulta\s+(?:previa\s+)?(?:del\s+convenio\s+169\s+)?(?:completada|cumplida|realizada)/i, label: 'consulta previa "completada/cumplida/realizada" — es un derecho vigente (Convenio 169 OIT; SCO-0090-2014), no un trámite cumplido; solo consta con acta' },
+  { re: /\bMAPE\s*\.?\s*LEGAL\s+emite/i, label: '"MAPE LEGAL emite" — la plataforma registra y digitaliza; no emite certificados' },
 
   // Entidades no constituidas / marca no registrada
   { re: /asociaci[óo]n\s+de\s+mineros\s+mape/i, label: '"Asociación de Mineros MAPE" — entidad no constituida' },
@@ -247,6 +321,7 @@ for (const { file, rules } of targets) {
     if (line.includes(ALLOW_MARKER)) return
     for (const rule of rules) {
       const match = line.match(rule.re)
+      if (match && rule.exclude && rule.exclude.test(line)) continue
       if (match) {
         violations++
         console.log(`${rel}:${i + 1} — «${match[0]}» → ${rule.label}`)

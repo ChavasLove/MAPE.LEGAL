@@ -1,4 +1,5 @@
 import { getAdminClient } from '@/services/adminSupabase';
+import { FACTOR_COMPRA_ZEKAII, factorCompraDefinido } from '@/lib/precio/factores';
 
 export interface PreciosDiarios {
   oro: number | null;
@@ -22,13 +23,16 @@ const FETCH_TIMEOUT_MS = 8000;
 // drift that a client comparing two replies would notice.
 export const TROY_OUNCE_GRAMS = 31.1034768;
 
-// MAPE LEGAL buy factor over the international reference price — the current
-// value is governed by the published, versioned Política de Precios
-// (/politica-de-precios); do not state the figure in prose. Single source of
-// truth so the boletín diario, María (WhatsApp + web) and the /precios widget
-// all quote the same purchase price — a divergent factor or troy-ounce
-// constant here is exactly the drift the codebase already guards against.
-export const MAPE_GOLD_BUY_FACTOR = 0.75;
+// Factor de compra de Inversiones Zekaii, S. de R.L. al productor, como
+// fracción de la referencia internacional del oro. NO es una constante propia:
+// es un alias (nombre histórico, conservado para no romper imports) de
+// FACTOR_COMPRA_ZEKAII en lib/precio/factores.ts — la FUENTE ÚNICA del modelo B
+// (10-nov-2026). `null` = factor PENDIENTE DE DEFINICIÓN POR WILLIS: mientras
+// esté en null, mapeGoldBuyLpsPerGram() y buildKaratPrices() devuelven null y
+// ninguna superficie (boletín, María WhatsApp + web, /api/precios/live) puede
+// mostrar un precio de compra en lempiras. No sustituir aquí por una cifra —
+// se edita únicamente en factores.ts (script scripts/actualizar-factor-compra.mjs).
+export const MAPE_GOLD_BUY_FACTOR: number | null = FACTOR_COMPRA_ZEKAII;
 
 // The public price is a single daily snapshot anchored to 08:00 Honduras time.
 // The cron, the cold-cache fetch, and María all key precios_diarios by
@@ -62,15 +66,19 @@ export function effectivePriceDate(now: Date = new Date()): string {
 }
 
 /**
- * MAPE LEGAL gold purchase price in Lempiras per gram.
- * = international USD/oz × factor de la Política de Precios × USD/HNL
+ * Precio de compra de Inversiones Zekaii, S. de R.L. al productor, en Lempiras
+ * por gramo de oro fino.
+ * = referencia internacional USD/oz × FACTOR_COMPRA_ZEKAII × USD/HNL
  *   ÷ troy-ounce-grams.
- * Returns null when either input is missing or non-positive.
+ * Returns null when either input is missing or non-positive, AND when the
+ * purchase factor is still pending (FACTOR_COMPRA_ZEKAII === null) — callers
+ * must render a "pendiente de la Política de Precios" state, never a figure.
  */
 export function mapeGoldBuyLpsPerGram(
   oroUsdOz: number | null | undefined,
   usdHnl: number | null | undefined,
 ): number | null {
+  if (!factorCompraDefinido(MAPE_GOLD_BUY_FACTOR)) return null;
   if (!oroUsdOz || oroUsdOz <= 0 || !usdHnl || usdHnl <= 0) return null;
   return (oroUsdOz * MAPE_GOLD_BUY_FACTOR * usdHnl) / TROY_OUNCE_GRAMS;
 }
@@ -99,16 +107,19 @@ export interface KaratPrice {
   oro_usd_g: number;
   /** Valor internacional del oro contenido en 1 g de material, en Lempiras. */
   oro_lps_g: number;
-  /** Referencia MAPE.LEGAL aplicada al contenido nominal de oro fino, L por 1 g de material. */
+  /** Precio de compra de Zekaii al productor aplicado al contenido nominal de oro fino, L por 1 g de material. */
   referencia_lps_g: number;
   /** Valor internacional del oro contenido en 1 penique (dwt) de material, en USD. */
   oro_usd_dwt: number;
   /** Valor internacional del oro contenido en 1 penique (dwt) de material, en Lempiras. */
   oro_lps_dwt: number;
-  /** Referencia MAPE.LEGAL aplicada al contenido nominal de oro fino, L por 1 penique (dwt) de material. */
+  /** Precio de compra de Zekaii al productor aplicado al contenido nominal de oro fino, L por 1 penique (dwt) de material. */
   referencia_lps_dwt: number;
 }
 
+// Devuelve null sin insumos válidos Y mientras el factor de compra esté
+// pendiente (ver mapeGoldBuyLpsPerGram) — la tabla de kilates con cifras en L
+// no puede existir sin factor definido.
 export function buildKaratPrices(
   oroUsdOz: number | null | undefined,
   usdHnl: number | null | undefined,

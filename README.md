@@ -1,8 +1,9 @@
 # MAPE.LEGAL — Plataforma de Formalización Minera
 
 **Versión 1.1 — Piloto Iriona 2026**
-Última actualización: 3 de agosto de 2026
-Propietario: MAPE LEGAL
+Última actualización: 10 de noviembre de 2026
+Titular de la plataforma: Inversiones Zekaii, S. de R.L. (compradora del oro a los productores)
+Servicios legales y mineros: Corporación Hondureña Tenka, S.A. (CHT) — no es dueña ni operadora de la plataforma; no compra ni vende mineral
 Administrador Único: Willis Yang
 Dominio: mape.legal · App privada en Vercel + Supabase
 
@@ -186,28 +187,30 @@ Para tonos derivados usa **`color-mix(in oklch, var(--ink) 80%, white)`** — nu
 
 ## 1. VISIÓN Y PROPÓSITO
 
-MAPE.LEGAL es la plataforma digital que actúa como **motor de evidencia legal de origen mineral** para minería artesanal y de pequeña escala en Honduras.
+MAPE.LEGAL es la plataforma digital que actúa como **registro de evidencia legal de origen mineral** para minería artesanal y de pequeña escala en Honduras.
 
-Su propósito es generar, almacenar y certificar evidencia legalmente defendible de que el oro proviene de operaciones formalizadas conforme a la **Ley de Minería, Reglamento MAPE (Acuerdo 042-2013), ILO 169, SLAS-2** y estándares internacionales (CRAFT / Fairmined / RJC).
+Su propósito es registrar, almacenar y digitalizar evidencia legalmente defendible de que el oro proviene de operaciones formalizadas conforme a la **Ley General de Minería, el Reglamento MAPE (Acuerdo 042-2013) y el licenciamiento ambiental SLAS-2**, y hacerla verificable frente a estándares internacionales de debida diligencia (CRAFT / Fairmined / RJC). La plataforma **no emite** el Certificado de Origen: lo emite el titular del derecho minero y lo autentica la Autoridad Minera o Municipal (Art. 35 Regl. Especial MAPE; Art. 43, literal e, Regl. 042-2013); el sello MAPE.LEGAL es voluntario y complementario. La consulta previa, libre e informada de pueblos indígenas y tribales (Convenio 169 OIT) es un **derecho vigente** por bloque de constitucionalidad (sentencia SCO-0090-2014; ver `NOTA_CONSULTA_PREVIA` en `lib/legal/vigenciaLGM.ts`) y un requisito cuando procede — la plataforma registra la evidencia que exista, no presume ni certifica que se haya cumplido.
 
 ---
 
 ## 2. CONTEXTO DE NEGOCIO
 
-- **MAPE LEGAL** = marca institucional del proyecto
+- **MAPE LEGAL** = marca institucional del proyecto; **MAPE.LEGAL** = la plataforma
+- **Titular de la plataforma y compradora del oro:** Inversiones Zekaii, S. de R.L.
+- **Prestadora de los servicios legales y mineros:** Corporación Hondureña Tenka, S.A. (CHT) — no es dueña ni operadora de la plataforma; no compra ni vende mineral
 - **Fundador:** Willis Yang (Administrador Único)
 - **Socio 50%:** Ricardo Alfredo Montes Nájera
 
-**Modelo de negocio:**
+**Modelo de negocio (Modelo B, confirmado 10-nov-2026):**
 
-MAPE.LEGAL opera bajo dos líneas: (1) servicios de formalización minera (expediente, licenciamiento ambiental y trazabilidad documental), con precios publicados en el sitio; y (2) comercialización formal de oro con origen certificado, bajo un precio de referencia diario publicado y una Política de Precios versionada, conforme a los Arts. 37 y 38 de la Ley General de Minería. Los términos económicos específicos con contrapartes se rigen por sus contratos y no forman parte de este documento.
+Dos líneas con dos titulares distintos: (1) **servicios legales y mineros** a productores artesanales y de pequeña minería — formalización (expediente INHGEOMIN + licenciamiento ambiental SERNA), titulación, sociedad minera y representación — prestados por **CHT**, con honorarios publicados en el sitio; y (2) **compra formal de oro** con origen documentado por **Inversiones Zekaii**, dueña de la plataforma, que publica un precio de referencia diario (comercial, suyo — no "oficial") y una Política de Precios versionada, conforme a los Arts. 37 y 38 de la Ley General de Minería. El **factor de compra al productor está pendiente de definición** (`FACTOR_COMPRA_ZEKAII` en `lib/precio/factores.ts`, marcador `[POR DEFINIR POR WILLIS]`): ninguna superficie publica un precio de compra en lempiras ni un porcentaje hasta que Willis lo defina. El Registro de Comercializadores de INHGEOMIN es obligación del comprador — no se afirma que Inversiones Zekaii ya lo tenga, y no se exige al minero titular que vende su propia producción. Los términos económicos con contrapartes se rigen por sus contratos y no forman parte de este documento.
 
 **Piloto 2026:** Asociación de Mineros de Iriona, Colón (~60 mineros)
 
-**Catálogo de servicios:**
+**Catálogo de servicios (honorarios de CHT — fuente de verdad: `MARIA.md` §2):**
 | Servicio | Precio | Pagos |
 |---|---|---|
-| Formalización Minera MAPE | L 1.600.000 | 3 hitos: 20% / 30% / 50% |
+| Formalización Minera MAPE | L 1.600.000 | 3 hitos: 40% / 40% / 20% |
 | Titulación de Propiedad | L 60.000 base + L 25.000/manzana adicional | Único |
 | Contrato de Sociedad Minera | L 55.000 (co-pago 50/50) | Único |
 
@@ -317,9 +320,9 @@ MAPE.LEGAL opera bajo dos líneas: (1) servicios de formalización minera (exped
 | `/admin/contenido` | admin | ✅ Editor CMS |
 | `/admin/config` | admin | ✅ Configuración del sistema |
 | `/admin/profesionales` | admin | ✅ Perfiles profesionales |
-| `/admin/concesiones` | admin | ✅ Registro INHGEOMIN — 587 concesiones (KPIs, filtros, tabla paginada) |
+| `/admin/concesiones` | admin | ✅ Registro de concesiones de INHGEOMIN — 587 concesiones (KPIs, filtros, tabla paginada) |
 | `/admin/equipos` | admin | ✅ CRUD del catálogo de equipos (Mercado de Equipos) |
-| `/registro` | Público | ✅ Búsqueda pública en vivo del registro INHGEOMIN |
+| `/registro` | Público | ✅ Búsqueda pública del registro de concesiones de INHGEOMIN (actualizado por carga manual) |
 | `/equipos` | Público | ✅ Catálogo de maquinaria de lavado de oro (filtros + búsqueda) |
 | `/equipos/[slug]` | Público | ✅ Detalle de producto + CTA WhatsApp |
 | `/verificar/[numero]` | Público | ✅ Verificación de certificados de origen |
@@ -492,10 +495,12 @@ POST /api/expedientes/:id/transition
 - Logs de Vercel filtrados por `[rag]` muestran si María elige `path=semantic`, `path=fts`, o `path=none` en cada turno.
 
 ### Próximas fases en cola
-- **Phase 2B** — Transactions + Certificate issuance: `transacciones_oro` CRUD,
-  flujo de emisión que crea filas en `certificados_origen` con
-  `hash_verificacion` (SHA-256), generación de PDF imprimible. Después de 2B,
-  certificados reales fluyen a `/verificar/[numero]`.
+- **Phase 2B** — Transactions + registro del Certificado de Origen:
+  `transacciones_oro` CRUD, flujo de registro/digitalización del certificado
+  (emitido por el titular y autenticado por la autoridad — la plataforma no lo
+  emite) que crea filas en `certificados_origen` con `hash_verificacion`
+  (SHA-256) y PDF imprimible del registro. Después de 2B, certificados reales
+  fluyen a `/verificar/[numero]`.
 - **Phase 2C** — Expediente full tracking: UI de fases INHGEOMIN, `hitos`,
   `tareas`, upload de documentos atado a fases; cierra gap de `contratos` UI.
 - **Phase 0** — Estabilización (recomendado entre 2B y 2C, dado que 2B es el

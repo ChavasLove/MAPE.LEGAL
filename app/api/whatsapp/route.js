@@ -4,12 +4,13 @@ import { getUserByPhone, getOrCreateUserByPhone } from "@/services/userService";
 import { interpretAndExecute } from "@/services/adminCommandService";
 import { getOnboardingState, handleOnboarding, INSTITUTIONAL_ONBOARDING_REPLY } from "@/services/onboardingService";
 import { fetchAllPrices, storePrices, effectivePriceDate, mapeGoldBuyLpsPerGram, buildKaratPrices } from "@/services/pricingService";
+import { factorCompraDefinido } from "@/lib/precio/factores";
 import { sanitizeIlikeTerm } from "@/services/concesionesService";
 import { embedQuery, toVectorText } from "@/lib/maria/embeddings";
 import { normalizePhone } from "@/lib/maria/normalizePhone";
 import { validateTwilioSignature } from "@/lib/webhookSignatures";
 import { isInstitutionalMessage, INSTITUTIONAL_CONTEXT_BLOCK } from "@/lib/maria/institutional";
-import { CHT_SYSTEM_PROMPT } from "@/lib/maria/systemPrompt";
+import { MARIA_SYSTEM_PROMPT } from "@/lib/maria/systemPrompt";
 import {
   RAG_MATCH_COUNT,
   RAG_MATCH_THRESHOLD,
@@ -357,19 +358,23 @@ export async function POST(request) {
 
     // Verify the POST genuinely came from Twilio before trusting its contents.
     //
-    // Enforcement is OPT-IN, not the default. A signature check that fails
-    // closed on a URL we can only *guess* (see twilioCandidateUrls) is a
-    // foot-gun: one URL/token mismatch black-holes every inbound message with a
-    // 403 and no TwiML — María just goes silent for everyone. That is exactly
-    // what happened after this check shipped. So:
-    //   - TWILIO_VALIDATE_SIGNATURE='false'  → skip the check entirely (kill switch)
-    //   - TWILIO_VALIDATE_SIGNATURE='true'   → hard-reject mismatches with 403 (enforce)
-    //   - unset / anything else (default)    → validate + log mismatches, but LET
-    //                                          THE TURN THROUGH (never a 403)
-    //   - TWILIO_SIGNATURE_LOG_ONLY='true'   → force log-only even when enforcing
-    // Flip to 'true' only after Vercel logs show the candidate URLs matching.
+    // ENFORCE POR DEFECTO (correcciones de seguridad 10-nov-2026): una firma
+    // que no calza se rechaza con 403. Interruptores de emergencia para un
+    // rollback consciente — NUNCA son el default:
+    //   - TWILIO_VALIDATE_SIGNATURE='false'  → salta el chequeo por completo (kill switch)
+    //   - TWILIO_SIGNATURE_LOG_ONLY='true'   → valida y loguea el mismatch pero deja pasar
+    //   - unset / cualquier otro valor       → ENFORCE (403 ante mismatch)
+    // Sin TWILIO_AUTH_TOKEN no se puede validar: el webhook rechaza con 500 y
+    // lo registra (fail-closed), en vez de aceptar cualquier POST anónimo.
+    // Antes de activar un deploy, confirmar en Vercel logs que alguna de las
+    // candidate URLs calza con la que Twilio firma (ver twilioCandidateUrls).
     const twilioToken = process.env.TWILIO_AUTH_TOKEN;
-    if (twilioToken && process.env.TWILIO_VALIDATE_SIGNATURE !== 'false') {
+    const skipSignature = process.env.TWILIO_VALIDATE_SIGNATURE === 'false';
+    if (!skipSignature) {
+      if (!twilioToken) {
+        console.error('[maria] TWILIO_AUTH_TOKEN no configurado — no se puede validar la firma; rechazando');
+        return new Response('Webhook no configurado', { status: 500 });
+      }
       const sigParams = {};
       for (const [k, v] of formData.entries()) sigParams[k] = typeof v === 'string' ? v : '';
       const signature = request.headers.get('x-twilio-signature');
@@ -378,14 +383,14 @@ export async function POST(request) {
         validateTwilioSignature({ authToken: twilioToken, signature, url, params: sigParams })
       );
       if (!signatureOk) {
-        const enforce =
-          process.env.TWILIO_VALIDATE_SIGNATURE === 'true' &&
-          process.env.TWILIO_SIGNATURE_LOG_ONLY !== 'true';
-        console.warn(`[maria] twilio signature mismatch enforce=${enforce} hasSig=${!!signature} candidates=${candidates.join(' | ')}`);
-        if (enforce) {
+        const logOnly = process.env.TWILIO_SIGNATURE_LOG_ONLY === 'true';
+        console.warn(`[maria] twilio signature mismatch enforce=${!logOnly} hasSig=${!!signature} candidates=${candidates.join(' | ')}`);
+        if (!logOnly) {
           return new Response('Firma inválida', { status: 403 });
         }
       }
+    } else {
+      console.warn('[maria] TWILIO_VALIDATE_SIGNATURE=false — validación de firma DESACTIVADA (kill switch)');
     }
 
     // Media messages (images, voice notes) arrive with no Body text
@@ -405,8 +410,8 @@ export async function POST(request) {
     // (MARIA_ADMIN_PASSPHRASE), never in the repo — unset ⇒ executive mode
     // disabled (fail-closed). And the passphrase alone NEVER suffices: the
     // sender's number must also hold rol='admin' in usuarios_broadcast,
-    // because sender numbers are spoofable while Twilio signature enforcement
-    // is staged (TWILIO_VALIDATE_SIGNATURE opt-in, see above).
+    // because sender numbers are spoofable if the Twilio signature check is
+    // ever disabled via the kill switch (TWILIO_VALIDATE_SIGNATURE=false).
     const ADMIN_PASSPHRASE = process.env.MARIA_ADMIN_PASSPHRASE || null;
     const ADMIN_TRIGGER_RE = /\bwillis\s+yang\b/i;
     const PASSPHRASE_RE = ADMIN_PASSPHRASE
@@ -808,14 +813,17 @@ Comandos disponibles:
       maximumFractionDigits: d,
     });
     const oroLBMA   = preciosHoy?.oro    != null ? `$${fmt(preciosHoy.oro)} USD/oz troy`   : null;
-    // Canonical helper — the inline 0.80 multiplication drifted from
-    // MAPE_GOLD_BUY_FACTOR's single source of truth in pricingService.
+    // Canonical helper — deriva de FACTOR_COMPRA_ZEKAII (lib/precio/factores.ts,
+    // fuente única del modelo B). Devuelve null mientras el factor de compra al
+    // productor esté PENDIENTE de definición por Willis.
+    const factorCompraPendiente = !factorCompraDefinido();
     const oroCompraLps = mapeGoldBuyLpsPerGram(preciosHoy?.oro, preciosHoy?.usd_hnl);
-    const oroCompra = oroCompraLps != null ? `L ${fmt(oroCompraLps)}/gramo` : null;
+    const oroCompra = oroCompraLps != null ? `L ${fmt(oroCompraLps)}/gramo de oro fino` : null;
     // Conversión por kilates — mismo helper canónico que /api/precios/live y el
     // boletín diario, así María cita números idénticos a los del widget. Cada
-    // kilataje trae valor por gramo y por penique (dwt = 1.5552 g).
-    const kilatesRef = buildKaratPrices(preciosHoy?.oro, preciosHoy?.usd_hnl);
+    // kilataje trae valor por gramo y por penique (dwt = 1.5552 g). Null con
+    // factor pendiente: sin factor no hay kilates en lempiras.
+    const kilatesRef = factorCompraPendiente ? null : buildKaratPrices(preciosHoy?.oro, preciosHoy?.usd_hnl);
     const kilatesLine = kilatesRef
       ? kilatesRef
           .map((k) => `${k.kilates}k L ${fmt(k.referencia_lps_g)}/g · L ${fmt(k.referencia_lps_dwt)}/dwt`)
@@ -840,13 +848,16 @@ Comandos disponibles:
     const priceContext = esInstitucional ? '' : preciosHoy
       ? `\n\nPRECIOS DE REFERENCIA (${preciosHoy.fecha ?? 'hoy'}${frescuraLabel ? ` — ${frescuraLabel}` : ''}):
 - Oro internacional: ${oroLBMA ?? 'no disponible'}
-- Precio de compra MAPE LEGAL (según la Política de Precios vigente): ${oroCompra ?? 'el equipo confirma hoy'}
-- Referencia por kilates (por gramo y por penique/dwt de material; ley nominal = kilates ÷ 24; 1 dwt = 1.5552 g): ${kilatesLine ?? 'no disponible'}
+${factorCompraPendiente
+  ? `- Precio de compra al productor (Inversiones Zekaii, S. de R.L.): PENDIENTE de publicación en la Política de Precios de Inversiones Zekaii. REGLA DURA: NO inventes, NO estimes ni calcules un precio de compra en lempiras; NO cites ningún porcentaje de la referencia internacional (ni 75 %, ni 80 %, ni otro). Si preguntan por el precio de compra, di que Inversiones Zekaii lo publicará en su Política de Precios y que por ahora solo podés dar la referencia internacional del oro y el tipo de cambio.
+- Referencia por kilates: no disponible mientras el precio de compra esté pendiente (no la calcules).`
+  : `- Precio de compra de Inversiones Zekaii al productor (según la Política de Precios vigente): ${oroCompra ?? 'el equipo confirma hoy'}
+- Referencia por kilates (por gramo y por penique/dwt de material; ley nominal = kilates ÷ 24; 1 dwt = 1.5552 g): ${kilatesLine ?? 'no disponible'}`}
 - Plata internacional: ${plataLBMA ?? 'no disponible'}
 - Tipo de cambio: ${tipoCambio ?? 'no disponible'}
 - Frescura: ${frescuraLabel || 'no disponible'}
 ${preciosHoy.fuente ? `- Fuente: ${preciosHoy.fuente}` : ''}
-El formato canónico de respuesta para precio del día está en CUANDO PREGUNTAN POR EL PRECIO DEL ORO — síguelo al pie de la letra (4 viñetas: precio internacional + MAPE LEGAL compra + Tipo de cambio USD/LPS + Actualizado, luego la cooperativa financiera aliada + www.mape.legal). El timestamp ("Actualizado") y el tipo de cambio USD/LPS son OBLIGATORIOS en cada respuesta de precio.`
+El formato canónico de respuesta para precio del día está en CUANDO PREGUNTAN POR EL PRECIO DEL ORO — síguelo al pie de la letra (4 viñetas: precio internacional + precio de compra de Inversiones Zekaii al productor — o "pendiente de publicación en la Política de Precios de Inversiones Zekaii" si está pendiente, sin cifra — + Tipo de cambio USD/LPS + Actualizado, luego la cooperativa financiera aliada + www.mape.legal). El timestamp ("Actualizado") y el tipo de cambio USD/LPS son OBLIGATORIOS en cada respuesta de precio.`
       : `\n\nPRECIOS DE REFERENCIA: No hay datos de precios cargados hoy. Si el cliente pregunta por precio de compra del oro, di: "Hoy no tengo el precio cargado en el sistema. Para precio actualizado escribí a gerencia@mape.legal."`;
 
     // --- Query expedientes linked to this client ---
@@ -1020,7 +1031,7 @@ NO fuerces el registro — deja que fluya naturalmente en la conversación.`;
       ? `\n\nCONTEXTO DEL SISTEMA (citas literales de la base de conocimiento legal y regulatoria de MAPE LEGAL — Ley General del Ambiente Decreto 104-93, Decreto 181-2007 que adiciona Arts. 28-A y 29-C, Decreto 47-2010, Requisitos SLAS-2 de MiAmbiente, Reglamento de Minería Acuerdo 042-2013, Manual Operativo MAPE LEGAL):\n${knowledgeContext}\n\nINSTRUCCIONES PARA USAR ESTE BLOQUE:\n- Si la respuesta a la pregunta del cliente está aquí, CITALA con la referencia específica (artículo, decreto, requisito). Resumí el texto en hondureño claro pero conservando los términos legales.\n- NO derives a gerencia@mape.legal cuando este bloque responde la pregunta — comunicar la norma es tu trabajo, no interpretación jurídica.\n- Solo derivá si la pregunta requiere análisis jurídico específico que este bloque no cubre (por ejemplo, estrategia de litigio, jurisprudencia, casos novedosos sin precedente en el bloque).`
       : '';
 
-    const dynamicPrompt = CHT_SYSTEM_PROMPT + priceContext + clienteContext + expedienteContext + manualContext + concesionContext + ragBlock + (isNewConversation
+    const dynamicPrompt = MARIA_SYSTEM_PROMPT + priceContext + clienteContext + expedienteContext + manualContext + concesionContext + ragBlock + (isNewConversation
       ? ''
       : `
 

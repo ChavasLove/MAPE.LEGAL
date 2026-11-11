@@ -40,9 +40,9 @@ const WELCOME_MESSAGE: Message = {
 Te ayudo con consultas sobre pequeña minería y minería artesanal en Honduras. Puedo:
 
 • Cotizar titulación de tierra, formalización minera y contrato de sociedad minera.
-• Consultar el precio del oro del día (referencia internacional + tipo de cambio + precio de compra de MAPE LEGAL).
+• Consultar el precio del oro del día (referencia internacional + tipo de cambio + precio de referencia de Inversiones Zekaii; el factor de compra al productor está pendiente de definición).
 • Explicar pasos del Manual Operativo, requisitos ambientales (Ley 104-93, SLAS-2) y el Reglamento Minero (Acuerdo 042-2013).
-• Buscar concesiones en el registro público INHGEOMIN (587 registros).
+• Buscar concesiones y solicitudes en los listados publicados por INHGEOMIN (587 registros, transcripción no oficial).
 • Conectarte con el equipo de MAPE LEGAL por WhatsApp o correo.
 
 ¿En qué te ayudo hoy?`,

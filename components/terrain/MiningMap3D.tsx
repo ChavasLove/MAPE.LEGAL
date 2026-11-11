@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useMemo, useCallback } from 'react';
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import mlcontour from 'maplibre-contour';
 import {
@@ -298,7 +298,17 @@ export default function MiningMap3D({
     // correct paper tone instead of flashing white before load.
     const tokens = getTokens();
     const style = getMapStyle(tokens);
-    const instance = new maplibregl.Map({
+    // MapLibre 6 (ESM-only) ya no resuelve su worker solo bajo un bundler:
+    // Next/Turbopack emite `maplibre-gl-worker.mjs` como asset hasheado vía
+    // `new URL(..., import.meta.url)` (snippet oficial para Turbopack en la
+    // guía de instalación de MapLibre). Idempotente — se puede llamar en
+    // cada mount.
+    maplibregl.setWorkerUrl(
+      new URL('maplibre-gl/dist/maplibre-gl-worker.mjs', import.meta.url).toString(),
+    );
+    let instance: maplibregl.Map;
+    try {
+      instance = new maplibregl.Map({
       container: mapContainer.current,
       style,
       center: INITIAL_CENTER,
@@ -316,7 +326,14 @@ export default function MiningMap3D({
       pitchWithRotate: true,
       touchZoomRotate: true,
       touchPitch: true,
-    });
+      });
+    } catch (err) {
+      // MapLibre 6 exige WebGL2: en un navegador sin soporte el constructor
+      // lanza GPUInitializationError en vez de devolver un mapa (v5 degradaba
+      // a WebGL1). Sin este catch el componente entero reventaba el render.
+      console.warn('[mining-map] init failed (WebGL2 requerido) — mapa omitido', err);
+      return;
+    }
     map.current = instance;
     if (apiRef.current && onMapReady) onMapReady(apiRef.current);
 

@@ -28,6 +28,10 @@ interface HistoryPoint {
 
 interface HistoryResponse {
   puntos: HistoryPoint[];
+  // true while Inversiones Zekaii has not published its purchase factor — the
+  // 'compra' series is empty (all null) and must be shown as pending, not as
+  // "not enough data".
+  factor_compra_pendiente?: boolean;
 }
 
 type MetricKey = 'compra' | 'oro_usd' | 'oro_lps' | 'tc';
@@ -47,7 +51,7 @@ type T = (es: string, en: string) => string;
 const METRICS: MetricDef[] = [
   {
     key: 'compra',
-    label: (t) => t('Referencia MAPE.LEGAL', 'MAPE.LEGAL reference'),
+    label: (t) => t('Compra Inversiones Zekaii', 'Inversiones Zekaii purchase'),
     unit: (t) => t('L por gramo de oro fino', 'L per gram of fine gold'),
     prefix: 'L ',
     decimals: 2,
@@ -183,7 +187,10 @@ export default function PriceHistoryChart({ lang }: Props) {
   const [points, setPoints] = useState<HistoryPoint[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [metricKey, setMetricKey] = useState<MetricKey>('compra');
+  // Default to international gold: the purchase series is pending (modelo B)
+  // until Inversiones Zekaii publishes its factor, so it cannot be the landing view.
+  const [metricKey, setMetricKey] = useState<MetricKey>('oro_usd');
+  const [compraPendiente, setCompraPendiente] = useState(false);
   const [rangeKey, setRangeKey] = useState<RangeKey>('1m');
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const [showTable, setShowTable] = useState(false);
@@ -210,7 +217,14 @@ export default function PriceHistoryChart({ lang }: Props) {
         if (!res.ok) throw new Error(String(res.status));
         const json = (await res.json()) as HistoryResponse;
         if (!mountedRef.current) return;
-        setPoints(Array.isArray(json.puntos) ? json.puntos : []);
+        const puntos = Array.isArray(json.puntos) ? json.puntos : [];
+        setPoints(puntos);
+        // Pending purchase factor: explicit flag, or a record where no point
+        // carries a purchase price (cached pre-rollout responses).
+        setCompraPendiente(
+          json.factor_compra_pendiente === true ||
+            (puntos.length > 0 && puntos.every((p) => p.oro_compra_lps_gramo == null)),
+        );
         setError(false);
       } catch {
         if (!mountedRef.current) return;
@@ -513,20 +527,37 @@ export default function PriceHistoryChart({ lang }: Props) {
           ))}
         </div>
         <div role="group" aria-label={t('Métrica', 'Metric')} style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {METRICS.map((m) => (
-            <button
-              key={m.key}
-              type="button"
-              onClick={() => {
-                setMetricKey(m.key);
-                setActiveIdx(null);
-              }}
-              aria-pressed={metricKey === m.key}
-              style={segBtn(metricKey === m.key)}
-            >
-              {m.label(t)}
-            </button>
-          ))}
+          {METRICS.map((m) => {
+            const disabled = m.key === 'compra' && compraPendiente;
+            return (
+              <button
+                key={m.key}
+                type="button"
+                onClick={() => {
+                  if (disabled) return;
+                  setMetricKey(m.key);
+                  setActiveIdx(null);
+                }}
+                disabled={disabled}
+                title={
+                  disabled
+                    ? t(
+                        'Pendiente de la Política de Precios de Inversiones Zekaii',
+                        'Pending the Pricing Policy of Inversiones Zekaii',
+                      )
+                    : undefined
+                }
+                aria-pressed={metricKey === m.key}
+                style={{
+                  ...segBtn(metricKey === m.key),
+                  ...(disabled ? { opacity: 0.5, cursor: 'not-allowed' } : {}),
+                }}
+              >
+                {m.label(t)}
+                {disabled ? ` · ${t('pendiente', 'pending')}` : ''}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -576,10 +607,15 @@ export default function PriceHistoryChart({ lang }: Props) {
             lineHeight: 1.6,
           }}
         >
-          {t(
-            'Aún no hay suficientes datos registrados en este rango. El historial crece un punto por día con la captura de las 8:00 a.m.',
-            'Not enough recorded data in this range yet. The record grows by one point per day with the 8:00 a.m. capture.',
-          )}
+          {metricKey === 'compra' && compraPendiente
+            ? t(
+                'El precio de compra al productor está pendiente de publicación en la Política de Precios de Inversiones Zekaii, S. de R.L. El historial de esta serie comenzará cuando se publique.',
+                'The purchase price paid to the producer is pending publication in the Pricing Policy of Inversiones Zekaii, S. de R.L. This series starts once it is published.',
+              )
+            : t(
+                'Aún no hay suficientes datos registrados en este rango. El historial crece un punto por día con la captura de las 8:00 a.m.',
+                'Not enough recorded data in this range yet. The record grows by one point per day with the 8:00 a.m. capture.',
+              )}
         </div>
       ) : (
         <div
@@ -802,7 +838,7 @@ export default function PriceHistoryChart({ lang }: Props) {
               <tr>
                 {[
                   t('Fecha', 'Date'),
-                  t('Compra (L/g)', 'Buy (L/g)'),
+                  t('Compra (L/g oro fino)', 'Buy (L/g fine gold)'),
                   t('Oro (USD/oz)', 'Gold (USD/oz)'),
                   t('Oro (L/oz)', 'Gold (L/oz)'),
                   t('TC (L/USD)', 'FX (L/USD)'),

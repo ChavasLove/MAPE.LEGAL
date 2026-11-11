@@ -7,19 +7,24 @@ import {
   RAZON_SOCIAL,
   AVISO_PLATAFORMA,
   DOMICILIO_LINES,
-  CERTIFICADO_ORIGEN_NOTA_BREVE,
+  PIE_NOTA_LEGAL,
 } from '@/lib/content/copy-legal'
+
+// Modelo B (10-nov-2026): la razón social del pie es la DUEÑA de la
+// plataforma (Inversiones Zekaii, S. de R.L.). DOMICILIO_LINES es el domicilio
+// actual (local Nexcrea), heredado; PENDIENTE de confirmación — ver
+// DOMICILIO_PENDIENTE_CONFIRMACION en copy-legal.ts. No inventar dirección.
 
 const FOOTER_LINKS: Array<{ href: string; label: string }> = [
   { href: '/pequena-mineria', label: 'Pequeña minería' },
   { href: '/comercializacion', label: 'Comercialización' },
   { href: '/mercados', label: 'Mercados' },
-  { href: '/verificar', label: 'Verificar certificado' },
+  { href: '/verificar', label: 'Verificar sello' },
   { href: '/precio', label: 'Precio de referencia' },
   { href: '/politica-de-precios', label: 'Política de precios' },
   { href: '/precios', label: 'Precios del día' },
   { href: '/equipos', label: 'Equipos' },
-  { href: '/registro', label: 'Registro INHGEOMIN' },
+  { href: '/registro', label: 'Consulta de derechos mineros' },
   { href: '/aviso-legal', label: 'Aviso legal' },
 ]
 
@@ -59,10 +64,11 @@ export default function SiteFooter() {
           >
             Notas legales
           </div>
+          {/* Texto del Asesor legal (10-nov-2026) — VERBATIM, completo. */}
           <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6 }}>
-            {CERTIFICADO_ORIGEN_NOTA_BREVE}{' '}
+            {PIE_NOTA_LEGAL}{' '}
             <Link href="/aviso-legal" style={{ color: 'var(--sand)', fontSize: 12 }}>
-              Nota legal completa →
+              Aviso legal →
             </Link>
           </p>
           <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6 }}>

@@ -20,7 +20,7 @@ export const dynamic = 'force-dynamic';
 //                   `search_maria_knowledge_fts`) respond?
 //   - openai        does `embedQuery` succeed end-to-end?
 //
-// Modeled on `app/api/debug/auth-config/route.ts` — each probe in its own
+// Modeled on the former `app/api/debug/auth-config` route (retirada 2026-11-10) — each probe in its own
 // try/catch so one failure does not short-circuit the others.
 
 type EnvStatus  = 'ok' | 'missing' | 'placeholder';
