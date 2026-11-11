@@ -40,6 +40,12 @@ jobs:
       - name: Copy compliance (términos prohibidos, Fase 2C)
         run: npm run check:copy
 
+      - name: Neutralidad política y sin compradores nombrados (María / RAG)
+        run: npm run check:neutralidad
+
+      - name: Tests (node:test)
+        run: npm test
+
       - name: Typecheck
         run: npm run typecheck
 
