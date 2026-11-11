@@ -1,7 +1,11 @@
 /**
  * /registro — consulta informativa de derechos mineros (transcripción no
  * oficial de listados publicados por INHGEOMIN). NO es el Registro Minero y
- * Catastral ni un portal oficial del Instituto (Modelo B, 10-nov-2026).
+ * Catastral ni un portal oficial del Instituto.
+ *
+ * APAGADA POR DEFECTO (hotfix de neutralidad, 11-nov-2026): la página solo se
+ * sirve con NEXT_PUBLIC_REGISTRO_PUBLICO === 'true'; en cualquier otro caso
+ * responde notFound(). También está fuera del sitemap y del pie sin el flag.
  *
  * Es un punto de entrada con un input que redirige a la API pública
  * `/api/concesiones/buscar`. Server component que consume la vista
@@ -10,6 +14,7 @@
  * endpoint público.
  */
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { Mountain, Search } from 'lucide-react';
 import TopoBand from '@/components/decor/TopoBand';
 import RegistroSearch from './RegistroSearch';
@@ -23,7 +28,10 @@ export const metadata = {
     'Consulta informativa de concesiones mineras y solicitudes pendientes en Honduras, transcritas de listados que INHGEOMIN ha hecho públicos. No es el Registro Minero y Catastral ni una base oficial del Instituto.',
 };
 
+const REGISTRO_PUBLICO = process.env.NEXT_PUBLIC_REGISTRO_PUBLICO === 'true';
+
 export default function RegistroPage() {
+  if (!REGISTRO_PUBLICO) notFound();
   return (
     <>
       <nav className="nav">
