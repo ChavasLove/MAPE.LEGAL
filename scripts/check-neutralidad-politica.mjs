@@ -20,7 +20,10 @@
  *  3. Un político hondureño por nombre completo: Xiomara Castro, Nasry Asfura,
  *     Salvador Nasralla, Juan Orlando Hernández, (José) Manuel Zelaya Rosales,
  *     Rixi Moncada, Luis Zelaya. Nunca el apellido suelto ("Zelaya" también es
- *     apellido de datos demo del repo).
+ *     apellido de datos demo del repo)... SALVO precedido de un cargo o
+ *     referencia de gobierno (regla 3b, 2026-11-11): "presidente/a Zelaya",
+ *     "administración Castro", "gobierno (de) Asfura", "mandatario Hernández",
+ *     "gestión Lobo", etc. — apellidos de la lista APELLIDOS_GOBERNANTES.
  *
  * Exenciones calibradas (documentadas, revisables):
  *  - La PROPIA regla de neutralidad: una línea que dice "no opina", "no trata",
@@ -33,7 +36,7 @@
  *    decreto transcrito (bloque de firma "PRESIDENTE DE LA REPÚBLICA" en la
  *    línea o en la adyacente; "presidente_constitucional:", "Administración:",
  *    "emisor:", "poder_ejecutivo"). Es un dato del documento, no opinión. El
- *    SQL hotfix_rag_neutralidad.sql redacta igualmente esos nombres en
+ *    SQL hotfix_rag_neutralidad_y_fichas_v2.sql redacta igualmente esos nombres en
  *    producción; aquí no se borran los transcritos de data/.
  *
  * Las listas son EXTENSIBLES: agregar entradas a PARTIDOS / POLITICOS /
@@ -89,6 +92,16 @@ const POLITICOS = [
   /luis\s+zelaya/i,
 ]
 
+// 3b (2026-11-11): cargo o referencia de gobierno + apellido de un gobernante
+// hondureño. "presidente Zelaya", "administración Castro", "gobierno de Asfura".
+// Lista extensible (apellidos de presidentes desde 1982).
+const APELLIDOS_GOBERNANTES =
+  'Zelaya|Castro|Asfura|Hern[aá]ndez|Nasralla|Lobo|Micheletti|Maduro|Flores|Callejas|Reina|Azcona|Suazo|Moncada'
+const CARGO_APELLIDO_RE = new RegExp(
+  String.raw`\b(president[ea]|administraci[oó]n|gobierno|mandatari[oa]|gesti[oó]n|r[eé]gimen|era)\s+(?:de\s+|del\s+)?(?:${APELLIDOS_GOBERNANTES})\b`,
+  'i',
+)
+
 // Una línea que ENUNCIA la regla de neutralidad no la viola.
 const NEUTRALIDAD_RULE_RE =
   /\b(no|nunca|ni|jam[aá]s)\b[^.;]{0,60}\b(opin|trat[aáe]|habl|coment|califiqu|repit|amplifiqu)|no\s+habla(r)?\s+de\s+pol[ií]tica|neutralidad|sin\s+opinar/i
@@ -141,6 +154,11 @@ for (const file of files) {
         violations++
         console.log(`${rel}:${i + 1} — «${m[0]}» → político nombrado fuera de una atribución legal factual — María no trata temas políticos`)
       }
+    }
+    const m3b = line.match(CARGO_APELLIDO_RE)
+    if (m3b && !rule && !near(ATTRIBUTION_RE, i)) {
+      violations++
+      console.log(`${rel}:${i + 1} — «${m3b[0]}» → gobernante referido por cargo + apellido — usar el período o el órgano (p. ej. "el Poder Ejecutivo en 2006", "la administración 2022–2026")`)
     }
   })
 }

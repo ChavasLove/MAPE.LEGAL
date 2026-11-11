@@ -42,7 +42,7 @@ Honduras es uno de los países latinoamericanos que aún NO se ha adherido al Ac
 
 El cuatrienio 2022–2026 concentró la mayor actividad normativa reciente del sector minero-ambiental hondureño:
 
-- **2022**: la administración Castro declaró la moratoria minera y «todo el territorio hondureño libre de minería a cielo abierto» (medida administrativa del 28 de febrero de 2022).
+- **2022**: la administración 2022–2026 declaró la moratoria minera y «todo el territorio hondureño libre de minería a cielo abierto» (medida administrativa del 28 de febrero de 2022).
 - **2024**: Decreto 18-2024 de recuperación del Parque Nacional Montaña de Botaderos «Carlos Escaleras Mejía»; reforma forestal que hace imprescriptibles las faltas ambientales; reforma penal ambiental (Decreto 59-2024); Plan «Cero Deforestación»; modernización del INHGEOMIN con los Acuerdos 17/2024 (carrera minera) y 88/2024 (SIGEM).
 - **2026**: sentencia SCO-0090-2014 publicada el 3 de junio de 2026 (anula los artículos 22, 39, 43, 47, 48, 67 y 68 de la Ley General de Minería [ANULADO — SCO-0090-2014]); cambio de gobierno el 27 de enero de 2026; instalación de mesas técnicas en el Congreso para la reforma integral de la Ley General de Minería.
 
