@@ -13,6 +13,7 @@ const NAV_LINKS: Array<{ href: string; label: string }> = [
   { href: '/comercializacion', label: 'Comercialización' },
   { href: '/mercados', label: 'Mercados' },
   { href: '/verificar', label: 'Verificar certificado' },
+  { href: '/#quienes-somos', label: 'Quiénes somos' },
   { href: '/#contacto', label: 'Contacto' },
 ]
 

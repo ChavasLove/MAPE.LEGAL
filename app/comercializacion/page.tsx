@@ -1,7 +1,9 @@
-// /comercializacion — condiciones publicadas de compraventa de oro (Fase 2C,
-// Tarea 5). Es un instrumento de protección legal antes que comercial: se
-// redacta como condiciones publicadas, no como oferta. Server component; el
-// copy con consecuencia jurídica se importa desde lib/content/copy-legal.ts.
+// /comercializacion — condiciones genéricas de la venta formal de oro (Fase
+// 2C, Tarea 5; hotfix de neutralidad 11-nov-2026). MAPE.LEGAL no compra, no
+// vende ni intermedia oro: esta página describe lo que la ley exige a
+// cualquier comprador formal y publica el precio referencial informativo.
+// Server component; el copy con consecuencia jurídica se importa desde
+// lib/content/copy-legal.ts.
 
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -9,29 +11,31 @@ import MariaWidget from '@/components/landing/MariaWidget'
 import PublicNav from '@/components/landing/PublicNav'
 import SiteFooter from '@/components/landing/SiteFooter'
 import {
+  AVISO_PRECIO_REFERENCIAL,
   CERTIFICADO_ORIGEN_NOTA,
   CITAS_LEGALES,
   CONDICION_COMPRA,
   CONTACTO,
+  FORMULA_PRECIO_REFERENCIAL,
   LIBERTAD_VENTA,
   POLITICA_PRECIO,
   RAZON_SOCIAL,
-  RAZON_SOCIAL_SERVICIOS_LEGALES,
   REGISTRO_COMERCIALIZADOR,
   ROL_CHT,
 } from '@/lib/content/copy-legal'
+import { ROTULO_PRECIO_REFERENCIAL } from '@/lib/precio/factores'
 
 export const metadata: Metadata = {
-  title: 'Condiciones de compra de oro — certificado de origen y pago bancarizado',
+  title: 'Comercialización formal del oro — libertad de venta y certificado de origen',
   description:
-    'Condiciones publicadas de compra de oro de pequeña minería por Inversiones Zekaii, S. de R.L.: precio de referencia comercial actualizado diariamente, certificado de origen oficial por lote y pago en lempiras.',
+    'Condiciones genéricas de la venta formal de oro de pequeña minería en Honduras: libertad de venta (Art. 37 LGM), verificación de origen a cargo del comprador (Art. 38 LGM), certificado de origen oficial por lote y precio referencial informativo. MAPE.LEGAL no compra ni vende oro.',
   alternates: { canonical: '/comercializacion' },
   openGraph: {
     type: 'website',
     locale: 'es_HN',
-    title: 'Condiciones de compra de oro · MAPE.LEGAL',
+    title: 'Comercialización formal del oro · MAPE.LEGAL',
     description:
-      'Precio publicado, certificado de origen oficial por lote y pago en lempiras. La verificación de origen es una obligación legal del comprador.',
+      'Libertad de venta, certificado de origen oficial por lote y precio referencial informativo. La verificación de origen es una obligación legal del comprador.',
     images: [{ url: '/images/RIVER AND MOUNTAINS.png', width: 1200, height: 630, alt: 'MAPE LEGAL — territorio' }],
   },
 }
@@ -55,13 +59,12 @@ const CARD: React.CSSProperties = {
   boxShadow: '0 2px 6px rgba(31,42,56,0.05)',
 }
 
-/* Contenido del estado de cuenta por transacción. */
-const ESTADO_CUENTA_CAMPOS = [
-  'Peso entregado y ley del material.',
-  'Referencia internacional del oro y tipo de cambio del BCH aplicados a la transacción.',
-  'Monto bruto resultante.',
-  'Deducciones expresamente autorizadas por escrito, si las hay.',
-  'Monto neto depositado.',
+/* Qué suele documentar una venta formal — descripción genérica, no un
+   formato propio: la plataforma no liquida transacciones. */
+const DOCUMENTACION_VENTA = [
+  'Peso entregado y ley del material, determinada por el método que acuerden productor y comprador.',
+  'Referencia internacional del oro y tipo de cambio aplicados a la transacción.',
+  'Monto bruto, deducciones expresamente autorizadas por escrito (si las hay) y monto neto.',
   'Número del Certificado de Origen oficial del lote y, en su caso, del registro del sello complementario.',
 ] as const
 
@@ -73,13 +76,12 @@ export default function ComercializacionPage() {
       <section className="mape-section" style={{ background: 'var(--bg-soft)' }}>
         <div className="section-label">Comercialización</div>
         <h1 className="section-title" style={{ maxWidth: 780 }}>
-          Condiciones publicadas de compra de oro.
+          Cómo se vende oro de pequeña minería de forma legal.
         </h1>
         <p className="section-sub" style={{ maxWidth: 680 }}>
-          Estas son las condiciones bajo las que {RAZON_SOCIAL}, dueña de la plataforma
-          MAPE.LEGAL, compra oro de pequeña minería. Se publican para que el operador las
-          conozca antes de cualquier transacción y para que cualquier tercero pueda
-          verificarlas. {RAZON_SOCIAL_SERVICIOS_LEGALES} {ROL_CHT}
+          Estas son las condiciones que la ley hondureña impone a toda venta formal de oro.
+          Se publican para que el operador las conozca antes de cualquier transacción.
+          {' '}{RAZON_SOCIAL} {ROL_CHT} MAPE.LEGAL no compra, no vende ni intermedia oro.
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 56, maxWidth: 760, marginTop: 48 }}>
@@ -109,93 +111,81 @@ export default function ComercializacionPage() {
             </p>
           </div>
 
-          {/* UN SOLO PRECIO PUBLICADO */}
+          {/* PRECIO REFERENCIAL INFORMATIVO */}
           <section id="precio" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <h2 style={SECTION_TITLE}>Un solo precio publicado.</h2>
+            <h2 style={SECTION_TITLE}>{ROTULO_PRECIO_REFERENCIAL}.</h2>
             <div style={CARD}>
               <p style={{ fontSize: 17, color: 'var(--ink)', lineHeight: 1.7, fontWeight: 500 }}>
                 {POLITICA_PRECIO}
               </p>
+              <p
+                style={{
+                  marginTop: 12,
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 13,
+                  lineHeight: 1.8,
+                  color: 'var(--t1)',
+                  background: 'var(--concrete)',
+                  borderRadius: 8,
+                  padding: '12px 14px',
+                }}
+              >
+                {FORMULA_PRECIO_REFERENCIAL}
+              </p>
+              <p style={{ marginTop: 12, fontSize: 14, color: 'var(--t2)', lineHeight: 1.7 }}>
+                {AVISO_PRECIO_REFERENCIAL}
+              </p>
             </div>
-            <ul style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingLeft: 18 }}>
-              <li style={{ fontSize: 15, color: 'var(--t2)', lineHeight: 1.7 }}>
-                Sin comisión de intermediación adicional.
-              </li>
-              <li style={{ fontSize: 15, color: 'var(--t2)', lineHeight: 1.7 }}>
-                Sin cargo por el registro en el sello complementario. El Certificado de
-                Origen oficial lo emite el titular; MAPE.LEGAL no lo emite ni cobra por él.
-              </li>
-              <li style={{ fontSize: 15, color: 'var(--t2)', lineHeight: 1.7 }}>
-                Sin descuento por servicio legal aplicado automáticamente al oro.
-              </li>
-            </ul>
             <p style={BODY}>
-              El precio de referencia del día, su fórmula y la política que lo rige se publican
-              en{' '}
+              El precio referencial del día, su fórmula y la política de publicación están en{' '}
               <Link href="/precio" style={{ color: 'var(--moss)', fontWeight: 600, textDecoration: 'none' }}>
                 mape.legal/precio
               </Link>
-              .
+              . Sirve para que el productor compare la oferta que reciba de cualquier comprador.
             </p>
           </section>
 
-          {/* CONDICIONES DE COMPRA */}
+          {/* QUÉ EXIGE LA LEY A TODO COMPRADOR */}
           <section id="condiciones" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <h2 style={SECTION_TITLE}>Condiciones de compra.</h2>
+            <h2 style={SECTION_TITLE}>Qué exige la ley a todo comprador.</h2>
             <div style={CARD}>
               <p style={{ fontSize: 17, color: 'var(--ink)', lineHeight: 1.7, fontWeight: 500 }}>
                 {CONDICION_COMPRA}
               </p>
             </div>
             <p style={BODY}>
-              La verificación de origen no es una política interna del comprador: es una
-              obligación legal suya. El {CITAS_LEGALES.regArt34.articulo} del
+              La verificación de origen no es una política interna de nadie: es una
+              obligación legal del comprador. El {CITAS_LEGALES.regArt34.articulo} del
               Reglamento Especial MAPE exige derecho minero vigente para comercializar
               producción, y el {CITAS_LEGALES.leyArt38.articulo} de la Ley General de
               Minería hace responsable solidario a quien compra sin verificar el origen.
-              Por eso la exigencia existe, y por eso queda documentada en cada
-              transacción.
+              Por eso un comprador formal pide el documento oficial del titular antes de
+              cerrar una transacción.
             </p>
             <p style={BODY}>{REGISTRO_COMERCIALIZADOR}</p>
             <p style={{ fontSize: 14, color: 'var(--t2)', lineHeight: 1.7 }}>{CERTIFICADO_ORIGEN_NOTA}</p>
           </section>
 
-          {/* PAGO */}
-          <section id="pago" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <h2 style={SECTION_TITLE}>Pago.</h2>
+          {/* QUÉ DOCUMENTA UNA VENTA FORMAL */}
+          <section id="documentacion" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <h2 style={SECTION_TITLE}>Qué documenta una venta formal.</h2>
             <p style={BODY}>
-              El pago se realiza por depósito en la cuenta minera del operador, el mismo
-              día de la transacción, en lempiras, a través de una cooperativa financiera
-              aliada. Requisito no negociable: Certificación de Procedencia o Certificado
-              de Origen oficial válido por lote.
-            </p>
-          </section>
-
-          {/* ESTADO DE CUENTA POR TRANSACCIÓN */}
-          <section id="estado-cuenta" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <h2 style={SECTION_TITLE}>Estado de cuenta por transacción.</h2>
-            <p style={BODY}>
-              Cada compra queda documentada en un estado de cuenta entregado al operador,
-              con este contenido:
+              Una venta formal deja constancia escrita entre productor y comprador. Lo
+              habitual es que el documento recoja:
             </p>
             <div style={CARD}>
               <ul style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingLeft: 18 }}>
-                {ESTADO_CUENTA_CAMPOS.map((campo) => (
+                {DOCUMENTACION_VENTA.map((campo) => (
                   <li key={campo} style={{ fontSize: 14, color: 'var(--t2)', lineHeight: 1.6 }}>
                     {campo}
                   </li>
                 ))}
               </ul>
             </div>
-          </section>
-
-          {/* DEDUCCIONES */}
-          <section id="deducciones" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <h2 style={SECTION_TITLE}>Deducciones.</h2>
             <p style={BODY}>
-              No existe compensación automática de deuda contra el pago del oro. Cualquier
-              deducción requiere autorización escrita del operador, revocable en cualquier
-              momento y con un tope definido en la propia autorización.
+              Cualquier deducción sobre el pago del oro debe constar por escrito y con
+              autorización expresa del productor. MAPE.LEGAL no liquida ni paga
+              transacciones: no es parte de la venta.
             </p>
           </section>
 
@@ -208,7 +198,8 @@ export default function ComercializacionPage() {
               <Link href="/pequena-mineria" style={{ color: 'var(--moss)', fontWeight: 600, textDecoration: 'none' }}>
                 pequeña minería
               </Link>
-              . Si ya lo tiene, escríbanos para coordinar la verificación documental.
+              . Si ya lo tiene, escríbanos para ordenar la documentación de procedencia de
+              sus lotes.
             </p>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               <a href={CONTACTO.whatsappHref} className="btn-primary">

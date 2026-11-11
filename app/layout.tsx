@@ -30,15 +30,17 @@ const siteDescription =
   "Acompañamiento legal, ambiental y técnico para el permiso de pequeña minería ante INHGEOMIN: requisitos del expediente, licencia ambiental, trazabilidad del oro y comercialización formal en Honduras.";
 const ogImage = "/images/RIVER AND MOUNTAINS.png";
 
-/* JSON-LD Organization — datos institucionales de la dueña de la plataforma
-   (Inversiones Zekaii, S. de R.L., Modelo B 10-nov-2026). La dirección es el
-   domicilio actual heredado (local Nexcrea): [CONFIRMAR CON WILLIS la
-   dirección de Inversiones Zekaii, S. de R.L.]. No inventar dirección. */
+/* JSON-LD Organization — datos institucionales de la titular y operadora de
+   la plataforma (Corporación Hondureña Tenka, S.A.). Domicilio: local Nexcrea,
+   Tegucigalpa. No nombra compradores; la plataforma no compra ni vende oro. */
 const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
-  name: RAZON_SOCIAL,
-  alternateName: ["MAPE LEGAL", "MAPE.LEGAL"],
+  name: "MAPE.LEGAL",
+  legalName: RAZON_SOCIAL,
+  alternateName: ["MAPE LEGAL", "Corporación Hondureña Tenka"],
+  description:
+    "Plataforma de debida diligencia y trazabilidad del oro artesanal, desarrollada y operada por Corporación Hondureña Tenka, S.A. No compra, no vende ni intermedia oro.",
   url: siteUrl,
   email: CONTACTO.email,
   telephone: CONTACTO.whatsapp,

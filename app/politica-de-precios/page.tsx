@@ -1,23 +1,21 @@
-// /politica-de-precios — Política de Precios de Inversiones Zekaii, S. de R.L.
-// (aplicable a las compras de Zekaii), versionada.
+// /politica-de-precios — Política de publicación del precio referencial de la
+// plataforma MAPE.LEGAL, versionada.
 //
-// v1.2-BORRADOR (Modelo B, 10-nov-2026): la compradora y dueña de la
-// plataforma es Inversiones Zekaii; CHT solo presta servicios legales y
-// mineros. El factor de compra al productor está PENDIENTE
-// (FACTOR_COMPRA_ZEKAII_PENDIENTE) — nunca mostrar NaN ni una cifra "como si".
-// Es política comercial de Zekaii: no es norma de INHGEOMIN ni condición
-// obligatoria del estándar MAPE.LEGAL.
+// Hotfix de neutralidad (11-nov-2026): esta ya NO es la política de precios de
+// un comprador. MAPE.LEGAL no compra, no vende ni intermedia oro; publica un
+// precio REFERENCIAL estimado al 75 % de la referencia internacional del oro,
+// en lempiras por gramo de oro fino, una vez al día, con fórmula pública,
+// fuente y fecha, y siempre acompañado del aviso literal
+// AVISO_PRECIO_REFERENCIAL. Las cláusulas 5 y 6 del encargo 2026-07-29 (XRF,
+// ensayo al fuego, contramuestra), el Anexo I de laboratorio y las
+// verificaciones externas describían la operación de un comprador y NO se
+// renderizan (quedan @deprecated en lib/content/copy-legal.ts).
 //
-// v1.1 (Adenda 01, 2026-07-29): método de determinación de ley definido.
-// Las cláusulas 4, 5 y 6 son TEXTO LEGAL — LITERAL (lib/content/
-// copy-legal.ts, prohibido parafrasear; prohibido alterar la distinción
-// entre método de liquidación y método de contraste; en v1.2-BORRADOR solo
-// se sustituyó la razón social). El Anexo I renderiza las constantes de
-// lib/precio/calculo.ts — el laboratorio dirimente sigue pendiente (marcador
-// a nombre de la compradora), lo cual es correcto y deliberado: /precio no
-// debe pasar a producción con ese campo pendiente.
-// La sección de verificaciones externas (Tarea 7) se alimenta de la tabla
-// `ensayes` (migración 031) — por eso la página es dinámica.
+// v1.1 (2026-07-29) se conserva como histórico en el registro de versiones:
+// aplicaba un factor 0,80 bajo un modelo de comprador hoy retirado.
+//
+// Server component ES-only. El texto con consecuencia jurídica se importa de
+// lib/content/copy-legal.ts; las constantes numéricas, de lib/precio/*.
 
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -30,51 +28,34 @@ import {
   VERSION_POLITICA_ANTERIOR,
   FECHA_VIGENCIA_POLITICA_ANTERIOR,
   FACTOR_POLITICA_ANTERIOR,
-  FACTOR_COMERCIALIZACION_VIGENTE,
-  METODO_LIQUIDACION,
-  METODO_CONTRASTE,
-  LABORATORIO_DIRIMENTE,
-  TOPE_AJUSTE_LIQUIDACION_PP,
-  DIAS_CONSERVACION_TESTIGO,
 } from '@/lib/precio/calculo'
-import { FACTOR_COMPRA_ZEKAII_PENDIENTE, factorCompraDefinido } from '@/lib/precio/factores'
+import { FACTOR_REFERENCIA, FACTOR_REFERENCIA_PCT, ROTULO_PRECIO_REFERENCIAL } from '@/lib/precio/factores'
 import {
-  CITAS_LEGALES,
-  PRECIO_REF_FORMULA,
-  PRECIO_REF_CLAUSULA_REVISION,
-  PRECIO_REF_REQUISITOS_TITULO,
-  PRECIO_REF_REQUISITOS_ITEMS,
-  PRECIO_REF_REQUISITOS_CIERRE,
-  POLITICA_CL5_TITULO,
-  POLITICA_CL5,
-  POLITICA_CL6_TITULO,
-  POLITICA_CL6,
-  VERIFICACIONES_EXTERNAS_VACIO,
-  PRECIO_REF_REQUISITOS_NOTA_REGISTRO,
+  AVISO_PRECIO_REFERENCIAL,
+  CONFLICTO_INTERES_CHT,
+  ETIQUETA_TIPO_CAMBIO,
+  FUENTE_TIPO_CAMBIO,
   PRECIO_REF_CARACTER_COMERCIAL,
+  PRECIO_REF_CLAUSULA_REVISION,
+  PRECIO_REF_FORMULA,
   RAZON_SOCIAL,
-  type ClausulaPolitica,
 } from '@/lib/content/copy-legal'
-import { getVerificacionesExternas } from '@/lib/precio/ensayes'
 
 // Vigencia del borrador: FECHA_VIGENCIA_POLITICA vale "[CONFIRMAR]" mientras
 // Willis no la fije (lib/precio/calculo.ts). No se formatea como fecha.
 const VIGENCIA_BORRADOR = FECHA_VIGENCIA_POLITICA
 
-export const runtime = 'nodejs'
-export const dynamic = 'force-dynamic'
-
 export const metadata: Metadata = {
-  title: 'Política de Precios de Inversiones Zekaii, S. de R.L.',
+  title: 'Política de publicación del precio referencial',
   description:
-    'Política de Precios de Inversiones Zekaii, S. de R.L. (aplicable a sus compras de oro): fórmula de cálculo del precio de referencia comercial, factor de comercialización, cláusula de revisión, derecho de contramuestra y requisitos de elegibilidad del vendedor.',
+    'Cómo publica MAPE.LEGAL su precio referencial del oro: 75 % de la referencia internacional, convertido a lempiras con un tipo de cambio de referencia de mercado, por gramo de oro fino, una vez al día. Informativo: no es una oferta de compra.',
   alternates: { canonical: '/politica-de-precios' },
   openGraph: {
     type: 'website',
     locale: 'es_HN',
-    title: 'Política de Precios de Inversiones Zekaii · MAPE.LEGAL',
+    title: 'Política de publicación del precio referencial · MAPE.LEGAL',
     description:
-      'Fórmula verificable, factor de comercialización y cláusula de revisión del precio de referencia comercial de Inversiones Zekaii, S. de R.L.',
+      'Fórmula pública, insumos, cadencia y aviso del precio referencial (75%) del oro publicado por la plataforma. No es una oferta de compra.',
     images: [{ url: '/images/RIVER AND MOUNTAINS.png', width: 1200, height: 630, alt: 'MAPE LEGAL — territorio' }],
   },
 }
@@ -108,47 +89,29 @@ const VERSIONES: Array<{ version: string; vigencia: string; cambio: string }> = 
     version: VERSION_POLITICA_PRECIOS,
     vigencia: VIGENCIA_BORRADOR,
     cambio:
-      `Borrador: la compradora pasa a ser ${RAZON_SOCIAL} (dueña de la plataforma); ` +
-      'el factor de compra al productor queda pendiente de definición. Pendiente de revisión legal.',
+      `Borrador: la política pasa a ser de publicación de un precio referencial informativo de la plataforma, ` +
+      `al ${FACTOR_REFERENCIA_PCT} % de la referencia internacional del oro, con tipo de cambio de referencia de mercado ` +
+      `(${FUENTE_TIPO_CAMBIO}). Se retiran las cláusulas de liquidación y contramuestra. Pendiente de revisión legal.`,
   },
   {
     version: VERSION_POLITICA_ANTERIOR,
     vigencia: FECHA_VIGENCIA_POLITICA_ANTERIOR,
     cambio:
-      'Define el método de determinación de ley (cláusulas 5 y 6), añade el Anexo I y la publicación ' +
-      `de verificaciones externas. Factor de comercialización ${FACTOR_POLITICA_ANTERIOR.toLocaleString('es-HN', { minimumFractionDigits: 2 })}. ` +
-      'Versión anterior, accesible conforme a la cláusula 4.',
+      `Versión histórica de un modelo de comprador hoy retirado: factor ${FACTOR_POLITICA_ANTERIOR.toLocaleString('es-HN', { minimumFractionDigits: 2 })} ` +
+      'y cláusulas de determinación de ley y liquidación. Accesible como versión anterior.',
   },
   { version: '1.0', vigencia: '2026-07-29', cambio: 'Versión inicial.' },
 ]
 
-function ClausulaBloque({ clausula }: { clausula: ClausulaPolitica }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <p style={{ fontSize: 15, color: 'var(--ink)', lineHeight: 1.7, fontWeight: 600 }}>
-        {clausula.num} {clausula.titulo}
-      </p>
-      <p style={{ fontSize: 15, color: 'var(--t2)', lineHeight: 1.7 }}>{clausula.texto}</p>
-    </div>
-  )
-}
-
-export default async function PoliticaDePreciosPage() {
-  const verificaciones = await getVerificacionesExternas()
-  // El factor vigente puede ser null (pendiente de definición): nunca NaN.
-  const factorVigente: number | null = FACTOR_COMERCIALIZACION_VIGENTE
-  const factorTexto = factorCompraDefinido(factorVigente)
-    ? `${factorVigente.toLocaleString('es-HN', { minimumFractionDigits: 2 })} (${(factorVigente * 100).toLocaleString('es-HN', { maximumFractionDigits: 2 })}%)`
-    : FACTOR_COMPRA_ZEKAII_PENDIENTE
-
+export default function PoliticaDePreciosPage() {
   return (
     <>
       <PublicNav />
 
       <section className="mape-section" style={{ background: 'var(--bg-soft)' }}>
-        <div className="section-label">Política de Precios</div>
+        <div className="section-label">Política de publicación</div>
         <h1 className="section-title" style={{ maxWidth: 720 }}>
-          Política de Precios de {RAZON_SOCIAL} (aplicable a las compras de Zekaii).
+          Política de publicación del precio referencial.
         </h1>
         <p
           style={{
@@ -163,31 +126,52 @@ export default async function PoliticaDePreciosPage() {
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 48, maxWidth: 760, marginTop: 40 }}>
-          {/* 1. Objeto y alcance */}
+          {/* 1. Objeto */}
           <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <h2 style={SECTION_TITLE}>1. Objeto y alcance.</h2>
+            <h2 style={SECTION_TITLE}>1. Objeto.</h2>
             <p style={BODY}>
-              Esta política regula el cálculo, la publicación y la revisión del precio de
-              referencia comercial de {RAZON_SOCIAL}. Aplica a las operaciones de compra de
-              oro de {RAZON_SOCIAL}, dueña de la plataforma MAPE.LEGAL.
+              Esta política regula cómo la plataforma MAPE.LEGAL, de la que es titular y
+              operadora {RAZON_SOCIAL}, calcula y publica su {ROTULO_PRECIO_REFERENCIAL.toLowerCase()}:
+              un precio referencial estimado al {FACTOR_REFERENCIA_PCT} % de la referencia
+              internacional del oro, expresado en lempiras por gramo de oro fino.
             </p>
             <p style={BODY}>
-              Es una política comercial de {RAZON_SOCIAL}. No es norma de INHGEOMIN ni
-              condición obligatoria del estándar MAPE.LEGAL. {PRECIO_REF_CARACTER_COMERCIAL}
-            </p>
-            <p style={BODY}>
-              El precio de referencia se fija una vez al día, a las 08:00 horas (Honduras), y no
-              varía durante la jornada. Se publica en{' '}
-              <Link href="/precio" style={{ color: 'var(--moss)', fontWeight: 600, textDecoration: 'none' }}>
-                mape.legal/precio
-              </Link>
-              .
+              El precio es informativo. No es una oferta de compra, ni un precio oficial, ni una
+              garantía de pago. MAPE.LEGAL no compra, no vende ni intermedia oro.{' '}
+              {PRECIO_REF_CARACTER_COMERCIAL}
             </p>
           </section>
 
-          {/* 2. Fórmula de cálculo */}
+          {/* 2. Insumos */}
           <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <h2 style={SECTION_TITLE}>2. Fórmula de cálculo.</h2>
+            <h2 style={SECTION_TITLE}>2. Insumos.</h2>
+            <ul style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingLeft: 18 }}>
+              <li style={BODY}>
+                <strong style={{ color: 'var(--ink)' }}>Referencia internacional del oro:</strong>{' '}
+                precio internacional del oro en dólares por onza troy, tomado del proveedor de
+                datos de la plataforma al momento de la captura. La fuente y el valor usados
+                cada día se publican junto al precio.
+              </li>
+              <li style={BODY}>
+                <strong style={{ color: 'var(--ink)' }}>{ETIQUETA_TIPO_CAMBIO}:</strong> lempiras
+                por dólar, tomado de {FUENTE_TIPO_CAMBIO} al momento de la captura. La fecha y
+                hora de captura se publican junto al precio. No es un tipo de cambio oficial.
+              </li>
+              <li style={BODY}>
+                <strong style={{ color: 'var(--ink)' }}>Constante de conversión:</strong> una onza
+                troy equivale a {GRAMOS_POR_ONZA_TROY} gramos. Constante física, no configurable.
+              </li>
+              <li style={BODY}>
+                <strong style={{ color: 'var(--ink)' }}>Factor referencial:</strong>{' '}
+                {FACTOR_REFERENCIA.toLocaleString('es-HN', { minimumFractionDigits: 2 })} ({FACTOR_REFERENCIA_PCT} %).
+                Fijo y público; solo cambia con una nueva versión de esta política.
+              </li>
+            </ul>
+          </section>
+
+          {/* 3. Fórmula pública */}
+          <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <h2 style={SECTION_TITLE}>3. Fórmula pública.</h2>
             <div style={CARD}>
               <p
                 style={{
@@ -203,51 +187,28 @@ export default async function PoliticaDePreciosPage() {
                 {PRECIO_REF_FORMULA}
               </p>
             </div>
-            <ul style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingLeft: 18 }}>
-              <li style={BODY}>
-                <strong style={{ color: 'var(--ink)' }}>Referencia internacional del oro:</strong>{' '}
-                precio internacional del oro en dólares por onza troy, tomado como referencia por{' '}
-                {RAZON_SOCIAL} al momento de la fijación. El valor usado cada día se publica junto
-                al precio.
-              </li>
-              <li style={BODY}>
-                <strong style={{ color: 'var(--ink)' }}>Constante de conversión:</strong> una onza
-                troy equivale a {GRAMOS_POR_ONZA_TROY} gramos. Constante física, no configurable.
-              </li>
-              <li style={BODY}>
-                <strong style={{ color: 'var(--ink)' }}>Factor de comercialización:</strong> el
-                definido en la sección 3 de esta política.
-              </li>
-              <li style={BODY}>
-                <strong style={{ color: 'var(--ink)' }}>Tipo de cambio:</strong> tipo de cambio de
-                referencia publicado por el Banco Central de Honduras (BCH), capturado al momento
-                de la fijación. El valor usado cada día se publica junto al precio.
-              </li>
-            </ul>
-          </section>
-
-          {/* 3. Factor de comercialización */}
-          <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <h2 style={SECTION_TITLE}>3. Factor de comercialización.</h2>
-            <div style={CARD}>
-              <p style={{ fontSize: 16, color: 'var(--ink)', lineHeight: 1.7, fontWeight: 500 }}>
-                Factor de compra al productor vigente: {factorTexto}.
-              </p>
-            </div>
             <p style={BODY}>
-              El factor queda pendiente de definición por {RAZON_SOCIAL}. Se publicará como nueva
-              versión de esta política conforme a la cláusula 4. Las fijaciones registradas
-              muestran el factor aplicado en cada fecha.
-            </p>
-            <p style={BODY}>
-              La publicación del factor tiene por objeto permitir la verificación independiente
-              del cálculo del precio de referencia por cualquier vendedor o tercero.
+              El precio internacional por onza troy se divide entre {GRAMOS_POR_ONZA_TROY} para
+              obtener el valor por gramo de oro fino. La publicación del factor y de los insumos
+              permite que cualquier productor o tercero verifique el cálculo.
             </p>
           </section>
 
-          {/* 4. Cláusula de revisión — TEXTO LEGAL LITERAL */}
+          {/* 4. Cadencia */}
           <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <h2 style={SECTION_TITLE}>4. Cláusula de revisión.</h2>
+            <h2 style={SECTION_TITLE}>4. Cadencia.</h2>
+            <p style={BODY}>
+              El precio referencial se publica una vez al día, a las 08:00 horas (Honduras), y se
+              mantiene fijo durante la jornada: se actualiza diariamente, no de forma continua. Se publica en{' '}
+              <Link href="/precio" style={{ color: 'var(--moss)', fontWeight: 600, textDecoration: 'none' }}>
+                mape.legal/precio
+              </Link>{' '}
+              y en{' '}
+              <Link href="/precios" style={{ color: 'var(--moss)', fontWeight: 600, textDecoration: 'none' }}>
+                mape.legal/precios
+              </Link>
+              , junto con la fuente y la fecha de cada insumo.
+            </p>
             <div style={CARD}>
               <p style={{ fontSize: 15, color: 'var(--ink)', lineHeight: 1.7 }}>
                 {PRECIO_REF_CLAUSULA_REVISION}
@@ -255,64 +216,33 @@ export default async function PoliticaDePreciosPage() {
             </div>
           </section>
 
-          {/* 5. Determinación de la ley del material — TEXTO LEGAL LITERAL */}
+          {/* 5. Aviso */}
           <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <h2 style={SECTION_TITLE}>5. {POLITICA_CL5_TITULO}</h2>
-            <div style={{ ...CARD, display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {POLITICA_CL5.map((c) => (
-                <ClausulaBloque key={c.num} clausula={c} />
-              ))}
-            </div>
-          </section>
-
-          {/* 6. Liquidación, contramuestra y ajuste — TEXTO LEGAL LITERAL */}
-          <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <h2 style={SECTION_TITLE}>6. {POLITICA_CL6_TITULO}</h2>
-            <div style={{ ...CARD, display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {POLITICA_CL6.map((c) => (
-                <ClausulaBloque key={c.num} clausula={c} />
-              ))}
-            </div>
-          </section>
-
-          {/* 7. Requisitos de elegibilidad del vendedor */}
-          <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <h2 style={SECTION_TITLE}>7. Requisitos de elegibilidad del vendedor.</h2>
+            <h2 style={SECTION_TITLE}>5. Aviso.</h2>
             <div style={CARD}>
-              <p style={{ fontSize: 15, color: 'var(--ink)', lineHeight: 1.7, fontWeight: 600, marginBottom: 10 }}>
-                {PRECIO_REF_REQUISITOS_TITULO}
-              </p>
-              <ol style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingLeft: 20, fontSize: 15, color: 'var(--ink)', lineHeight: 1.7 }}>
-                {PRECIO_REF_REQUISITOS_ITEMS.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ol>
-              <p style={{ marginTop: 14, fontSize: 15, color: 'var(--ink)', lineHeight: 1.7 }}>
-                {PRECIO_REF_REQUISITOS_CIERRE}
-              </p>
-              <p style={{ marginTop: 12, fontSize: 14, color: 'var(--t2)', lineHeight: 1.7 }}>
-                {PRECIO_REF_REQUISITOS_NOTA_REGISTRO}
+              <p style={{ fontSize: 15, color: 'var(--ink)', lineHeight: 1.7 }}>
+                {AVISO_PRECIO_REFERENCIAL}
               </p>
             </div>
             <p style={BODY}>
-              Fundamento: {CITAS_LEGALES.leyArt38.articulo}, {CITAS_LEGALES.leyArt38.norma} —{' '}
-              {CITAS_LEGALES.leyArt38.sintesis}
+              Este aviso acompaña toda vista del precio referencial, su calculadora por kilates,
+              el boletín diario y cualquier cotización de la asistente virtual.
             </p>
           </section>
 
-          {/* 8. Deducciones */}
+          {/* 6. Conflicto de interés */}
           <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <h2 style={SECTION_TITLE}>8. Deducciones.</h2>
-            <p style={BODY}>
-              El precio publicado es el precio aplicado. Cualquier deducción requiere autorización
-              escrita, previa y revocable del vendedor. Toda deducción autorizada consta en el
-              estado de cuenta de la transacción.
-            </p>
+            <h2 style={SECTION_TITLE}>6. Conflicto de interés.</h2>
+            <div style={CARD}>
+              <p style={{ fontSize: 15, color: 'var(--ink)', lineHeight: 1.7 }}>
+                {CONFLICTO_INTERES_CHT}
+              </p>
+            </div>
           </section>
 
-          {/* 9. Registro de versiones */}
+          {/* 7. Registro de versiones */}
           <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <h2 style={SECTION_TITLE}>9. Registro de versiones.</h2>
+            <h2 style={SECTION_TITLE}>7. Registro de versiones.</h2>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 420 }}>
                 <thead>
@@ -356,127 +286,8 @@ export default async function PoliticaDePreciosPage() {
               </table>
             </div>
             <p style={{ fontSize: 13, color: 'var(--t3)', lineHeight: 1.7 }}>
-              Las versiones anteriores permanecen accesibles públicamente conforme a la cláusula 4.
-            </p>
-          </section>
-
-          {/* Anexo I — parámetros de la determinación de ley (Adenda 01 §E) */}
-          <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <h2 style={SECTION_TITLE}>Anexo I. Parámetros de la determinación de ley.</h2>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
-                <thead>
-                  <tr>
-                    {['Elemento', 'Valor'].map((th) => (
-                      <th
-                        key={th}
-                        scope="col"
-                        style={{
-                          background: 'var(--ink)',
-                          color: '#fff',
-                          textAlign: 'left',
-                          padding: '10px 14px',
-                          fontSize: 12,
-                          fontWeight: 600,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.08em',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {th}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    ['Método de liquidación', METODO_LIQUIDACION],
-                    ['Método de contraste', METODO_CONTRASTE],
-                    ['Laboratorio tercero dirimente', LABORATORIO_DIRIMENTE],
-                    [
-                      'Tope de ajuste por transacción',
-                      `${TOPE_AJUSTE_LIQUIDACION_PP.toLocaleString('es-HN')} puntos porcentuales de ley`,
-                    ],
-                    ['Conservación de muestra testigo', `${DIAS_CONSERVACION_TESTIGO} días calendario`],
-                    ['Cadencia de verificación externa', 'Trimestral'],
-                  ].map(([elemento, valor]) => (
-                    <tr key={elemento} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '10px 14px', fontSize: 13, color: 'var(--t1)', background: 'var(--bg)', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                        {elemento}
-                      </td>
-                      <td style={{ padding: '10px 14px', fontSize: 13, color: 'var(--t2)', background: 'var(--bg)', lineHeight: 1.6 }}>
-                        {valor}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          {/* Verificaciones externas trimestrales (Adenda 01, Tarea 7).
-              Solo lectura desde la interfaz pública — se alimenta de
-              `ensayes` con tipo = 'verificacion_externa'. */}
-          <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <h2 style={SECTION_TITLE}>Verificaciones externas trimestrales.</h2>
-            {verificaciones.length === 0 ? (
-              <div style={CARD}>
-                <p style={{ fontSize: 15, color: 'var(--ink)', lineHeight: 1.7 }}>
-                  {VERIFICACIONES_EXTERNAS_VACIO}
-                </p>
-              </div>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 560 }}>
-                  <thead>
-                    <tr>
-                      {['Fecha', 'Laboratorio', 'Muestras ciegas', 'Desviación observada'].map((th) => (
-                        <th
-                          key={th}
-                          scope="col"
-                          style={{
-                            background: 'var(--ink)',
-                            color: '#fff',
-                            textAlign: 'left',
-                            padding: '10px 14px',
-                            fontSize: 12,
-                            fontWeight: 600,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.08em',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {th}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {verificaciones.map((v) => (
-                      <tr key={`${v.fecha}|${v.laboratorio}`} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td style={{ padding: '10px 14px', fontSize: 13, color: 'var(--t1)', background: 'var(--bg)', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>
-                          {v.fecha}
-                        </td>
-                        <td style={{ padding: '10px 14px', fontSize: 13, color: 'var(--t1)', background: 'var(--bg)' }}>
-                          {v.laboratorio}
-                        </td>
-                        <td style={{ padding: '10px 14px', fontSize: 13, color: 'var(--t2)', background: 'var(--bg)', fontFamily: 'var(--font-mono)' }}>
-                          {v.muestras}
-                        </td>
-                        <td style={{ padding: '10px 14px', fontSize: 13, color: 'var(--t2)', background: 'var(--bg)', fontFamily: 'var(--font-mono)' }}>
-                          {v.desviacion_pp != null
-                            ? `${v.desviacion_pp >= 0 ? '+' : ''}${v.desviacion_pp.toLocaleString('es-HN', { maximumFractionDigits: 3 })} pp de ley`
-                            : '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            <p style={{ fontSize: 13, color: 'var(--t3)', lineHeight: 1.7 }}>
-              Registro de solo lectura, conforme a la cláusula 6.5. La desviación se expresa en
-              puntos porcentuales de ley respecto del método de liquidación del mismo lote.
+              Las versiones anteriores permanecen accesibles públicamente. Las fijaciones
+              históricas del registro muestran el factor registrado en cada fecha, no el vigente.
             </p>
           </section>
         </div>

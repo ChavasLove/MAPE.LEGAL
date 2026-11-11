@@ -30,8 +30,8 @@ export const metadata: Metadata = {
 
 /* [PENDIENTE: reparar el demo o no anunciarlo] El certificado demostrativo
    CO-2026-0001-DEMO (seed de la migración 020) devuelve "no encontrado" en
-   producción, así que el enlace al demo se retiró de la página (Modelo B,
-   10-nov-2026). Reactivar solo cuando el registro exista en la base real. */
+   producción, así que el enlace al demo se retiró de la página (10-nov-2026).
+   Reactivar solo cuando el registro exista en la base real. */
 
 const SECTION_TITLE: React.CSSProperties = {
   fontFamily: 'var(--font-display)',
@@ -64,7 +64,7 @@ const PRODUCE_MAPE = [
   {
     titulo: 'Índice de legalidad por unidad minera',
     cuerpo:
-      'Cinco componentes verificados por unidad: tierra, permiso INHGEOMIN, licencia ambiental, permiso municipal y registro de comercializador.',
+      'Cinco componentes verificados por unidad: tierra, permiso INHGEOMIN, licencia ambiental, permiso municipal y documentación de procedencia.',
   },
   {
     titulo: 'Expediente digital',
@@ -89,10 +89,10 @@ export default function MercadosPage() {
           {MERCADOS_ACCESO}
         </h1>
         <p className="section-sub" style={{ maxWidth: 680 }}>
-          La exigencia de certificación no la impone {RAZON_SOCIAL} ni la autoridad
-          hondureña al minero: la imponen los mercados compradores que aplican debida
-          diligencia sobre su cadena de suministro. La certificación es la llave para
-          entrar.
+          La exigencia de certificación no la impone la plataforma MAPE.LEGAL, operada
+          por {RAZON_SOCIAL}, ni la autoridad hondureña al minero: la imponen los mercados
+          compradores que aplican debida diligencia sobre su cadena de suministro. La
+          certificación es la llave para entrar.
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 56, maxWidth: 760, marginTop: 48 }}>
@@ -160,7 +160,8 @@ export default function MercadosPage() {
           >
             <p style={{ fontSize: 14, color: 'var(--t2)', lineHeight: 1.7 }}>
               El acceso a estos mercados depende del cumplimiento del operador, no de una
-              relación preferente con {RAZON_SOCIAL} ni con la plataforma. {CERTIFICADO_ORIGEN_NOTA}
+              relación preferente con comprador alguno ni con la plataforma. MAPE.LEGAL no
+              compra, no vende ni intermedia oro. {CERTIFICADO_ORIGEN_NOTA}
             </p>
           </div>
         </div>
