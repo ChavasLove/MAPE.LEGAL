@@ -1,8 +1,15 @@
 import { redirect } from 'next/navigation';
 import Image from 'next/image';
-import { FileText, LogOut } from 'lucide-react';
-import Link from 'next/link';
+import { FileText, Boxes, LogOut } from 'lucide-react';
 import { getServerAuth } from '@/lib/serverAuth';
+import PortalTabs from './PortalTabs';
+
+// Íconos pre-renderizados a JSX (los componentes de lucide no cruzan el
+// boundary RSC como referencias dentro de un prop array).
+const TABS = [
+  { href: '/portal',       label: 'Mi expediente', icon: <FileText size={16} strokeWidth={1.5} />, exact: true },
+  { href: '/portal/lotes', label: 'Mis lotes',     icon: <Boxes    size={16} strokeWidth={1.5} /> },
+];
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const auth = await getServerAuth();
@@ -54,16 +61,7 @@ export default async function PortalLayout({ children }: { children: React.React
       {/* Nav tabs */}
       <div className="border-b" style={{ background: 'white', borderColor: '#E2E0D8' }}>
         <div className="max-w-4xl mx-auto px-6">
-          <nav className="flex gap-1">
-            <Link
-              href="/portal"
-              className="flex items-center gap-2 px-4 py-3.5 text-sm font-medium font-sans border-b-2 transition-colors"
-              style={{ color: '#1F2A38', borderColor: '#1F2A38' }}
-            >
-              <FileText size={16} strokeWidth={1.5} />
-              Mi expediente
-            </Link>
-          </nav>
+          <PortalTabs tabs={TABS} />
         </div>
       </div>
 
