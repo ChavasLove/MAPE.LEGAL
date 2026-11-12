@@ -15,6 +15,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/politica-de-precios', priority: 0.5, changeFrequency: 'monthly' },
     { path: '/precios', priority: 0.7, changeFrequency: 'daily' },
     { path: '/equipos', priority: 0.6, changeFrequency: 'weekly' },
+    // Estándar privado de debida diligencia (Etapa 2, 2026-11-12).
+    { path: '/quienes-somos', priority: 0.7, changeFrequency: 'monthly' },
+    { path: '/estandar', priority: 0.7, changeFrequency: 'monthly' },
+    { path: '/politica-de-cadena', priority: 0.5, changeFrequency: 'monthly' },
+    { path: '/auditoria', priority: 0.5, changeFrequency: 'yearly' },
     { path: '/aviso-legal', priority: 0.4, changeFrequency: 'yearly' },
   ]
   // La consulta informativa de derechos mineros está apagada por defecto
