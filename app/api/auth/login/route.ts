@@ -9,6 +9,10 @@ const ROLE_REDIRECT: Record<string, string> = {
   abogado:           '/dashboard',
   tecnico_ambiental: '/dashboard',
   cliente:           '/portal',
+  // Roles del estándar privado (brief v2.1 Etapa 2) — home propio dentro del dashboard.
+  comercializador:   '/dashboard/cadena',
+  planta:            '/dashboard/cadena',
+  auditor:           '/dashboard/cadena',
 };
 
 const LOGIN_LIMIT       = 5;

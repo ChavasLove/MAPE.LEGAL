@@ -295,6 +295,9 @@ const ROL_LABELS: Record<string, string> = {
   abogado:           'Abogado',
   tecnico_ambiental: 'Técnico Ambiental',
   cliente:           'Cliente',
+  comercializador:   'Comercializador',
+  planta:            'Planta de beneficio participante',
+  auditor:           'Auditor externo',
 };
 
 /** Confirmation link sent when a user signs up or requests a resend.

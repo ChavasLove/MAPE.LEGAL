@@ -8,7 +8,7 @@ Documento interno (no se publica). Brief 10-nov-2026, §2.4. Migración `042`.
 |---|---|---|
 | **Emite y firma** el Certificado de Origen / Certificación de Procedencia | El **titular** del derecho minero (persona natural, jurídica o grupo organizado) | Art. 35 Regl. Especial MAPE (Acuerdo 088-B-2018) |
 | **Autentica** el documento | La **Autoridad Minera o Municipal** | Art. 35 Regl. Especial MAPE; art. 43.e Regl. 042-2013 |
-| **Registra, digitaliza y asienta el sello complementario** | La plataforma MAPE.LEGAL (dueña: Inversiones Zekaii, S. de R.L.) | Registro voluntario y complementario — no es autoridad emisora ni acto de INHGEOMIN |
+| **Registra, digitaliza y asienta el sello complementario** | La plataforma MAPE.LEGAL (titular y operadora: Corporación Hondureña Tenka, S.A.; identidad corregida por el hotfix de neutralidad, 11-nov-2026) | Registro voluntario y complementario — no es autoridad emisora ni acto de INHGEOMIN |
 
 La plataforma **no emite** el documento oficial. El texto canónico para superficies públicas es `CERTIFICADO_ORIGEN_NOTA` en `lib/content/copy-legal.ts`; cualquier copy nuevo lo importa, no lo parafrasea.
 

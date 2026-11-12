@@ -1,9 +1,8 @@
 # MAPE.LEGAL — Plataforma de Formalización Minera
 
 **Versión 1.1 — Piloto Iriona 2026**
-Última actualización: 10 de noviembre de 2026
-Titular de la plataforma: Inversiones Zekaii, S. de R.L. (compradora del oro a los productores)
-Servicios legales y mineros: Corporación Hondureña Tenka, S.A. (CHT) — no es dueña ni operadora de la plataforma; no compra ni vende mineral
+Última actualización: 12 de noviembre de 2026
+Titular, desarrolladora y operadora de la plataforma y del estándar: Corporación Hondureña Tenka, S.A. (CHT) — presta servicios legales y mineros; no compra ni vende mineral. MAPE.LEGAL no compra, no vende ni intermedia oro.
 Administrador Único: Willis Yang
 Dominio: mape.legal · App privada en Vercel + Supabase
 
@@ -196,14 +195,13 @@ Su propósito es registrar, almacenar y digitalizar evidencia legalmente defendi
 ## 2. CONTEXTO DE NEGOCIO
 
 - **MAPE LEGAL** = marca institucional del proyecto; **MAPE.LEGAL** = la plataforma
-- **Titular de la plataforma y compradora del oro:** Inversiones Zekaii, S. de R.L.
-- **Prestadora de los servicios legales y mineros:** Corporación Hondureña Tenka, S.A. (CHT) — no es dueña ni operadora de la plataforma; no compra ni vende mineral
+- **Titular, desarrolladora y operadora de la plataforma y del estándar privado de debida diligencia:** Corporación Hondureña Tenka, S.A. (CHT). Presta los servicios legales y mineros; **no compra ni vende mineral**. Conflicto de interés declarado en `/quienes-somos` (`CONFLICTO_INTERES_CHT`).
 - **Fundador:** Willis Yang (Administrador Único)
 - **Socio 50%:** Ricardo Alfredo Montes Nájera
 
-**Modelo de negocio (Modelo B, confirmado 10-nov-2026):**
+**Modelo vigente (hotfix de neutralidad 11-nov-2026 + estándar privado 12-nov-2026):**
 
-Dos líneas con dos titulares distintos: (1) **servicios legales y mineros** a productores artesanales y de pequeña minería — formalización (expediente INHGEOMIN + licenciamiento ambiental SERNA), titulación, sociedad minera y representación — prestados por **CHT**, con honorarios publicados en el sitio; y (2) **compra formal de oro** con origen documentado por **Inversiones Zekaii**, dueña de la plataforma, que publica un precio de referencia diario (comercial, suyo — no "oficial") y una Política de Precios versionada, conforme a los Arts. 37 y 38 de la Ley General de Minería. El **factor de compra al productor está pendiente de definición** (`FACTOR_COMPRA_ZEKAII` en `lib/precio/factores.ts`, marcador `[POR DEFINIR POR WILLIS]`): ninguna superficie publica un precio de compra en lempiras ni un porcentaje hasta que Willis lo defina. El Registro de Comercializadores de INHGEOMIN es obligación del comprador — no se afirma que Inversiones Zekaii ya lo tenga, y no se exige al minero titular que vende su propia producción. Los términos económicos con contrapartes se rigen por sus contratos y no forman parte de este documento.
+(1) **Servicios legales y mineros** a productores artesanales y de pequeña minería — formalización (expediente INHGEOMIN + licenciamiento ambiental SERNA), titulación, sociedad minera y representación — prestados por **CHT**, con honorarios publicados en el sitio. (2) **Estándar privado de debida diligencia** de "la cadena de suministro de la planta de beneficio participante" (`/estandar`, `/politica-de-cadena`, `/auditoria`, en borrador con versión y fecha): registro de fuentes, lotes con eventos encadenados por hash, conciliación de pesos, pagos bancarios identificables (el efectivo bloquea el lote), consentimiento informado para el acceso al expediente del minero y bitácora de accesos (migración 043, `lib/cadena/*`, `/api/cadena/*`, `/dashboard/cadena`). **Ningún comprador ni planta se nombra en el código ni en las superficies públicas**; las organizaciones viven en la tabla `organizaciones` y se identifican por rol (`comercializador`, `planta`, `auditor`). El precio público es el **Precio referencial (75%)** de la referencia internacional del oro, en L por gramo de oro fino, siempre con el aviso literal `AVISO_PRECIO_REFERENCIAL`: informativo, no es oferta de compra ni precio oficial ni garantía de pago. El Registro de Comercializadores de INHGEOMIN es obligación del comprador, no del minero que vende su propia producción. Los términos económicos con contrapartes se rigen por sus contratos y no forman parte de este documento. Detalle: `docs/estandar-privado-v2.md` y `docs/estandar-privado-v2-bd.md`.
 
 **Piloto 2026:** Asociación de Mineros de Iriona, Colón (~60 mineros)
 

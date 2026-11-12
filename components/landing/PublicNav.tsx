@@ -2,7 +2,7 @@
 
 // Navegación pública compartida (Fase 2C). Un solo lugar para el menú del
 // sitio institucional: landing, /pequena-mineria, /comercializacion,
-// /mercados, /verificar y /aviso-legal.
+// /mercados, /verificar, /quienes-somos, /estandar y /aviso-legal.
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
@@ -13,7 +13,11 @@ const NAV_LINKS: Array<{ href: string; label: string }> = [
   { href: '/comercializacion', label: 'Comercialización' },
   { href: '/mercados', label: 'Mercados' },
   { href: '/verificar', label: 'Verificar certificado' },
-  { href: '/#quienes-somos', label: 'Quiénes somos' },
+  // Etapa 2 (estándar privado, 2026-11-12): "Quiénes somos" pasa de ancla a
+  // página propia; "Estándar" entra en la nav. Política de cadena y Auditoría
+  // viven solo en el pie para no saturar el menú.
+  { href: '/quienes-somos', label: 'Quiénes somos' },
+  { href: '/estandar', label: 'Estándar' },
   { href: '/#contacto', label: 'Contacto' },
 ]
 
