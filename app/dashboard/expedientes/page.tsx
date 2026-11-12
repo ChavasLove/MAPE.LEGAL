@@ -137,7 +137,7 @@ export default function ExpedientesPage() {
           <h2 className="text-base font-semibold text-white mb-5 font-sans">Nuevo expediente</h2>
           <form onSubmit={handleCreate} className="space-y-4">
             <div className="grid sm:grid-cols-3 gap-4">
-              {inp('cliente',           'Cliente',           'Juan Antonio Zelaya')}
+              {inp('cliente',           'Cliente',           'Productor de Ejemplo')}
               {inp('tipo',              'Tipo de trámite',   'Exploración minera')}
               {inp('municipio',         'Municipio',         'Iriona, Colón')}
             </div>

@@ -3,8 +3,9 @@ import { createClient } from "@supabase/supabase-js";
 import { getUserByPhone, getOrCreateUserByPhone } from "@/services/userService";
 import { interpretAndExecute } from "@/services/adminCommandService";
 import { getOnboardingState, handleOnboarding, INSTITUTIONAL_ONBOARDING_REPLY } from "@/services/onboardingService";
-import { fetchAllPrices, storePrices, effectivePriceDate, mapeGoldBuyLpsPerGram, buildKaratPrices } from "@/services/pricingService";
-import { factorCompraDefinido } from "@/lib/precio/factores";
+import { fetchAllPrices, storePrices, effectivePriceDate, referenciaLpsPorGramoFino, buildKaratPrices } from "@/services/pricingService";
+import { ROTULO_PRECIO_REFERENCIAL } from "@/lib/precio/factores";
+import { AVISO_PRECIO_REFERENCIAL, ETIQUETA_TIPO_CAMBIO, FUENTE_TIPO_CAMBIO } from "@/lib/content/copy-legal";
 import { sanitizeIlikeTerm } from "@/services/concesionesService";
 import { embedQuery, toVectorText } from "@/lib/maria/embeddings";
 import { normalizePhone } from "@/lib/maria/normalizePhone";
@@ -812,18 +813,16 @@ Comandos disponibles:
       minimumFractionDigits: d,
       maximumFractionDigits: d,
     });
-    const oroLBMA   = preciosHoy?.oro    != null ? `$${fmt(preciosHoy.oro)} USD/oz troy`   : null;
-    // Canonical helper — deriva de FACTOR_COMPRA_ZEKAII (lib/precio/factores.ts,
-    // fuente única del modelo B). Devuelve null mientras el factor de compra al
-    // productor esté PENDIENTE de definición por Willis.
-    const factorCompraPendiente = !factorCompraDefinido();
-    const oroCompraLps = mapeGoldBuyLpsPerGram(preciosHoy?.oro, preciosHoy?.usd_hnl);
-    const oroCompra = oroCompraLps != null ? `L ${fmt(oroCompraLps)}/gramo de oro fino` : null;
+    const oroIntl   = preciosHoy?.oro    != null ? `$${fmt(preciosHoy.oro)} USD/oz troy`   : null;
+    // Precio referencial (75 %) — helper canónico (FACTOR_REFERENCIA en
+    // lib/precio/factores.ts, fuente única). Mismo número que /api/precios/live,
+    // el widget y el boletín.
+    const referencialLps = referenciaLpsPorGramoFino(preciosHoy?.oro, preciosHoy?.usd_hnl);
+    const referencial = referencialLps != null ? `L ${fmt(referencialLps)} por gramo de oro fino` : null;
     // Conversión por kilates — mismo helper canónico que /api/precios/live y el
     // boletín diario, así María cita números idénticos a los del widget. Cada
-    // kilataje trae valor por gramo y por penique (dwt = 1.5552 g). Null con
-    // factor pendiente: sin factor no hay kilates en lempiras.
-    const kilatesRef = factorCompraPendiente ? null : buildKaratPrices(preciosHoy?.oro, preciosHoy?.usd_hnl);
+    // kilataje trae valor por gramo y por penique (dwt = 1.5552 g) DE MATERIAL.
+    const kilatesRef = buildKaratPrices(preciosHoy?.oro, preciosHoy?.usd_hnl);
     const kilatesLine = kilatesRef
       ? kilatesRef
           .map((k) => `${k.kilates}k L ${fmt(k.referencia_lps_g)}/g · L ${fmt(k.referencia_lps_dwt)}/dwt`)
@@ -842,23 +841,20 @@ Comandos disponibles:
     });
     const frescuraLabel = `consultado hoy ${horaConsultaHN}`;
 
-    const tipoCambio = preciosHoy?.usd_hnl != null ? `L ${fmt(preciosHoy.usd_hnl)}/USD` : null;
+    const tipoCambio = preciosHoy?.usd_hnl != null ? `L ${fmt(preciosHoy.usd_hnl)} por USD` : null;
     // Institucional: '' (ni siquiera el fallback "no hay datos", que instruye
     // una respuesta de precio).
     const priceContext = esInstitucional ? '' : preciosHoy
       ? `\n\nPRECIOS DE REFERENCIA (${preciosHoy.fecha ?? 'hoy'}${frescuraLabel ? ` — ${frescuraLabel}` : ''}):
-- Oro internacional: ${oroLBMA ?? 'no disponible'}
-${factorCompraPendiente
-  ? `- Precio de compra al productor (Inversiones Zekaii, S. de R.L.): PENDIENTE de publicación en la Política de Precios de Inversiones Zekaii. REGLA DURA: NO inventes, NO estimes ni calcules un precio de compra en lempiras; NO cites ningún porcentaje de la referencia internacional (ni 75 %, ni 80 %, ni otro). Si preguntan por el precio de compra, di que Inversiones Zekaii lo publicará en su Política de Precios y que por ahora solo podés dar la referencia internacional del oro y el tipo de cambio.
-- Referencia por kilates: no disponible mientras el precio de compra esté pendiente (no la calcules).`
-  : `- Precio de compra de Inversiones Zekaii al productor (según la Política de Precios vigente): ${oroCompra ?? 'el equipo confirma hoy'}
-- Referencia por kilates (por gramo y por penique/dwt de material; ley nominal = kilates ÷ 24; 1 dwt = 1.5552 g): ${kilatesLine ?? 'no disponible'}`}
+- Oro internacional: ${oroIntl ?? 'no disponible'}
+- ${ETIQUETA_TIPO_CAMBIO} (${FUENTE_TIPO_CAMBIO}): ${tipoCambio ?? 'no disponible'}
+- ${ROTULO_PRECIO_REFERENCIAL}: ${referencial ?? 'no disponible'}
+- Referencia por kilates (por gramo y por penique/dwt DE MATERIAL; ley nominal = kilates ÷ 24; 1 dwt = 1.5552 g): ${kilatesLine ?? 'no disponible'}
 - Plata internacional: ${plataLBMA ?? 'no disponible'}
-- Tipo de cambio: ${tipoCambio ?? 'no disponible'}
 - Frescura: ${frescuraLabel || 'no disponible'}
-${preciosHoy.fuente ? `- Fuente: ${preciosHoy.fuente}` : ''}
-El formato canónico de respuesta para precio del día está en CUANDO PREGUNTAN POR EL PRECIO DEL ORO — síguelo al pie de la letra (4 viñetas: precio internacional + precio de compra de Inversiones Zekaii al productor — o "pendiente de publicación en la Política de Precios de Inversiones Zekaii" si está pendiente, sin cifra — + Tipo de cambio USD/LPS + Actualizado, luego la cooperativa financiera aliada + www.mape.legal). El timestamp ("Actualizado") y el tipo de cambio USD/LPS son OBLIGATORIOS en cada respuesta de precio.`
-      : `\n\nPRECIOS DE REFERENCIA: No hay datos de precios cargados hoy. Si el cliente pregunta por precio de compra del oro, di: "Hoy no tengo el precio cargado en el sistema. Para precio actualizado escribí a gerencia@mape.legal."`;
+${preciosHoy.fuente ? `- Fuente del oro: ${preciosHoy.fuente}` : ''}
+Cuando cites el precio, incluí SIEMPRE el aviso literal: «${AVISO_PRECIO_REFERENCIAL}». Nunca digas 'compra', nunca nombres compradores, nunca prometas pago ni plazo de pago. El precio referencial es un estimado informativo (75 % de la referencia internacional del oro, en lempiras por gramo de oro fino); las cifras por kilates son por gramo o penique DE MATERIAL. El tipo de cambio se atribuye siempre a su fuente (${FUENTE_TIPO_CAMBIO}) con fecha/hora. El formato canónico de respuesta para precio del día está en CUANDO PREGUNTAN POR EL PRECIO DEL ORO — síguelo al pie de la letra (viñetas: Oro internacional + ${ROTULO_PRECIO_REFERENCIAL} + ${ETIQUETA_TIPO_CAMBIO} (${FUENTE_TIPO_CAMBIO}) + Actualizado, luego el aviso literal y www.mape.legal). El timestamp ("Actualizado") y el tipo de cambio USD/LPS son OBLIGATORIOS en cada respuesta de precio.`
+      : `\n\nPRECIOS DE REFERENCIA: No hay datos de precios cargados hoy. Si el cliente pregunta por el precio del oro o el precio referencial, di: "Hoy no tengo el precio cargado en el sistema. Para precio actualizado escribí a gerencia@mape.legal."`;
 
     // --- Query expedientes linked to this client ---
     let expedienteContext = '';

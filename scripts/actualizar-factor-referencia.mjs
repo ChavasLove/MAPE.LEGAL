@@ -1,24 +1,23 @@
 #!/usr/bin/env node
 // ---------------------------------------------------------------------------
-// actualizar-factor-compra.mjs
+// actualizar-factor-referencia.mjs
 //
-// Actualiza el factor de compra de Inversiones Zekaii, S. de R.L. al productor
-// (fracción de la referencia internacional del oro) en el código, de forma
-// quirúrgica, idempotente y auditable.
+// Actualiza el factor del PRECIO REFERENCIAL público (fracción de la
+// referencia internacional del oro; hoy 0.75 → "Precio referencial (75%)")
+// en el código, de forma quirúrgica, idempotente y auditable.
 //
-// Modelo B (10-nov-2026): Inversiones Zekaii es la dueña de la plataforma
-// MAPE.LEGAL y la compradora del oro. El factor de compra al productor NO está
-// definido (FACTOR_COMPRA_ZEKAII = null = pendiente). Este script es la ÚNICA
-// vía prevista para pasar de `null` a una cifra — y solo con instrucción
-// escrita de Willis. Su revisión posterior se rige por la cláusula 4 de la
-// Política de Precios: toda revisión es una nueva versión publicada con al
-// menos 15 días calendario de anticipación.
+// Modelo público (hotfix de neutralidad, 11-nov-2026): la plataforma no
+// interviene en la transacción del mineral; el precio publicado es referencial, estimado e
+// informativo. Su revisión se rige por la cláusula 4 de la Política de
+// Precios: toda revisión es una nueva versión publicada con al menos 15 días
+// calendario de anticipación.
 //
-// Ubicación: scripts/actualizar-factor-compra.mjs — ejecutar desde la raíz.
+// Ubicación: scripts/actualizar-factor-referencia.mjs — ejecutar desde la raíz.
 //
 // Fuente de verdad que toca:
-//   A) lib/precio/factores.ts      ->  FACTOR_COMPRA_ZEKAII   (null | número)
-//        FUENTE ÚNICA del factor. De aquí derivan MAPE_GOLD_BUY_FACTOR
+//   A) lib/precio/factores.ts      ->  FACTOR_REFERENCIA   (número en (0, 1])
+//        FUENTE ÚNICA del factor. De aquí derivan FACTOR_REFERENCIA_PCT y
+//        ROTULO_PRECIO_REFERENCIAL (mismo archivo), FACTOR_REFERENCIA_PUBLICO
 //        (services/pricingService.ts → María WhatsApp + web, boletín diario,
 //        /api/precios/live, /api/precios/historial) y
 //        FACTOR_COMERCIALIZACION_VIGENTE (lib/precio/calculo.ts → panel de
@@ -37,15 +36,18 @@
 //     junto con --version y --vigencia explícitos en la línea de comando.
 //   - No toca la tabla precios_diarios / precios_referencia: el número
 //     publicado del día se fija por el panel /dashboard/precio.
-//   - No hace un reemplazo ciego de "0.8": ancla por identificador para no
-//     tocar opacidades CSS, el objetivo de recuperación >= 80 % ni
-//     FACTOR_VENTA_REFINERIA_LBMA (interno — NO es el factor de compra).
+//   - No hace un reemplazo ciego de "0.75": ancla por identificador para no
+//     tocar opacidades CSS, umbrales de recuperación metalúrgica ni
+//     FACTOR_VENTA_REFINERIA_LBMA (interno — NO es el factor referencial).
+//   - NO toca el texto literal de FORMULA_PRECIO_REFERENCIAL ni de
+//     AVISO_PRECIO_REFERENCIAL (lib/content/copy-legal.ts): si el factor
+//     cambia, esos textos legales se revisan a mano (ver pasos obligatorios).
 //
 // Uso:
-//   node scripts/actualizar-factor-compra.mjs 0.78                 (simula, solo factor)
-//   node scripts/actualizar-factor-compra.mjs 78%  --aplicar       (escribe, solo factor)
-//   node scripts/actualizar-factor-compra.mjs 0.78 --sincronizar-politica \
-//        --version 1.2 --vigencia 2026-XX-XX --aplicar             (escribe factor + política)
+//   node scripts/actualizar-factor-referencia.mjs 0.78                 (simula, solo factor)
+//   node scripts/actualizar-factor-referencia.mjs 78%  --aplicar       (escribe, solo factor)
+//   node scripts/actualizar-factor-referencia.mjs 0.78 --sincronizar-politica \
+//        --version 1.3 --vigencia 2026-XX-XX --aplicar                 (escribe factor + política)
 // ---------------------------------------------------------------------------
 
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -55,10 +57,10 @@ import { resolve } from 'node:path';
 const OBJETIVOS = {
   factor: {
     archivo: 'lib/precio/factores.ts',
-    identificador: 'FACTOR_COMPRA_ZEKAII',
+    identificador: 'FACTOR_REFERENCIA',
     tipo: 'numero',
-    // Captura: (prefijo con la anotación de tipo)(null | numero)(sufijo hasta el ;)
-    patron: /(export const FACTOR_COMPRA_ZEKAII\s*:\s*number\s*\|\s*null\s*=\s*)(null|[0-9]*\.?[0-9]+)(\s*;)/,
+    // Captura: (prefijo, con o sin anotación de tipo)(numero)(sufijo hasta el ;)
+    patron: /(export const FACTOR_REFERENCIA\s*(?::\s*number\s*)?=\s*)([0-9]*\.?[0-9]+)(\s*;)/,
   },
   politicaVersion: {
     archivo: 'lib/precio/calculo.ts',
@@ -118,9 +120,9 @@ function abortar(msg) {
 
 // --- Validación del nuevo factor -------------------------------------------
 if (posicionales.length !== 1) {
-  abortar('Indicá exactamente un factor. Ej.: node scripts/actualizar-factor-compra.mjs 0.78');
+  abortar('Indicá exactamente un factor. Ej.: node scripts/actualizar-factor-referencia.mjs 0.78');
 }
-let bruto = posicionales[0].trim();
+const bruto = posicionales[0].trim();
 let nuevoFactor;
 if (bruto.endsWith('%')) {
   nuevoFactor = Number(bruto.slice(0, -1)) / 100;
@@ -128,7 +130,7 @@ if (bruto.endsWith('%')) {
   const n = Number(bruto);
   // Aceptar "78" como 0.78 y "0.78" como 0.78. Solo un ENTERO entre 2 y 100
   // se interpreta como porcentaje; un decimal mayor que 1 ("1.2") es casi
-  // seguro un error de tipeo y NO se adivina (antes se convertía en 0.012).
+  // seguro un error de tipeo y NO se adivina.
   if (Number.isFinite(n) && n > 1) {
     if (!Number.isInteger(n) || n > 100) {
       abortar(`Factor ambiguo: "${bruto}". Usá una fracción (0.78), un porcentaje explícito (78%) o un entero 2-100 (78).`);
@@ -142,6 +144,7 @@ if (!Number.isFinite(nuevoFactor) || nuevoFactor <= 0 || nuevoFactor > 1) {
   abortar(`Factor inválido: "${bruto}". Debe resolver a un número en (0, 1]. Ej.: 0.78 o 78%.`);
 }
 const nuevoFactorStr = String(nuevoFactor); // 0.78
+const nuevoPct = (nuevoFactor * 100).toFixed(2).replace(/\.00$/, '');
 
 // --- Motor de reemplazo -----------------------------------------------------
 const cambios = []; // { archivo, identificador, antes, despues }
@@ -186,23 +189,19 @@ if (SINCRONIZAR) {
 
 // --- Ejecución (recolecta, luego escribe) -----------------------------------
 console.log('\n──────────────────────────────────────────────────────────────');
-console.log(`  Factor de compra al productor objetivo: ${nuevoFactorStr}  (${(nuevoFactor * 100).toFixed(2).replace(/\.00$/, '')}% de la referencia internacional)`);
-console.log(`  Comprador: Inversiones Zekaii, S. de R.L.`);
+console.log(`  Factor referencial objetivo: ${nuevoFactorStr}  (${nuevoPct}% de la referencia internacional del oro)`);
+console.log(`  Rótulo público resultante: "Precio referencial (${Math.round(nuevoFactor * 100)}%)"`);
 console.log(`  Modo: ${APLICAR ? 'APLICAR (escribe en disco)' : 'SIMULACIÓN (no escribe)'}`);
 console.log(`  Alcance: ${SINCRONIZAR ? 'factor (factores.ts) + política publicada (calculo.ts)' : 'solo factor (lib/precio/factores.ts)'}`);
 console.log('──────────────────────────────────────────────────────────────\n');
 
 const pendientes = [];
-const resultadoFactor = aplicarObjetivo(OBJETIVOS.factor, nuevoFactorStr);
-const veniaPendiente = cambios.some(
-  (c) => c.identificador === OBJETIVOS.factor.identificador && c.antes === 'null',
-);
-pendientes.push(resultadoFactor);
+pendientes.push(aplicarObjetivo(OBJETIVOS.factor, nuevoFactorStr));
 
 if (SINCRONIZAR) {
   // Versión, vigencia y flag de vigencia pendiente viven en calculo.ts; el
-  // factor ya NO (deriva de factores.ts). Se editan sobre un único contenido
-  // en memoria y se escriben una sola vez.
+  // factor NO (deriva de factores.ts). Se editan sobre un único contenido en
+  // memoria y se escriben una sola vez.
   const objCalc = OBJETIVOS.politicaVersion;
   const rutaCalc = resolve(raiz, objCalc.archivo);
   let contenidoCalc;
@@ -258,32 +257,29 @@ if (APLICAR) {
 
 // --- Advertencias y pasos obligatorios --------------------------------------
 console.log('Pasos obligatorios (no automatizados por diseño):');
-if (veniaPendiente) {
-  console.log('  [0] PRIMERA DEFINICIÓN: el factor pasa de PENDIENTE (null) a una cifra. Esto exige');
-  console.log('      instrucción escrita de Willis y la publicación de la nueva versión de la Política');
-  console.log('      de Precios de Inversiones Zekaii (hoy en BORRADOR) — sin ella, la cifra queda');
-  console.log('      visible en María, el boletín y /precios sin respaldo publicado.');
-}
+console.log('  [0] TEXTO LEGAL: FORMULA_PRECIO_REFERENCIAL y AVISO_PRECIO_REFERENCIAL en');
+console.log('      lib/content/copy-legal.ts citan el porcentaje de forma literal ("75%", "× 0.75").');
+console.log('      Este script NO los toca: revisarlos a mano con el nuevo factor antes de desplegar.');
 if (!SINCRONIZAR) {
-  console.log('  [1] COHERENCIA: moviste solo el factor. FACTOR_COMERCIALIZACION_VIGENTE y');
-  console.log('      MAPE_GOLD_BUY_FACTOR ya derivan de factores.ts (se mueven solos), pero');
-  console.log('      VERSION_POLITICA_PRECIOS / FECHA_VIGENCIA_POLITICA siguen en su valor anterior:');
-  console.log('      /precio y /politica-de-precios publicarán el factor nuevo bajo la versión vieja.');
-  console.log('      Decisión de Willis: formalizar como revisión (v-nueva + aviso 15 días +');
+  console.log('  [1] COHERENCIA: moviste solo el factor. FACTOR_COMERCIALIZACION_VIGENTE,');
+  console.log('      FACTOR_REFERENCIA_PUBLICO y ROTULO_PRECIO_REFERENCIAL ya derivan de factores.ts');
+  console.log('      (se mueven solos), pero VERSION_POLITICA_PRECIOS / FECHA_VIGENCIA_POLITICA siguen');
+  console.log('      en su valor anterior: /precio y /politica-de-precios publicarán el factor nuevo');
+  console.log('      bajo la versión vieja. Formalizar como revisión (v-nueva + aviso 15 días +');
   console.log('      --sincronizar-politica) o asumir desviación documentada.');
 } else {
-  console.log(`  [1] AVISO: la cláusula 4 de la Política de Precios prevé publicación con 15 días`);
+  console.log('  [1] AVISO: la cláusula 4 de la Política de Precios prevé publicación con 15 días');
   console.log('      calendario de anticipación. Confirmá que la vigencia indicada respeta ese plazo');
-  console.log('      o que la desviación queda documentada por decisión de Willis.');
+  console.log('      o que la desviación queda documentada.');
 }
 console.log('  [2] FIJACIÓN DIARIA: el número publicado en /precio se fija por el panel');
-console.log('      /dashboard/precio (deja de responder 409 factor_compra_pendiente tras el deploy).');
-console.log('      María, el boletín y /precios cotizan tras el deploy; la página /precio solo cambia');
+console.log('      /dashboard/precio (el factor precargado cambia tras el deploy). María, el boletín y');
+console.log('      /precios cotizan con el factor nuevo tras el deploy; la página /precio solo cambia');
 console.log('      en la próxima fijación. Fijá el precio del día con el nuevo factor para que no diverjan.');
 console.log('  [3] GATE INSTITUCIONAL: sin cambios — María sigue sin cotizar precio a contactos');
 console.log('      institucionales (esInstitucional). Verificado, no requiere acción.');
-console.log('  [4] NO TOCADO (correcto): FACTOR_VENTA_REFINERIA_LBMA es el precio de venta de Zekaii');
-console.log('      a la refinería de destino — interno, no es el factor de compra al productor.');
+console.log('  [4] NO TOCADO (correcto): FACTOR_VENTA_REFINERIA_LBMA es interno — no es el factor');
+console.log('      referencial público y no se publica.');
 console.log('  [5] Commit sugerido:');
-console.log(`      "precio: factor de compra Zekaii ${nuevoFactorStr}${SINCRONIZAR ? ` (Política v${version}, vig. ${vigencia})` : ' (solo factor, interino)'}"`);
+console.log(`      "precio: factor referencial ${nuevoFactorStr}${SINCRONIZAR ? ` (Política v${version}, vig. ${vigencia})` : ' (solo factor, interino)'}"`);
 console.log('');

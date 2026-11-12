@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import TopoBand from '@/components/decor/TopoBand'
 import {
-  VERIFICAR_ABIERTO,
   VERIFICAR_CARGA_INICIAL,
   VERIFICAR_FRESCURA_NOTA,
   VERIFICAR_INTRO,
@@ -15,7 +14,7 @@ export const dynamic = 'force-dynamic'
 export const metadata = {
   title: VERIFICAR_TITULO,
   description:
-    'Compruebe si un número de registro del sello complementario de trazabilidad MAPE.LEGAL consta en la base operada por Inversiones Zekaii, S. de R.L. La consulta no sustituye el Certificado de Origen oficial.',
+    'Compruebe si un número de registro del sello complementario de trazabilidad MAPE.LEGAL consta en la base operada por Corporación Hondureña Tenka, S.A. La consulta no sustituye el Certificado de Origen oficial.',
   alternates: { canonical: '/verificar' },
 }
 
@@ -91,17 +90,6 @@ export default async function VerificarEntryPage() {
           >
             {VERIFICAR_INTRO}
           </p>
-          <p
-            style={{
-              fontSize: 14,
-              color: 'var(--t2)',
-              lineHeight: 1.7,
-              marginTop: 12,
-            }}
-          >
-            {VERIFICAR_ABIERTO}
-          </p>
-
           {total === 0 && (
             <div
               style={{

@@ -1,5 +1,6 @@
 // Landing institucional (Fase 2C) — reposicionada hacia la legalización de
-// permisos de pequeña minería y la comercialización condicionada de oro.
+// permisos de pequeña minería y la trazabilidad del oro. CHT es titular y
+// operadora; la plataforma no compra, no vende ni intermedia oro.
 // Server component: el copy con consecuencia jurídica se importa desde
 // lib/content/copy-legal.ts; la interactividad vive en PublicNav y MariaWidget.
 
@@ -11,13 +12,16 @@ import PublicNav from '@/components/landing/PublicNav'
 import SiteFooter from '@/components/landing/SiteFooter'
 import PriceTickerBar from '@/components/precios/PriceTickerBar'
 import {
+  AVISO_PRECIO_REFERENCIAL,
   CERTIFICADO_ORIGEN_NOTA,
+  CONFLICTO_INTERES_CHT,
   CONTACTO,
   DOMICILIO_LINES,
+  FORMULA_PRECIO_REFERENCIAL,
   RAZON_SOCIAL,
-  RAZON_SOCIAL_SERVICIOS_LEGALES,
   ROL_CHT,
 } from '@/lib/content/copy-legal'
+import { ROTULO_PRECIO_REFERENCIAL } from '@/lib/precio/factores'
 
 export const metadata: Metadata = {
   title: 'Legalización de permisos de pequeña minería de oro en Honduras',
@@ -87,38 +91,46 @@ const CLASIFICACION = [
   },
 ] as const
 
-/* Qué hace cada quién — cuatro bloques, dos entidades (Modelo B, 10-nov-2026):
-   CHT presta los servicios legales y mineros; Inversiones Zekaii es dueña de la
-   plataforma, lleva el sello complementario y compra el oro. */
+/* Qué hace la plataforma — cuatro bloques, una sola entidad: CHT es titular,
+   desarrolladora y operadora de MAPE.LEGAL y presta los servicios legales y
+   mineros. Nadie compra oro en esta página: el precio es referencial. */
 const SERVICIOS = [
   {
-    entidad: RAZON_SOCIAL_SERVICIOS_LEGALES,
+    entidad: RAZON_SOCIAL,
     titulo: 'Expediente ante INHGEOMIN',
     cuerpo:
       'Preparación y gestión del expediente de permiso de pequeña minería conforme al Art. 6 del Reglamento Especial MAPE, con representación legal colegiada y seguimiento hasta la resolución.',
     href: '/pequena-mineria#requisitos',
   },
   {
-    entidad: RAZON_SOCIAL_SERVICIOS_LEGALES,
+    entidad: RAZON_SOCIAL,
     titulo: 'Licenciamiento ambiental',
     cuerpo:
       'Contratación del especialista ambiental, gestión de la licencia ambiental cuando procede y plan de cierre conforme al Manual de Buenas Prácticas.',
     href: '/pequena-mineria#requisitos',
   },
   {
-    entidad: `Plataforma MAPE.LEGAL · ${RAZON_SOCIAL}`,
+    entidad: 'Plataforma MAPE.LEGAL',
     titulo: 'Trazabilidad y sello complementario',
     cuerpo:
       'Expediente digital por unidad minera, evidencia georreferenciada y registro voluntario de trazabilidad, verificable públicamente en este sitio. El Certificado de Origen oficial lo emite el titular del derecho minero y lo autentica la autoridad.',
     href: '/mercados',
   },
   {
-    entidad: RAZON_SOCIAL,
-    titulo: 'Comercialización formal',
+    entidad: 'Plataforma MAPE.LEGAL',
+    titulo: 'Precio referencial informativo',
     cuerpo:
-      'Inversiones Zekaii compra oro bajo condiciones publicadas: precio de referencia comercial, pago en lempiras vía cooperativa financiera aliada y registro documental por lote.',
-    href: '/comercializacion',
+      'Publicación diaria de un precio referencial estimado al 75 % de la referencia internacional del oro, en lempiras por gramo de oro fino, con fórmula pública, fuente y fecha. No es una oferta de compra: MAPE.LEGAL no compra, no vende ni intermedia oro.',
+    href: '/precios',
   },
+] as const
+
+/* Quiénes somos — qué hace la plataforma, en el orden en que se la usa. */
+const QUE_HACE_PLATAFORMA = [
+  'Gestión de expedientes de permiso de pequeña minería y licencia ambiental.',
+  'Trazabilidad por unidad minera y sello complementario voluntario, verificable en este sitio.',
+  'Publicación diaria de un precio referencial informativo del oro, con fórmula pública.',
+  'Orientación sobre el marco legal minero y ambiental de Honduras.',
 ] as const
 
 export default function LandingPage() {
@@ -225,18 +237,17 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* QUÉ HACE CADA QUIÉN */}
+      {/* QUÉ HACE LA PLATAFORMA */}
       <section
         id="servicios"
         className="mape-section"
         style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)', scrollMarginTop: 116 }}
       >
-        <div className="section-label">Qué hace cada quién</div>
+        <div className="section-label">Qué hace la plataforma</div>
         <h2 className="section-title">Del expediente a la trazabilidad del oro.</h2>
         <p className="section-sub" style={{ maxWidth: 680 }}>
-          Dos entidades, roles distintos. {RAZON_SOCIAL_SERVICIOS_LEGALES} {ROL_CHT}{' '}
-          {RAZON_SOCIAL} es dueña de la plataforma MAPE.LEGAL, opera la base de datos,
-          lleva el sello complementario de trazabilidad y compra el oro.
+          Una sola entidad. {RAZON_SOCIAL} {ROL_CHT} MAPE.LEGAL no compra, no vende ni
+          intermedia oro.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6 mt-12">
           {SERVICIOS.map((bloque) => (
@@ -285,6 +296,98 @@ export default function LandingPage() {
           <p style={{ fontSize: 13, color: 'var(--t2)', lineHeight: 1.7 }}>
             {CERTIFICADO_ORIGEN_NOTA}
           </p>
+        </div>
+      </section>
+
+      {/* QUIÉNES SOMOS */}
+      <section
+        id="quienes-somos"
+        className="mape-section"
+        style={{ background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', scrollMarginTop: 116 }}
+      >
+        <div className="section-label">Quiénes somos</div>
+        <h2 className="section-title">Quién está detrás de MAPE.LEGAL.</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-16 mt-10 items-start">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 640 }}>
+            <p style={{ fontSize: 16, color: 'var(--t2)', lineHeight: 1.7 }}>
+              {RAZON_SOCIAL} (CHT) es titular, desarrolladora y operadora de la plataforma
+              MAPE.LEGAL. Presta servicios legales y mineros a los productores artesanales y
+              de pequeña minería: expedientes, titulación, sociedad minera y representación.
+            </p>
+            <p style={{ fontSize: 16, color: 'var(--t2)', lineHeight: 1.7 }}>
+              CHT no compra ni vende mineral. MAPE.LEGAL no compra, no vende ni intermedia
+              oro. La plataforma hace cuatro cosas:
+            </p>
+            <ul style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingLeft: 18 }}>
+              {QUE_HACE_PLATAFORMA.map((item) => (
+                <li key={item} style={{ fontSize: 15, color: 'var(--t2)', lineHeight: 1.7 }}>
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <div
+              style={{
+                padding: 'clamp(16px, 3vw, 20px)',
+                background: 'var(--concrete)',
+                border: '1px solid var(--border)',
+                borderRadius: 12,
+              }}
+            >
+              <div style={{ ...EYEBROW_STYLE, marginBottom: 8 }}>Conflicto de interés</div>
+              <p style={{ fontSize: 14, color: 'var(--t2)', lineHeight: 1.7 }}>{CONFLICTO_INTERES_CHT}</p>
+            </div>
+          </div>
+
+          {/* Tarjeta estática del precio referencial — sin fetch; el número vive en /precios */}
+          <div
+            style={{
+              ...CARD_STYLE,
+              background: 'color-mix(in oklch, var(--moss) 7%, white)',
+              border: '1px solid color-mix(in oklch, var(--moss) 28%, white)',
+            }}
+          >
+            <div style={EYEBROW_STYLE}>{ROTULO_PRECIO_REFERENCIAL}</div>
+            <h3
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 20,
+                fontWeight: 600,
+                color: 'var(--ink)',
+                letterSpacing: '-0.01em',
+              }}
+            >
+              Lempiras por gramo de oro fino, publicado una vez al día.
+            </h3>
+            <p
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 13,
+                lineHeight: 1.7,
+                color: 'var(--t1)',
+                background: 'var(--bg)',
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                padding: '12px 14px',
+              }}
+            >
+              {FORMULA_PRECIO_REFERENCIAL}
+            </p>
+            <p style={{ fontSize: 13, color: 'var(--t2)', lineHeight: 1.7, flexGrow: 1 }}>
+              {AVISO_PRECIO_REFERENCIAL}
+            </p>
+            <Link
+              href="/precios"
+              style={{
+                color: 'var(--moss)',
+                fontSize: 14,
+                fontWeight: 600,
+                textDecoration: 'none',
+                alignSelf: 'flex-start',
+              }}
+            >
+              Ver el precio referencial del día →
+            </Link>
+          </div>
         </div>
       </section>
 

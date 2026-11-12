@@ -1,9 +1,15 @@
 'use client';
 
-// Client island del panel de fijación diaria del Precio de Referencia.
+// Client island del panel de fijación diaria del Precio referencial.
 //
-// Flujo en dos pasos (la fijación es un acto con consecuencias comerciales,
-// nunca un solo clic): (1) capturar insumos y "Calcular y revisar" — muestra
+// Hotfix de neutralidad (11-nov-2026): el precio fijado es un PRECIO
+// REFERENCIAL ESTIMADO (factor precargado FACTOR_REFERENCIA = 0.75) — no un
+// precio de transacción. Insumos: referencia internacional del oro (USD/oz) y
+// tipo de cambio de referencia de mercado (exchangerate-api.com). Las claves
+// del body (`referencia_lbma_usd_oz`, `tipo_cambio_bch`) son nombres de
+// columna históricos de la tabla y se conservan.
+//
+// Flujo en dos pasos (la fijación es un acto publicado, nunca un solo clic): (1) capturar insumos y "Calcular y revisar" — muestra
 // la previsualización del precio resultante en L por gramo de oro fino con
 // los tres insumos; (2) "Confirmar fijación" — envía a POST /api/precio,
 // donde el servidor recalcula (nunca acepta el precio del cliente) y aplica
@@ -21,18 +27,9 @@ import {
   FACTOR_COMERCIALIZACION_VIGENTE,
   VERSION_POLITICA_PRECIOS,
 } from '@/lib/precio/calculo';
-import { factorCompraDefinido } from '@/lib/precio/factores';
+import { ROTULO_PRECIO_REFERENCIAL } from '@/lib/precio/factores';
+import { AVISO_PRECIO_REFERENCIAL, ETIQUETA_TIPO_CAMBIO, FUENTE_TIPO_CAMBIO } from '@/lib/content/copy-legal';
 import type { PrecioReferenciaRow } from '@/lib/precio/consulta';
-
-// Modelo B (10-nov-2026): el factor de compra de Inversiones Zekaii, S. de R.L.
-// al productor deriva de FACTOR_COMPRA_ZEKAII (lib/precio/factores.ts). Mientras
-// sea null el panel NO permite calcular ni fijar — el operador no debe inventar
-// el factor en el formulario; se define a nivel de constante y se versiona la
-// política (cláusula 4). El POST /api/precio responde 409 en el mismo caso.
-const FACTOR_PENDIENTE_CONSTANTE = !factorCompraDefinido(FACTOR_COMERCIALIZACION_VIGENTE);
-const AVISO_FACTOR_PENDIENTE =
-  `Factor de compra pendiente de definición por Willis (Política de Precios v${VERSION_POLITICA_PRECIOS}). ` +
-  'No fijar precio hasta que esté definido.';
 
 interface Props {
   hoy: string;
@@ -127,10 +124,8 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
 
   const [lbma, setLbma] = useState('');
   const [tc, setTc] = useState('');
-  // Con el factor pendiente el input arranca vacío y es obligatorio.
-  const [factor, setFactor] = useState(
-    FACTOR_COMERCIALIZACION_VIGENTE != null ? String(FACTOR_COMERCIALIZACION_VIGENTE) : '',
-  );
+  // Factor precargado con el referencial público vigente (0.75).
+  const [factor, setFactor] = useState(String(FACTOR_COMERCIALIZACION_VIGENTE));
   const [motivo, setMotivo] = useState('');
   const [revisando, setRevisando] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -145,9 +140,8 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
     Number.isFinite(tcNum) && tcNum > 0 &&
     Number.isFinite(factorNum) && factorNum > 0 && factorNum <= 1;
 
-  // Gate del botón "Calcular y revisar": insumos válidos Y factor definido a
-  // nivel de constante (no basta con que el operador tipee un número).
-  const puedeCalcular = insumosValidos && !FACTOR_PENDIENTE_CONSTANTE;
+  // Gate del botón "Calcular y revisar": insumos válidos.
+  const puedeCalcular = insumosValidos;
 
   const previsualizacion = useMemo(() => {
     if (!insumosValidos) return null;
@@ -211,34 +205,17 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
             letterSpacing: '-0.01em',
           }}
         >
-          Precio de Referencia — fijación diaria
+          {ROTULO_PRECIO_REFERENCIAL} — fijación diaria
         </h1>
         <p style={{ marginTop: 6, fontSize: 14, color: 'var(--t2)', lineHeight: 1.6 }}>
           Fecha de fijación: <span style={{ fontFamily: 'var(--font-mono)' }}>{hoy}</span> (hora de
           Honduras). El precio se publica en /precio y no varía durante el día. Las correcciones se
           registran por reemplazo con motivo — los registros no se eliminan.
         </p>
+        <p style={{ marginTop: 8, fontSize: 13, color: 'var(--t3)', lineHeight: 1.6 }}>
+          {AVISO_PRECIO_REFERENCIAL}
+        </p>
       </div>
-
-      {FACTOR_PENDIENTE_CONSTANTE && (
-        <div
-          role="alert"
-          style={{
-            background: 'color-mix(in oklch, var(--red) 8%, white)',
-            border: '1px solid color-mix(in oklch, var(--red) 28%, white)',
-            borderRadius: 12,
-            padding: 16,
-            fontSize: 14,
-            color: 'var(--red)',
-            fontWeight: 600,
-            lineHeight: 1.6,
-          }}
-        >
-          {AVISO_FACTOR_PENDIENTE} El factor se define en lib/precio/factores.ts
-          (FACTOR_COMPRA_ZEKAII) y se publica con la nueva versión de la política — no se
-          captura en este panel.
-        </div>
-      )}
 
       {migracionPendiente && (
         <div
@@ -296,8 +273,8 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
             </span>
           </div>
           <p style={{ marginTop: 8, fontSize: 13, color: 'var(--t2)', lineHeight: 1.6 }}>
-            LBMA USD {fmtL(vigenteHoy.referencia_lbma_usd_oz)} / oz · TC L{' '}
-            {fmtL(vigenteHoy.tipo_cambio_bch, 4)} · Factor {fmtL(vigenteHoy.factor_comercializacion, 4)} ·
+            Referencia internacional USD {fmtL(vigenteHoy.referencia_lbma_usd_oz)} / oz · TC L{' '}
+            {fmtL(vigenteHoy.tipo_cambio_bch, 4)} ({FUENTE_TIPO_CAMBIO}) · Factor {fmtL(vigenteHoy.factor_comercializacion, 4)} ·
             Política v{vigenteHoy.version_politica}. Una nueva fijación de hoy lo reemplazará y
             exige motivo.
           </p>
@@ -311,7 +288,7 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
         </h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
           <div>
-            <label htmlFor="pr-lbma" style={LABEL}>Referencia LBMA (USD por onza troy)</label>
+            <label htmlFor="pr-lbma" style={LABEL}>Referencia internacional del oro (USD por onza troy)</label>
             <input
               id="pr-lbma"
               type="number"
@@ -325,7 +302,7 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
             />
           </div>
           <div>
-            <label htmlFor="pr-tc" style={LABEL}>Tipo de cambio BCH (L por USD)</label>
+            <label htmlFor="pr-tc" style={LABEL}>{ETIQUETA_TIPO_CAMBIO} ({FUENTE_TIPO_CAMBIO}), L por USD</label>
             <input
               id="pr-tc"
               type="number"
@@ -339,7 +316,7 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
             />
           </div>
           <div>
-            <label htmlFor="pr-factor" style={LABEL}>Factor de compra al productor (0–1) *</label>
+            <label htmlFor="pr-factor" style={LABEL}>Factor referencial (0–1) *</label>
             <input
               id="pr-factor"
               type="number"
@@ -349,27 +326,22 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
               inputMode="decimal"
               required
               aria-required="true"
-              aria-invalid={FACTOR_PENDIENTE_CONSTANTE || !(Number.isFinite(factorNum) && factorNum > 0 && factorNum <= 1)}
+              aria-invalid={!(Number.isFinite(factorNum) && factorNum > 0 && factorNum <= 1)}
               aria-describedby="pr-factor-nota"
               value={factor}
               onChange={(e) => editar(setFactor)(e.target.value)}
-              disabled={FACTOR_PENDIENTE_CONSTANTE}
-              style={{ ...INPUT, opacity: FACTOR_PENDIENTE_CONSTANTE ? 0.6 : 1 }}
-              placeholder={FACTOR_PENDIENTE_CONSTANTE ? 'pendiente' : undefined}
+              style={INPUT}
             />
             <p
               id="pr-factor-nota"
               style={{
                 marginTop: 4,
                 fontSize: 12,
-                color: FACTOR_PENDIENTE_CONSTANTE ? 'var(--red)' : 'var(--t3)',
-                fontWeight: FACTOR_PENDIENTE_CONSTANTE ? 600 : 400,
+                color: 'var(--t3)',
                 lineHeight: 1.5,
               }}
             >
-              {FACTOR_PENDIENTE_CONSTANTE
-                ? AVISO_FACTOR_PENDIENTE
-                : `Política de Precios v${VERSION_POLITICA_PRECIOS}: ${FACTOR_COMERCIALIZACION_VIGENTE}`}
+              {`Política de Precios v${VERSION_POLITICA_PRECIOS}: ${FACTOR_COMERCIALIZACION_VIGENTE} (${ROTULO_PRECIO_REFERENCIAL})`}
             </p>
           </div>
         </div>
@@ -377,7 +349,6 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
           type="button"
           onClick={() => puedeCalcular && setRevisando(true)}
           disabled={!puedeCalcular || revisando}
-          title={FACTOR_PENDIENTE_CONSTANTE ? AVISO_FACTOR_PENDIENTE : undefined}
           style={{
             marginTop: 18,
             padding: '10px 18px',
@@ -397,7 +368,7 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
       </div>
 
       {/* Paso 2 — previsualización + confirmación */}
-      {revisando && !FACTOR_PENDIENTE_CONSTANTE && previsualizacion !== null && (
+      {revisando && previsualizacion !== null && (
         <div
           style={{
             ...CARD,
@@ -443,7 +414,7 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
                 rows={2}
                 maxLength={500}
                 style={{ ...INPUT, fontFamily: 'var(--font-body)', resize: 'vertical' }}
-                placeholder="Ej.: corrección de la referencia LBMA por error de captura"
+                placeholder="Ej.: corrección de la referencia internacional por error de captura"
               />
             </div>
           )}
@@ -528,7 +499,7 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
               <thead>
                 <tr>
-                  {['Fecha', 'Estado', 'L/g oro fino', 'LBMA USD/oz', 'TC BCH', 'Factor', 'Política', 'Registro', 'Reemplaza a', 'Motivo'].map((th) => (
+                  {['Fecha', 'Estado', 'L/g oro fino', 'Ref. intl. USD/oz', `TC (${FUENTE_TIPO_CAMBIO})`, 'Factor', 'Política', 'Registro', 'Reemplaza a', 'Motivo'].map((th) => (
                     <th key={th} scope="col" style={TH}>{th}</th>
                   ))}
                 </tr>

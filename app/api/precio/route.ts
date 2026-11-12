@@ -1,4 +1,11 @@
-// /api/precio — Precio de Referencia MAPE.LEGAL.
+// /api/precio — Precio referencial MAPE.LEGAL (fijación diaria).
+//
+// Hotfix de neutralidad (11-nov-2026): el precio fijado es un PRECIO
+// REFERENCIAL ESTIMADO (factor por defecto FACTOR_REFERENCIA = 0.75), no un
+// precio de transacción. Las columnas `referencia_lbma_usd_oz` y
+// `tipo_cambio_bch` son nombres históricos de la tabla (migración 030) y se
+// CONSERVAN; sus etiquetas públicas son "referencia internacional del oro" y
+// "tipo de cambio de referencia de mercado (exchangerate-api.com)".
 //
 // GET  (público): registro vigente de la fecha actual (hora de Honduras).
 //      Si no hay precio fijado hoy: { disponible: false } + el último
@@ -28,7 +35,8 @@ import {
   VERSION_POLITICA_PRECIOS,
 } from '@/lib/precio/calculo';
 import { fechaHondurasHoy, getPrecioReferenciaHoy } from '@/lib/precio/consulta';
-import { FACTOR_COMPRA_ZEKAII, factorCompraDefinido } from '@/lib/precio/factores';
+import { FACTOR_REFERENCIA } from '@/lib/precio/factores';
+import { AVISO_PRECIO_REFERENCIAL, FUENTE_TIPO_CAMBIO } from '@/lib/content/copy-legal';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -65,6 +73,8 @@ export async function GET(request: NextRequest) {
           tipo_cambio_bch: vigente.tipo_cambio_bch,
           factor_comercializacion: vigente.factor_comercializacion,
           version_politica: vigente.version_politica,
+          tipo_cambio_fuente: FUENTE_TIPO_CAMBIO,
+          aviso: AVISO_PRECIO_REFERENCIAL,
           metodo_liquidacion: METODO_LIQUIDACION,
           metodo_contraste: METODO_CONTRASTE,
         },
@@ -76,6 +86,8 @@ export async function GET(request: NextRequest) {
       {
         disponible: false,
         fecha: hoy,
+        tipo_cambio_fuente: FUENTE_TIPO_CAMBIO,
+        aviso: AVISO_PRECIO_REFERENCIAL,
         metodo_liquidacion: METODO_LIQUIDACION,
         metodo_contraste: METODO_CONTRASTE,
         // Último precio vigente anterior, etiquetado con su propia fecha.
@@ -96,7 +108,7 @@ export async function GET(request: NextRequest) {
     );
   } catch (err) {
     console.error('[api/precio] GET error:', err);
-    return NextResponse.json({ error: 'Error al consultar el precio de referencia' }, { status: 500 });
+    return NextResponse.json({ error: 'Error al consultar el precio referencial' }, { status: 500 });
   }
 }
 
@@ -120,27 +132,9 @@ const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
 export async function POST(request: NextRequest) {
   try {
     // 1–2. Sesión + rol dentro del handler (R3). 401 sin sesión, 403 si el
-    // rol no es administración de Inversiones Zekaii, S. de R.L. (admin).
+    // rol no es admin.
     const auth = await requireRole('admin');
     if (auth instanceof NextResponse) return auth;
-
-    // 2b. Modelo B (10-nov-2026): el factor de compra de Inversiones Zekaii al
-    // productor debe estar definido A NIVEL DE CONSTANTE (lib/precio/factores.ts)
-    // antes de poder fijar un precio. Mientras sea null no se inserta nada —
-    // tampoco si el cliente manda un factor en el body: el factor no lo decide
-    // el operador en el panel, lo publica la Política de Precios (cláusula 4).
-    if (!factorCompraDefinido(FACTOR_COMPRA_ZEKAII)) {
-      return NextResponse.json(
-        {
-          error: 'factor_compra_pendiente',
-          detalle:
-            'El factor de compra al productor está pendiente de definición por Willis (Política de Precios v' +
-            VERSION_POLITICA_PRECIOS +
-            '). No se puede fijar un precio hasta que esté definido en lib/precio/factores.ts.',
-        },
-        { status: 409 },
-      );
-    }
 
     // 3. Validación del cuerpo.
     let body: FijacionBody;
@@ -150,14 +144,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Cuerpo JSON inválido' }, { status: 400 });
     }
 
+    // Insumos: referencia internacional del oro (USD/oz troy) y tipo de cambio
+    // de referencia de mercado (L por USD). Las claves del body conservan los
+    // nombres de columna de la tabla. El factor por defecto es el referencial
+    // público (FACTOR_REFERENCIA); el panel lo precarga y puede sobreescribirlo.
     const lbma = numFinito(body.referencia_lbma_usd_oz);
     const tc = numFinito(body.tipo_cambio_bch);
-    const factor = numFinito(body.factor_comercializacion);
+    const factor = body.factor_comercializacion == null ? FACTOR_REFERENCIA : numFinito(body.factor_comercializacion);
     if (lbma === null || lbma <= 0 || lbma > 1_000_000) {
-      return NextResponse.json({ error: 'referencia_lbma_usd_oz debe ser un número mayor que 0' }, { status: 400 });
+      return NextResponse.json({ error: 'referencia_lbma_usd_oz (referencia internacional del oro, USD/oz) debe ser un número mayor que 0' }, { status: 400 });
     }
     if (tc === null || tc <= 0 || tc > 10_000) {
-      return NextResponse.json({ error: 'tipo_cambio_bch debe ser un número mayor que 0' }, { status: 400 });
+      return NextResponse.json({ error: 'tipo_cambio_bch (tipo de cambio de referencia de mercado, L por USD) debe ser un número mayor que 0' }, { status: 400 });
     }
     if (factor === null || factor <= 0 || factor > 1) {
       return NextResponse.json({ error: 'factor_comercializacion debe ser mayor que 0 y no mayor que 1' }, { status: 400 });
@@ -295,6 +293,6 @@ export async function POST(request: NextRequest) {
     );
   } catch (err) {
     console.error('[api/precio] POST error:', err);
-    return NextResponse.json({ error: 'Error al fijar el precio de referencia' }, { status: 500 });
+    return NextResponse.json({ error: 'Error al fijar el precio referencial' }, { status: 500 });
   }
 }

@@ -4,8 +4,13 @@ import {
   checkWhatsAppTokenHealth,
   WhatsAppApiError,
 } from '@/services/whatsappService';
-import { type PreciosDiarios, mapeGoldBuyLpsPerGram, buildKaratPrices } from '@/services/pricingService';
-import { factorCompraDefinido } from '@/lib/precio/factores';
+import { type PreciosDiarios, referenciaLpsPorGramoFino, buildKaratPrices } from '@/services/pricingService';
+import { ROTULO_PRECIO_REFERENCIAL } from '@/lib/precio/factores';
+import {
+  AVISO_PRECIO_REFERENCIAL,
+  ETIQUETA_TIPO_CAMBIO,
+  FUENTE_TIPO_CAMBIO,
+} from '@/lib/content/copy-legal';
 import { getActiveSubscribers, type BroadcastRol } from '@/services/userService';
 
 // ─── Honduras local time ──────────────────────────────────────────────────────
@@ -37,6 +42,14 @@ export function hondurasDate(): string {
 // Formato canónico del broadcast diario de las 8 AM Honduras.
 // No llama a Claude — el mensaje es determinístico para garantizar consistencia
 // y evitar alucinaciones de precio.
+//
+// Hotfix de neutralidad (11-nov-2026): el boletín publica un PRECIO
+// REFERENCIAL ESTIMADO (75 % de la referencia internacional del oro, en
+// lempiras por gramo de oro fino) acompañado SIEMPRE del aviso literal
+// AVISO_PRECIO_REFERENCIAL. No nombra contrapartes, no promete pago ni plazo,
+// y el tipo de cambio se atribuye a su fuente real (FUENTE_TIPO_CAMBIO).
+// Cualquier cambio de estructura debe reflejarse también en el template del
+// prompt de María (lib/maria/systemPrompt.ts §NOTIFICACIÓN DIARIA).
 
 export async function generateDailyMessage(precios: PreciosDiarios): Promise<string> {
   const now = new Date();
@@ -53,12 +66,8 @@ export async function generateDailyMessage(precios: PreciosDiarios): Promise<str
   const tc = precios.usd_hnl ?? 0;
   const oroUsd = precios.oro ?? 0;
   const oroLps = oroUsd && tc ? oroUsd * tc : 0;
-  // Modelo B (10-nov-2026): el comprador es Inversiones Zekaii, S. de R.L. y su
-  // factor de compra al productor está PENDIENTE (FACTOR_COMPRA_ZEKAII = null en
-  // lib/precio/factores.ts). Mientras lo esté, el boletín NO imprime precio de
-  // compra ni la sección de kilates en lempiras — solo lo declara pendiente.
-  const factorPendiente = !factorCompraDefinido();
-  const compraLpsPorGramo = mapeGoldBuyLpsPerGram(oroUsd, tc) ?? 0;
+  // Helper canónico — mismo cálculo que /api/precios/live, el widget y María.
+  const referencialLpsPorGramo = referenciaLpsPorGramoFino(oroUsd, tc) ?? 0;
   const fuente = precios.fuente && precios.fuente !== 'failed-all-sources' ? precios.fuente : 'yahoo-finance';
 
   const fmtLps = (n: number) =>
@@ -80,38 +89,34 @@ export async function generateDailyMessage(precios: PreciosDiarios): Promise<str
       `Hoy no pude traer el precio exacto. Te lo enviamos en cuanto lo tengamos.`,
       ``,
       `Precios de referencia al ${fechaLarga} — ${horaCorta} Honduras`,
-      `Fuentes: ${fuente} + BCH referencial`,
+      `Fuentes: ${fuente} + ${FUENTE_TIPO_CAMBIO}`,
       ``,
       `Ver detalles: www.mape.legal`,
     ].join('\n');
   }
 
-  // Every data line is a `* ` bullet — matches MARIA.md §8 (canonical price
-  // format requires 4 obligatory bullets: Oro internacional, Precio de compra
-  // de Inversiones Zekaii, Tipo de cambio USD/LPS, Actualizado). The reference
-  // price comes from goldapi.io spot / Yahoo COMEX GC=F — NOT the LBMA fix — so
-  // it is labeled "Oro internacional", not "LBMA". Footer lines are unprefixed
-  // so they read as a separator from the data section.
+  // Every data line is a `* ` bullet — matches MARIA.md §8. The international
+  // reference comes from goldapi.io spot / Yahoo COMEX GC=F — NOT the LBMA fix —
+  // so it is labeled "Oro internacional", not "LBMA". Footer lines are
+  // unprefixed so they read as a separator from the data section.
   const tcLine = tc > 0 ? `L ${tc.toFixed(2)} por USD` : 'N/D';
   // Conversión por kilates — mismo helper canónico que el widget de /precios y
   // el bloque PRECIOS DE REFERENCIA de María, para que los cuatro canales
   // muestren exactamente los mismos números.
   //
   // "por gramo de material" es deliberado y NO debe abreviarse a "por gramo":
-  // la viñeta de compra de arriba es por gramo de oro FINO, y estas son por
+  // la viñeta referencial de arriba es por gramo de oro FINO, y estas son por
   // gramo del material al kilataje indicado. Dos cifras distintas separadas por
   // dos líneas — sin el calificativo se leen como la misma (misma ambigüedad
   // que persigue la regla R5 del encargo Precio de Referencia).
   //
-  // El penique (pennyweight, dwt = 1.5552 g) es la unidad de compra corriente
-  // del oro artesanal — cada viñeta trae ambas unidades y el encabezado define
-  // la equivalencia para que la cifra sea verificable.
-  // buildKaratPrices devuelve null mientras el factor de compra esté pendiente
-  // (además de cuando faltan insumos) — sin factor no hay kilates en lempiras.
-  const kilates = factorPendiente ? null : buildKaratPrices(oroUsd, tc);
+  // El penique (pennyweight, dwt = 1.5552 g) es la unidad corriente del
+  // comercio de oro artesanal — cada viñeta trae ambas unidades y el encabezado
+  // define la equivalencia para que la cifra sea verificable.
+  const kilates = buildKaratPrices(oroUsd, tc);
   const kilatesLines = kilates
     ? [
-        `Precio estimado por kilates (según su contenido de oro fino; 1 penique/dwt = 1.5552 g):`,
+        `Referencia estimada por kilates (según su contenido de oro fino; 1 penique/dwt = 1.5552 g):`,
         ...kilates.map(
           (k) =>
             `* ${k.kilates} kilates: ${fmtLps(k.referencia_lps_g)} por gramo de material · ${fmtLps(k.referencia_lps_dwt)} por penique`,
@@ -126,26 +131,16 @@ export async function generateDailyMessage(precios: PreciosDiarios): Promise<str
     `El precio de oro el día de hoy es:`,
     `* Oro internacional: ${fmtUsd(oroUsd)} USD/oz`,
     `* En Lempiras: ${fmtLps(oroLps)} por onza (aprox.)`,
-    `* Tasa de cambio referencia: ${tcLine}`,
+    `* ${ETIQUETA_TIPO_CAMBIO} (${FUENTE_TIPO_CAMBIO}): ${tcLine}`,
     ``,
-    ...(factorPendiente
-      ? [
-          // Sin cifras: el factor de compra al productor no está definido.
-          `Precio de compra al productor:`,
-          `* Precio de compra al productor: pendiente de publicación en la Política de Precios de Inversiones Zekaii`,
-          `* Pago realizado en Lempiras en su cuenta de la cooperativa financiera aliada`,
-          ``,
-        ]
-      : [
-          `Precio de compra oro calculado en Lempiras:`,
-          `* Precio de compra de Inversiones Zekaii según la Política de Precios vigente`,
-          `* ${fmtLps(compraLpsPorGramo)} por gramo de oro fino (estimado)`,
-          `* Pago realizado en Lempiras en su cuenta de la cooperativa financiera aliada`,
-          ``,
-          ...kilatesLines,
-        ]),
+    `${ROTULO_PRECIO_REFERENCIAL}:`,
+    `* ${fmtLps(referencialLpsPorGramo)} por gramo de oro fino`,
+    ``,
+    ...kilatesLines,
+    `* ${AVISO_PRECIO_REFERENCIAL}`,
+    ``,
     `Precios de referencia al ${fechaLarga} — ${horaCorta} Honduras`,
-    `Fuentes: ${fuente} + BCH referencial`,
+    `Fuentes: ${fuente} + ${FUENTE_TIPO_CAMBIO}`,
     ``,
     `Ver detalles: www.mape.legal`,
   ];

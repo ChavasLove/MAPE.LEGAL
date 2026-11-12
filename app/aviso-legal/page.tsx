@@ -8,17 +8,18 @@ import SiteFooter from '@/components/landing/SiteFooter'
 import {
   AVISO_NATURALEZA_INFORMATIVA,
   AVISO_PLATAFORMA,
+  AVISO_PRECIO_REFERENCIAL,
   AVISO_RESOLUCIONES,
   CERTIFICADO_ORIGEN_NOTA,
   CITAS_LEGALES,
-  CONDICION_COMPRA,
+  CONFLICTO_INTERES_CHT,
+  FORMULA_PRECIO_REFERENCIAL,
   LIBERTAD_VENTA,
   PIE_NOTA_LEGAL,
-  POLITICA_PRECIO,
   RAZON_SOCIAL,
-  RAZON_SOCIAL_SERVICIOS_LEGALES,
-  REGISTRO_COMERCIALIZADOR,
+  ROL_TITULAR,
 } from '@/lib/content/copy-legal'
+import { ROTULO_PRECIO_REFERENCIAL } from '@/lib/precio/factores'
 
 export const metadata: Metadata = {
   title: 'Aviso legal',
@@ -39,13 +40,15 @@ const SECTION_TITLE: React.CSSProperties = {
 
 const BODY: React.CSSProperties = { fontSize: 15, color: 'var(--t2)', lineHeight: 1.7 }
 
+// Hotfix de neutralidad (11-nov-2026): sin "Condición de compra", sin
+// "Registro de Comercializadores" y sin "Política de precio" — la plataforma
+// no compra. El precio es referencial e informativo, con su aviso literal.
 const NOTAS: Array<{ titulo: string; texto: string }> = [
   { titulo: 'Certificado de Origen y sello complementario', texto: CERTIFICADO_ORIGEN_NOTA },
   { titulo: 'Nota legal del sello MAPE.LEGAL', texto: PIE_NOTA_LEGAL },
-  { titulo: 'Condición de compra', texto: CONDICION_COMPRA },
-  { titulo: 'Registro de Comercializadores', texto: REGISTRO_COMERCIALIZADOR },
-  { titulo: 'Política de precio', texto: POLITICA_PRECIO },
+  { titulo: ROTULO_PRECIO_REFERENCIAL, texto: `${FORMULA_PRECIO_REFERENCIAL}. ${AVISO_PRECIO_REFERENCIAL}` },
   { titulo: 'Libertad de venta', texto: LIBERTAD_VENTA },
+  { titulo: 'Conflicto de interés', texto: CONFLICTO_INTERES_CHT },
   { titulo: 'Resoluciones de la Autoridad Minera', texto: AVISO_RESOLUCIONES },
 ]
 
@@ -67,14 +70,16 @@ export default function AvisoLegalPage() {
             <p style={BODY}>{AVISO_NATURALEZA_INFORMATIVA}</p>
             <p style={BODY}>{AVISO_PLATAFORMA}</p>
             <p style={BODY}>
-              {RAZON_SOCIAL} es dueña y titular de la plataforma, opera la base de datos,
-              lleva el sello complementario de trazabilidad y compra el oro. El sello no es
-              un acto de INHGEOMIN y no sustituye el documento oficial de procedencia.
+              {RAZON_SOCIAL} (CHT) — {ROL_TITULAR.toLowerCase()} — desarrolla y opera la
+              base de datos, lleva el sello complementario de trazabilidad y presta servicios
+              legales y mineros a los productores. CHT no compra ni vende mineral. El sello no
+              es un acto de INHGEOMIN y no sustituye el documento oficial de procedencia.
             </p>
+            <p style={BODY}>{CONFLICTO_INTERES_CHT}</p>
             <p style={BODY}>
-              Para asesoría sobre un caso concreto, {RAZON_SOCIAL_SERVICIOS_LEGALES} atiende
-              por los canales de contacto publicados en este sitio, previa evaluación del
-              caso y acuerdo expreso de representación.
+              Para asesoría sobre un caso concreto, {RAZON_SOCIAL} atiende por los canales
+              de contacto publicados en este sitio, previa evaluación del caso y acuerdo
+              expreso de representación.
             </p>
           </section>
 

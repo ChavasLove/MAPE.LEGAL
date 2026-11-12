@@ -1,18 +1,17 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getAdminClient } from '@/services/adminSupabase';
-import { mapeGoldBuyLpsPerGram, effectivePriceDate } from '@/services/pricingService';
+import { referenciaLpsPorGramoFino, effectivePriceDate, FACTOR_REFERENCIA_PUBLICO } from '@/services/pricingService';
 import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit';
-import { factorCompraDefinido } from '@/lib/precio/factores';
+import { AVISO_PRECIO_REFERENCIAL, FUENTE_TIPO_CAMBIO } from '@/lib/content/copy-legal';
 
 // Public, unauthenticated price history for the /precios chart. Reads the daily
 // 8 AM snapshots from precios_diarios (service-role — anon has no SELECT on that
 // table per migration 009) and derives the same numbers /api/precios/live serves:
 // international gold USD/oz, USD/HNL, gold in Lempiras per troy oz, and the
-// Inversiones Zekaii purchase price in Lempiras per gram of fine gold (computed
-// here via the canonical mapeGoldBuyLpsPerGram helper so history can never
-// drift from the live quote). While the purchase factor is pending
-// (FACTOR_COMPRA_ZEKAII = null) oro_compra_lps_gramo is null on every point and
-// the response carries factor_compra_pendiente: true — no figure is invented.
+// precio referencial (75 %) in Lempiras per gram of fine gold (computed here
+// via the canonical referenciaLpsPorGramoFino helper so history can never
+// drift from the live quote). The reference price is an informative estimate
+// — the response carries the literal AVISO_PRECIO_REFERENCIAL.
 //
 // Read-only over the frozen daily rows — this route NEVER triggers an upstream
 // fetch; a missing day simply isn't in the series. /api/precios/live owns the
@@ -74,18 +73,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const factor_compra_pendiente = !factorCompraDefinido();
     const puntos = (data ?? [])
       .map((r) => {
         const oro = num(r.oro);
         const usdHnl = num(r.usd_hnl);
         if (!r.fecha || oro == null || oro <= 0) return null;
+        const referencial = referenciaLpsPorGramoFino(oro, usdHnl);
         return {
           fecha: r.fecha as string,
           oro_usd_oz: oro,
           usd_hnl: usdHnl,
           oro_lps_oz: usdHnl != null ? oro * usdHnl : null,
-          oro_compra_lps_gramo: factor_compra_pendiente ? null : mapeGoldBuyLpsPerGram(oro, usdHnl),
+          // Canónico + alias de compatibilidad (mismo valor; la UI nunca usa el alias como rótulo).
+          oro_referencial_lps_gramo: referencial,
+          oro_compra_lps_gramo: referencial,
         };
       })
       .filter((p): p is NonNullable<typeof p> => p != null);
@@ -93,7 +94,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         dias: days,
-        factor_compra_pendiente,
+        factor_referencia: FACTOR_REFERENCIA_PUBLICO,
+        tipo_cambio_fuente: FUENTE_TIPO_CAMBIO,
+        aviso: AVISO_PRECIO_REFERENCIAL,
         desde: puntos[0]?.fecha ?? cutoff,
         hasta: puntos[puntos.length - 1]?.fecha ?? null,
         puntos,

@@ -1,7 +1,7 @@
 ---
 titulo: "Requisitos Para Licenciamiento Ambiental SLAS 2"
 acuerdo: "No especificado en el documento fuente"
-emisor: "Secretaría de Energía, Recursos Naturales, Ambiente y Minas — Gobierno de la República de Honduras (Presidenta Xiomara Castro)"
+emisor: "Secretaría de Energía, Recursos Naturales, Ambiente y Minas — Gobierno de la República de Honduras (período 2022–2026)"
 fecha_publicacion: "No especificada en el documento fuente"
 fuente_pdf: "bef954bc-Nuevos_Requisitos_SLAS.pdf"
 paginas: "1"
@@ -14,7 +14,7 @@ procesado_en: "2026-05-14"
 
 **Emisor:** Secretaría de Energía, Recursos Naturales, Ambiente y Minas (SERNA / MiAmbiente) — Gobierno de la República de Honduras.
 
-**Administración:** Presidenta Xiomara Castro.
+**Administración:** Presidencia de la República, período 2022–2026.
 
 **Plataforma:** Sistema de Licenciamiento Ambiental Simplificado (SLAS-2).
 
@@ -157,7 +157,7 @@ Las siguientes observaciones forman parte integral del documento oficial y deben
 
 - El documento fuente es de **una sola página** (1 página total) y fue leído íntegramente sin necesidad de paginación parcial. La extracción se realizó mediante `Read(file_path=<path>)` sin parámetro `pages`.
 - El documento fuente **no especifica número de acuerdo, resolución ni fecha de publicación** en el texto visible.
-- El encabezado del documento muestra el escudo del Gobierno de Honduras y el branding "HONDURAS — GOBIERNO DE LA REPÚBLICA", así como la indicación "Presidenta Xiomara Castro" y el pie institucional "Energía, Recursos Naturales, Ambiente y Minas".
+- El encabezado del documento muestra el escudo del Gobierno de Honduras y el branding "HONDURAS — GOBIERNO DE LA REPÚBLICA", así como la indicación de la Presidencia de la República del período y el pie institucional "Energía, Recursos Naturales, Ambiente y Minas".
 - El documento **no incluye una matriz formal de requisitos cruzada por categoría 1/2/3/4**; únicamente menciona explícitamente la documentación adicional para **Categoría 4** en el Requisito 15. Las categorías 1, 2 y 3 no se detallan en este documento — solo se indica que la herramienta técnica varía según la categoría del proyecto (Memoria Técnica, Plan De Gestión Ambiental o Estudio De Impacto Ambiental).
 - Se preservó la ortografía original del documento, incluyendo posibles inconsistencias como "INGHEOMIN" (el organismo oficial se escribe usualmente "INHGEOMIN" — Instituto Hondureño de Geología y Minas), "Pagina" sin tilde, "Estará" en lugar de "estar" en el Requisito 10, y otras particularidades del texto fuente.
 - El nombre del documento "SLAS 2" corresponde a la segunda versión / iteración del Sistema de Licenciamiento Ambiental Simplificado.

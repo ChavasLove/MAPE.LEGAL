@@ -322,7 +322,7 @@ function RegistroForm() {
           <Link href="/aviso-legal" className="font-semibold hover:underline" style={{ color: C.primary }}>
             aviso legal
           </Link>{' '}
-          de la plataforma MAPE.LEGAL, de la que es dueña Inversiones Zekaii, S. de R.L.
+          de la plataforma MAPE.LEGAL, de la que es titular y operadora Corporación Hondureña Tenka, S.A.
         </p>
       </div>
     </div>

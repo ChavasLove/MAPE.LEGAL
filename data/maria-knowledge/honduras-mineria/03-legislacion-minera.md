@@ -18,7 +18,7 @@ Primer régimen moderno de concesiones mineras; creó la DEFOMIN y un régimen d
 
 ### Suspensión de la minería metálica de 2006 — Decreto Ejecutivo PCM-09-2006
 
-Moratoria sobre nuevas concesiones de minería metálica decretada por el presidente Zelaya. Estado: superado históricamente por la ley de 2012; es el antecedente de la moratoria administrativa de 2022.
+Moratoria sobre nuevas concesiones de minería metálica decretada por el Poder Ejecutivo en 2006. Estado: superado históricamente por la ley de 2012; es el antecedente de la moratoria administrativa de 2022.
 
 ### Ley General de Minería vigente — Decreto Legislativo 238-2012
 

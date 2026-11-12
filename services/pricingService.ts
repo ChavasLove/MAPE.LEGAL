@@ -1,5 +1,5 @@
 import { getAdminClient } from '@/services/adminSupabase';
-import { FACTOR_COMPRA_ZEKAII, factorCompraDefinido } from '@/lib/precio/factores';
+import { FACTOR_REFERENCIA, factorReferenciaDefinido } from '@/lib/precio/factores';
 
 export interface PreciosDiarios {
   oro: number | null;
@@ -23,16 +23,19 @@ const FETCH_TIMEOUT_MS = 8000;
 // drift that a client comparing two replies would notice.
 export const TROY_OUNCE_GRAMS = 31.1034768;
 
-// Factor de compra de Inversiones Zekaii, S. de R.L. al productor, como
-// fracción de la referencia internacional del oro. NO es una constante propia:
-// es un alias (nombre histórico, conservado para no romper imports) de
-// FACTOR_COMPRA_ZEKAII en lib/precio/factores.ts — la FUENTE ÚNICA del modelo B
-// (10-nov-2026). `null` = factor PENDIENTE DE DEFINICIÓN POR WILLIS: mientras
-// esté en null, mapeGoldBuyLpsPerGram() y buildKaratPrices() devuelven null y
-// ninguna superficie (boletín, María WhatsApp + web, /api/precios/live) puede
-// mostrar un precio de compra en lempiras. No sustituir aquí por una cifra —
-// se edita únicamente en factores.ts (script scripts/actualizar-factor-compra.mjs).
-export const MAPE_GOLD_BUY_FACTOR: number | null = FACTOR_COMPRA_ZEKAII;
+// Factor del PRECIO REFERENCIAL público (fracción de la referencia
+// internacional del oro; hoy 0.75 → rótulo "Precio referencial (75%)"). NO es
+// una constante propia: es un alias de FACTOR_REFERENCIA en
+// lib/precio/factores.ts — la FUENTE ÚNICA del factor (hotfix de neutralidad,
+// 11-nov-2026). La plataforma no interviene en la transacción del mineral: este
+// factor produce un precio referencial estimado e informativo, nunca un precio
+// de transacción.
+// No sustituir aquí por una cifra — se edita únicamente en factores.ts
+// (script scripts/actualizar-factor-referencia.mjs).
+export const FACTOR_REFERENCIA_PUBLICO: number = FACTOR_REFERENCIA;
+
+/** @deprecated Nombre histórico; usar FACTOR_REFERENCIA_PUBLICO. Mismo valor. */
+export const MAPE_GOLD_BUY_FACTOR: number = FACTOR_REFERENCIA_PUBLICO;
 
 // The public price is a single daily snapshot anchored to 08:00 Honduras time.
 // The cron, the cold-cache fetch, and María all key precios_diarios by
@@ -66,35 +69,37 @@ export function effectivePriceDate(now: Date = new Date()): string {
 }
 
 /**
- * Precio de compra de Inversiones Zekaii, S. de R.L. al productor, en Lempiras
- * por gramo de oro fino.
- * = referencia internacional USD/oz × FACTOR_COMPRA_ZEKAII × USD/HNL
+ * Precio referencial en Lempiras por gramo de oro fino.
+ * = referencia internacional USD/oz × FACTOR_REFERENCIA_PUBLICO × USD/HNL
  *   ÷ troy-ounce-grams.
- * Returns null when either input is missing or non-positive, AND when the
- * purchase factor is still pending (FACTOR_COMPRA_ZEKAII === null) — callers
- * must render a "pendiente de la Política de Precios" state, never a figure.
+ * Devuelve null solo cuando un insumo falta o no es positivo (o si el factor
+ * no fuera un número válido en (0, 1], lo que no ocurre con la constante
+ * actual). Nombre canónico desde el hotfix de neutralidad (11-nov-2026).
  */
-export function mapeGoldBuyLpsPerGram(
+export function referenciaLpsPorGramoFino(
   oroUsdOz: number | null | undefined,
   usdHnl: number | null | undefined,
 ): number | null {
-  if (!factorCompraDefinido(MAPE_GOLD_BUY_FACTOR)) return null;
+  if (!factorReferenciaDefinido(FACTOR_REFERENCIA_PUBLICO)) return null;
   if (!oroUsdOz || oroUsdOz <= 0 || !usdHnl || usdHnl <= 0) return null;
-  return (oroUsdOz * MAPE_GOLD_BUY_FACTOR * usdHnl) / TROY_OUNCE_GRAMS;
+  return (oroUsdOz * FACTOR_REFERENCIA_PUBLICO * usdHnl) / TROY_OUNCE_GRAMS;
 }
+
+/** @deprecated Nombre histórico; usar referenciaLpsPorGramoFino(). Mismo cálculo. */
+export const mapeGoldBuyLpsPerGram = referenciaLpsPorGramoFino;
 
 // ─── Conversión por kilates ───────────────────────────────────────────────────
 //
 // Ley nominal = kilates ÷ 24 (fracción de oro fino contenida en el material).
 // Los valores por kilate son aritmética sobre el snapshot diario de las 8 AM —
-// en una compra real el contenido de oro fino se determina por ensaye, no por
-// el kilataje declarado. Single source of truth: /api/precios/live (widget de
+// en una transacción real el contenido de oro fino se determina por ensaye,
+// no por el kilataje declarado. Single source of truth: /api/precios/live (widget de
 // /precios), el boletín diario y María (WhatsApp + web) consumen este helper
 // para que los cuatro canales muestren exactamente los mismos números.
 export const GOLD_KARATS = [16, 18, 20, 22] as const;
 
 // 1 penique (pennyweight, dwt) = 1/20 de onza troy = 1.55517384 g. Unidad de
-// uso corriente en la compra de oro artesanal en Centroamérica; los valores
+// uso corriente en el comercio de oro artesanal en Centroamérica; los valores
 // por penique se derivan de los valores por gramo con esta constante — nunca
 // re-derivar desde la onza en un caller (drift de redondeo).
 export const PENNYWEIGHT_GRAMS = TROY_OUNCE_GRAMS / 20;
@@ -107,25 +112,23 @@ export interface KaratPrice {
   oro_usd_g: number;
   /** Valor internacional del oro contenido en 1 g de material, en Lempiras. */
   oro_lps_g: number;
-  /** Precio de compra de Zekaii al productor aplicado al contenido nominal de oro fino, L por 1 g de material. */
+  /** Precio referencial (75%) aplicado al contenido nominal de oro fino, L por 1 g de material. */
   referencia_lps_g: number;
   /** Valor internacional del oro contenido en 1 penique (dwt) de material, en USD. */
   oro_usd_dwt: number;
   /** Valor internacional del oro contenido en 1 penique (dwt) de material, en Lempiras. */
   oro_lps_dwt: number;
-  /** Precio de compra de Zekaii al productor aplicado al contenido nominal de oro fino, L por 1 penique (dwt) de material. */
+  /** Precio referencial (75%) aplicado al contenido nominal de oro fino, L por 1 penique (dwt) de material. */
   referencia_lps_dwt: number;
 }
 
-// Devuelve null sin insumos válidos Y mientras el factor de compra esté
-// pendiente (ver mapeGoldBuyLpsPerGram) — la tabla de kilates con cifras en L
-// no puede existir sin factor definido.
+// Devuelve null solo sin insumos válidos (ver referenciaLpsPorGramoFino).
 export function buildKaratPrices(
   oroUsdOz: number | null | undefined,
   usdHnl: number | null | undefined,
 ): KaratPrice[] | null {
   if (!oroUsdOz || oroUsdOz <= 0 || !usdHnl || usdHnl <= 0) return null;
-  const refLpsPerFineGram = mapeGoldBuyLpsPerGram(oroUsdOz, usdHnl);
+  const refLpsPerFineGram = referenciaLpsPorGramoFino(oroUsdOz, usdHnl);
   if (refLpsPerFineGram == null) return null;
   const usdPerFineGram = oroUsdOz / TROY_OUNCE_GRAMS;
   return GOLD_KARATS.map((kilates) => {

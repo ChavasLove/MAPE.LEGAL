@@ -4,12 +4,12 @@ import PreciosClient from './PreciosClient';
 export const metadata: Metadata = {
   title: 'Precio del oro en Honduras — actualizado diariamente',
   description:
-    'Precio del oro actualizado diariamente, precio de referencia comercial de Inversiones Zekaii en lempiras por gramo de oro fino, tipo de cambio de referencia del BCH.',
+    'Precio internacional del oro actualizado diariamente, precio referencial (75%) en lempiras por gramo de oro fino y tipo de cambio de referencia de mercado. Informativo: MAPE.LEGAL no compra ni vende oro.',
   alternates: { canonical: '/precios' },
   openGraph: {
     title: 'Precio del oro · MAPE.LEGAL',
     description:
-      'Precio del oro actualizado diariamente, precio de referencia comercial de Inversiones Zekaii en lempiras por gramo de oro fino, tipo de cambio de referencia del BCH.',
+      'Precio internacional del oro actualizado diariamente, precio referencial (75%) en lempiras por gramo de oro fino y tipo de cambio de referencia de mercado. Informativo: MAPE.LEGAL no compra ni vende oro.',
   },
 };
 

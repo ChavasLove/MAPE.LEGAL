@@ -15,11 +15,13 @@
 // el pie aclara que la ley nominal es aritmética de referencia, no un ensaye.
 //
 // Toggle gramo/penique: el penique (pennyweight, dwt = 1.55517384 g) es la
-// unidad de uso corriente en la compra de oro artesanal — mismas tres columnas
+// unidad de uso corriente en el comercio de oro artesanal — mismas tres columnas
 // de valores, solo cambia la unidad. Sin animaciones continuas (DESIGN §4).
 
 import { useState, type CSSProperties } from 'react';
 import { type LivePrices } from './LivePricesWidget';
+import { ROTULO_PRECIO_REFERENCIAL } from '@/lib/precio/factores';
+import { AVISO_PRECIO_REFERENCIAL } from '@/lib/content/copy-legal';
 
 const SHADOW_SM = '0 2px 6px rgba(31,42,56,0.05)';
 
@@ -49,12 +51,6 @@ export default function KaratPricesTable({
 }) {
   const t = (es: string, en: string) => (lang === 'es' ? es : en);
   const [unit, setUnit] = useState<Unit>('g');
-
-  // Modelo B: mientras Inversiones Zekaii no publique su factor de compra, la
-  // API manda kilates: null + factor_compra_pendiente: true. La tabla no
-  // muestra ninguna cifra — solo el estado pendiente.
-  const compraPendiente =
-    data != null && (data.factor_compra_pendiente === true || data.kilates == null);
 
   // Servidor manda cuando hay datos; el placeholder sólo da forma pre-carga.
   // Los campos dwt pueden faltar en respuestas cacheadas previas al rollout de
@@ -184,36 +180,11 @@ export default function KaratPricesTable({
         }}
       >
         {t(
-          'A diferencia del precio de referencia de arriba, que es por gramo de oro fino, estas cifras son por unidad del material al kilataje indicado: el oro contenido según su ley nominal (kilates ÷ 24). 1 penique (dwt) = 1.5552 g. Se derivan del mismo precio del día, capturado a las 8:00 a.m. (Honduras).',
+          'A diferencia del precio referencial de arriba, que es por gramo de oro fino, estas cifras son por unidad del material al kilataje indicado: el oro contenido según su ley nominal (kilates ÷ 24). 1 penique (dwt) = 1.5552 g. Se derivan del mismo precio del día, capturado a las 8:00 a.m. (Honduras).',
           'Unlike the reference price above, which is per gram of fine gold, these figures are per unit of material at the stated karat: the gold it contains at its nominal fineness (karats ÷ 24). 1 pennyweight (dwt) = 1.5552 g. Derived from the same daily price, captured at 8:00 a.m. (Honduras).',
         )}
       </p>
 
-      {compraPendiente ? (
-        <div
-          role="status"
-          style={{
-            padding: 20,
-            borderRadius: 12,
-            background: 'color-mix(in oklch, var(--amber) 14%, white)',
-            border: '1px solid color-mix(in oklch, var(--amber) 30%, white)',
-            color: 'var(--amber)',
-            fontFamily: 'var(--font-body)',
-            fontSize: 14,
-            lineHeight: 1.55,
-            fontWeight: 500,
-          }}
-        >
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>
-            {t('Pendiente de la Política de Precios', 'Pending the Pricing Policy')}
-          </div>
-          {t(
-            'La conversión por kilates en lempiras se publicará cuando Inversiones Zekaii, S. de R.L. publique su precio de compra al productor. Hasta entonces no se muestra ninguna cifra.',
-            'The karat conversion in Lempiras will be published once Inversiones Zekaii, S. de R.L. publishes its purchase price to the producer. No figures are shown until then.',
-          )}
-        </div>
-      ) : (
-      <>
       {/* Wide table scrolls inside its own container — the page never scrolls
           horizontally (regla de responsividad de la landing). */}
       <div style={{ overflowX: 'auto' }}>
@@ -239,7 +210,7 @@ export default function KaratPricesTable({
                 {t(`Oro internacional (L/${u})`, `International gold (L/${u})`)}
               </th>
               <th scope="col" style={{ ...thStyle, borderRadius: '0 8px 8px 0' }}>
-                {t(`Compra Inversiones Zekaii (L/${u})`, `Inversiones Zekaii purchase (L/${u})`)}
+                {`${ROTULO_PRECIO_REFERENCIAL} (L/${u})`}
               </th>
             </tr>
           </thead>
@@ -283,12 +254,23 @@ export default function KaratPricesTable({
         }}
       >
         {t(
-          'La ley nominal es una referencia aritmética. En una compra real, el contenido de oro fino se determina por ensaye, no por el kilataje declarado.',
-          'Nominal fineness is an arithmetic reference. In an actual purchase, the fine gold content is determined by assay, not by the declared karat.',
+          'La ley nominal es una referencia aritmética. En una transacción real, el contenido de oro fino se determina por ensaye, no por el kilataje declarado.',
+          'Nominal fineness is an arithmetic reference. In an actual transaction, the fine gold content is determined by assay, not by the declared karat.',
         )}
       </p>
-      </>
-      )}
+      <p
+        role="note"
+        style={{
+          margin: '8px 0 0',
+          fontSize: 12,
+          lineHeight: 1.6,
+          color: 'var(--t2)',
+          fontFamily: 'var(--font-body)',
+          maxWidth: 640,
+        }}
+      >
+        {AVISO_PRECIO_REFERENCIAL}
+      </p>
     </div>
   );
 }

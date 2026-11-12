@@ -1,16 +1,16 @@
 'use client';
 
 // Minimalist price ticker — a thin sticky bar at the very top of the home page,
-// the first thing a visitor sees. Single line: purchase price of Inversiones
-// Zekaii to the producer (L/gram of fine gold — or "pendiente" while the
-// purchase factor is undefined, modelo B), international gold (USD/oz), gold in
-// Lempiras per troy ounce and USD/LPS. Horizontally scrollable on small
-// screens. The commercialization factor is never shown here — only the computed
-// Lempiras amount; the formula lives at /precio. Data from /api/precios/live
-// (polled, hidden-guarded).
+// the first thing a visitor sees. Single line: "Referencial (75%)" in L per
+// gram of fine gold (informative estimate — the literal aviso lives in
+// /precios), international gold (USD/oz), gold in Lempiras per troy ounce and
+// the market reference exchange rate (exchangerate-api.com). Horizontally
+// scrollable on small screens. Data from /api/precios/live (polled,
+// hidden-guarded).
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { FACTOR_REFERENCIA_PCT } from '@/lib/precio/factores';
 
 // Keep in sync with the inline `top` offsets applied to .nav and
 // .nav-mobile-panel in app/page.tsx so the sticky stack lines up.
@@ -20,9 +20,9 @@ interface LivePrices {
   oro_usd_oz: number | null;
   oro_lps_oz: number | null;
   usd_hnl: number | null;
+  // Canonical + compatibility alias (same value).
+  oro_referencial_lps_gramo?: number | null;
   oro_compra_lps_gramo: number | null;
-  // true while Inversiones Zekaii has not published its purchase factor.
-  factor_compra_pendiente?: boolean;
 }
 
 const POLL_MS = 60_000;
@@ -88,18 +88,11 @@ export default function PriceTickerBar({ lang }: Props) {
     };
   }, [load]);
 
-  // Pending purchase factor: no figure, no percentage — just the state.
-  const compraPendiente =
-    data != null && (data.factor_compra_pendiente === true || data.oro_compra_lps_gramo == null);
+  const referencial = data?.oro_referencial_lps_gramo ?? data?.oro_compra_lps_gramo ?? null;
   const items: Array<{ label: string; value: string; accent?: boolean }> = [
     {
-      label: t('Referencia oro', 'Gold reference'),
-      value:
-        data == null
-          ? '—'
-          : compraPendiente
-            ? t('pendiente', 'pending')
-            : `L ${fmt(data.oro_compra_lps_gramo, 0)}/g fino`,
+      label: t(`Referencial (${FACTOR_REFERENCIA_PCT}%)`, `Reference (${FACTOR_REFERENCIA_PCT}%)`),
+      value: referencial != null ? `L ${fmt(referencial, 0)}/g fino` : '—',
       accent: true,
     },
     { label: t('Oro internacional', 'Intl. gold'), value: data?.oro_usd_oz != null ? `$${fmt(data.oro_usd_oz, 0)}/oz` : '—' },

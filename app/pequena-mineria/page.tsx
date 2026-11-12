@@ -11,7 +11,6 @@ import {
   CITAS_LEGALES,
   CONTACTO,
   RAZON_SOCIAL,
-  RAZON_SOCIAL_SERVICIOS_LEGALES,
 } from '@/lib/content/copy-legal'
 
 export const metadata: Metadata = {
@@ -313,14 +312,14 @@ export default function PequenaMineriaPage() {
               </div>
             </section>
 
-            {/* 5 — QUÉ HACE CADA QUIÉN (Modelo B: CHT servicios; Zekaii plataforma + compra) */}
+            {/* 5 — QUÉ HACE CHT (titular y operadora de la plataforma; no compra ni vende) */}
             <section id="que-hace-cht" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <h2 style={SECTION_TITLE}>Qué hace cada quién.</h2>
+              <h2 style={SECTION_TITLE}>Qué hace CHT y qué no.</h2>
               <p style={BODY}>
-                {RAZON_SOCIAL_SERVICIOS_LEGALES} (CHT) presta servicios legales y mineros al
-                operador. {RAZON_SOCIAL} es dueña de la plataforma MAPE.LEGAL, lleva el sello
-                complementario de trazabilidad y compra el oro. CHT no compra ni vende
-                mineral y no opera la plataforma.
+                {RAZON_SOCIAL} (CHT) presta servicios legales y mineros al operador y es
+                titular, desarrolladora y operadora de la plataforma MAPE.LEGAL, que lleva el
+                sello complementario de trazabilidad. CHT no compra ni vende mineral;
+                MAPE.LEGAL no compra, no vende ni intermedia oro.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div style={CARD}>
@@ -373,7 +372,7 @@ export default function PequenaMineriaPage() {
                       No garantiza resultados: la resolución es potestad de la Autoridad Minera.
                     </li>
                     <li style={{ fontSize: 14, color: 'var(--t2)', lineHeight: 1.6 }}>
-                      No compra ni vende mineral, y no opera la plataforma MAPE.LEGAL.
+                      No compra ni vende mineral. La plataforma no intermedia oro.
                     </li>
                   </ul>
                 </div>

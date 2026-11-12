@@ -1,5 +1,5 @@
-// /dashboard/precio — panel de fijación diaria del Precio de Referencia.
-// Restringido al rol de administración de Inversiones Zekaii, S. de R.L. (admin). El layout del
+// /dashboard/precio — panel de fijación diaria del Precio referencial.
+// Restringido al rol admin. El layout del
 // dashboard ya exige sesión con rol de dashboard; esta página añade el
 // gate admin-only. La guardia con consecuencias (el POST) vive en
 // /api/precio con requireRole('admin') — R3.
@@ -49,7 +49,7 @@ export default async function PrecioPanelPage() {
           403 — Acceso restringido
         </div>
         <p style={{ fontSize: 15, color: 'var(--t1)', lineHeight: 1.6 }}>
-          La fijación del Precio de Referencia está reservada a la administración de Inversiones Zekaii, S. de R.L.
+          La fijación del Precio referencial está reservada al rol de administración.
         </p>
       </div>
     );

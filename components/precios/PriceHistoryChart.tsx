@@ -2,7 +2,9 @@
 
 // Price history chart for /precios — the daily 8 AM snapshots from
 // precios_diarios plotted over time so a miner or buyer can verify how the
-// purchase price has moved across days, months and (as the record grows) years.
+// precio referencial (75%) and its inputs have moved across days, months and
+// (as the record grows) years. Default metric: the precio referencial itself —
+// it is the headline number of the page and now always carries data.
 //
 // Design notes (DESIGN.md + dataviz method):
 // - Single series per view, one axis — the metric selector swaps which series
@@ -15,6 +17,8 @@
 // - No continuous animations; static skeleton. Zero hex — tokens only.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ROTULO_PRECIO_REFERENCIAL } from '@/lib/precio/factores';
+import { AVISO_PRECIO_REFERENCIAL, ETIQUETA_TIPO_CAMBIO, FUENTE_TIPO_CAMBIO } from '@/lib/content/copy-legal';
 
 type Lang = 'es' | 'en';
 
@@ -23,18 +27,22 @@ interface HistoryPoint {
   oro_usd_oz: number | null;
   usd_hnl: number | null;
   oro_lps_oz: number | null;
+  // Canonical + compatibility alias (same value).
+  oro_referencial_lps_gramo?: number | null;
   oro_compra_lps_gramo: number | null;
 }
 
 interface HistoryResponse {
   puntos: HistoryPoint[];
-  // true while Inversiones Zekaii has not published its purchase factor — the
-  // 'compra' series is empty (all null) and must be shown as pending, not as
-  // "not enough data".
-  factor_compra_pendiente?: boolean;
+  tipo_cambio_fuente?: string;
 }
 
-type MetricKey = 'compra' | 'oro_usd' | 'oro_lps' | 'tc';
+/** Precio referencial de un punto — canonical field with alias fallback. */
+function referencialDe(p: HistoryPoint): number | null {
+  return p.oro_referencial_lps_gramo ?? p.oro_compra_lps_gramo ?? null;
+}
+
+type MetricKey = 'referencial' | 'oro_usd' | 'oro_lps' | 'tc';
 type RangeKey = '7d' | '1m' | '3m' | '1y' | 'all';
 
 interface MetricDef {
@@ -50,12 +58,12 @@ type T = (es: string, en: string) => string;
 
 const METRICS: MetricDef[] = [
   {
-    key: 'compra',
-    label: (t) => t('Compra Inversiones Zekaii', 'Inversiones Zekaii purchase'),
+    key: 'referencial',
+    label: () => ROTULO_PRECIO_REFERENCIAL,
     unit: (t) => t('L por gramo de oro fino', 'L per gram of fine gold'),
     prefix: 'L ',
     decimals: 2,
-    value: (p) => p.oro_compra_lps_gramo,
+    value: (p) => referencialDe(p),
   },
   {
     key: 'oro_usd',
@@ -75,8 +83,8 @@ const METRICS: MetricDef[] = [
   },
   {
     key: 'tc',
-    label: (t) => t('Tipo de cambio', 'Exchange rate'),
-    unit: (t) => t('L por USD', 'L per USD'),
+    label: (t) => t(ETIQUETA_TIPO_CAMBIO, 'Market reference exchange rate'),
+    unit: (t) => t(`L por USD · ${FUENTE_TIPO_CAMBIO}`, `L per USD · ${FUENTE_TIPO_CAMBIO}`),
     prefix: 'L ',
     decimals: 4,
     value: (p) => p.usd_hnl,
@@ -187,10 +195,8 @@ export default function PriceHistoryChart({ lang }: Props) {
   const [points, setPoints] = useState<HistoryPoint[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  // Default to international gold: the purchase series is pending (modelo B)
-  // until Inversiones Zekaii publishes its factor, so it cannot be the landing view.
-  const [metricKey, setMetricKey] = useState<MetricKey>('oro_usd');
-  const [compraPendiente, setCompraPendiente] = useState(false);
+  // Default: the precio referencial (75%) — the headline figure of the page.
+  const [metricKey, setMetricKey] = useState<MetricKey>('referencial');
   const [rangeKey, setRangeKey] = useState<RangeKey>('1m');
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const [showTable, setShowTable] = useState(false);
@@ -219,12 +225,6 @@ export default function PriceHistoryChart({ lang }: Props) {
         if (!mountedRef.current) return;
         const puntos = Array.isArray(json.puntos) ? json.puntos : [];
         setPoints(puntos);
-        // Pending purchase factor: explicit flag, or a record where no point
-        // carries a purchase price (cached pre-rollout responses).
-        setCompraPendiente(
-          json.factor_compra_pendiente === true ||
-            (puntos.length > 0 && puntos.every((p) => p.oro_compra_lps_gramo == null)),
-        );
         setError(false);
       } catch {
         if (!mountedRef.current) return;
@@ -527,37 +527,20 @@ export default function PriceHistoryChart({ lang }: Props) {
           ))}
         </div>
         <div role="group" aria-label={t('Métrica', 'Metric')} style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {METRICS.map((m) => {
-            const disabled = m.key === 'compra' && compraPendiente;
-            return (
-              <button
-                key={m.key}
-                type="button"
-                onClick={() => {
-                  if (disabled) return;
-                  setMetricKey(m.key);
-                  setActiveIdx(null);
-                }}
-                disabled={disabled}
-                title={
-                  disabled
-                    ? t(
-                        'Pendiente de la Política de Precios de Inversiones Zekaii',
-                        'Pending the Pricing Policy of Inversiones Zekaii',
-                      )
-                    : undefined
-                }
-                aria-pressed={metricKey === m.key}
-                style={{
-                  ...segBtn(metricKey === m.key),
-                  ...(disabled ? { opacity: 0.5, cursor: 'not-allowed' } : {}),
-                }}
-              >
-                {m.label(t)}
-                {disabled ? ` · ${t('pendiente', 'pending')}` : ''}
-              </button>
-            );
-          })}
+          {METRICS.map((m) => (
+            <button
+              key={m.key}
+              type="button"
+              onClick={() => {
+                setMetricKey(m.key);
+                setActiveIdx(null);
+              }}
+              aria-pressed={metricKey === m.key}
+              style={segBtn(metricKey === m.key)}
+            >
+              {m.label(t)}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -607,15 +590,10 @@ export default function PriceHistoryChart({ lang }: Props) {
             lineHeight: 1.6,
           }}
         >
-          {metricKey === 'compra' && compraPendiente
-            ? t(
-                'El precio de compra al productor está pendiente de publicación en la Política de Precios de Inversiones Zekaii, S. de R.L. El historial de esta serie comenzará cuando se publique.',
-                'The purchase price paid to the producer is pending publication in the Pricing Policy of Inversiones Zekaii, S. de R.L. This series starts once it is published.',
-              )
-            : t(
-                'Aún no hay suficientes datos registrados en este rango. El historial crece un punto por día con la captura de las 8:00 a.m.',
-                'Not enough recorded data in this range yet. The record grows by one point per day with the 8:00 a.m. capture.',
-              )}
+          {t(
+            'Aún no hay suficientes datos registrados en este rango. El historial crece un punto por día con la captura de las 8:00 a.m.',
+            'Not enough recorded data in this range yet. The record grows by one point per day with the 8:00 a.m. capture.',
+          )}
         </div>
       ) : (
         <div
@@ -799,6 +777,14 @@ export default function PriceHistoryChart({ lang }: Props) {
                 'One point per day — the 8:00 a.m. (Honduras) capture. Markets close on weekends.',
               )}
             </span>
+            {metricKey === 'referencial' && (
+              <>
+                <br />
+                <span role="note" style={{ fontFamily: 'var(--font-body)', color: 'var(--t2)', fontSize: 12 }}>
+                  {AVISO_PRECIO_REFERENCIAL}
+                </span>
+              </>
+            )}
           </div>
           <button
             type="button"
@@ -838,7 +824,7 @@ export default function PriceHistoryChart({ lang }: Props) {
               <tr>
                 {[
                   t('Fecha', 'Date'),
-                  t('Compra (L/g oro fino)', 'Buy (L/g fine gold)'),
+                  t('Referencial (L/g oro fino)', 'Reference (L/g fine gold)'),
                   t('Oro (USD/oz)', 'Gold (USD/oz)'),
                   t('Oro (L/oz)', 'Gold (L/oz)'),
                   t('TC (L/USD)', 'FX (L/USD)'),
@@ -872,7 +858,7 @@ export default function PriceHistoryChart({ lang }: Props) {
                     {fmtDateShort(p.fecha, lang, true)}
                   </td>
                   {[
-                    p.oro_compra_lps_gramo != null ? `L ${fmtNum(p.oro_compra_lps_gramo, 2)}` : '—',
+                    referencialDe(p) != null ? `L ${fmtNum(referencialDe(p) as number, 2)}` : '—',
                     p.oro_usd_oz != null ? `$${fmtNum(p.oro_usd_oz, 2)}` : '—',
                     p.oro_lps_oz != null ? `L ${fmtNum(p.oro_lps_oz, 0)}` : '—',
                     p.usd_hnl != null ? `L ${fmtNum(p.usd_hnl, 4)}` : '—',
