@@ -12,7 +12,20 @@ import { lookupUserRole, type Role } from '@/lib/userRoleLookup';
 
 export type { Role };
 
-export const DASHBOARD_ROLES: ReadonlyArray<Role> = ['admin', 'abogado', 'tecnico_ambiental'];
+// Personal interno de CHT (titular y operadora de la plataforma; no compra
+// mineral): ve y opera todo el dashboard.
+export const STAFF_ROLES: ReadonlyArray<Role> = ['admin', 'abogado', 'tecnico_ambiental'];
+
+// Roles del estándar privado de debida diligencia (brief v2.1 Etapa 2). Ninguno
+// es personal de CHT: `comercializador` registra fuentes/lotes/eventos/pagos de
+// SU organización; `planta` ve sus lotes (y el expediente del minero solo con
+// consentimiento vigente; nunca pagos ni márgenes); `auditor` lee y exporta.
+export const CADENA_ROLES: ReadonlyArray<Role> = ['comercializador', 'planta', 'auditor'];
+
+// Roles que el layout de /dashboard acepta. Los roles de cadena entran al
+// dashboard (su home es /dashboard/cadena); el nav se filtra por rol en el
+// layout. `cliente` sigue en /portal.
+export const DASHBOARD_ROLES: ReadonlyArray<Role> = [...STAFF_ROLES, ...CADENA_ROLES];
 
 export interface AuthContext {
   user: User;
