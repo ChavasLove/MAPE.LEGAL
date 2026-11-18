@@ -17,16 +17,18 @@ o solicitud de crear algo "en el estilo de MAPE LEGAL".
 > verificarla contra `MARIA.md` en el mismo cambio.
 > Ver `docs/auditoria-marca-2026-08.md` §4.
 >
-> **Modelo B (confirmado por Willis, 10-nov-2026) — precedencia sobre cualquier
-> lectura previa de este archivo:** la plataforma MAPE.LEGAL es de **Inversiones
-> Zekaii, S. de R.L.**, que es quien **compra el oro** a los productores y publica
+> **Modelo B (10-nov-2026) — SUPERSEDED por `MARIA.md` §17 (hotfix de neutralidad
+> 11-nov + estándar privado 12-nov): identidad vigente = CHT titular, desarrolladora y
+> operadora de MAPE.LEGAL; no compra ni vende mineral; NINGÚN comprador se nombra en el
+> repositorio.** Texto histórico: la plataforma era de **el comercializador** (nombre
+> retirado), que es quien **compraba el oro** a los productores y publicaba
 > su precio de referencia (comercial, no "oficial"). **Corporación Hondureña
 > Tenka, S.A. (CHT)** presta los servicios legales y mineros de §3 (sus
 > honorarios) y **no compra ni vende mineral ni opera la plataforma**. Ni "MAPE
 > LEGAL compra" ni "CHT compra". El factor de compra al productor está
-> **pendiente** (`FACTOR_COMPRA_ZEKAII` en `lib/precio/factores.ts`,
-> `[POR DEFINIR POR WILLIS]`) — no citar 75 %, 80 % ni ningún porcentaje como
-> precio al minero. Fuente de verdad: `MARIA.md` §16.
+> **pendiente** (constante histórica del factor de compra, hoy eliminada; vigente:
+> `FACTOR_REFERENCIA` en `lib/precio/factores.ts`) — no citar porcentajes como
+> precio de compra al minero. Fuente de verdad: `MARIA.md` §17 (§16 es historia).
 
 ---
 
@@ -45,7 +47,7 @@ o solicitud de crear algo "en el estilo de MAPE LEGAL".
 | Nombre institucional | MAPE LEGAL |
 | Marca comercial | MAPE LEGAL |
 | Sub-marca digital | mape.legal |
-| Titular de la plataforma / compradora del oro | Inversiones Zekaii, S. de R.L. |
+| Titular, desarrolladora y operadora de la plataforma | Corporación Hondureña Tenka, S.A. (CHT) — no compra ni vende mineral (`MARIA.md` §17) |
 | Prestadora de los servicios legales y mineros | Corporación Hondureña Tenka, S.A. (CHT) — no compra ni vende mineral |
 | Descriptor | Consultoría Estratégica |
 | Tagline principal | "Legalizamos tu proyecto minero." |
