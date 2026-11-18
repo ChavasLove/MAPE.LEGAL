@@ -15,6 +15,45 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Políticas RLS, triggers y RPCs de la migración 043 contra un PostgreSQL 16
+  # real (tests/rls-estandar-privado.test.ts). Separado del job `build` para
+  # que el servicio de base de datos no alargue el gate principal; el resto de
+  # los tests (node:test) corre también aquí porque `npm test` ejecuta la suite
+  # completa — sin PGTEST_URL la suite RLS se omite (skip), nunca falsea verde.
+  rls:
+    name: RLS · migración 043 (PostgreSQL 16)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install psql client
+        run: sudo apt-get update -y && sudo apt-get install -y postgresql-client
+
+      - name: Tests (node:test) con PostgreSQL
+        run: npm test
+        env:
+          PGTEST_URL: postgres://postgres:postgres@localhost:5432/postgres
+
   build:
     name: Lint · Typecheck · Build
     runs-on: ubuntu-latest

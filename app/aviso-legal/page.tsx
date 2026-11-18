@@ -3,6 +3,7 @@
 // lib/content/copy-legal.ts — este archivo solo lo presenta.
 
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import PublicNav from '@/components/landing/PublicNav'
 import SiteFooter from '@/components/landing/SiteFooter'
 import {
@@ -13,6 +14,7 @@ import {
   CERTIFICADO_ORIGEN_NOTA,
   CITAS_LEGALES,
   CONFLICTO_INTERES_CHT,
+  ESTANDAR_NATURALEZA,
   FORMULA_PRECIO_REFERENCIAL,
   LIBERTAD_VENTA,
   PIE_NOTA_LEGAL,
@@ -114,6 +116,23 @@ export default function AvisoLegalPage() {
                 </div>
               ))}
             </div>
+          </section>
+
+          {/* Estándar privado de debida diligencia (Etapa 2, 2026-11-12) */}
+          <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <h2 style={SECTION_TITLE}>Estándar privado de debida diligencia.</h2>
+            <p style={BODY}>{ESTANDAR_NATURALEZA}</p>
+            <p style={BODY}>
+              Estructura, versión y estado:{' '}
+              <Link href="/estandar" style={{ color: 'var(--moss)' }}>
+                /estandar
+              </Link>
+              . Compromisos de la cadena:{' '}
+              <Link href="/politica-de-cadena" style={{ color: 'var(--moss)' }}>
+                /politica-de-cadena
+              </Link>
+              .
+            </p>
           </section>
 
           {/* Fundamento normativo */}

@@ -17,7 +17,28 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 //   bypasses RLS via owner privileges, so the lookup works regardless of
 //   `service_role.rolbypassrls`.
 
-export type Role = 'admin' | 'abogado' | 'tecnico_ambiental' | 'cliente';
+// Roles de aplicación. Los 4 primeros son históricos; `comercializador`,
+// `planta` y `auditor` son los roles del estándar privado de debida diligencia
+// (brief v2.1 Etapa 2, migración 043 — ver lib/cadena/types.ts ROLES_CADENA).
+export type Role =
+  | 'admin'
+  | 'abogado'
+  | 'tecnico_ambiental'
+  | 'cliente'
+  | 'comercializador'
+  | 'planta'
+  | 'auditor';
+
+/** Lista cerrada de roles válidos — fuente única para allowlists de validación. */
+export const KNOWN_ROLES: ReadonlyArray<Role> = [
+  'admin',
+  'abogado',
+  'tecnico_ambiental',
+  'cliente',
+  'comercializador',
+  'planta',
+  'auditor',
+];
 
 export type RoleLookupOk = {
   ok: true;
@@ -32,9 +53,9 @@ export type RoleLookupFail = {
 };
 export type RoleLookupResult = RoleLookupOk | RoleLookupFail;
 
-const KNOWN_ROLES = new Set<Role>(['admin', 'abogado', 'tecnico_ambiental', 'cliente']);
-function isKnownRole(value: string): value is Role {
-  return KNOWN_ROLES.has(value as Role);
+const KNOWN_ROLE_SET = new Set<string>(KNOWN_ROLES);
+export function isKnownRole(value: unknown): value is Role {
+  return typeof value === 'string' && KNOWN_ROLE_SET.has(value);
 }
 
 interface RoleRpcRow {

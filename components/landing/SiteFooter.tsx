@@ -25,6 +25,11 @@ const FOOTER_LINKS: Array<{ href: string; label: string }> = [
   { href: '/politica-de-precios', label: 'Política de publicación del precio' },
   { href: '/precios', label: 'Precios del día' },
   { href: '/equipos', label: 'Equipos' },
+  // Estándar privado de debida diligencia (Etapa 2, 2026-11-12).
+  { href: '/quienes-somos', label: 'Quiénes somos' },
+  { href: '/estandar', label: 'Estándar' },
+  { href: '/politica-de-cadena', label: 'Política de cadena' },
+  { href: '/auditoria', label: 'Auditoría' },
   { href: '/aviso-legal', label: 'Aviso legal' },
 ]
 

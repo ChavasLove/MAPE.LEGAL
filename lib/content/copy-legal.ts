@@ -86,6 +86,21 @@ export const AVISO_PLATAFORMA =
   'su titular. MAPE.LEGAL no compra, no vende ni intermedia oro.'
 
 /**
+ * Estándar privado de debida diligencia (Etapa 2, brief v2.1, 12-nov-2026).
+ * Texto corto reutilizable en /estandar y /aviso-legal. La estructura, la
+ * versión y el mapeo OCDE viven en lib/content/estandar.ts.
+ */
+export const ESTANDAR_NATURALEZA =
+  'MAPE.LEGAL es un estándar privado y voluntario de debida diligencia de la ' +
+  'cadena de suministro de la planta de beneficio participante. Lo desarrolla ' +
+  `y es su titular ${RAZON_SOCIAL} (CHT), que no compra ni vende mineral. ` +
+  'El estándar no sustituye ningún acto oficial: la Certificación de ' +
+  'Procedencia o Certificado de Origen la emite el titular del derecho minero ' +
+  'y la autentica la Autoridad Minera o Municipal. No es un registro de ' +
+  'INHGEOMIN ni cuenta con su aval. Se publica como borrador, con versión y ' +
+  'fecha, hasta su aprobación.'
+
+/**
  * PIE DE PÁGINA — nota legal del sello (hotfix de neutralidad, 11-nov-2026).
  * Reescrita sin comprador: el pie la renderiza completa y cierra con el © de
  * la titular. Pendiente de revisión legal.
@@ -216,12 +231,16 @@ export const CITAS_LEGALES = {
       'Comercializadores ante la Autoridad Minera y declarar sus ' +
       'volúmenes trimestralmente.',
   },
+  // Art. 38 no está en LGM_ARTICULOS_ANULADOS (contraste 2026-11-12). La
+  // responsabilidad solidaria del comprador no ha sido confirmada contra La
+  // Gaceta por el equipo legal: la síntesis lleva la marca de verificación.
   leyArt38: {
     norma: 'Ley General de Minería',
     articulo: 'Art. 38',
     sintesis:
       'El comprador de productos minerales responde solidariamente y ' +
-      'está obligado a verificar el origen lícito de lo que adquiere.',
+      'está obligado a verificar el origen lícito de lo que adquiere. ' +
+      '[VERIFICAR LEGAL MINERO]',
   },
   // Verificado contra Gaceta 33,088; no impugnado en SCO-0090-2014.
   // Refuerzo: Art. 5 Regl. MAPE.
@@ -255,6 +274,29 @@ export const CITAS_LEGALES = {
       'Define la minería artesanal como la que emplea técnicas ' +
       'exclusivamente manuales, sujeta a permiso municipal dentro de ' +
       'áreas delimitadas.',
+  },
+  // Estándar privado (Etapa 2, 2026-11-12). Art. 90 no está en
+  // LGM_ARTICULOS_ANULADOS; pendiente de confirmación contra La Gaceta.
+  leyArt90: {
+    norma: 'Ley General de Minería',
+    articulo: 'Art. 90',
+    sintesis:
+      'Regula el permiso municipal para la minería artesanal, que se ' +
+      'ejerce dentro de las áreas delimitadas por la Autoridad Minera ' +
+      '(INHGEOMIN). Base de la elegibilidad del origen en el estándar ' +
+      'privado. [VERIFICAR LEGAL MINERO]',
+  },
+  // Estándar privado (Etapa 2, 2026-11-12). Es el Art. 43 del REGLAMENTO
+  // (Acuerdo Ejecutivo 042-2013), no el Art. 43 de la Ley (anulado por
+  // SCO-0090-2014). Pendiente de confirmación contra La Gaceta.
+  regLgmArt43: {
+    norma: 'Reglamento de la Ley General de Minería (Acuerdo Ejecutivo 042-2013)',
+    articulo: 'Art. 43, incisos c, e y f', // del Reglamento 042-2013, no de la Ley
+    sintesis:
+      'Obligaciones del comercializador: llevar registro de las fuentes ' +
+      'del mineral que adquiere, con identificación del derecho minero de ' +
+      'procedencia y la documentación de cada compra. Base del registro de ' +
+      'fuentes del estándar privado. [VERIFICAR LEGAL MINERO]',
   },
   regArt4: {
     norma: 'Reglamento Especial MAPE',

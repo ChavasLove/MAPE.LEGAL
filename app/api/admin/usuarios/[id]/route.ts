@@ -2,11 +2,11 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { type SupabaseClient } from '@supabase/supabase-js';
 import { getAdminClient } from '@/services/adminSupabase';
 import { requireRole } from '@/lib/serverAuth';
+import { KNOWN_ROLES, isKnownRole } from '@/lib/userRoleLookup';
 
 export const dynamic = 'force-dynamic';
 
-const VALID_ROLES = ['admin', 'abogado', 'tecnico_ambiental', 'cliente'] as const;
-type ValidRole = (typeof VALID_ROLES)[number];
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Counts active admins excluding the target user, so we can refuse to demote /
 // delete / deactivate the last remaining administrator. Returns true when the
@@ -41,7 +41,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   try {
     const { id } = await params;
-    const { rol, activo, perfil_id } = await req.json();
+    const { rol, activo, perfil_id, organizacion_id } = await req.json();
 
     // No self-modification of rol or activo. perfil_id is fine (assigning a
     // staff profile to yourself is harmless). This blocks session-hijack
@@ -54,11 +54,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       );
     }
 
-    if (rol !== undefined && !VALID_ROLES.includes(rol as ValidRole)) {
+    if (rol !== undefined && !isKnownRole(rol)) {
       return NextResponse.json(
-        { error: `Rol inválido. Permitidos: ${VALID_ROLES.join(', ')}` },
+        { error: `Rol inválido. Permitidos: ${KNOWN_ROLES.join(', ')}` },
         { status: 400 }
       );
+    }
+
+    // organizacion_id (migración 043): uuid o null para desvincular.
+    if (
+      organizacion_id !== undefined &&
+      organizacion_id !== null &&
+      (typeof organizacion_id !== 'string' || !UUID_RE.test(organizacion_id))
+    ) {
+      return NextResponse.json({ error: 'organizacion_id inválido (uuid o null).' }, { status: 400 });
     }
 
     const admin = getAdminClient();
@@ -78,12 +87,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (rol !== undefined)       updates.rol       = rol;
     if (activo !== undefined)    updates.activo    = activo;
     if (perfil_id !== undefined) updates.perfil_id = perfil_id;
+    if (organizacion_id !== undefined) updates.organizacion_id = organizacion_id;
 
     const { error } = await admin
       .from('user_roles')
       .upsert({ user_id: id, ...updates }, { onConflict: 'user_id' });
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === '42703' && organizacion_id !== undefined) {
+        return NextResponse.json(
+          { error: 'La migración 043 (organizaciones) no está aplicada en la base de datos.', code: 'MIGRATION_PENDING' },
+          { status: 503 }
+        );
+      }
+      throw error;
+    }
 
     return NextResponse.json({ ok: true });
   } catch (error) {

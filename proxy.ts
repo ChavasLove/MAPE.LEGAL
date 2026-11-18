@@ -56,6 +56,7 @@ function isProtectedApi(pathname: string): boolean {
     pathname.startsWith('/api/admin/') ||
     pathname.startsWith('/api/expedientes') ||
     pathname.startsWith('/api/certificados') || // registro del certificado oficial + sello (dashboard)
+    pathname.startsWith('/api/cadena') ||       // estándar privado de debida diligencia (RBAC por rol/organización en cada handler)
     pathname.startsWith('/api/documentos') ||
     pathname.startsWith('/api/mensajes') ||
     pathname.startsWith('/api/email/') ||
@@ -111,6 +112,7 @@ export const config = {
     '/api/admin/:path*',
     '/api/expedientes/:path*',
     '/api/certificados/:path*',
+    '/api/cadena/:path*',          // estándar privado (fuentes, lotes, eventos, pagos, consentimientos, bitácora, exportar)
     '/api/documentos/:path*',
     '/api/mensajes/:path*',
     '/api/email/:path*',
