@@ -270,7 +270,7 @@ export default function FuentesClient({ role }: Props) {
             </tr>
           </thead>
           <tbody>
-            {!loading && fuentes.length === 0 && <EmptyRow cols={10}>{migracionPendiente ? 'Pendiente de migración.' : 'Sin fuentes registradas.'}</EmptyRow>}
+            {!loading && fuentes.length === 0 && <EmptyRow cols={10}>{migracionPendiente ? 'Módulo en preparación.' : 'Sin fuentes registradas.'}</EmptyRow>}
             {fuentes.map((f) => {
               const el = f.elegibilidad ?? evaluarElegibilidadFuente(f);
               return (

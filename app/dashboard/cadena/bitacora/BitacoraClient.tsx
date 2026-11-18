@@ -121,7 +121,7 @@ export default function BitacoraClient() {
             </tr>
           </thead>
           <tbody>
-            {!loading && rows.length === 0 && <EmptyRow cols={7}>{migracionPendiente ? 'Pendiente de migración.' : 'Sin accesos registrados para el filtro.'}</EmptyRow>}
+            {!loading && rows.length === 0 && <EmptyRow cols={7}>{migracionPendiente ? 'Módulo en preparación.' : 'Sin accesos registrados para el filtro.'}</EmptyRow>}
             {rows.map((a) => (
               <tr key={a.id}>
                 <td style={TD}>{fmtDateTime(a.created_at)}</td>
