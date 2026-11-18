@@ -45,6 +45,10 @@
 --
 -- Idempotente: re-ejecutable (respaldo no se pisa; UPDATE/DELETE no encuentran
 -- nada la segunda vez; fichas se reemplazan por source).
+--
+-- Si el SQL Editor de Supabase pierde la tabla temporal o pg_temp entre
+-- sentencias (pooler), usar hotfix_rag_v2_supabase.sql: misma lógica con
+-- objetos ordinarios en public que se borran antes del commit.
 -- =============================================================================
 
 begin;

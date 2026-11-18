@@ -4,13 +4,16 @@
 
 import { redirect } from 'next/navigation';
 import { getServerAuth } from '@/lib/serverAuth';
+import { moduloCadenaDisponible } from '@/lib/cadena/disponibilidad';
+import ModuloEnPreparacion from '@/components/cadena/ModuloEnPreparacion';
 import PortalLotesClient from './PortalLotesClient';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export default async function PortalLotesPage() {
-  const auth = await getServerAuth();
+  const [auth, modulo] = await Promise.all([getServerAuth(), moduloCadenaDisponible()]);
   if (!auth) redirect('/login');
+  if (!modulo.disponible && modulo.motivo === 'migracion_pendiente') return <ModuloEnPreparacion />;
   return <PortalLotesClient />;
 }

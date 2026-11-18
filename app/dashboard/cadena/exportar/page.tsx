@@ -6,6 +6,8 @@
 import { redirect } from 'next/navigation';
 import { Download } from 'lucide-react';
 import { getServerAuth } from '@/lib/serverAuth';
+import { moduloCadenaDisponible } from '@/lib/cadena/disponibilidad';
+import ModuloEnPreparacion from '@/components/cadena/ModuloEnPreparacion';
 import { Forbidden } from '@/components/cadena/shared';
 
 export const runtime = 'nodejs';
@@ -21,12 +23,13 @@ const BTN: React.CSSProperties = {
 };
 
 export default async function ExportarPage() {
-  const auth = await getServerAuth();
+  const [auth, modulo] = await Promise.all([getServerAuth(), moduloCadenaDisponible()]);
   if (!auth) redirect('/login');
   const role: string = auth.role;
   if (role !== 'admin' && role !== 'auditor') {
     return <Forbidden detalle="La exportación del registro está reservada a la administración y al auditor externo." />;
   }
+  if (!modulo.disponible && modulo.motivo === 'migracion_pendiente') return <ModuloEnPreparacion />;
   return (
     <div style={{ display: 'grid', gap: 24, maxWidth: 760 }}>
       <header>

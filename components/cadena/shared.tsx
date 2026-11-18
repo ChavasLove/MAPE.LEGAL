@@ -231,7 +231,7 @@ export async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
     const motivo = typeof json.motivo === 'string' ? ` — ${json.motivo}` : '';
     const msg =
       res.status === 503 && code === 'MIGRATION_PENDING'
-        ? 'Pendiente de migración: la base de datos aún no tiene las tablas del estándar (migración 043).'
+        ? 'Módulo en preparación: la base de datos aún no tiene las tablas del estándar (migración 043).'
         : res.status === 401
         ? 'Sesión no válida. Vuelva a iniciar sesión.'
         : res.status === 403
@@ -293,9 +293,9 @@ export function Notice({
 export function MigracionPendiente() {
   return (
     <Notice tone="amber" role="alert">
-      <strong>Pendiente de migración.</strong> Las tablas del estándar privado de debida diligencia (migración
-      043) no existen todavía en la base de datos. Esta pantalla quedará operativa cuando un humano aplique la
-      migración en Supabase Studio tras la aprobación correspondiente.
+      <strong>Módulo en preparación.</strong> Las tablas del estándar privado de debida diligencia (migración
+      043) no existen todavía en la base de datos. Esta pantalla quedará operativa cuando la administración de
+      CHT aplique la migración en Supabase Studio tras la aprobación correspondiente.
     </Notice>
   );
 }

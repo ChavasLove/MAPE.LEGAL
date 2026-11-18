@@ -4,6 +4,8 @@
 
 import { redirect } from 'next/navigation';
 import { getServerAuth } from '@/lib/serverAuth';
+import { moduloCadenaDisponible } from '@/lib/cadena/disponibilidad';
+import ModuloEnPreparacion from '@/components/cadena/ModuloEnPreparacion';
 import { Forbidden } from '@/components/cadena/shared';
 import FuentesClient from './FuentesClient';
 
@@ -13,11 +15,12 @@ export const dynamic = 'force-dynamic';
 const PERMITIDOS: ReadonlyArray<string> = ['admin', 'abogado', 'tecnico_ambiental', 'comercializador', 'auditor'];
 
 export default async function FuentesPage() {
-  const auth = await getServerAuth();
+  const [auth, modulo] = await Promise.all([getServerAuth(), moduloCadenaDisponible()]);
   if (!auth) redirect('/login');
   const role: string = auth.role;
   if (!PERMITIDOS.includes(role)) {
     return <Forbidden detalle="El registro de fuentes está reservado al comercializador, al auditor externo y al equipo de CHT." />;
   }
+  if (!modulo.disponible && modulo.motivo === 'migracion_pendiente') return <ModuloEnPreparacion />;
   return <FuentesClient role={role} />;
 }

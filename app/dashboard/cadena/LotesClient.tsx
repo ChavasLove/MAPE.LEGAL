@@ -214,7 +214,7 @@ export default function LotesClient({ role }: Props) {
           </thead>
           <tbody>
             {!loading && visibles.length === 0 && (
-              <EmptyRow cols={7}>{migracionPendiente ? 'Pendiente de migración.' : 'Sin lotes para mostrar.'}</EmptyRow>
+              <EmptyRow cols={7}>{migracionPendiente ? 'Módulo en preparación.' : 'Sin lotes para mostrar.'}</EmptyRow>
             )}
             {visibles.map((l) => (
               <tr key={l.id}>
