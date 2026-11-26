@@ -5,15 +5,18 @@
 
 import { redirect } from 'next/navigation';
 import { getServerAuth } from '@/lib/serverAuth';
+import { moduloCadenaDisponible } from '@/lib/cadena/disponibilidad';
+import ModuloEnPreparacion from '@/components/cadena/ModuloEnPreparacion';
 import LoteDetalleClient from './LoteDetalleClient';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export default async function LoteDetallePage({ params }: { params: Promise<{ id: string }> }) {
-  const auth = await getServerAuth();
+  const [auth, modulo] = await Promise.all([getServerAuth(), moduloCadenaDisponible()]);
   if (!auth) redirect('/login');
   const { id } = await params;
   const role: string = auth.role;
+  if (!modulo.disponible && modulo.motivo === 'migracion_pendiente') return <ModuloEnPreparacion />;
   return <LoteDetalleClient loteId={id} role={role} />;
 }

@@ -239,7 +239,7 @@ export default function ConsentimientosClient({ role, canWrite }: Props) {
             </tr>
           </thead>
           <tbody>
-            {!loading && rows.length === 0 && <EmptyRow cols={canWrite ? 9 : 8}>{migracionPendiente ? 'Pendiente de migración.' : 'Sin consentimientos registrados.'}</EmptyRow>}
+            {!loading && rows.length === 0 && <EmptyRow cols={canWrite ? 9 : 8}>{migracionPendiente ? 'Módulo en preparación.' : 'Sin consentimientos registrados.'}</EmptyRow>}
             {rows.map((c) => (
               <tr key={c.id}>
                 <td style={{ ...TD, ...MONO }} title={c.cliente_id}>{shortId(c.cliente_id)}</td>

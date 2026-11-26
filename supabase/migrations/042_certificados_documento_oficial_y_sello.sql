@@ -13,7 +13,7 @@
 --   El Certificado de Origen / Certificación de Procedencia oficial lo EMITE el
 --   TITULAR del derecho minero y lo AUTENTICA la Autoridad Minera o Municipal
 --   (Art. 35 Regl. Especial MAPE, Acuerdo 088-B-2018; art. 43.e Regl. 042-2013).
---   La plataforma MAPE.LEGAL (dueña: Inversiones Zekaii, S. de R.L.) NO es
+--   La plataforma MAPE.LEGAL (titular: Corporación Hondureña Tenka, S.A.) NO es
 --   autoridad emisora: REGISTRA y DIGITALIZA el documento oficial y lleva un
 --   SELLO o registro complementario (voluntario) con número de registro, folio
 --   de talonario pre-numerado, QR que enlaza el papel con el asiento digital y

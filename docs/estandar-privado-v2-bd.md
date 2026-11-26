@@ -4,6 +4,61 @@ Documento interno (no se publica). Brief v2.1, Etapa 2 (11-nov-2026). Rama `feat
 
 Contrato compartido: `lib/cadena/types.ts` (nombres), `lib/cadena/hash.ts` (canónico del hash), `lib/cadena/reglas.ts` (reglas puras). La 043 replica los tres en SQL; el test cruzado es `tests/rls-estandar-privado.test.ts`.
 
+## 0. Orden de aplicación en producción (obligatorio)
+
+La 043 **no se aplica sola ni fuera de orden**. Secuencia completa, un humano en Supabase Studio → SQL Editor, cada paso verificado antes del siguiente:
+
+| Paso | Qué | Por qué va aquí |
+|---|---|---|
+| 0 | **Respaldo previo** del esquema `public` (y de `auth.users` mínimo). El proyecto **no tiene backups automáticos** (plan Free, PITR apagado): seguir `docs/plan2-runbook-produccion.md` → Paso 1 (`pg_dump --schema=public -Fc …` o export JSON vía Management API) y guardar el archivo fuera de Supabase. | 041 y 043 habilitan RLS y revocan grants; 043 crea triggers append-only incluso para `service_role`. Sin respaldo no hay vuelta atrás verificable. |
+| 1 | **041** `041_rls_tablas_operativas.sql` | Crea `public.is_internal_staff()` y las policies `_staff_all` / `_service_all` / `_cliente_read_own` de `expedientes`, `documentos` y las demás tablas operativas. La 043 **aborta** si falta `is_internal_staff()`, y sus policies de planta se suman a las de 041 — si 041 no está, al habilitar RLS la 043 dejaría `expedientes`/`documentos` **sin policy de staff ni de cliente** para `authenticated`. |
+| 2 | **042** `042_certificados_documento_oficial_y_sello.sql` | Documento oficial vs sello en `certificados_origen` (independiente de 043, pero es el orden documentado en la cabecera de la 043 y así quedó probado). |
+| 3 | **Verificación previa a 043** — el `SELECT` de abajo debe dar `OK` en TODAS las filas y `rls_activa = true` en las tres tablas. Si alguna fila da `FALTA`, **no aplicar 043**: volver a correr 041 (es idempotente) o revisar el esquema real (ver `scripts/plan2-diagnostico.sql`). | La 043 (§15) hace `alter table … enable row level security` sobre `expedientes`, `documentos` y `clientes` y añade una policy **solo para la planta con consentimiento**. Las policies de staff y de cliente de esas tres tablas no las crea la 043: las de `expedientes`/`documentos` vienen de **041** y las de `clientes` de **008** (`Admins manage clientes`, `Profesionales read clientes`, `Clientes read own record`). |
+| 4 | **043** `043_estandar_privado_cadena.sql` (idempotente; probada ×2) | — |
+| 5 | Verificación post-aplicación: bloque §16 al final de la 043 (vector de hash, `rowsecurity`, grants de `lote_eventos`). | — |
+
+```sql
+-- Antes de aplicar 043: policies de staff y cliente que 043 da por sentadas
+-- en expedientes, documentos y clientes. TODAS deben dar estado = OK y
+-- rls_activa = true. Solo lectura.
+with esperadas(tabla, policy, origen) as (values
+  ('expedientes', 'expedientes_staff_all',        '041'),
+  ('expedientes', 'expedientes_service_all',      '041'),
+  ('expedientes', 'expedientes_cliente_read_own', '041'),
+  ('documentos',  'documentos_staff_all',         '041'),
+  ('documentos',  'documentos_service_all',       '041'),
+  ('documentos',  'documentos_cliente_read_own',  '041'),
+  ('clientes',    'Admins manage clientes',       '008'),
+  ('clientes',    'Profesionales read clientes',  '008'),
+  ('clientes',    'Clientes read own record',     '008'))
+select e.tabla,
+       e.policy,
+       e.origen,
+       case when p.policyname is not null then 'OK' else 'FALTA' end as estado,
+       (select t.rowsecurity from pg_tables t
+         where t.schemaname = 'public' and t.tablename = e.tabla)      as rls_activa,
+       p.cmd,
+       p.roles
+  from esperadas e
+  left join pg_policies p
+    on p.schemaname = 'public' and p.tablename = e.tabla and p.policyname = e.policy
+ order by e.tabla, e.origen, e.policy;
+
+-- Complemento: helper de 041 que la 043 exige (debe devolver 1 fila) y el
+-- inventario completo de policies de las tres tablas, por si hay nombres
+-- distintos a los esperados (esquema a mano previo al Plan 2).
+select 'is_internal_staff' as objeto, count(*) as existe
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+ where n.nspname = 'public' and p.proname = 'is_internal_staff';
+
+select tablename, policyname, cmd, roles
+  from pg_policies
+ where schemaname = 'public' and tablename in ('expedientes', 'documentos', 'clientes')
+ order by tablename, policyname;
+```
+
+Nota sobre `expedientes_cliente_read_own` y `documentos_cliente_read_own`: 041 las crea **solo** si existen `clientes.user_id` y `expedientes.cliente_id` (si no, deja un `NOTICE` y las omite). En producción ambas columnas existen desde el Plan 2 (038), así que un `FALTA` ahí significa que 041 no se aplicó o se aplicó sobre un esquema anterior: re-correr 041.
+
 ## 1. Quién es quién
 
 | Rol (`user_roles.rol`) | Quién | Qué hace en la BD |
@@ -101,7 +156,7 @@ Leyenda: **S** select · **I** insert · **U** update · **—** nada (0 filas o
 - **Hash de núcleo (`sha256`) en vez de pgcrypto** — ver §3.
 - **Texto legal del consentimiento** `[REVISAR CAPITÁN LEGAL]`; **artículos citados** `[VERIFICAR LEGAL MINERO]`.
 - **Discrepancia sobre la fundición.** El modelo B del 10-nov-2026 describía al comercializador como quien *acopia, funde y transporta*; el brief v2.1 (esta Etapa 2) dice expresamente que el comercializador **no funde** — solo un titular de beneficio identificado. La 043 implementa v2.1 (rechazo en BD). **Validar con CAPITÁN LEGAL / LEGAL MINERO** antes de aplicar en producción; si prevalece el modelo B hay que relajar la rama (e) de `fn_lote_evento_encadenar()` y `validarEventoFundicion()` en el mismo PR.
-- **No aplicada en producción.** Orden: 041 → 042 → 043. Verificación post-aplicación al final del archivo SQL (§16).
+- **No aplicada en producción.** Orden obligatorio con respaldo previo y verificación de policies: ver **§0**. Verificación post-aplicación al final del archivo SQL (§16).
 
 ## 7. Cómo correr los tests
 
