@@ -21,9 +21,13 @@
  *
  * MAPE.LEGAL es el nombre de la plataforma y del sello voluntario y
  * complementario de trazabilidad; no es una persona jurídica. MAPE.LEGAL no
- * compra, no vende ni intermedia oro. Ninguna superficie pública nombra a un
- * comprador. El precio publicado es REFERENCIAL e informativo (75 % de la
- * referencia internacional del oro), nunca un "precio de compra".
+ * compra, no vende ni intermedia oro, no administra fondos y cobra tarifas
+ * fijas o por servicio, nunca ligadas al valor ni al volumen del oro. Ninguna
+ * superficie pública nombra a un comprador. El precio publicado es SOLO
+ * INFORMATIVO (DEC-2026-11-26-1 / DEC-2026-11-27-2): precio internacional del
+ * oro convertido a lempiras por gramo de oro fino con el tipo de cambio de
+ * COMPRA del BCH, sin ningún factor de compra; nunca un "precio de compra" ni
+ * un porcentaje de la referencia internacional.
  *
  * Nota no bloqueante sobre la marca: el registro de la marca MAPE.LEGAL ante
  * el Instituto de la Propiedad NO está verificado. No se afirma que exista y
@@ -42,34 +46,50 @@ export const ROL_CHT =
   'presta servicios legales y mineros a los productores artesanales; no ' +
   'compra ni vende mineral.'
 
-/* ── Precio referencial y tipo de cambio (hotfix neutralidad, 11-nov-2026) ── */
+/* ── Precio informativo y tipo de cambio (DEC-2026-11-26-1 / DEC-2026-11-27-2) ── */
 
 /**
  * AVISO LITERAL — mostrarlo junto a toda vista de precio, calculadora y
  * boletín, y cada vez que María cotice. No parafrasear.
  */
-export const AVISO_PRECIO_REFERENCIAL =
-  'Precio referencial estimado al 75% del precio internacional de referencia ' +
-  'del oro, convertido a lempiras con un tipo de cambio de referencia de ' +
-  'mercado (fuente y fecha indicadas). Es solo informativo: no es una oferta ' +
+export const AVISO_PRECIO_INFORMATIVO =
+  'Precio internacional del oro convertido a lempiras por gramo de oro fino ' +
+  'con el tipo de cambio de compra del Banco Central de Honduras (BCH), con ' +
+  'fuente, fecha y hora de cada dato. Es solo informativo: no es una oferta ' +
   'de compra, ni un precio oficial, ni una garantía de pago. MAPE.LEGAL no ' +
-  'compra, no vende ni intermedia oro. Toda transacción se negocia libremente ' +
-  'entre el productor y el comprador.'
+  'compra, no vende ni intermedia oro y no administra fondos. Toda ' +
+  'transacción se negocia libremente entre el productor y el comprador.'
 
-/** Fórmula pública del precio referencial (mostrar junto al precio, con fuente y fecha). */
-export const FORMULA_PRECIO_REFERENCIAL =
-  'Precio referencial (L por gramo de oro fino) = precio internacional del oro ' +
-  '× tipo de cambio de referencia de mercado × 0.75'
+/** Fórmula pública del precio informativo (mostrar junto al precio, con fuente y fecha). */
+export const FORMULA_PRECIO_INFORMATIVO =
+  'Lempiras por gramo de oro fino = precio internacional del oro (USD por ' +
+  'onza troy) × tipo de cambio de compra del BCH (L por USD) ÷ 31.1034768'
+
+/** Rótulo público canónico del precio. Nunca "compra", "precio de compra" ni un porcentaje. */
+export const ROTULO_PRECIO_INFORMATIVO =
+  'Precio internacional del oro en lempiras por gramo de oro fino'
+
+/** Rótulo breve para ticker, tarjetas y tablas. */
+export const ROTULO_PRECIO_INFORMATIVO_BREVE = 'Oro en lempiras por gramo fino'
+
+/** Calificativo obligatorio junto a toda cifra de precio. */
+export const SOLO_INFORMATIVO = 'Solo informativo'
 
 /**
- * Fuente REAL del tipo de cambio que usa la plataforma. No atribuir al BCH un
- * valor que proviene de este feed; la fuente y la fecha/hora se muestran junto
- * a cada precio y a cada tipo de cambio.
+ * ÚNICA fuente admitida del tipo de cambio que usa la plataforma: el tipo de
+ * cambio de COMPRA del BCH. Un dato que no provenga del BCH no se publica ni
+ * se etiqueta así; sin dato del BCH se muestra DATO_NO_DISPONIBLE.
  */
-export const FUENTE_TIPO_CAMBIO = 'exchangerate-api.com'
+export const FUENTE_TIPO_CAMBIO = 'Banco Central de Honduras (BCH)'
 
-/** Etiqueta pública del tipo de cambio (sin "BCH"). */
-export const ETIQUETA_TIPO_CAMBIO = 'Tipo de cambio de referencia de mercado'
+/** Etiqueta pública del tipo de cambio. Solo se usa para un dato que proviene del BCH. */
+export const ETIQUETA_TIPO_CAMBIO = 'Tipo de cambio de compra del BCH'
+
+/** Texto cuando falta un insumo (oro, tipo de cambio o ambos). Nunca se estima. */
+export const DATO_NO_DISPONIBLE = 'dato no disponible'
+
+/** Marcador de módulos o funciones anunciados pero aún no operativos. */
+export const EN_IMPLEMENTACION = 'En implementación'
 
 /**
  * TEXTO LITERAL — declaración de conflicto de interés (Quiénes somos y
@@ -77,7 +97,7 @@ export const ETIQUETA_TIPO_CAMBIO = 'Tipo de cambio de referencia de mercado'
  */
 export const CONFLICTO_INTERES_CHT =
   'Los socios de CHT tienen intereses en empresas del sector aurífero, ' +
-  'incluida la comercialización de oro. Por eso el precio referencial se ' +
+  'incluida la comercialización de oro. Por eso el precio informativo se ' +
   'calcula con una fórmula pública y fija, y cada productor es libre de vender ' +
   'a quien quiera.'
 
@@ -182,15 +202,16 @@ export const CONDICION_COMPRA =
   'Especial MAPE). MAPE.LEGAL no compra ni vende mineral.'
 
 /**
- * OBLIGATORIA — política de PUBLICACIÓN del precio referencial (hotfix de
- * neutralidad, 11-nov-2026). Es informativa: la plataforma no compra.
+ * OBLIGATORIA — política de PUBLICACIÓN del precio informativo
+ * (DEC-2026-11-26-1 / DEC-2026-11-27-2). La plataforma no compra.
  */
 export const POLITICA_PRECIO =
-  'MAPE.LEGAL publica un precio referencial estimado al 75 % de la ' +
-  'referencia internacional del oro, convertido a lempiras con un tipo de ' +
-  'cambio de referencia de mercado, expresado por gramo de oro fino. Se ' +
-  'publica una vez al día, con su fórmula, fuente y fecha. Es solo ' +
-  'informativo: no es una oferta de compra ni un precio oficial.'
+  'MAPE.LEGAL publica el precio internacional del oro convertido a lempiras ' +
+  'por gramo de oro fino con el tipo de cambio de compra del Banco Central de ' +
+  'Honduras (BCH), sin ningún factor de compra, con su fórmula, la fuente real ' +
+  'de cada insumo y la fecha y hora del dato. Es solo informativo: no es una ' +
+  'oferta de compra ni un precio oficial. MAPE.LEGAL no compra, no vende ni ' +
+  'intermedia oro y no administra fondos.'
 
 /**
  * OBLIGATORIA — encuadre de acceso a mercados. La exigencia proviene del
@@ -368,47 +389,39 @@ export const CITAS_LEGALES = {
 
 export type CitaLegalKey = keyof typeof CITAS_LEGALES
 
-/* ── Precio referencial (/precio y /politica-de-precios) ────────────── */
+/* ── Precio informativo (/precio y /politica-de-precios) ────────────── */
 /*
- * Hotfix de neutralidad (11-nov-2026): el precio publicado es REFERENCIAL e
- * informativo (75 % de la referencia internacional del oro). Ninguna de estas
- * constantes nombra a un comprador ni presenta una oferta de compra. Las
- * cláusulas 5 y 6 del encargo "Precio de Referencia" (2026-07-29) describen
- * la operación de un comprador y quedan @deprecated — no renderizar.
+ * DEC-2026-11-26-1 / DEC-2026-11-27-2: el precio publicado es SOLO
+ * INFORMATIVO (oro internacional × tipo de compra del BCH ÷ 31.1034768, sin
+ * factor). Ninguna de estas constantes nombra a un comprador ni presenta una
+ * oferta de compra. Las cláusulas 5 y 6 del encargo "Precio de Referencia"
+ * (2026-07-29) describían la operación de un comprador y no se renderizan.
+ * Las filas históricas de precios_referencia guardan un factor registrado
+ * (columna NOT NULL de la migración 030) que NO se renderiza: en lectura se
+ * recalcula L/g = referencia × tipo de cambio ÷ 31.1034768.
  */
 
-/** Fórmula pública del precio referencial (Bloque 2 de /precio). */
-export const PRECIO_REF_FORMULA = FORMULA_PRECIO_REFERENCIAL
+/** Fórmula pública del precio informativo (Bloque 2 de /precio). */
+export const PRECIO_REF_FORMULA = FORMULA_PRECIO_INFORMATIVO
 
-/** Carácter del precio publicado: referencial e informativo, de nadie en particular. */
+/** Carácter del precio publicado: informativo, de nadie en particular. */
 export const PRECIO_REF_CARACTER_COMERCIAL =
-  'Este es un precio referencial informativo publicado por la plataforma ' +
-  'MAPE.LEGAL. No es un precio oficial del Estado ni de INHGEOMIN, ni una ' +
-  'oferta de compra de persona alguna. Toda transacción se negocia ' +
-  'libremente entre el productor y el comprador.'
+  'Este es un precio informativo publicado por la plataforma MAPE.LEGAL. No ' +
+  'es un precio oficial del Estado ni de INHGEOMIN, ni una oferta de compra ' +
+  'de persona alguna. Toda transacción se negocia libremente entre el ' +
+  'productor y el comprador.'
 
-/** Título del bloque de precio referencial en /precios. */
+/** Título del bloque de precio informativo en /precios. */
 export const PRECIOS_REFERENCIA_COMERCIAL =
-  'Precio referencial (75%), fórmula pública y aviso'
+  'Precio informativo del oro, fórmula pública y aviso'
 
 /**
- * Nota del factor registrado en una fijación histórica (fila indeleble de
- * precios_referencia). Describe el factor REGISTRADO, no el vigente.
- */
-export function factorVigenteNota(version: string): string {
-  return (
-    `Factor registrado en esta fijación conforme a la Política de publicación ` +
-    `v${version}. Sujeto a revisión según el registro de versiones de dicha política.`
-  )
-}
-
-/**
- * Bloque 3 de /precio: el precio referencial se expresa sobre oro fino.
- * Hotfix de neutralidad: sin método de ensaye ni contramuestra (son de un
- * comprador, no de la plataforma).
+ * Bloque 3 de /precio: el precio informativo se expresa sobre oro fino.
+ * Sin método de ensaye ni contramuestra (son de un comprador, no de la
+ * plataforma).
  */
 export const PRECIO_REF_APLICACION_ORO_FINO =
-  'El precio referencial se expresa por gramo de oro fino, no por peso bruto ' +
+  'El precio informativo se expresa por gramo de oro fino, no por peso bruto ' +
   'del material. La ley del material la determina, en cada transacción, el ' +
   'comprador con el productor mediante el método que acuerden; MAPE.LEGAL no ' +
   'practica ensayes ni liquida transacciones.'
@@ -446,8 +459,8 @@ export const PRECIO_REF_REQUISITOS_CIERRE =
 /** Bloque 5 de /precio: título. */
 export const PRECIO_REF_NATURALEZA_TITULO = 'Naturaleza de esta publicación'
 
-/** Bloque 5 de /precio: naturaleza = el aviso literal del precio referencial. */
-export const PRECIO_REF_NATURALEZA = AVISO_PRECIO_REFERENCIAL
+/** Bloque 5 de /precio: naturaleza = el aviso literal del precio informativo. */
+export const PRECIO_REF_NATURALEZA = AVISO_PRECIO_INFORMATIVO
 
 /* Las cláusulas 5 y 6 de la Política de Precios v1.1 (liquidación XRF, ensayo
  * al fuego, contramuestra, verificaciones externas) describían la operación de
@@ -455,11 +468,11 @@ export const PRECIO_REF_NATURALEZA = AVISO_PRECIO_REFERENCIAL
  * ni liquida transacciones. Quedan en el historial de git (PR #240). */
 
 /**
- * Cláusula de revisión de la Política de publicación del precio referencial.
- * Hotfix de neutralidad: sin comprador, sin costos de ensaye ni refinería.
+ * Cláusula de revisión de la Política de publicación del precio informativo.
+ * Sin comprador, sin costos de ensaye ni refinería, sin factor.
  */
 export const PRECIO_REF_CLAUSULA_REVISION =
-  'El factor referencial y las fuentes de los insumos podrán ser revisados ' +
+  'La fórmula y las fuentes de los insumos podrán ser revisadas ' +
   'por la titular de la plataforma. Toda revisión se publicará como una ' +
   'nueva versión de esta política, con al menos quince (15) días calendario ' +
   'de anticipación a su entrada en vigencia. Las versiones anteriores ' +

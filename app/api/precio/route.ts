@@ -1,11 +1,13 @@
-// /api/precio — Precio referencial MAPE.LEGAL (fijación diaria).
+// /api/precio — Precio informativo MAPE.LEGAL (fijación diaria).
 //
-// Hotfix de neutralidad (11-nov-2026): el precio fijado es un PRECIO
-// REFERENCIAL ESTIMADO (factor por defecto FACTOR_REFERENCIA = 0.75), no un
-// precio de transacción. Las columnas `referencia_lbma_usd_oz` y
-// `tipo_cambio_bch` son nombres históricos de la tabla (migración 030) y se
-// CONSERVAN; sus etiquetas públicas son "referencia internacional del oro" y
-// "tipo de cambio de referencia de mercado (exchangerate-api.com)".
+// DEC-2026-11-26-1 / DEC-2026-11-27-2: el precio fijado es SOLO INFORMATIVO y
+// SIN factor de compra: L/g fino = referencia internacional (USD/oz) × tipo de
+// cambio de COMPRA del BCH ÷ 31.1034768. Las columnas `referencia_lbma_usd_oz`,
+// `tipo_cambio_bch` y `factor_comercializacion` (migración 030, NOT NULL) se
+// CONSERVAN sin alterar la migración: el factor se escribe como 1 (sin
+// recorte) y NO se expone en lo público; en lectura el precio se recalcula
+// con la fórmula pública. Etiquetas públicas: "precio internacional del oro"
+// (fuente real) y "tipo de cambio de compra del BCH".
 //
 // GET  (público): registro vigente de la fecha actual (hora de Honduras).
 //      Si no hay precio fijado hoy: { disponible: false } + el último
@@ -30,13 +32,35 @@ import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit';
 import {
   calcularPrecioLempirasGramoFino,
   redondearAlmacenamiento,
-  METODO_LIQUIDACION,
-  METODO_CONTRASTE,
+  FACTOR_SIN_RECORTE,
+  GRAMOS_POR_ONZA_TROY,
   VERSION_POLITICA_PRECIOS,
 } from '@/lib/precio/calculo';
-import { fechaHondurasHoy, getPrecioReferenciaHoy } from '@/lib/precio/consulta';
-import { FACTOR_REFERENCIA } from '@/lib/precio/factores';
-import { AVISO_PRECIO_REFERENCIAL, FUENTE_TIPO_CAMBIO } from '@/lib/content/copy-legal';
+import {
+  fechaHondurasHoy,
+  getPrecioReferenciaHoy,
+  recalcularLpsGramoFino,
+  type PrecioReferenciaRow,
+} from '@/lib/precio/consulta';
+import {
+  AVISO_PRECIO_INFORMATIVO,
+  ETIQUETA_TIPO_CAMBIO,
+  FORMULA_PRECIO_INFORMATIVO,
+  FUENTE_TIPO_CAMBIO,
+} from '@/lib/content/copy-legal';
+
+// Proyección pública de una fila de precios_referencia: SIN factor; el precio
+// se recalcula en lectura con la fórmula pública (o null = dato no disponible).
+function publico(r: PrecioReferenciaRow) {
+  return {
+    fecha: r.fecha,
+    hora_fijacion: r.hora_fijacion,
+    precio_lempiras_gramo_fino: recalcularLpsGramoFino(r),
+    referencia_internacional_usd_oz: r.referencia_lbma_usd_oz,
+    tipo_cambio_compra_bch: r.tipo_cambio_bch,
+    version_politica: r.version_politica,
+  };
+}
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -62,22 +86,17 @@ export async function GET(request: NextRequest) {
 
     const { hoy, vigente, anterior } = await getPrecioReferenciaHoy();
 
+    const comun = {
+      formula: FORMULA_PRECIO_INFORMATIVO,
+      gramos_por_onza_troy: GRAMOS_POR_ONZA_TROY,
+      tipo_cambio_fuente: FUENTE_TIPO_CAMBIO,
+      tipo_cambio_etiqueta: ETIQUETA_TIPO_CAMBIO,
+      aviso: AVISO_PRECIO_INFORMATIVO,
+    };
+
     if (vigente) {
       return NextResponse.json(
-        {
-          disponible: true,
-          fecha: vigente.fecha,
-          hora_fijacion: vigente.hora_fijacion,
-          precio_lempiras_gramo_fino: vigente.precio_lempiras_gramo_fino,
-          referencia_lbma_usd_oz: vigente.referencia_lbma_usd_oz,
-          tipo_cambio_bch: vigente.tipo_cambio_bch,
-          factor_comercializacion: vigente.factor_comercializacion,
-          version_politica: vigente.version_politica,
-          tipo_cambio_fuente: FUENTE_TIPO_CAMBIO,
-          aviso: AVISO_PRECIO_REFERENCIAL,
-          metodo_liquidacion: METODO_LIQUIDACION,
-          metodo_contraste: METODO_CONTRASTE,
-        },
+        { disponible: true, ...publico(vigente), ...comun },
         { headers: { 'Cache-Control': CACHE_HEADER } },
       );
     }
@@ -86,29 +105,16 @@ export async function GET(request: NextRequest) {
       {
         disponible: false,
         fecha: hoy,
-        tipo_cambio_fuente: FUENTE_TIPO_CAMBIO,
-        aviso: AVISO_PRECIO_REFERENCIAL,
-        metodo_liquidacion: METODO_LIQUIDACION,
-        metodo_contraste: METODO_CONTRASTE,
+        ...comun,
         // Último precio vigente anterior, etiquetado con su propia fecha.
-        // No se extrapola ni se recalcula.
-        ultimo_vigente: anterior
-          ? {
-              fecha: anterior.fecha,
-              hora_fijacion: anterior.hora_fijacion,
-              precio_lempiras_gramo_fino: anterior.precio_lempiras_gramo_fino,
-              referencia_lbma_usd_oz: anterior.referencia_lbma_usd_oz,
-              tipo_cambio_bch: anterior.tipo_cambio_bch,
-              factor_comercializacion: anterior.factor_comercializacion,
-              version_politica: anterior.version_politica,
-            }
-          : null,
+        // No se extrapola.
+        ultimo_vigente: anterior ? publico(anterior) : null,
       },
       { headers: { 'Cache-Control': CACHE_HEADER } },
     );
   } catch (err) {
     console.error('[api/precio] GET error:', err);
-    return NextResponse.json({ error: 'Error al consultar el precio referencial' }, { status: 500 });
+    return NextResponse.json({ error: 'Error al consultar el precio informativo' }, { status: 500 });
   }
 }
 
@@ -117,7 +123,6 @@ export async function GET(request: NextRequest) {
 interface FijacionBody {
   referencia_lbma_usd_oz?: unknown;
   tipo_cambio_bch?: unknown;
-  factor_comercializacion?: unknown;
   motivo_reemplazo?: unknown;
   fecha?: unknown;
 }
@@ -145,20 +150,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Insumos: referencia internacional del oro (USD/oz troy) y tipo de cambio
-    // de referencia de mercado (L por USD). Las claves del body conservan los
-    // nombres de columna de la tabla. El factor por defecto es el referencial
-    // público (FACTOR_REFERENCIA); el panel lo precarga y puede sobreescribirlo.
+    // de COMPRA del BCH (L por USD). Las claves del body conservan los nombres
+    // de columna de la tabla. No se acepta ningún factor del cliente: la
+    // columna histórica factor_comercializacion recibe FACTOR_SIN_RECORTE (1).
     const lbma = numFinito(body.referencia_lbma_usd_oz);
     const tc = numFinito(body.tipo_cambio_bch);
-    const factor = body.factor_comercializacion == null ? FACTOR_REFERENCIA : numFinito(body.factor_comercializacion);
+    const factor = FACTOR_SIN_RECORTE;
     if (lbma === null || lbma <= 0 || lbma > 1_000_000) {
-      return NextResponse.json({ error: 'referencia_lbma_usd_oz (referencia internacional del oro, USD/oz) debe ser un número mayor que 0' }, { status: 400 });
+      return NextResponse.json({ error: 'referencia_lbma_usd_oz (precio internacional del oro, USD/oz) debe ser un número mayor que 0' }, { status: 400 });
     }
     if (tc === null || tc <= 0 || tc > 10_000) {
-      return NextResponse.json({ error: 'tipo_cambio_bch (tipo de cambio de referencia de mercado, L por USD) debe ser un número mayor que 0' }, { status: 400 });
-    }
-    if (factor === null || factor <= 0 || factor > 1) {
-      return NextResponse.json({ error: 'factor_comercializacion debe ser mayor que 0 y no mayor que 1' }, { status: 400 });
+      return NextResponse.json({ error: 'tipo_cambio_bch (tipo de cambio de compra del BCH, L por USD) debe ser un número mayor que 0' }, { status: 400 });
     }
 
     const hoy = fechaHondurasHoy();
@@ -179,7 +181,8 @@ export async function POST(request: NextRequest) {
 
     // 4. El precio SIEMPRE se calcula en el servidor. Nunca se acepta un
     // precio calculado desde el cliente.
-    const precio = redondearAlmacenamiento(calcularPrecioLempirasGramoFino(lbma, tc, factor));
+    const bruto = calcularPrecioLempirasGramoFino(lbma, tc);
+    const precio = bruto == null ? 0 : redondearAlmacenamiento(bruto);
     if (!(precio > 0)) {
       return NextResponse.json({ error: 'El cálculo no produce un precio válido' }, { status: 400 });
     }
@@ -293,6 +296,6 @@ export async function POST(request: NextRequest) {
     );
   } catch (err) {
     console.error('[api/precio] POST error:', err);
-    return NextResponse.json({ error: 'Error al fijar el precio referencial' }, { status: 500 });
+    return NextResponse.json({ error: 'Error al fijar el precio informativo' }, { status: 500 });
   }
 }

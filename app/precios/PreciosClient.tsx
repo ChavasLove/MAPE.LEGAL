@@ -17,16 +17,15 @@ import LivePricesWidget, {
 import KaratPricesTable from '@/components/precios/KaratPricesTable';
 import PriceHistoryChart from '@/components/precios/PriceHistoryChart';
 import {
-  AVISO_PRECIO_REFERENCIAL,
+  AVISO_PRECIO_INFORMATIVO,
   PRECIOS_REFERENCIA_COMERCIAL,
-  RAZON_SOCIAL,
 } from '@/lib/content/copy-legal';
 
 type Lang = 'es' | 'en';
 
 const WHATSAPP_HREF =
   'https://wa.me/50497373139?text=' +
-  encodeURIComponent('Hola, tengo una consulta sobre el precio referencial del oro publicado en mape.legal.');
+  encodeURIComponent('Hola, tengo una consulta sobre el precio informativo del oro publicado en mape.legal.');
 
 export default function PreciosClient() {
   const [lang, setLang] = useState<Lang>('es');
@@ -134,15 +133,15 @@ export default function PreciosClient() {
             }}
           >
             {t(
-              `Consulta el precio internacional del oro, el precio de referencia comercial de ${RAZON_SOCIAL} en lempiras por gramo de oro fino, y el tipo de cambio del día. Actualizado diariamente.`,
-              `Check the international gold price, the ${RAZON_SOCIAL} commercial reference price in lempiras per gram of fine gold, and today’s exchange rate. Updated daily.`,
+              'Consulta el precio internacional del oro, su conversión a lempiras por gramo de oro fino con el tipo de cambio de compra del Banco Central de Honduras (BCH) y la fecha de cada dato. Solo informativo, sin ningún factor de compra: MAPE.LEGAL no compra, no vende ni intermedia oro ni administra fondos.',
+              'Check the international gold price, its conversion to lempiras per gram of fine gold at the Central Bank of Honduras (BCH) buying exchange rate, and the date of each figure. Informative only, with no buying factor: MAPE.LEGAL does not buy, sell or broker gold and does not manage funds.',
             )}
           </p>
           <p style={{ marginTop: 10, fontSize: 14, lineHeight: 1.6 }}>
             <Link href="/precio" style={{ color: 'var(--moss)', fontWeight: 600, textDecoration: 'none' }}>
               {t(
                 `${PRECIOS_REFERENCIA_COMERCIAL} →`,
-                `${RAZON_SOCIAL} reference price, formula and selling requirements →`,
+                'Informative price, public formula and notice →',
               )}
             </Link>
           </p>
@@ -173,12 +172,12 @@ export default function PreciosClient() {
                   marginBottom: 4,
                 }}
               >
-                {t('¿Consultas sobre el precio referencial?', 'Questions about the reference price?')}
+                {t('¿Consultas sobre el precio informativo?', 'Questions about the informative price?')}
               </div>
               <div style={{ fontSize: 14, color: 'var(--t2)', lineHeight: 1.5 }}>
                 {t(
-                  'Escribinos por WhatsApp si tenés dudas sobre cómo se calcula el precio referencial, la fórmula publicada o la conversión por kilates. Es información general, sin oferta ni intermediación.',
-                  'Message us on WhatsApp with questions about how the reference price is calculated, the published formula or the karat conversion. General information only — no offer or brokerage.',
+                  'Escribinos por WhatsApp si tenés dudas sobre cómo se calcula el precio informativo, la fórmula publicada o la conversión por kilates. Es información general, sin oferta ni intermediación.',
+                  'Message us on WhatsApp with questions about how the informative price is calculated, the published formula or the karat conversion. General information only — no offer or brokerage.',
                 )}
               </div>
             </div>
@@ -205,10 +204,10 @@ export default function PreciosClient() {
             </a>
           </div>
 
-          {/* Aviso literal del precio referencial (hotfix 11-nov-2026). ES-only:
+          {/* Aviso literal del precio informativo (DEC-2026-11-26-1). ES-only:
               texto con consecuencia jurídica, importado de copy-legal. */}
           <p style={{ marginTop: 16, fontSize: 13, lineHeight: 1.7, color: 'var(--t3)' }}>
-            {AVISO_PRECIO_REFERENCIAL}
+            {AVISO_PRECIO_INFORMATIVO}
           </p>
 
           {/* Fuentes y actualización — al final de la página por pedido del
@@ -220,7 +219,7 @@ export default function PreciosClient() {
         </div>
       </section>
 
-      {/* FOOTER — el compartido: la página que publica el precio referencial
+      {/* FOOTER — el compartido: la página que publica el precio informativo
           debe llevar las notas legales (registro de comercializador, nota
           del Certificado de Origen, aviso de plataforma). ES-only. */}
       <SiteFooter />

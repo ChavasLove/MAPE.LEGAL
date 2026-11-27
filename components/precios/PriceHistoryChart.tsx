@@ -2,9 +2,14 @@
 
 // Price history chart for /precios — the daily 8 AM snapshots from
 // precios_diarios plotted over time so a miner or buyer can verify how the
-// precio referencial (75%) and its inputs have moved across days, months and
-// (as the record grows) years. Default metric: the precio referencial itself —
-// it is the headline number of the page and now always carries data.
+// price and its inputs have moved across days, months and (as the record
+// grows) years. DEC-2026-11-26-1 / DEC-2026-11-27-2: no series carries a
+// factor. The series in lempiras (L per gram of fine gold, L/oz, BCH buying
+// rate) only exist for days whose exchange rate was read from the BCH; while
+// fewer than two such days exist the chart says so ("en implementación") and
+// never reconstructs them from another source. Default metric: the headline
+// price (L per gram of fine gold) — falls back to international gold (USD/oz,
+// real for every day) while the lempira series is still being built.
 //
 // Design notes (DESIGN.md + dataviz method):
 // - Single series per view, one axis — the metric selector swaps which series
@@ -17,32 +22,34 @@
 // - No continuous animations; static skeleton. Zero hex — tokens only.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ROTULO_PRECIO_REFERENCIAL } from '@/lib/precio/factores';
-import { AVISO_PRECIO_REFERENCIAL, ETIQUETA_TIPO_CAMBIO, FUENTE_TIPO_CAMBIO } from '@/lib/content/copy-legal';
+import {
+  AVISO_PRECIO_INFORMATIVO,
+  EN_IMPLEMENTACION,
+  ETIQUETA_TIPO_CAMBIO,
+  FUENTE_TIPO_CAMBIO,
+  ROTULO_PRECIO_INFORMATIVO,
+} from '@/lib/content/copy-legal';
 
 type Lang = 'es' | 'en';
 
 interface HistoryPoint {
   fecha: string; // YYYY-MM-DD
   oro_usd_oz: number | null;
-  usd_hnl: number | null;
+  /** Tipo de cambio de COMPRA del BCH; null si ese día no se leyó del BCH. */
+  tipo_cambio_compra_bch: number | null;
   oro_lps_oz: number | null;
-  // Canonical + compatibility alias (same value).
-  oro_referencial_lps_gramo?: number | null;
-  oro_compra_lps_gramo: number | null;
+  /** L por gramo de oro fino, sin factor; null sin tipo de cambio del BCH. */
+  oro_lps_gramo_fino: number | null;
 }
 
 interface HistoryResponse {
   puntos: HistoryPoint[];
   tipo_cambio_fuente?: string;
+  serie_lempiras_estado?: string;
+  puntos_con_bch?: number;
 }
 
-/** Precio referencial de un punto — canonical field with alias fallback. */
-function referencialDe(p: HistoryPoint): number | null {
-  return p.oro_referencial_lps_gramo ?? p.oro_compra_lps_gramo ?? null;
-}
-
-type MetricKey = 'referencial' | 'oro_usd' | 'oro_lps' | 'tc';
+type MetricKey = 'lps_fino' | 'oro_usd' | 'oro_lps' | 'tc';
 type RangeKey = '7d' | '1m' | '3m' | '1y' | 'all';
 
 interface MetricDef {
@@ -58,12 +65,12 @@ type T = (es: string, en: string) => string;
 
 const METRICS: MetricDef[] = [
   {
-    key: 'referencial',
-    label: () => ROTULO_PRECIO_REFERENCIAL,
-    unit: (t) => t('L por gramo de oro fino', 'L per gram of fine gold'),
+    key: 'lps_fino',
+    label: (t) => t(ROTULO_PRECIO_INFORMATIVO, 'International gold in Lempiras per gram of fine gold'),
+    unit: (t) => t('L por gramo de oro fino · solo informativo', 'L per gram of fine gold · informative only'),
     prefix: 'L ',
     decimals: 2,
-    value: (p) => referencialDe(p),
+    value: (p) => p.oro_lps_gramo_fino,
   },
   {
     key: 'oro_usd',
@@ -83,13 +90,16 @@ const METRICS: MetricDef[] = [
   },
   {
     key: 'tc',
-    label: (t) => t(ETIQUETA_TIPO_CAMBIO, 'Market reference exchange rate'),
+    label: (t) => t(ETIQUETA_TIPO_CAMBIO, 'BCH buying exchange rate'),
     unit: (t) => t(`L por USD · ${FUENTE_TIPO_CAMBIO}`, `L per USD · ${FUENTE_TIPO_CAMBIO}`),
     prefix: 'L ',
     decimals: 4,
-    value: (p) => p.usd_hnl,
+    value: (p) => p.tipo_cambio_compra_bch,
   },
 ];
+
+/** Metrics that depend on the BCH exchange rate (empty until ≥2 BCH days exist). */
+const METRICS_LEMPIRAS: ReadonlySet<MetricKey> = new Set(['lps_fino', 'oro_lps', 'tc']);
 
 const RANGES: Array<{ key: RangeKey; days: number; label: (t: T) => string }> = [
   { key: '7d', days: 7, label: () => '7D' },
@@ -195,8 +205,9 @@ export default function PriceHistoryChart({ lang }: Props) {
   const [points, setPoints] = useState<HistoryPoint[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  // Default: the precio referencial (75%) — the headline figure of the page.
-  const [metricKey, setMetricKey] = useState<MetricKey>('referencial');
+  // Default: the headline figure of the page (L per gram of fine gold).
+  const [metricKey, setMetricKey] = useState<MetricKey>('lps_fino');
+  const [puntosConBch, setPuntosConBch] = useState<number>(0);
   const [rangeKey, setRangeKey] = useState<RangeKey>('1m');
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const [showTable, setShowTable] = useState(false);
@@ -225,6 +236,7 @@ export default function PriceHistoryChart({ lang }: Props) {
         if (!mountedRef.current) return;
         const puntos = Array.isArray(json.puntos) ? json.puntos : [];
         setPoints(puntos);
+        setPuntosConBch(typeof json.puntos_con_bch === 'number' ? json.puntos_con_bch : puntos.filter((p) => p.tipo_cambio_compra_bch != null).length);
         setError(false);
       } catch {
         if (!mountedRef.current) return;
@@ -590,10 +602,15 @@ export default function PriceHistoryChart({ lang }: Props) {
             lineHeight: 1.6,
           }}
         >
-          {t(
-            'Aún no hay suficientes datos registrados en este rango. El historial crece un punto por día con la captura de las 8:00 a.m.',
-            'Not enough recorded data in this range yet. The record grows by one point per day with the 8:00 a.m. capture.',
-          )}
+          {METRICS_LEMPIRAS.has(metricKey) && puntosConBch < 2
+            ? t(
+                `${EN_IMPLEMENTACION}: la serie histórica en lempiras se construye solo con días cuyo tipo de cambio de compra proviene del BCH (hoy ${puntosConBch}). No se reconstruye con otra fuente. Mientras tanto puede consultar la serie del oro internacional en USD/oz.`,
+                `${EN_IMPLEMENTACION}: the historical series in lempiras is built only from days whose buying exchange rate came from the BCH (today ${puntosConBch}). It is not reconstructed from any other source. Meanwhile, see the international gold series in USD/oz.`,
+              )
+            : t(
+                'Aún no hay suficientes datos registrados en este rango. El historial crece un punto por día con la captura de las 8:00 a.m.',
+                'Not enough recorded data in this range yet. The record grows by one point per day with the 8:00 a.m. capture.',
+              )}
         </div>
       ) : (
         <div
@@ -777,11 +794,11 @@ export default function PriceHistoryChart({ lang }: Props) {
                 'One point per day — the 8:00 a.m. (Honduras) capture. Markets close on weekends.',
               )}
             </span>
-            {metricKey === 'referencial' && (
+            {metricKey === 'lps_fino' && (
               <>
                 <br />
                 <span role="note" style={{ fontFamily: 'var(--font-body)', color: 'var(--t2)', fontSize: 12 }}>
-                  {AVISO_PRECIO_REFERENCIAL}
+                  {AVISO_PRECIO_INFORMATIVO}
                 </span>
               </>
             )}
@@ -824,10 +841,10 @@ export default function PriceHistoryChart({ lang }: Props) {
               <tr>
                 {[
                   t('Fecha', 'Date'),
-                  t('Referencial (L/g oro fino)', 'Reference (L/g fine gold)'),
+                  t('Oro (L/g oro fino)', 'Gold (L/g fine gold)'),
                   t('Oro (USD/oz)', 'Gold (USD/oz)'),
                   t('Oro (L/oz)', 'Gold (L/oz)'),
-                  t('TC (L/USD)', 'FX (L/USD)'),
+                  t('Compra BCH (L/USD)', 'BCH buying rate (L/USD)'),
                 ].map((h, i) => (
                   <th
                     key={h}
@@ -858,10 +875,10 @@ export default function PriceHistoryChart({ lang }: Props) {
                     {fmtDateShort(p.fecha, lang, true)}
                   </td>
                   {[
-                    referencialDe(p) != null ? `L ${fmtNum(referencialDe(p) as number, 2)}` : '—',
+                    p.oro_lps_gramo_fino != null ? `L ${fmtNum(p.oro_lps_gramo_fino, 2)}` : '—',
                     p.oro_usd_oz != null ? `$${fmtNum(p.oro_usd_oz, 2)}` : '—',
                     p.oro_lps_oz != null ? `L ${fmtNum(p.oro_lps_oz, 0)}` : '—',
-                    p.usd_hnl != null ? `L ${fmtNum(p.usd_hnl, 4)}` : '—',
+                    p.tipo_cambio_compra_bch != null ? `L ${fmtNum(p.tipo_cambio_compra_bch, 4)}` : '—',
                   ].map((cell, i) => (
                     <td
                       key={i}

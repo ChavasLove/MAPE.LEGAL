@@ -12,16 +12,17 @@ import PublicNav from '@/components/landing/PublicNav'
 import SiteFooter from '@/components/landing/SiteFooter'
 import PriceTickerBar from '@/components/precios/PriceTickerBar'
 import {
-  AVISO_PRECIO_REFERENCIAL,
+  AVISO_PRECIO_INFORMATIVO,
+  ROTULO_PRECIO_INFORMATIVO,
+  SOLO_INFORMATIVO,
   CERTIFICADO_ORIGEN_NOTA,
   CONFLICTO_INTERES_CHT,
   CONTACTO,
   DOMICILIO_LINES,
-  FORMULA_PRECIO_REFERENCIAL,
+  FORMULA_PRECIO_INFORMATIVO,
   RAZON_SOCIAL,
   ROL_CHT,
 } from '@/lib/content/copy-legal'
-import { ROTULO_PRECIO_REFERENCIAL } from '@/lib/precio/factores'
 
 export const metadata: Metadata = {
   title: 'Legalización de permisos de pequeña minería de oro en Honduras',
@@ -93,7 +94,7 @@ const CLASIFICACION = [
 
 /* Qué hace la plataforma — cuatro bloques, una sola entidad: CHT es titular,
    desarrolladora y operadora de MAPE.LEGAL y presta los servicios legales y
-   mineros. Nadie compra oro en esta página: el precio es referencial. */
+   mineros. Nadie compra oro en esta página: el precio es solo informativo. */
 const SERVICIOS = [
   {
     entidad: RAZON_SOCIAL,
@@ -118,9 +119,9 @@ const SERVICIOS = [
   },
   {
     entidad: 'Plataforma MAPE.LEGAL',
-    titulo: 'Precio referencial informativo',
+    titulo: 'Precio del oro, solo informativo',
     cuerpo:
-      'Publicación diaria de un precio referencial estimado al 75 % de la referencia internacional del oro, en lempiras por gramo de oro fino, con fórmula pública, fuente y fecha. No es una oferta de compra: MAPE.LEGAL no compra, no vende ni intermedia oro.',
+      'Publicación del precio internacional del oro convertido a lempiras por gramo de oro fino con el tipo de cambio de compra del BCH, sin ningún factor, con fórmula pública, fuente y fecha y hora de cada dato. No es una oferta de compra: MAPE.LEGAL no compra, no vende ni intermedia oro ni administra fondos.',
     href: '/precios',
   },
 ] as const
@@ -129,7 +130,7 @@ const SERVICIOS = [
 const QUE_HACE_PLATAFORMA = [
   'Gestión de expedientes de permiso de pequeña minería y licencia ambiental.',
   'Trazabilidad por unidad minera y sello complementario voluntario, verificable en este sitio.',
-  'Publicación diaria de un precio referencial informativo del oro, con fórmula pública.',
+  'Publicación del precio informativo del oro en lempiras por gramo de oro fino, con fórmula pública, fuente y fecha.',
   'Orientación sobre el marco legal minero y ambiental de Honduras.',
 ] as const
 
@@ -338,7 +339,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Tarjeta estática del precio referencial — sin fetch; el número vive en /precios */}
+          {/* Tarjeta estática del precio informativo — sin fetch; el número vive en /precios */}
           <div
             style={{
               ...CARD_STYLE,
@@ -346,7 +347,7 @@ export default function LandingPage() {
               border: '1px solid color-mix(in oklch, var(--moss) 28%, white)',
             }}
           >
-            <div style={EYEBROW_STYLE}>{ROTULO_PRECIO_REFERENCIAL}</div>
+            <div style={EYEBROW_STYLE}>{ROTULO_PRECIO_INFORMATIVO} · {SOLO_INFORMATIVO}</div>
             <h3
               style={{
                 fontFamily: 'var(--font-display)',
@@ -356,7 +357,7 @@ export default function LandingPage() {
                 letterSpacing: '-0.01em',
               }}
             >
-              Lempiras por gramo de oro fino, publicado una vez al día.
+              Lempiras por gramo de oro fino, con fuente y fecha, sin ningún factor de compra.
             </h3>
             <p
               style={{
@@ -370,10 +371,10 @@ export default function LandingPage() {
                 padding: '12px 14px',
               }}
             >
-              {FORMULA_PRECIO_REFERENCIAL}
+              {FORMULA_PRECIO_INFORMATIVO}
             </p>
             <p style={{ fontSize: 13, color: 'var(--t2)', lineHeight: 1.7, flexGrow: 1 }}>
-              {AVISO_PRECIO_REFERENCIAL}
+              {AVISO_PRECIO_INFORMATIVO}
             </p>
             <Link
               href="/precios"
@@ -385,7 +386,7 @@ export default function LandingPage() {
                 alignSelf: 'flex-start',
               }}
             >
-              Ver el precio referencial del día →
+              Ver el precio informativo del día →
             </Link>
           </div>
         </div>

@@ -35,7 +35,7 @@
  * operadora de MAPE.LEGAL; presta servicios legales y mineros; NO compra ni
  * vende mineral. MAPE.LEGAL no compra, no vende ni intermedia oro. NUNCA se
  * nombra a un comprador. El precio público es el "Precio referencial (75%)"
- * (L por gramo de oro fino) SIEMPRE con el aviso literal AVISO_PRECIO_REFERENCIAL.
+ * (L por gramo de oro fino) SIEMPRE con el aviso literal AVISO_PRECIO_INFORMATIVO.
  * Cambios de reglas respecto del "Modelo B" del PR #240:
  *  - QUITADA: la regla que prohibía a CHT como operadora / dueña / titular de la
  *    plataforma — hoy es la formulación correcta. Se MANTIENEN "CHT compra" y

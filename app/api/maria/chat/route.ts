@@ -25,9 +25,14 @@ import {
 } from '@/lib/maria/ragShared';
 import { supabase } from '@/services/supabase';
 import { getAdminClient } from '@/services/adminSupabase';
-import { fetchAllPrices, storePrices, referenciaLpsPorGramoFino, buildKaratPrices, effectivePriceDate } from '@/services/pricingService';
-import { ROTULO_PRECIO_REFERENCIAL } from '@/lib/precio/factores';
-import { AVISO_PRECIO_REFERENCIAL, ETIQUETA_TIPO_CAMBIO, FUENTE_TIPO_CAMBIO } from '@/lib/content/copy-legal';
+import { fetchAllPrices, storePrices, oroLpsPorGramoFino, buildKaratPrices, effectivePriceDate, etiquetaFuenteOro, resolverTipoCambioBch } from '@/services/pricingService';
+import {
+  AVISO_PRECIO_INFORMATIVO,
+  DATO_NO_DISPONIBLE,
+  ETIQUETA_TIPO_CAMBIO,
+  FUENTE_TIPO_CAMBIO,
+  ROTULO_PRECIO_INFORMATIVO,
+} from '@/lib/content/copy-legal';
 import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
@@ -41,7 +46,7 @@ const MAX_CONTENT_CHARS = 2000;
 const MAX_MERGED_CONTENT_CHARS = 6000;
 const RATE_LIMIT_PER_IP = 20;
 const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
-// Upstream price fetches (GoldAPI / Yahoo / exchangerate-api) don't expose
+// Upstream price fetches (GoldAPI / Yahoo / BCH) do not expose
 // AbortSignal; race them against this timeout so a stalled feed doesn't pin
 // the serverless function past the client's own 30 s abort.
 const PRICE_FETCH_TIMEOUT_MS = 8000;
@@ -247,7 +252,7 @@ async function buildPriceContext(): Promise<string> {
 
   if (!prices) {
     try {
-      // fetchAllPrices fans out to GoldAPI / Yahoo / exchangerate-api without
+      // fetchAllPrices fans out to GoldAPI / Yahoo / BCH without
       // its own AbortSignal. Race against a hard timeout so a single stalled
       // upstream doesn't pin the function past the client abort.
       const live = await Promise.race<Awaited<ReturnType<typeof fetchAllPrices>> | null>([
@@ -263,7 +268,7 @@ async function buildPriceContext(): Promise<string> {
           fuente: live.fuente,
         };
         // Cache write-back so subsequent turns hit the DB row instead of
-        // re-fanning out to GoldAPI/Yahoo/exchangerate-api on every cold-cache
+        // re-fanning out to GoldAPI/Yahoo/BCH on every cold-cache
         // turn — without this, an anonymous visitor with the 20-turn budget
         // could drive ~60 paid upstream calls. Keyed to the 8 AM window so it
         // lands on (and freezes) the same row the widget serves.
@@ -279,27 +284,32 @@ async function buildPriceContext(): Promise<string> {
   }
 
   if (!prices) {
-    return `\n\nPRECIOS DE REFERENCIA: No hay datos de precios cargados hoy. Si el cliente pregunta por el precio del oro o el precio referencial, di: "Hoy no tengo el precio cargado en el sistema. Para precio actualizado escribí a gerencia@mape.legal."`;
+    return `\n\nPRECIOS DEL DÍA: No hay datos de precios cargados hoy. Si el cliente pregunta por el precio del oro, di: "Hoy no tengo el precio cargado en el sistema. Para el dato actualizado revisá www.mape.legal/precios o escribí a gerencia@mape.legal." — sin inventar ni estimar.`;
   }
+
+  // Tipo de cambio: ÚNICAMENTE del BCH (del snapshot si quedó marcado fx:bch;
+  // si no, en vivo o del último valor registrado, con su fecha). Sin dato del
+  // BCH → "dato no disponible" y ninguna cifra en lempiras.
+  const tcBch = await resolverTipoCambioBch(prices);
+  const tc = tcBch?.compra ?? null;
 
   const fmt = (n: number, d = 2) =>
     Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const oroFuente = etiquetaFuenteOro(prices.fuente);
   const oroIntl = `$${fmt(prices.oro)} USD/oz troy`;
-  // Precio referencial (75 %) — helper canónico (FACTOR_REFERENCIA en
-  // lib/precio/factores.ts, fuente única). Mismo número que /api/precios/live,
-  // el widget y el boletín.
-  const referencialLps = referenciaLpsPorGramoFino(prices.oro, prices.usd_hnl);
-  const referencial = referencialLps != null ? `L ${fmt(referencialLps)} por gramo de oro fino` : null;
-  // Conversión por kilates — mismo helper canónico que /api/precios/live y el
-  // boletín diario, así María cita números idénticos a los del widget. Cada
-  // kilataje trae valor por gramo y por penique (dwt = 1.5552 g) DE MATERIAL.
-  const kilatesRef = buildKaratPrices(prices.oro, prices.usd_hnl);
+  // Precio informativo SIN factor — helper canónico (oroLpsPorGramoFino).
+  // Mismo número que /api/precios/live, el widget y el boletín.
+  const lpsGramoFino = oroLpsPorGramoFino(prices.oro, tc);
+  const precioLinea = lpsGramoFino != null ? `L ${fmt(lpsGramoFino)} por gramo de oro fino` : DATO_NO_DISPONIBLE;
+  // Conversión por kilates — mismo helper canónico. Cada kilataje trae valor
+  // por gramo y por penique (dwt = 1.5552 g) DE MATERIAL, sin factor.
+  const kilatesRef = buildKaratPrices(prices.oro, tc);
   const kilatesLine = kilatesRef
     ? kilatesRef
-        .map((k) => `${k.kilates}k L ${fmt(k.referencia_lps_g)}/g · L ${fmt(k.referencia_lps_dwt)}/dwt`)
+        .map((k) => `${k.kilates}k L ${fmt(k.oro_lps_g)}/g · L ${fmt(k.oro_lps_dwt)}/dwt`)
         .join(' | ')
-    : null;
-  const plataLBMA = prices.plata != null ? `$${fmt(prices.plata)} USD/oz troy` : null;
+    : DATO_NO_DISPONIBLE;
+  const plataIntl = prices.plata != null ? `$${fmt(prices.plata)} USD/oz troy` : DATO_NO_DISPONIBLE;
   const horaConsultaHN = new Date().toLocaleTimeString('es-HN', {
     timeZone: 'America/Tegucigalpa',
     hour: '2-digit',
@@ -307,17 +317,19 @@ async function buildPriceContext(): Promise<string> {
     hour12: true,
   });
   const frescuraLabel = `consultado hoy ${horaConsultaHN}`;
-  const tipoCambio = prices.usd_hnl != null ? `L ${fmt(prices.usd_hnl)} por USD` : null;
+  const tipoCambioLinea = tcBch
+    ? `L ${fmt(tcBch.compra, 4)} por USD (${FUENTE_TIPO_CAMBIO}, vigente ${tcBch.fecha}${tcBch.origen === 'respaldo' ? ', último valor registrado' : ''})`
+    : DATO_NO_DISPONIBLE;
 
-  return `\n\nPRECIOS DE REFERENCIA (${prices.fecha ?? 'hoy'} — ${frescuraLabel}):
-- Oro internacional: ${oroIntl}
-- ${ETIQUETA_TIPO_CAMBIO} (${FUENTE_TIPO_CAMBIO}): ${tipoCambio ?? 'no disponible'}
-- ${ROTULO_PRECIO_REFERENCIAL}: ${referencial ?? 'no disponible'}
-- Referencia por kilates (por gramo y por penique/dwt DE MATERIAL; ley nominal = kilates ÷ 24; 1 dwt = 1.5552 g): ${kilatesLine ?? 'no disponible'}
-- Plata internacional: ${plataLBMA ?? 'no disponible'}
+  return `\n\nPRECIOS DEL DÍA (${prices.fecha ?? 'hoy'} — ${frescuraLabel}):
+- Oro internacional (${oroFuente}): ${oroIntl}
+- ${ETIQUETA_TIPO_CAMBIO}: ${tipoCambioLinea}
+- ${ROTULO_PRECIO_INFORMATIVO} (solo informativo, sin factor): ${precioLinea}
+- Por kilates (por gramo y por penique/dwt DE MATERIAL; ley nominal = kilates ÷ 24; 1 dwt = 1.5552 g): ${kilatesLine}
+- Plata internacional: ${plataIntl}
 - Frescura: ${frescuraLabel}
-${prices.fuente ? `- Fuente del oro: ${prices.fuente}` : ''}
-Cuando cites el precio, incluí SIEMPRE el aviso literal: «${AVISO_PRECIO_REFERENCIAL}». Nunca digas 'compra', nunca nombres compradores, nunca prometas pago ni plazo de pago. El precio referencial es un estimado informativo (75 % de la referencia internacional del oro, en lempiras por gramo de oro fino); las cifras por kilates son por gramo o penique DE MATERIAL. El tipo de cambio se atribuye siempre a su fuente (${FUENTE_TIPO_CAMBIO}) con fecha/hora. El formato canónico de respuesta para precio del día está en CUANDO PREGUNTAN POR EL PRECIO DEL ORO — síguelo al pie de la letra. El timestamp ("Actualizado") y el tipo de cambio USD/LPS son OBLIGATORIOS en cada respuesta de precio.`;
+- Fuente del oro: ${oroFuente}
+Cuando cites el precio, incluí SIEMPRE el aviso literal: «${AVISO_PRECIO_INFORMATIVO}». Nunca digas 'compra' ni 'precio referencial', nunca cites porcentajes de la referencia internacional, nunca nombres compradores, nunca prometas pago ni plazo de pago. El precio es solo informativo (oro internacional × tipo de cambio de compra del BCH ÷ 31.1034768, en lempiras por gramo de oro fino); las cifras por kilates son por gramo o penique DE MATERIAL. Si una línea dice "${DATO_NO_DISPONIBLE}", repetilo tal cual: nunca estimes ni uses otra fuente. El oro NO es "LBMA oficial". El formato canónico de respuesta para precio del día está en CUANDO PREGUNTAN POR EL PRECIO DEL ORO — síguelo al pie de la letra. El timestamp ("Actualizado") y la línea del tipo de cambio son OBLIGATORIOS en cada respuesta de precio.`;
 }
 
 // ─── Web channel guidance — injected after the base prompt ──────────────────

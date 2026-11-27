@@ -1,21 +1,33 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getAdminClient } from '@/services/adminSupabase';
-import { referenciaLpsPorGramoFino, effectivePriceDate, FACTOR_REFERENCIA_PUBLICO } from '@/services/pricingService';
+import {
+  oroLpsPorGramoFino,
+  oroLpsPorOnza,
+  effectivePriceDate,
+  parseFuente,
+} from '@/services/pricingService';
 import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit';
-import { AVISO_PRECIO_REFERENCIAL, FUENTE_TIPO_CAMBIO } from '@/lib/content/copy-legal';
+import {
+  AVISO_PRECIO_INFORMATIVO,
+  EN_IMPLEMENTACION,
+  ETIQUETA_TIPO_CAMBIO,
+  FUENTE_TIPO_CAMBIO,
+} from '@/lib/content/copy-legal';
 
 // Public, unauthenticated price history for the /precios chart. Reads the daily
 // 8 AM snapshots from precios_diarios (service-role — anon has no SELECT on that
-// table per migration 009) and derives the same numbers /api/precios/live serves:
-// international gold USD/oz, USD/HNL, gold in Lempiras per troy oz, and the
-// precio referencial (75 %) in Lempiras per gram of fine gold (computed here
-// via the canonical referenciaLpsPorGramoFino helper so history can never
-// drift from the live quote). The reference price is an informative estimate
-// — the response carries the literal AVISO_PRECIO_REFERENCIAL.
+// table per migration 009).
+//
+// DEC-2026-11-26-1 / DEC-2026-11-27-2: la serie en lempiras (L/oz y L por gramo
+// de oro fino) se publica SIN factor y SOLO para los días cuyo tipo de cambio
+// quedó registrado como leído del BCH (marcador fx:bch en `fuente`). Las filas
+// anteriores a esta decisión guardaban un tipo de cambio de otra fuente: para
+// esas fechas los campos en lempiras son null (la serie histórica en lempiras
+// queda "en implementación" hasta acumular datos del BCH). La serie del oro en
+// USD/oz es real para todas las fechas.
 //
 // Read-only over the frozen daily rows — this route NEVER triggers an upstream
-// fetch; a missing day simply isn't in the series. /api/precios/live owns the
-// capture of today's snapshot.
+// fetch; a missing day simply isn't in the series.
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -59,7 +71,7 @@ export async function GET(request: NextRequest) {
     const admin = getAdminClient();
     const { data, error } = await admin
       .from('precios_diarios')
-      .select('fecha, oro, usd_hnl')
+      .select('fecha, oro, usd_hnl, fuente')
       .gte('fecha', cutoff)
       .neq('fuente', 'smoke-test')
       .order('fecha', { ascending: true })
@@ -73,20 +85,21 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    let conBch = 0;
     const puntos = (data ?? [])
       .map((r) => {
         const oro = num(r.oro);
-        const usdHnl = num(r.usd_hnl);
         if (!r.fecha || oro == null || oro <= 0) return null;
-        const referencial = referenciaLpsPorGramoFino(oro, usdHnl);
+        const { fxBch } = parseFuente(r.fuente as string | null);
+        const tc = fxBch ? num(r.usd_hnl) : null;
+        if (tc != null) conBch++;
         return {
           fecha: r.fecha as string,
           oro_usd_oz: oro,
-          usd_hnl: usdHnl,
-          oro_lps_oz: usdHnl != null ? oro * usdHnl : null,
-          // Canónico + alias de compatibilidad (mismo valor; la UI nunca usa el alias como rótulo).
-          oro_referencial_lps_gramo: referencial,
-          oro_compra_lps_gramo: referencial,
+          // Solo el tipo de compra del BCH; null para filas sin dato del BCH.
+          tipo_cambio_compra_bch: tc,
+          oro_lps_oz: oroLpsPorOnza(oro, tc),
+          oro_lps_gramo_fino: oroLpsPorGramoFino(oro, tc),
         };
       })
       .filter((p): p is NonNullable<typeof p> => p != null);
@@ -94,9 +107,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         dias: days,
-        factor_referencia: FACTOR_REFERENCIA_PUBLICO,
         tipo_cambio_fuente: FUENTE_TIPO_CAMBIO,
-        aviso: AVISO_PRECIO_REFERENCIAL,
+        tipo_cambio_etiqueta: ETIQUETA_TIPO_CAMBIO,
+        // La serie en lempiras requiere ≥ 2 días con tipo de cambio del BCH.
+        serie_lempiras_estado: conBch >= 2 ? 'disponible' : EN_IMPLEMENTACION,
+        puntos_con_bch: conBch,
+        aviso: AVISO_PRECIO_INFORMATIVO,
         desde: puntos[0]?.fecha ?? cutoff,
         hasta: puntos[puntos.length - 1]?.fecha ?? null,
         puntos,

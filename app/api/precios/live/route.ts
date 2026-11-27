@@ -3,39 +3,51 @@ import { getAdminClient } from '@/services/adminSupabase';
 import {
   fetchAllPrices,
   storePrices,
-  referenciaLpsPorGramoFino,
+  oroLpsPorGramoFino,
+  oroLpsPorOnza,
   buildKaratPrices,
   effectivePriceDate,
-  FACTOR_REFERENCIA_PUBLICO,
+  etiquetaFuenteOro,
+  parseFuente,
+  resolverTipoCambioBch,
 } from '@/services/pricingService';
+import { etiquetaTipoCambio } from '@/lib/precio/bch';
 import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit';
-import { AVISO_PRECIO_REFERENCIAL, FUENTE_TIPO_CAMBIO } from '@/lib/content/copy-legal';
+import {
+  AVISO_PRECIO_INFORMATIVO,
+  FORMULA_PRECIO_INFORMATIVO,
+  FUENTE_TIPO_CAMBIO,
+  ROTULO_PRECIO_INFORMATIVO,
+  SOLO_INFORMATIVO,
+} from '@/lib/content/copy-legal';
 
-// Public, unauthenticated snapshot for the live-prices widget (/precios) and any
-// other surface that wants the same numbers María quotes. Reads gold/FX from
-// precios_diarios (service-role — anon has no SELECT on that table per migration
-// 009). Fuel prices (precios_combustibles) are NO LONGER served here: the diesel
-// card was retired from the public site on 2026-10-15 — the SEN price has no
-// feed and the operator chose not to maintain it by hand each week.
+// Public, unauthenticated snapshot for the daily-prices widget (/precios) and any
+// other surface that wants the same numbers María quotes.
+//
+// DEC-2026-11-26-1 / DEC-2026-11-27-2 — precio SOLO INFORMATIVO, sin factor:
+//   L/g fino = oro USD/oz × tipo de COMPRA del BCH ÷ 31.1034768
+// El oro sale del snapshot diario (precios_diarios, service-role — anon has no
+// SELECT per migration 009) etiquetado con su fuente REAL (goldapi.io / Yahoo),
+// nunca "LBMA oficial". El tipo de cambio sale ÚNICAMENTE del adaptador del BCH
+// (en el snapshot si se leyó del BCH al capturarlo; si no, en vivo o del último
+// valor registrado, con su fecha). Si falta un insumo, el campo es null y la UI
+// dice "dato no disponible" — nunca una cifra inventada.
 //
 // PRICE FREEZE — the gold snapshot updates once per day at 08:00 Honduras. The
 // row is keyed by effectivePriceDate() (the 8 AM window). When that row already
-// exists the price is served as-is and NEVER re-fetched, so it stays frozen for
-// the whole 08:00→08:00 window. Only when the window's row is missing (cron
-// didn't run, or first visitor of the day) does one timeout-bounded live fetch
-// capture the snapshot and write it back. The response carries the real capture
-// timestamp (fetched_at) so the number is verifiable.
+// exists the gold price is served as-is and NEVER re-fetched. Only when the
+// window's row is missing does one timeout-bounded live fetch capture the
+// snapshot and write it back. The response carries the real capture timestamp.
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// fetchAllPrices fans out to GoldAPI/Yahoo/exchangerate-api. Bound it so a single
-// stalled upstream can't pin the function — mirrors PRICE_FETCH_TIMEOUT_MS in
+// fetchAllPrices fans out to GoldAPI/Yahoo/BCH. Bound it so a single stalled
+// upstream can't pin the function — mirrors PRICE_FETCH_TIMEOUT_MS in
 // app/api/maria/chat/route.ts.
 const PRICE_FETCH_TIMEOUT_MS = 8000;
 
 // Public endpoint that can trigger a live upstream fetch on cold cache — throttle
-// per IP the same way the other public surfaces do (equipos is 60/5min). The
-// cache write-back means only the first miss of the day pays the upstream cost.
+// per IP the same way the other public surfaces do (equipos is 60/5min).
 const RATE_LIMIT = 60;
 const RATE_WINDOW_MS = 5 * 60_000;
 
@@ -53,6 +65,17 @@ function num(v: unknown): number | null {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
+
+const hnStamp = (iso: string | null | undefined): string | null => {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleString('es-HN', {
+    timeZone: 'America/Tegucigalpa',
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: true,
+  });
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -85,10 +108,8 @@ export async function GET(request: NextRequest) {
       console.error('[api/precios/live] cache read failed:', (e as Error)?.message);
     }
 
-    // Window's row missing → the daily snapshot hasn't been captured yet (cron
-    // didn't run, or this is the first visitor after 08:00). Capture it ONCE:
-    // a timeout-bounded live fetch, then write-back keyed to this window so every
-    // later request in the window reads the frozen row instead of re-fetching.
+    // Window's row missing → capture it ONCE (timeout-bounded), then write-back
+    // keyed to this window so later requests read the frozen row.
     if (!row) {
       try {
         const live = await Promise.race<Awaited<ReturnType<typeof fetchAllPrices>> | null>([
@@ -117,62 +138,55 @@ export async function GET(request: NextRequest) {
 
     const oro = row ? num(row.oro) : null;
     const plata = row ? num(row.plata) : null;
-    const usd_hnl = row ? num(row.usd_hnl) : null;
-    const oro_lps_oz = oro != null && usd_hnl != null ? oro * usd_hnl : null;
-    // Precio referencial (75 %) en L por gramo de oro fino — helper canónico
-    // (FACTOR_REFERENCIA_PUBLICO deriva de lib/precio/factores.ts). Es un
-    // precio referencial estimado e informativo; la respuesta lo acompaña
-    // SIEMPRE del aviso literal AVISO_PRECIO_REFERENCIAL.
-    const oro_referencial_lps_gramo = referenciaLpsPorGramoFino(oro, usd_hnl);
-    // Per-karat conversion (16/18/20/22 k) derived server-side from the same
-    // frozen snapshot — the widget renders these values verbatim so the karat
-    // table can never drift from the daily price.
-    const kilates = buildKaratPrices(oro, usd_hnl);
 
-    const hnStamp = (iso: string) =>
-      new Date(iso).toLocaleString('es-HN', {
-        timeZone: 'America/Tegucigalpa',
-        day: '2-digit', month: 'short', year: 'numeric',
-        hour: '2-digit', minute: '2-digit', hour12: true,
-      });
+    // Tipo de cambio: SOLO del BCH. Si el snapshot lo trae marcado fx:bch se usa
+    // tal cual; si no, el adaptador resuelve en vivo o con el último valor
+    // registrado (con su fecha). Sin dato del BCH → null.
+    const tipoCambio = await resolverTipoCambioBch(row);
+    const tipo_cambio_compra_bch = tipoCambio?.compra ?? null;
 
-    // When you're viewing (query time).
+    const oro_lps_oz = oroLpsPorOnza(oro, tipo_cambio_compra_bch);
+    const oro_lps_gramo_fino = oroLpsPorGramoFino(oro, tipo_cambio_compra_bch);
+    const kilates = buildKaratPrices(oro, tipo_cambio_compra_bch);
+
     const consultado_hn = hnStamp(new Date().toISOString());
-    // Verification timestamp — when the snapshot was actually captured from the
-    // upstream (precios_diarios.fetched_at), formatted in Honduras time. This is
-    // the number a buyer/miner can trust: it's the daily 8 AM capture, not now.
-    const actualizado_hn =
-      row?.fetched_at && !Number.isNaN(new Date(row.fetched_at).getTime())
-        ? hnStamp(row.fetched_at)
-        : null;
+    const actualizado_hn = hnStamp(row?.fetched_at ?? null);
+    const { oro: oroFuenteId } = parseFuente(row?.fuente);
 
     return NextResponse.json(
       {
         fecha: row?.fecha ?? priceDate,
         fetched_at: row?.fetched_at ?? null,
-        fuente: row?.fuente ?? null,
         consultado_hn,
         actualizado_hn,
+        rotulo: ROTULO_PRECIO_INFORMATIVO,
+        caracter: SOLO_INFORMATIVO,
+        formula: FORMULA_PRECIO_INFORMATIVO,
         // La plataforma no interviene en la transacción: campo siempre null.
         comprador: null,
-        // Factor del precio referencial público (0.75). `mape_factor` es un
-        // alias numérico de compatibilidad con el mismo valor.
-        factor_referencia: FACTOR_REFERENCIA_PUBLICO,
-        mape_factor: FACTOR_REFERENCIA_PUBLICO,
+        // ── Oro (fuente real del feed; nunca "LBMA oficial") ──
         oro_usd_oz: oro,
+        oro_fuente: oroFuenteId || null,
+        oro_fuente_etiqueta: etiquetaFuenteOro(row?.fuente),
+        oro_fecha: actualizado_hn,
+        // Compatibilidad con clientes cacheados: `fuente` = fuente del oro.
+        fuente: oroFuenteId || null,
         plata_usd_oz: plata,
-        usd_hnl,
-        // Fuente real y captura del tipo de cambio — se muestran junto al valor.
-        tipo_cambio_fuente: FUENTE_TIPO_CAMBIO,
-        tipo_cambio_fecha: actualizado_hn,
+        // ── Tipo de cambio de COMPRA del BCH (único admitido) ──
+        tipo_cambio_compra_bch,
+        tipo_cambio_venta_bch: tipoCambio?.venta ?? null,
+        tipo_cambio_fuente: tipoCambio ? FUENTE_TIPO_CAMBIO : null,
+        tipo_cambio_etiqueta: etiquetaTipoCambio(tipoCambio),
+        tipo_cambio_fecha: tipoCambio?.fecha ?? null,
+        tipo_cambio_obtenido_hn: hnStamp(tipoCambio?.obtenidoEn ?? null),
+        tipo_cambio_origen: tipoCambio?.origen ?? null,
+        // Alias de compatibilidad: usd_hnl SOLO lleva el tipo de compra del BCH.
+        usd_hnl: tipo_cambio_compra_bch,
+        // ── Resultado: solo informativo, sin factor ──
         oro_lps_oz,
-        // Canónico: precio referencial (75 %) en L por gramo de oro fino.
-        oro_referencial_lps_gramo,
-        // Alias de compatibilidad con clientes cacheados — MISMO valor que
-        // oro_referencial_lps_gramo. La UI nunca usa ese nombre como rótulo.
-        oro_compra_lps_gramo: oro_referencial_lps_gramo,
+        oro_lps_gramo_fino,
         kilates,
-        aviso: AVISO_PRECIO_REFERENCIAL,
+        aviso: AVISO_PRECIO_INFORMATIVO,
       },
       {
         headers: {

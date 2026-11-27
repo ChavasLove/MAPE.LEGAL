@@ -1,7 +1,7 @@
 // /comercializacion — condiciones genéricas de la venta formal de oro (Fase
 // 2C, Tarea 5; hotfix de neutralidad 11-nov-2026). MAPE.LEGAL no compra, no
 // vende ni intermedia oro: esta página describe lo que la ley exige a
-// cualquier comprador formal y publica el precio referencial informativo.
+// cualquier comprador formal y publica el precio informativo del oro.
 // Server component; el copy con consecuencia jurídica se importa desde
 // lib/content/copy-legal.ts.
 
@@ -11,31 +11,31 @@ import MariaWidget from '@/components/landing/MariaWidget'
 import PublicNav from '@/components/landing/PublicNav'
 import SiteFooter from '@/components/landing/SiteFooter'
 import {
-  AVISO_PRECIO_REFERENCIAL,
+  AVISO_PRECIO_INFORMATIVO,
   CERTIFICADO_ORIGEN_NOTA,
   CITAS_LEGALES,
   CONDICION_COMPRA,
   CONTACTO,
-  FORMULA_PRECIO_REFERENCIAL,
+  FORMULA_PRECIO_INFORMATIVO,
   LIBERTAD_VENTA,
   POLITICA_PRECIO,
   RAZON_SOCIAL,
   REGISTRO_COMERCIALIZADOR,
   ROL_CHT,
+  ROTULO_PRECIO_INFORMATIVO,
 } from '@/lib/content/copy-legal'
-import { ROTULO_PRECIO_REFERENCIAL } from '@/lib/precio/factores'
 
 export const metadata: Metadata = {
   title: 'Comercialización formal del oro — libertad de venta y certificado de origen',
   description:
-    'Condiciones genéricas de la venta formal de oro de pequeña minería en Honduras: libertad de venta (Art. 37 LGM), verificación de origen a cargo del comprador (Art. 38 LGM), certificado de origen oficial por lote y precio referencial informativo. MAPE.LEGAL no compra ni vende oro.',
+    'Condiciones genéricas de la venta formal de oro de pequeña minería en Honduras: libertad de venta (Art. 37 LGM), verificación de origen a cargo del comprador (Art. 38 LGM), certificado de origen oficial por lote y precio informativo del oro (solo informativo). MAPE.LEGAL no compra ni vende oro.',
   alternates: { canonical: '/comercializacion' },
   openGraph: {
     type: 'website',
     locale: 'es_HN',
     title: 'Comercialización formal del oro · MAPE.LEGAL',
     description:
-      'Libertad de venta, certificado de origen oficial por lote y precio referencial informativo. La verificación de origen es una obligación legal del comprador.',
+      'Libertad de venta, certificado de origen oficial por lote y precio informativo del oro. La verificación de origen es una obligación legal del comprador.',
     images: [{ url: '/images/RIVER AND MOUNTAINS.png', width: 1200, height: 630, alt: 'MAPE LEGAL — territorio' }],
   },
 }
@@ -111,9 +111,9 @@ export default function ComercializacionPage() {
             </p>
           </div>
 
-          {/* PRECIO REFERENCIAL INFORMATIVO */}
+          {/* PRECIO INFORMATIVO */}
           <section id="precio" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <h2 style={SECTION_TITLE}>{ROTULO_PRECIO_REFERENCIAL}.</h2>
+            <h2 style={SECTION_TITLE}>{ROTULO_PRECIO_INFORMATIVO}.</h2>
             <div style={CARD}>
               <p style={{ fontSize: 17, color: 'var(--ink)', lineHeight: 1.7, fontWeight: 500 }}>
                 {POLITICA_PRECIO}
@@ -130,14 +130,14 @@ export default function ComercializacionPage() {
                   padding: '12px 14px',
                 }}
               >
-                {FORMULA_PRECIO_REFERENCIAL}
+                {FORMULA_PRECIO_INFORMATIVO}
               </p>
               <p style={{ marginTop: 12, fontSize: 14, color: 'var(--t2)', lineHeight: 1.7 }}>
-                {AVISO_PRECIO_REFERENCIAL}
+                {AVISO_PRECIO_INFORMATIVO}
               </p>
             </div>
             <p style={BODY}>
-              El precio referencial del día, su fórmula y la política de publicación están en{' '}
+              El precio informativo del día, su fórmula y la política de publicación están en{' '}
               <Link href="/precio" style={{ color: 'var(--moss)', fontWeight: 600, textDecoration: 'none' }}>
                 mape.legal/precio
               </Link>

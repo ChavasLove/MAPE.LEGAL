@@ -1,16 +1,16 @@
 'use client';
 
 // Minimalist price ticker — a thin sticky bar at the very top of the home page,
-// the first thing a visitor sees. Single line: "Referencial (75%)" in L per
-// gram of fine gold (informative estimate — the literal aviso lives in
-// /precios), international gold (USD/oz), gold in Lempiras per troy ounce and
-// the market reference exchange rate (exchangerate-api.com). Horizontally
-// scrollable on small screens. Data from /api/precios/live (polled,
-// hidden-guarded).
+// the first thing a visitor sees. Single line: gold in L per gram of fine gold
+// (SOLO informativo, sin factor — the literal aviso lives in /precios),
+// international gold (USD/oz), gold in Lempiras per troy ounce and the BCH
+// buying exchange rate (DEC-2026-11-26-1). Any missing input renders "—" (dato
+// no disponible), never an estimate. Horizontally scrollable on small screens.
+// Data from /api/precios/live (polled, hidden-guarded).
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { FACTOR_REFERENCIA_PCT } from '@/lib/precio/factores';
+import { ROTULO_PRECIO_INFORMATIVO_BREVE } from '@/lib/content/copy-legal';
 
 // Keep in sync with the inline `top` offsets applied to .nav and
 // .nav-mobile-panel in app/page.tsx so the sticky stack lines up.
@@ -19,10 +19,10 @@ export const TICKER_HEIGHT = 36;
 interface LivePrices {
   oro_usd_oz: number | null;
   oro_lps_oz: number | null;
-  usd_hnl: number | null;
-  // Canonical + compatibility alias (same value).
-  oro_referencial_lps_gramo?: number | null;
-  oro_compra_lps_gramo: number | null;
+  /** Tipo de cambio de COMPRA del BCH; null = dato no disponible. */
+  tipo_cambio_compra_bch?: number | null;
+  /** L por gramo de oro fino, sin factor. */
+  oro_lps_gramo_fino?: number | null;
 }
 
 const POLL_MS = 60_000;
@@ -88,16 +88,17 @@ export default function PriceTickerBar({ lang }: Props) {
     };
   }, [load]);
 
-  const referencial = data?.oro_referencial_lps_gramo ?? data?.oro_compra_lps_gramo ?? null;
+  const lpsGramoFino = data?.oro_lps_gramo_fino ?? null;
+  const tcBch = data?.tipo_cambio_compra_bch ?? null;
   const items: Array<{ label: string; value: string; accent?: boolean }> = [
     {
-      label: t(`Referencial (${FACTOR_REFERENCIA_PCT}%)`, `Reference (${FACTOR_REFERENCIA_PCT}%)`),
-      value: referencial != null ? `L ${fmt(referencial, 0)}/g fino` : '—',
+      label: t(ROTULO_PRECIO_INFORMATIVO_BREVE, 'Gold in Lempiras per fine gram'),
+      value: lpsGramoFino != null ? `L ${fmt(lpsGramoFino, 0)}/g fino` : '—',
       accent: true,
     },
     { label: t('Oro internacional', 'Intl. gold'), value: data?.oro_usd_oz != null ? `$${fmt(data.oro_usd_oz, 0)}/oz` : '—' },
     { label: t('Oro Lps', 'Gold Lps'), value: data?.oro_lps_oz != null ? `L ${fmt(data.oro_lps_oz, 0)}/oz` : '—' },
-    { label: 'USD', value: data?.usd_hnl != null ? `L ${fmt(data.usd_hnl, 2)}` : '—' },
+    { label: t('USD compra BCH', 'USD BCH buying rate'), value: tcBch != null ? `L ${fmt(tcBch, 2)}` : '—' },
   ];
 
   return (
@@ -149,7 +150,7 @@ export default function PriceTickerBar({ lang }: Props) {
               color: 'var(--slate-lt)',
             }}
           >
-            {error ? t('Precios', 'Prices') : t('Del día', 'Daily')}
+            {error ? t('Precios', 'Prices') : t('Del día · informativo', 'Daily · informative')}
           </span>
         </span>
 

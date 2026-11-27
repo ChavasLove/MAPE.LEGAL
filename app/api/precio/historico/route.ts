@@ -1,10 +1,14 @@
-// /api/precio/historico — histórico público del Precio de Referencia.
+// /api/precio/historico — histórico público del precio informativo.
 // Evidencia de auditoría: registros 'vigente' ordenados por fecha
 // descendente, máximo 365. Parámetros opcionales desde/hasta (ISO date).
+// DEC-2026-11-26-1: no expone el factor registrado; el precio se recalcula en
+// lectura con la fórmula pública (referencia × tipo de compra ÷ 31.1034768) o
+// es null ("dato no disponible") si un insumo no es positivo.
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit';
-import { getHistorialVigente } from '@/lib/precio/consulta';
+import { getHistorialVigente, recalcularLpsGramoFino } from '@/lib/precio/consulta';
+import { ETIQUETA_TIPO_CAMBIO, FORMULA_PRECIO_INFORMATIVO, FUENTE_TIPO_CAMBIO } from '@/lib/content/copy-legal';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -43,13 +47,15 @@ export async function GET(request: NextRequest) {
         desde: desde ?? null,
         hasta: hasta ?? null,
         total: registros.length,
+        formula: FORMULA_PRECIO_INFORMATIVO,
+        tipo_cambio_fuente: FUENTE_TIPO_CAMBIO,
+        tipo_cambio_etiqueta: ETIQUETA_TIPO_CAMBIO,
         registros: registros.map((r) => ({
           fecha: r.fecha,
           hora_fijacion: r.hora_fijacion,
-          precio_lempiras_gramo_fino: r.precio_lempiras_gramo_fino,
-          referencia_lbma_usd_oz: r.referencia_lbma_usd_oz,
-          tipo_cambio_bch: r.tipo_cambio_bch,
-          factor_comercializacion: r.factor_comercializacion,
+          precio_lempiras_gramo_fino: recalcularLpsGramoFino(r),
+          referencia_internacional_usd_oz: r.referencia_lbma_usd_oz,
+          tipo_cambio_compra_bch: r.tipo_cambio_bch,
           version_politica: r.version_politica,
         })),
       },

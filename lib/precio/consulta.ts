@@ -10,6 +10,8 @@
 // desde el panel /dashboard/precio.
 
 import { supabase } from '@/services/supabase';
+import { GRAMOS_POR_ONZA_TROY } from '@/lib/precio/calculo';
+import { BCH_NOMBRE, FUENTE_TIPO_CAMBIO_ID, esTipoCambioValido, type TipoCambioBch } from '@/lib/precio/bch';
 
 export interface PrecioReferenciaRow {
   id: string;
@@ -140,5 +142,60 @@ export async function getHistorialVigente(
       (e as { message?: string })?.message,
     );
     return [];
+  }
+}
+
+/* ── DEC-2026-11-26-1 / DEC-2026-11-27-2 ────────────────────────────── */
+
+/**
+ * Recalcula en lectura el precio informativo de una fila de precios_referencia
+ * SIN el factor registrado: L/g fino = referencia USD/oz × tipo de cambio ÷
+ * 31.1034768. Devuelve null si algún insumo falta o no es positivo ("dato no
+ * disponible"). La columna factor_comercializacion (030, NOT NULL) no se
+ * renderiza ni se usa en lo público; la migración no se altera.
+ */
+export function recalcularLpsGramoFino(row: Pick<PrecioReferenciaRow, 'referencia_lbma_usd_oz' | 'tipo_cambio_bch'>): number | null {
+  const oro = row.referencia_lbma_usd_oz;
+  const tc = row.tipo_cambio_bch;
+  if (!Number.isFinite(oro) || oro <= 0 || !Number.isFinite(tc) || tc <= 0) return null;
+  return (oro * tc) / GRAMOS_POR_ONZA_TROY;
+}
+
+/**
+ * Último tipo_cambio_bch válido registrado en precios_referencia (vigente más
+ * reciente), con su fecha y hora_fijacion. Es el respaldo final del adaptador
+ * BCH (lib/precio/bch.ts). Degrada a null sin 500 si la migración 030 falta.
+ */
+export async function getUltimoTipoCambioBchGuardado(): Promise<TipoCambioBch | null> {
+  try {
+    const { data, error } = await supabase
+      .from('precios_referencia')
+      .select('fecha, hora_fijacion, tipo_cambio_bch')
+      .eq('estado', 'vigente')
+      .gt('tipo_cambio_bch', 0)
+      .order('fecha', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    const row = data as unknown as Record<string, unknown>;
+    const compra = Number(row.tipo_cambio_bch);
+    if (!esTipoCambioValido(compra)) return null;
+    return {
+      compra,
+      venta: null,
+      fuente: FUENTE_TIPO_CAMBIO_ID,
+      fuenteNombre: BCH_NOMBRE,
+      fecha: String(row.fecha),
+      obtenidoEn: String(row.hora_fijacion),
+      origen: 'respaldo',
+      detalle: 'precios_referencia.tipo_cambio_bch (último registro vigente)',
+    };
+  } catch (e) {
+    console.error(
+      '[precio] respaldo tipo_cambio_bch no-fatal (¿migración 030 aplicada en Supabase Studio?):',
+      (e as { message?: string })?.message,
+    );
+    return null;
   }
 }
