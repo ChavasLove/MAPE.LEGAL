@@ -66,10 +66,11 @@ export const IDENTIDAD_FONDOS_TARIFAS =
 export const POSICIONAMIENTO_PLATAFORMA =
   'MAPE.LEGAL es el estándar y la plataforma de trazabilidad transparente del ' +
   'origen y del mercado de destino del oro de la minería artesanal y de pequeña ' +
-  'escala: un marketplace abierto al uso público, sin exclusividad de compra ni ' +
-  'un destino único. Cada participante publica su producción estimada y sus ' +
-  'precios de compra y venta; CHT no carga esos precios. Lo que la plataforma ' +
-  'aún no hace se presenta como en implementación.'
+  'escala: un marketplace abierto al uso público, ' +
+  'sin exclusividad de compra ni un destino único. ' +
+  'Cada participante publica su producción estimada y sus precios de compra y ' +
+  'venta; CHT no carga esos precios. Lo que la plataforma aún no hace se ' +
+  'presenta como en implementación.'
 
 /* ── Precio informativo y tipo de cambio (DEC-2026-11-26-1 / DEC-2026-11-27-2) ── */
 
@@ -273,7 +274,7 @@ export interface AlianzaEstado {
 
 export const ALIANZAS_ITEMS: readonly AlianzaEstado[] = [
   {
-    entidad: 'Finacop',
+    entidad: 'Finacop', // carta de intención enviada; MOU en proceso
     estado:
       'Carta de intención enviada; memorando de entendimiento (MOU) en ' +
       'proceso. Finacop evaluará crédito para el minero: en evaluación, sin ' +

@@ -23,8 +23,8 @@
  *  - El estándar está ALINEADO con las guías OCDE y LBMA (y con CRAFT) como
  *    referencias de diseño: eso no implica certificación, membresía ni aval.
  *    Nunca "certificado", "reconocido" ni "acreditado" por ellas.
- *  - DEC-2026-11-27-2: marketplace ABIERTO, sin exclusividad de compra ni un
- *    destino único; los municipios pueden adoptar el estándar. El contenido
+ *  - DEC-2026-11-27-2: marketplace ABIERTO, sin exclusividad de compra y
+ *    sin destino único; los municipios pueden adoptar el estándar. El contenido
  *    público no trata reactivos ni procesos químicos de beneficio.
  */
 

@@ -10,7 +10,7 @@ La titular y desarrolladora de la plataforma es **Corporación Hondureña Tenka 
 
 ## ¿MAPE.LEGAL compra oro o fija el precio al que me lo compran?
 
-No. MAPE.LEGAL **no compra, no vende ni intermedia oro**. Si en el sitio aparece una calculadora con un 75 %, eso es un **precio referencial estimado**, solo informativo. No es una oferta de compra, no es un precio oficial y no es una garantía de pago. Toda venta se negocia entre el productor y su comprador.
+No. MAPE.LEGAL **no compra, no vende ni intermedia oro**, no administra fondos y cobra tarifas fijas o por servicio, nunca ligadas al valor ni al volumen del oro. El precio que publica el sitio es el **precio internacional del oro convertido a lempiras por gramo de oro fino con el tipo de cambio de compra del Banco Central de Honduras (BCH)**, sin ningún factor ni porcentaje de descuento: es **solo informativo**. No es una oferta de compra, no es un precio oficial y no es una garantía de pago. Toda venta se negocia entre el productor y su comprador. En el marketplace abierto (en implementación) cada participante publica sus propios precios; CHT no los carga.
 
 ## ¿Está certificado o avalado por INHGEOMIN?
 
