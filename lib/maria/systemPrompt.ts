@@ -13,8 +13,8 @@
 // (oro USD/oz × tipo de cambio de COMPRA del BCH ÷ 31.1034768), SIEMPRE con
 // el aviso literal AVISO_PRECIO_INFORMATIVO (fuente única:
 // lib/content/copy-legal.ts — se interpola, no se transcribe). Ningún
-// porcentaje de la referencia internacional se cita jamás. El modelo del
-// "precio referencial (75%)" (hotfix 11-nov-2026) quedó SUPERADO.
+// porcentaje de la referencia internacional se cita jamás.
+// El modelo del hotfix 11-nov-2026 (un porcentaje fijo sobre la referencia internacional) quedó SUPERADO.
 
 import {
   AVISO_PRECIO_INFORMATIVO,
