@@ -173,7 +173,7 @@ export default function EquiposPage() {
             <p className="mt-3 text-sm sm:text-base leading-relaxed" style={{ color: 'var(--t2)' }}>
               La concentración se hace por gravedad en dos etapas — centrífugo primero, mesas
               vibradoras después — y las colas pasan por esclusas de seguridad que reintegran el
-              oro residual al circuito. Sin mercurio ni cianuro: separación puramente física.
+              oro residual al circuito. Separación puramente física, por gravedad, sin reactivos químicos.
             </p>
           </div>
         </section>

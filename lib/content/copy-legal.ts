@@ -44,7 +44,32 @@ export const ROL_TITULAR = 'Titular y operadora de la plataforma MAPE.LEGAL'
 export const ROL_CHT =
   'es titular, desarrolladora y operadora de la plataforma MAPE.LEGAL y ' +
   'presta servicios legales y mineros a los productores artesanales; no ' +
-  'compra ni vende mineral.'
+  'compra ni vende mineral, no administra fondos y cobra tarifas fijas o ' +
+  'por servicio, nunca ligadas al valor ni al volumen del oro.'
+
+/**
+ * OBLIGATORIA (DEC-2026-11-26-1) — identidad económica de CHT / MAPE.LEGAL.
+ * Debe aparecer en las cuatro superficies de identidad (/quienes-somos,
+ * portada, /aviso-legal y este módulo). Sin cifras de tarifas: no hay montos
+ * aprobados y no se inventan.
+ */
+export const IDENTIDAD_FONDOS_TARIFAS =
+  'CHT y MAPE.LEGAL no compran, no venden ni intermedian oro, no administran ' +
+  'fondos y cobran tarifas fijas o por servicio, nunca ligadas al valor ni al ' +
+  'volumen del oro.'
+
+/**
+ * Posicionamiento público de la plataforma (DEC-2026-11-27-2): marketplace
+ * abierto, sin exclusividad de compra. Lo que aún no opera se presenta como
+ * "en implementación", sin datos falsos.
+ */
+export const POSICIONAMIENTO_PLATAFORMA =
+  'MAPE.LEGAL es el estándar y la plataforma de trazabilidad transparente del ' +
+  'origen y del mercado de destino del oro de la minería artesanal y de pequeña ' +
+  'escala: un marketplace abierto al uso público, sin exclusividad de compra ni ' +
+  'un destino único. Cada participante publica su producción estimada y sus ' +
+  'precios de compra y venta; CHT no carga esos precios. Lo que la plataforma ' +
+  'aún no hace se presenta como en implementación.'
 
 /* ── Precio informativo y tipo de cambio (DEC-2026-11-26-1 / DEC-2026-11-27-2) ── */
 
@@ -103,7 +128,9 @@ export const CONFLICTO_INTERES_CHT =
 
 export const AVISO_PLATAFORMA =
   `MAPE.LEGAL es una plataforma desarrollada y operada por ${RAZON_SOCIAL}, ` +
-  'su titular. MAPE.LEGAL no compra, no vende ni intermedia oro.'
+  'su titular. MAPE.LEGAL no compra, no vende ni intermedia oro, no administra ' +
+  'fondos y cobra tarifas fijas o por servicio, nunca ligadas al valor ni al ' +
+  'volumen del oro.'
 
 /**
  * Estándar privado de debida diligencia (Etapa 2, brief v2.1, 12-nov-2026).
@@ -111,14 +138,19 @@ export const AVISO_PLATAFORMA =
  * versión y el mapeo OCDE viven en lib/content/estandar.ts.
  */
 export const ESTANDAR_NATURALEZA =
-  'MAPE.LEGAL es un estándar privado y voluntario de debida diligencia de la ' +
-  'cadena de suministro de la planta de beneficio participante. Lo desarrolla ' +
-  `y es su titular ${RAZON_SOCIAL} (CHT), que no compra ni vende mineral. ` +
-  'El estándar no sustituye ningún acto oficial: la Certificación de ' +
-  'Procedencia o Certificado de Origen la emite el titular del derecho minero ' +
-  'y la autentica la Autoridad Minera o Municipal. No es un registro de ' +
-  'INHGEOMIN ni cuenta con su aval. Se publica como borrador, con versión y ' +
-  'fecha, hasta su aprobación.'
+  'MAPE.LEGAL es un estándar privado, voluntario y abierto de debida diligencia ' +
+  'del origen y del mercado de destino del oro de la minería artesanal y de ' +
+  'pequeña escala, alineado con las guías de la OCDE y de la LBMA como ' +
+  `referencias de diseño. Lo desarrolla y es su titular ${RAZON_SOCIAL} (CHT), ` +
+  'que no compra ni vende mineral, no administra fondos y cobra tarifas fijas ' +
+  'o por servicio. Pueden adoptarlo los participantes de la cadena y las ' +
+  'municipalidades que lo decidan, sin exclusividad de compra. El estándar no ' +
+  'sustituye ningún acto oficial: la Certificación de Procedencia o Certificado ' +
+  'de Origen la emite el titular del derecho minero y la autentica la Autoridad ' +
+  'Minera o Municipal. No es un registro de INHGEOMIN, no cuenta con su aval ni ' +
+  'con convenio alguno, y no implica certificación, membresía ni aval de la ' +
+  'OCDE, la LBMA o CRAFT. Se publica como borrador, con versión y fecha, hasta ' +
+  'su aprobación.'
 
 /**
  * PIE DE PÁGINA — nota legal del sello (hotfix de neutralidad, 11-nov-2026).
@@ -138,7 +170,9 @@ export const PIE_NOTA_LEGAL =
   'municipalidad, y no existe, a la fecha, un Acuerdo o Instructivo de ' +
   `INHGEOMIN publicado en La Gaceta que lo adopte. ${RAZON_SOCIAL} presta ` +
   'servicios legales y mineros a los productores artesanales y no compra ni ' +
-  'vende mineral. MAPE.LEGAL no compra, no vende ni intermedia oro.'
+  'vende mineral. MAPE.LEGAL no compra, no vende ni intermedia oro, no ' +
+  'administra fondos y cobra tarifas fijas o por servicio, nunca ligadas al ' +
+  'valor ni al volumen del oro.'
 
 /*
  * Domicilio de la titular (CHT): local Nexcrea, Tegucigalpa.
@@ -218,7 +252,35 @@ export const POLITICA_PRECIO =
  * mercado comprador; no es una restricción impuesta al minero.
  */
 export const MERCADOS_ACCESO =
-  'Acceso a mercados que exigen certificación de origen.'
+  'Acceso a mercados que exigen Certificado de Origen oficial y debida diligencia.'
+
+/* ── Alianzas (DEC-2026-11-26-1 / DEC-2026-11-27-2) ─────────────────── */
+/*
+ * ÚNICA redacción pública permitida. Sin logos, sin nombres de personas, sin
+ * "convenio firmado" ni "alianza firmada", sin montos. Si el estado cambia,
+ * se actualiza aquí y en ningún otro lugar. No se nombra a ningún comprador.
+ */
+export const ALIANZAS_TITULO = 'Alianzas en proceso'
+
+export const ALIANZAS_NOTA =
+  'Ninguna de estas gestiones constituye todavía un convenio firmado. Se ' +
+  'publica el estado real de cada una, sin montos ni nombres de personas.'
+
+export interface AlianzaEstado {
+  entidad: string
+  estado: string
+}
+
+export const ALIANZAS_ITEMS: readonly AlianzaEstado[] = [
+  {
+    entidad: 'Finacop',
+    estado:
+      'Carta de intención enviada; memorando de entendimiento (MOU) en ' +
+      'proceso. Finacop evaluará crédito para el minero: en evaluación, sin ' +
+      'montos definidos.',
+  },
+  { entidad: 'planetGOLD (PNUD)', estado: 'Carta de intención en preparación.' },
+]
 
 /** OBLIGATORIA — libertad de comercialización del operador. */
 export const LIBERTAD_VENTA =

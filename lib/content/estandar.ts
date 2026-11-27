@@ -20,8 +20,12 @@
  *  - Toda cita legal nueva lleva [VERIFICAR LEGAL MINERO] hasta que el equipo
  *    legal la confirme contra La Gaceta. Antes de citar la Ley General de
  *    Minería, contrastar contra LGM_ARTICULOS_ANULADOS (lib/legal/vigenciaLGM.ts).
- *  - Las guías OCDE, LBMA y CRAFT son referencias de diseño: no implican
- *    certificación, membresía ni aval.
+ *  - El estándar está ALINEADO con las guías OCDE y LBMA (y con CRAFT) como
+ *    referencias de diseño: eso no implica certificación, membresía ni aval.
+ *    Nunca "certificado", "reconocido" ni "acreditado" por ellas.
+ *  - DEC-2026-11-27-2: marketplace ABIERTO, sin exclusividad de compra ni un
+ *    destino único; los municipios pueden adoptar el estándar. El contenido
+ *    público no trata reactivos ni procesos químicos de beneficio.
  */
 
 import { RAZON_SOCIAL } from './copy-legal'
@@ -51,7 +55,13 @@ export const AUDITORIA_TEXTO_VACIO =
 
 /** Única forma pública de nombrar la cadena. No sustituir por nombres propios. */
 export const CADENA_DESCRIPCION_PUBLICA =
-  'la cadena de suministro de la planta de beneficio participante'
+  'la cadena del oro de la minería artesanal y de pequeña escala, desde su ' +
+  'origen hasta el mercado de destino'
+
+/** Alineación con las guías internacionales (referencias de diseño, no certificación). */
+export const ALINEACION_OCDE_LBMA =
+  'Alineado con la Guía de Debida Diligencia de la OCDE y con la LBMA ' +
+  'Responsible Gold Guidance'
 
 export const CANAL_CORRECCIONES = 'gerencia@mape.legal'
 
@@ -66,11 +76,12 @@ export const MARCA_VERIFICAR_LEGAL = '[VERIFICAR LEGAL MINERO]'
 
 /** Propósito del estándar en una oración (párrafo de apertura de /estandar). */
 export const ESTANDAR_PROPOSITO =
-  `MAPE.LEGAL es un estándar privado de debida diligencia para ` +
-  `${CADENA_DESCRIPCION_PUBLICA}. Lo desarrolla y es su titular ${RAZON_SOCIAL} ` +
-  '(CHT). Aplica únicamente a los actores de esa cadena que lo adoptan; no es un ' +
-  'portal del Estado, no es un registro de INHGEOMIN y no está abierto a ' +
-  'cualquier comercializador.'
+  `MAPE.LEGAL es un estándar privado y abierto de debida diligencia para ` +
+  `${CADENA_DESCRIPCION_PUBLICA}, ${ALINEACION_OCDE_LBMA.toLowerCase()} como ` +
+  `referencias de diseño. Lo desarrolla y es su titular ${RAZON_SOCIAL} (CHT). ` +
+  'Puede adoptarlo cualquier participante de la cadena, incluidas las ' +
+  'municipalidades que lo decidan; no otorga exclusividad de compra a nadie, ' +
+  'no es un portal del Estado y no es un registro de INHGEOMIN.'
 
 /** Aviso de borrador (encabezado de /estandar y /politica-de-cadena). */
 export const ESTANDAR_AVISO_BORRADOR =
@@ -128,8 +139,8 @@ export const ESTANDAR_SECCIONES: readonly SeccionDocumento[] = [
     alcance:
       'Condiciones para que una fuente sea elegible: permiso municipal vigente y ' +
       'área delimitada por INHGEOMIN; constancia de consulta previa, libre e ' +
-      'informada (CLPI) cuando sea exigible; declaración de mercurio cero. Una ' +
-      'fuente sin permiso vigente o fuera de área no puede originar lotes.',
+      'informada (CLPI) cuando sea exigible. Una fuente sin permiso vigente o ' +
+      'fuera de área no puede originar lotes.',
     fundamento: `Art. 90 de la Ley General de Minería ${MARCA_VERIFICAR_LEGAL}`,
     texto: PLACEHOLDER_TEXTO,
   },
@@ -209,8 +220,9 @@ export const ESTANDAR_SECCIONES: readonly SeccionDocumento[] = [
 /* ── Estructura de la política de cadena de suministro ──────────────── */
 /*
  * Compromisos del Anexo II de la Guía OCDE adoptados como política PRIVADA de
- * la cadena. La Guía es referencia de diseño; adoptar su estructura no implica
- * certificación, membresía ni aval de la OCDE.
+ * la cadena. La política está alineada con la Guía como referencia de diseño;
+ * adoptar su estructura no implica certificación, membresía ni aval de la OCDE.
+ * Sin sección sobre reactivos de beneficio en lo público (DEC-2026-11-26-1).
  */
 
 export const POLITICA_CADENA_SECCIONES: readonly SeccionDocumento[] = [
@@ -274,14 +286,6 @@ export const POLITICA_CADENA_SECCIONES: readonly SeccionDocumento[] = [
   },
   {
     numero: 8,
-    titulo: 'Mercurio',
-    alcance:
-      'Compromiso de mercurio cero en el beneficio del mineral de la cadena, ' +
-      'con declaración por fuente.',
-    texto: PLACEHOLDER_TEXTO,
-  },
-  {
-    numero: 9,
     titulo: 'Consulta previa, libre e informada (CLPI)',
     alcance:
       'Exclusión del mineral de territorios de pueblos indígenas o tribales ' +
@@ -289,7 +293,7 @@ export const POLITICA_CADENA_SECCIONES: readonly SeccionDocumento[] = [
     texto: PLACEHOLDER_TEXTO,
   },
   {
-    numero: 10,
+    numero: 9,
     titulo: 'Revisión y versiones',
     alcance:
       'Cómo se revisa la política, con qué anticipación se publica una nueva ' +
@@ -326,7 +330,6 @@ export const MAPEO_OCDE: readonly PasoOcde[] = [
     titulo: 'Identificar y evaluar los riesgos de la cadena',
     modulos: [
       'Bloqueo de fuentes sin permiso vigente o fuera de área delimitada',
-      'Declaración de mercurio cero por fuente',
       'Exclusión de origen sin CLPI exigible',
       'Conciliación de pesos y alertas',
       'Detección de acceso sin consentimiento informado',
@@ -386,7 +389,8 @@ export const REFERENCIAS_DISENO: readonly ReferenciaDiseno[] = [
 
 /** Frase obligatoria junto a cada referencia de diseño. */
 export const REFERENCIAS_DISENO_NOTA =
-  'Referencia de diseño; no implica certificación, membresía ni aval.'
+  'El estándar está alineado con esta guía como referencia de diseño; no ' +
+  'implica certificación, membresía ni aval.'
 
 /* ── Sello complementario y documento oficial ───────────────────────── */
 

@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     locale: 'es_HN',
     title: 'Política de cadena de suministro · MAPE.LEGAL',
     description:
-      'Compromisos de la cadena de suministro de la planta de beneficio participante, publicados como borrador con versión y fecha.',
+      'Compromisos de la cadena del oro de la minería artesanal y de pequeña escala, alineados con el Anexo II de la Guía OCDE como referencia de diseño, publicados como borrador con versión y fecha.',
     images: [{ url: '/images/RIVER AND MOUNTAINS.png', width: 1200, height: 630, alt: 'MAPE LEGAL — territorio' }],
   },
 }

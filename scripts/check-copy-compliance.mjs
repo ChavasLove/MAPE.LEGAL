@@ -122,7 +122,9 @@ const RULES = [
   // Exclusividad / venta atada (Art. 37 LGM: comercialización libre)
   { re: /mercados?\s+exclusivos?/i, label: '"mercados exclusivos" — la comercialización es libre (Art. 37 LGM)' },
   { re: /acceso\s+exclusivo/i, label: '"acceso exclusivo" — la comercialización es libre (Art. 37 LGM)' },
-  { re: /exclusividad/i, label: '"exclusividad" — la comercialización es libre (Art. 37 LGM)' },
+  // DEC-2026-11-27-2: la negación ("sin exclusividad de compra", "no otorga
+  // exclusividad") es copy requerido del marketplace abierto y pasa.
+  { re: /exclusividad/i, exclude: /\b(?:sin|no\s+(?:otorga|hay|existe)|ninguna)\s+exclusividad/i, label: '"exclusividad" — la comercialización es libre (Art. 37 LGM); solo pasa la negación ("sin exclusividad de compra")' },
   { re: /compramos\s+todo\s+su\s+oro/i, label: '"compramos todo su oro" — venta atada' },
   { re: /venta\s+exclusiva/i, label: '"venta exclusiva" — venta atada' },
 
@@ -157,11 +159,13 @@ const RULES = [
   { re: /per[íi]odo\s+preoperativo/i, label: '"período preoperativo" — no existe autorización tácita (Art. 34 Regl. MAPE)' },
   { re: /(?:puede|podr[áa])\s+(?:trabajar|operar|extraer)\s+mientras\s+se\s+tramita/i, label: '"puede trabajar mientras se tramita" — no existe autorización tácita' },
 
-  // Organismos sin instrumento formalizado
-  { re: /\bPNUD\b/, label: 'mención de PNUD — prohibida hasta instrucción expresa' },
-  { re: /\bUNDP\b/, label: 'mención de UNDP — prohibida hasta instrucción expresa' },
-  { re: /naciones\s+unidas/i, label: 'mención de Naciones Unidas — prohibida hasta instrucción expresa' },
-  { re: /united\s+nations/i, label: 'mención de United Nations — prohibida hasta instrucción expresa' },
+  // Organismos sin instrumento formalizado. DEC-2026-11-27-2: la redacción
+  // calificada de las alianzas ("carta de intención en preparación") SÍ se
+  // publica; cualquier otra mención sigue bloqueada (reglas completas: Fase 4).
+  { re: /\bPNUD\b/, exclude: /carta\s+de\s+intenci[oó]n/i, label: 'mención de PNUD fuera de la redacción calificada de alianzas (carta de intención en preparación)' },
+  { re: /\bUNDP\b/, exclude: /letter\s+of\s+intent/i, label: 'mención de UNDP fuera de la redacción calificada de alianzas' },
+  { re: /naciones\s+unidas/i, label: 'mención de Naciones Unidas — usar "planetGOLD (PNUD)" solo en la redacción calificada' },
+  { re: /united\s+nations/i, label: 'mención de United Nations — prohibida' },
 
   // Institución financiera: no se nombra en superficies públicas ni en
   // archivos del repositorio hasta que el convenio esté firmado — usar

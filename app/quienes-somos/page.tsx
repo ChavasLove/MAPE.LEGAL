@@ -10,14 +10,21 @@ import Link from 'next/link'
 import PublicNav from '@/components/landing/PublicNav'
 import SiteFooter from '@/components/landing/SiteFooter'
 import {
+  ALIANZAS_ITEMS,
+  ALIANZAS_NOTA,
+  ALIANZAS_TITULO,
   AVISO_PLATAFORMA,
   CONFLICTO_INTERES_CHT,
   CONTACTO,
+  EN_IMPLEMENTACION,
   ESTANDAR_NATURALEZA,
+  IDENTIDAD_FONDOS_TARIFAS,
+  POSICIONAMIENTO_PLATAFORMA,
   RAZON_SOCIAL,
   ROL_CHT,
 } from '@/lib/content/copy-legal'
 import {
+  ALINEACION_OCDE_LBMA,
   CADENA_DESCRIPCION_PUBLICA,
   CANAL_CORRECCIONES,
   ESTANDAR_ESTADO,
@@ -27,7 +34,7 @@ import {
 export const metadata: Metadata = {
   title: 'Quiénes somos',
   description:
-    'Corporación Hondureña Tenka, S.A. (CHT) desarrolla y es titular de la plataforma MAPE.LEGAL y de su estándar privado de debida diligencia. CHT no compra ni vende mineral.',
+    'Corporación Hondureña Tenka, S.A. (CHT) desarrolla y es titular de la plataforma MAPE.LEGAL y de su estándar abierto de debida diligencia. CHT no compra ni vende mineral, no administra fondos y cobra tarifas fijas o por servicio.',
   alternates: { canonical: '/quienes-somos' },
   openGraph: {
     type: 'website',
@@ -68,14 +75,18 @@ const EYEBROW: React.CSSProperties = {
 }
 
 const QUE_HACE = [
-  'Desarrolla y mantiene la plataforma MAPE.LEGAL y su estándar privado de debida diligencia.',
+  'Desarrolla y mantiene la plataforma MAPE.LEGAL y su estándar abierto de debida diligencia, alineado con las guías de la OCDE y de la LBMA.',
   'Lleva el registro de fuentes y la cadena de custodia por lote, con eventos encadenados por hash.',
-  'Presta servicios legales y mineros a los productores artesanales y de pequeña minería.',
+  'Presta servicios legales y mineros a los productores artesanales y de pequeña minería, por tarifas fijas o por servicio.',
+  'Publica el precio informativo del oro y, en implementación, el marketplace abierto donde cada participante publica su producción estimada y sus precios.',
   'Publica la estructura del estándar, la política de cadena y el resumen de auditoría cuando exista.',
 ] as const
 
 const QUE_NO_HACE = [
   'No compra, no vende ni intermedia oro.',
+  'No administra fondos de nadie.',
+  'No cobra en función del valor ni del volumen del oro: sus tarifas son fijas o por servicio.',
+  'No carga los precios de compra o venta de los participantes del marketplace y no da a ningún comprador un trato preferente o exclusivo.',
   'No es autoridad: no otorga permisos ni autentica certificados de origen.',
   'No cuenta con aval, certificación ni convenio de INHGEOMIN, SERNA, el BCH ni ningún organismo.',
   'No garantiza el resultado de ningún trámite ante la Autoridad Minera.',
@@ -100,20 +111,37 @@ export default function QuienesSomosPage() {
               {RAZON_SOCIAL} (CHT) {ROL_CHT}
             </p>
             <p style={BODY}>
-              CHT desarrolla y es titular del estándar privado de debida diligencia MAPE.LEGAL.
+              CHT desarrolla y es titular del estándar abierto de debida diligencia MAPE.LEGAL,
+              {' '}{ALINEACION_OCDE_LBMA.toLowerCase()} como referencias de diseño.
               El estándar se publica hoy como borrador (versión {ESTANDAR_VERSION}; {ESTANDAR_ESTADO.toLowerCase()}).
             </p>
             <p style={BODY}>{AVISO_PLATAFORMA}</p>
+            <div style={{ ...CARD, background: 'var(--concrete)' }}>
+              <p style={{ fontSize: 14, color: 'var(--ink)', lineHeight: 1.7, fontWeight: 500 }}>{IDENTIDAD_FONDOS_TARIFAS}</p>
+            </div>
           </section>
 
           {/* Propósito */}
           <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <h2 style={SECTION_TITLE}>Para qué existe la plataforma.</h2>
+            <p style={BODY}>{POSICIONAMIENTO_PLATAFORMA}</p>
             <p style={BODY}>
-              La plataforma sirve a la debida diligencia privada de {CADENA_DESCRIPCION_PUBLICA}.
+              La plataforma sirve a la debida diligencia de {CADENA_DESCRIPCION_PUBLICA}.
               Registra las fuentes del mineral, la custodia de cada lote, los pagos bancarios y
-              los consentimientos de acceso al expediente. Así, un lote de oro llega a la planta
-              con su origen documentado y verificable.
+              los consentimientos de acceso al expediente. Así, un lote de oro llega a su
+              destino con el origen documentado y verificable, sea cual sea el comprador que el
+              productor elija.
+            </p>
+            <p style={BODY}>
+              El marketplace de publicaciones de producción y precios de los participantes está{' '}
+              <Link href="/publicaciones" style={{ color: 'var(--moss)' }}>
+                {EN_IMPLEMENTACION.toLowerCase()}
+              </Link>
+              . El estándar es abierto: las municipalidades pueden adoptarlo (ver{' '}
+              <Link href="/municipalidades" style={{ color: 'var(--moss)' }}>
+                Para municipalidades
+              </Link>
+              ).
             </p>
             <p style={BODY}>{ESTANDAR_NATURALEZA}</p>
             <p style={BODY}>
@@ -163,6 +191,19 @@ export default function QuienesSomosPage() {
             >
               <p style={{ fontSize: 14, color: 'var(--t2)', lineHeight: 1.7 }}>{CONFLICTO_INTERES_CHT}</p>
             </div>
+          </section>
+
+          {/* Alianzas — solo la redacción calificada de copy-legal */}
+          <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <h2 style={SECTION_TITLE}>{ALIANZAS_TITULO}.</h2>
+            <p style={BODY}>{ALIANZAS_NOTA}</p>
+            <ul style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingLeft: 18 }}>
+              {ALIANZAS_ITEMS.map((a) => (
+                <li key={a.entidad} style={{ fontSize: 14, color: 'var(--t2)', lineHeight: 1.7 }}>
+                  <strong style={{ color: 'var(--ink)' }}>{a.entidad}:</strong> {a.estado}
+                </li>
+              ))}
+            </ul>
           </section>
 
           {/* Correcciones */}

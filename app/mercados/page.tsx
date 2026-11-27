@@ -1,4 +1,4 @@
-// /mercados — acceso a mercados que exigen certificación de origen (Fase 2C,
+// /mercados — acceso a mercados que exigen Certificado de Origen oficial (Fase 2C,
 // Tarea 6). El encuadre es siempre: la exigencia proviene del mercado
 // comprador, no es una restricción impuesta al minero. Server component.
 
@@ -14,16 +14,16 @@ import {
 } from '@/lib/content/copy-legal'
 
 export const metadata: Metadata = {
-  title: 'Acceso a mercados que exigen certificación de origen',
+  title: 'Acceso a mercados que exigen Certificado de Origen oficial y debida diligencia',
   description:
     'El oro sin cadena de custodia documentada queda fuera de las cadenas de suministro con debida diligencia. Qué exige un comprador aguas abajo y cómo el sello complementario de trazabilidad se verifica públicamente.',
   alternates: { canonical: '/mercados' },
   openGraph: {
     type: 'website',
     locale: 'es_HN',
-    title: 'Acceso a mercados que exigen certificación de origen · MAPE.LEGAL',
+    title: 'Acceso a mercados que exigen Certificado de Origen oficial · MAPE.LEGAL',
     description:
-      'Certificación de origen verificable para oro de pequeña minería en Honduras: la llave hacia cadenas de suministro con debida diligencia.',
+      'Certificado de Origen oficial y trazabilidad verificable para oro de pequeña minería en Honduras: la llave hacia cadenas de suministro con debida diligencia.',
     images: [{ url: '/images/RIVER AND MOUNTAINS.png', width: 1200, height: 630, alt: 'MAPE LEGAL — territorio' }],
   },
 }
@@ -89,10 +89,11 @@ export default function MercadosPage() {
           {MERCADOS_ACCESO}
         </h1>
         <p className="section-sub" style={{ maxWidth: 680 }}>
-          La exigencia de certificación no la impone la plataforma MAPE.LEGAL, operada
-          por {RAZON_SOCIAL}, ni la autoridad hondureña al minero: la imponen los mercados
-          compradores que aplican debida diligencia sobre su cadena de suministro. La
-          certificación es la llave para entrar.
+          La exigencia del Certificado de Origen oficial y de la debida diligencia no la
+          impone la plataforma MAPE.LEGAL, operada por {RAZON_SOCIAL}, ni la autoridad
+          hondureña al minero: la imponen los mercados compradores que aplican debida
+          diligencia sobre su cadena de suministro. Ese documento oficial, con trazabilidad
+          verificable, es la llave para entrar.
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 56, maxWidth: 760, marginTop: 48 }}>

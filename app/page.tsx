@@ -13,6 +13,8 @@ import SiteFooter from '@/components/landing/SiteFooter'
 import PriceTickerBar from '@/components/precios/PriceTickerBar'
 import {
   AVISO_PRECIO_INFORMATIVO,
+  IDENTIDAD_FONDOS_TARIFAS,
+  POSICIONAMIENTO_PLATAFORMA,
   ROTULO_PRECIO_INFORMATIVO,
   SOLO_INFORMATIVO,
   CERTIFICADO_ORIGEN_NOTA,
@@ -248,7 +250,7 @@ export default function LandingPage() {
         <h2 className="section-title">Del expediente a la trazabilidad del oro.</h2>
         <p className="section-sub" style={{ maxWidth: 680 }}>
           Una sola entidad. {RAZON_SOCIAL} {ROL_CHT} MAPE.LEGAL no compra, no vende ni
-          intermedia oro.
+          intermedia oro: es un marketplace abierto, sin exclusividad de compra.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6 mt-12">
           {SERVICIOS.map((bloque) => (
@@ -316,8 +318,10 @@ export default function LandingPage() {
               de pequeña minería: expedientes, titulación, sociedad minera y representación.
             </p>
             <p style={{ fontSize: 16, color: 'var(--t2)', lineHeight: 1.7 }}>
-              CHT no compra ni vende mineral. MAPE.LEGAL no compra, no vende ni intermedia
-              oro. La plataforma hace cuatro cosas:
+              {IDENTIDAD_FONDOS_TARIFAS} {POSICIONAMIENTO_PLATAFORMA}
+            </p>
+            <p style={{ fontSize: 16, color: 'var(--t2)', lineHeight: 1.7 }}>
+              La plataforma hace cuatro cosas:
             </p>
             <ul style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingLeft: 18 }}>
               {QUE_HACE_PLATAFORMA.map((item) => (

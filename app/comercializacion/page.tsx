@@ -19,6 +19,7 @@ import {
   FORMULA_PRECIO_INFORMATIVO,
   LIBERTAD_VENTA,
   POLITICA_PRECIO,
+  POSICIONAMIENTO_PLATAFORMA,
   RAZON_SOCIAL,
   REGISTRO_COMERCIALIZADOR,
   ROL_CHT,
@@ -108,6 +109,9 @@ export default function ComercializacionPage() {
             </div>
             <p style={{ fontSize: 16, color: 'var(--ink)', lineHeight: 1.7, fontWeight: 500 }}>
               {LIBERTAD_VENTA}
+            </p>
+            <p style={{ marginTop: 12, fontSize: 14, color: 'var(--t2)', lineHeight: 1.7 }}>
+              {POSICIONAMIENTO_PLATAFORMA}
             </p>
           </div>
 
