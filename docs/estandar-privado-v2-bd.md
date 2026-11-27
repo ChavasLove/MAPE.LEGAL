@@ -59,6 +59,10 @@ select tablename, policyname, cmd, roles
 
 Nota sobre `expedientes_cliente_read_own` y `documentos_cliente_read_own`: 041 las crea **solo** si existen `clientes.user_id` y `expedientes.cliente_id` (si no, deja un `NOTICE` y las omite). En producción ambas columnas existen desde el Plan 2 (038), así que un `FALTA` ahí significa que 041 no se aplicó o se aplicó sobre un esquema anterior: re-correr 041.
 
+### 0.1 Migración 044 (publicaciones del marketplace) — después de 043, NO aplicada
+
+`supabase/migrations/044_publicaciones_marketplace.sql` (DEC-2026-11-27-2) es el siguiente número libre después de la 043 y **no altera el orden 041 → 042 → 043** de arriba. Modela las publicaciones de producción estimada y precios de compra/venta de cada participante (tabla `publicaciones_marketplace` + vista pública `publicaciones_marketplace_publicas`). Depende de `is_internal_staff()` (041); no referencia a 026 (`project_*`) ni a 027 (`equipos_mercado`), que son otros mercados. RLS: autor escribe lo suyo, `anon` solo lee publicadas vigentes, el personal de CHT solo lee (no carga precios), sin DELETE para nadie. Contrato TypeScript y reglas puras: `lib/publicaciones/types.ts` + `tests/publicaciones.test.ts` (sin Postgres). **No se aplica hasta que Willis lo decida**; la superficie pública `/publicaciones` se publica "en implementación", sin filas.
+
 ## 1. Quién es quién
 
 | Rol (`user_roles.rol`) | Quién | Qué hace en la BD |

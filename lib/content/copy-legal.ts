@@ -289,6 +289,81 @@ export const LIBERTAD_VENTA =
   'derecho minero conserva plena libertad de vender su producción a ' +
   'cualquier comprador.'
 
+/* ── Marketplace de publicaciones y municipalidades (DEC-2026-11-27-2) ── */
+
+/** Título de /publicaciones. */
+export const MARKETPLACE_TITULO = 'Publicaciones de los participantes'
+
+/** Qué será el módulo. Sin filas ni cifras de ejemplo mientras esté en implementación. */
+export const MARKETPLACE_INTRO =
+  'Cada participante de la cadena publica aquí, bajo su propio nombre, su ' +
+  'producción estimada y los precios a los que compra o vende oro, con la ' +
+  'vigencia que él mismo declare. Es un marketplace abierto al uso público, ' +
+  'sin exclusividad: cualquier productor compara y vende a quien elija.'
+
+/** Reglas del módulo (una por viñeta). Cada línea niega lo que CHT no hace. */
+export const MARKETPLACE_REGLAS = [
+  'Los precios los publica cada participante; CHT no los carga, no los valida ni los garantiza.',
+  'CHT no compra, no vende ni intermedia oro, no administra fondos y no cobra según el valor ni el volumen del oro.',
+  'Estas publicaciones no sustituyen al precio informativo del oro, que sigue siendo el precio internacional convertido con el tipo de cambio de compra del BCH.',
+  'Solo se muestran publicaciones vigentes; una publicación retirada deja de verse pero no se borra.',
+  'Nadie tiene preferencia ni trato exclusivo: la comercialización de productos minerales es libre (Art. 37, Ley General de Minería).',
+] as const
+
+/** Estado del módulo. Se cambia cuando el modelo de datos (migración 044) esté aprobado y aplicado. */
+export const MARKETPLACE_ESTADO_NOTA =
+  'Módulo en implementación: el modelo de datos está propuesto y pendiente de ' +
+  'aprobación. No hay publicaciones cargadas y no se muestran datos de ejemplo.'
+
+/** Título de /municipalidades. */
+export const MUNICIPALIDADES_TITULO = 'Para municipalidades'
+
+/** Propósito de la sección. Sin cifras, sin convenio con INHGEOMIN, sin prometer competencias de autoridad. */
+export const MUNICIPALIDADES_INTRO =
+  'El estándar MAPE.LEGAL es abierto: cualquier municipalidad puede adoptarlo ' +
+  'como herramienta de trazabilidad del oro de la minería artesanal y de ' +
+  'pequeña escala que se extrae y se comercializa en su territorio. Adoptarlo ' +
+  'no transfiere ni sustituye ninguna competencia municipal ni de la Autoridad ' +
+  'Minera: el permiso municipal de minería artesanal y la autenticación del ' +
+  'Certificado de Origen siguen siendo actos de la autoridad.'
+
+/** Beneficios por actor: tono neutral, sin cifras ni promesas de resultado. */
+export const MUNICIPALIDADES_BENEFICIOS = [
+  {
+    actor: 'Para el minero',
+    texto:
+      'Un registro verificable del origen de su producción y una referencia pública ' +
+      'del precio del oro, que le permite negociar informado con el comprador que elija.',
+  },
+  {
+    actor: 'Para la municipalidad',
+    texto:
+      'Visibilidad ordenada de las fuentes con permiso vigente en su territorio y de ' +
+      'los lotes que salen de ellas, con fecha y responsable, sin que la municipalidad ' +
+      'tenga que operar un sistema propio.',
+  },
+  {
+    actor: 'Para el Estado',
+    texto:
+      'Información consistente sobre el origen del oro de la minería artesanal y de ' +
+      'pequeña escala, útil para la debida diligencia que exigen los mercados formales.',
+  },
+] as const
+
+/** Qué implica adoptar el estándar (lista corta y sobria). */
+export const MUNICIPALIDADES_ADOPCION = [
+  'La municipalidad decide adoptar el estándar; no requiere convenio con INHGEOMIN ni con CHT para consultar lo público.',
+  'Los productores con permiso municipal vigente registran sus fuentes y lotes; la municipalidad consulta la trazabilidad de su territorio.',
+  'Las tarifas por servicios de la plataforma son fijas o por servicio, nunca ligadas al valor ni al volumen del oro; no hay montos publicados todavía.',
+  'La adopción, los manuales y el acompañamiento están en implementación: no existe todavía un producto cerrado ni un municipio adherido.',
+] as const
+
+/** Estado honesto del producto de adopción municipal. */
+export const MUNICIPALIDADES_ESTADO_NOTA =
+  'En implementación: el estándar se publica como borrador y el procedimiento de ' +
+  'adopción municipal aún no está construido. Ninguna municipalidad figura como ' +
+  'adherida mientras no exista un acto formal de adopción.'
+
 /* ── Citas legales usadas en el sitio ───────────────────────────────── */
 /*
  * Capa de vigencia (sentencia SCO-0090-2014, La Gaceta No. 37,158): antes de

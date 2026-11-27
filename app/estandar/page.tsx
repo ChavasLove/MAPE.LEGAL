@@ -253,6 +253,18 @@ export default function EstandarPage() {
                 </Link>{' '}
                 — titular, propósito y conflicto de interés.
               </li>
+              <li style={BODY}>
+                <Link href="/municipalidades" style={{ color: 'var(--moss)' }}>
+                  Para municipalidades
+                </Link>{' '}
+                — el estándar es abierto y los municipios pueden adoptarlo (en implementación).
+              </li>
+              <li style={BODY}>
+                <Link href="/publicaciones" style={{ color: 'var(--moss)' }}>
+                  Publicaciones de los participantes
+                </Link>{' '}
+                — marketplace abierto de producción y precios (en implementación).
+              </li>
             </ul>
             <p style={{ fontSize: 13, color: 'var(--t3)', lineHeight: 1.7 }}>
               Correcciones:{' '}

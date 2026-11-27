@@ -15,6 +15,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/politica-de-precios', priority: 0.5, changeFrequency: 'monthly' },
     { path: '/precios', priority: 0.7, changeFrequency: 'daily' },
     { path: '/equipos', priority: 0.6, changeFrequency: 'weekly' },
+    // Marketplace abierto y municipios (DEC-2026-11-27-2).
+    { path: '/publicaciones', priority: 0.6, changeFrequency: 'weekly' },
+    { path: '/municipalidades', priority: 0.7, changeFrequency: 'monthly' },
     // Estándar privado de debida diligencia (Etapa 2, 2026-11-12).
     { path: '/quienes-somos', priority: 0.7, changeFrequency: 'monthly' },
     { path: '/estandar', priority: 0.7, changeFrequency: 'monthly' },
