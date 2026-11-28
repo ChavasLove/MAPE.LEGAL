@@ -1,131 +1,39 @@
 import Link from 'next/link'
+import { headers } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
 import TopoBand from '@/components/decor/TopoBand'
-import { getAdminClient } from '@/services/adminSupabase'
+import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit'
 import {
-  VERIFICAR_CARGA_INICIAL,
-  VERIFICAR_FRESCURA_NOTA,
-  VERIFICAR_NO_ENCONTRADO,
-  VERIFICAR_REVOCADO,
-} from '@/lib/content/copy-legal'
+  ESTADO_VERIFICACION_ETIQUETA, VERIFICAR_LIMITE, VERIFICAR_VENTANA_MS, responderVerificacion,
+  type Buscador, type EstadoVerificacion, type VerificacionPublica,
+} from '@/lib/certificados/publico'
+import { VERIFICAR_NO_CONSTA, VERIFICAR_SELLO_AVISO } from '@/lib/content/copy-legal'
 
 export const dynamic = 'force-dynamic'
 
-type Estado = 'vigente' | 'revocado' | 'expirado' | 'suspendido'
+// /verificar/[numero] — VERIFICACIÓN PÚBLICA MÍNIMA (reestructura 2026-11-28).
+// Muestra solo el número de sello y su estado. Sin datos personales, sin
+// nombres, sin mina, sin peso, sin fechas, sin huellas, sin documentos.
+// Misma lógica y mismo límite de consultas que GET /api/verificar/[numero].
 
-type CertificadoPublico = {
-  numero_certificado: string
-  fecha_emision: string
-  peso_oro_g: number
-  estado: Estado
-  valido_hasta: string
-  hash_verificacion: string
-  mina_nombre: string | null
-  mina_codigo: string | null
-  mina_municipio: string | null
-  mina_departamento: string | null
-  // Expuestos por la migración 036; opcionales para tolerar un entorno donde
-  // la vista aún no fue re-creada.
-  hash_sha256?: string | null
-  certificado_id?: string | null
-}
-
-type VerificacionFuente = {
-  fuente: string
-  referencia: string | null
-  fecha_documento: string | null
-}
-
-function anonClient() {
+const buscarEnVistaPublica: Buscador = async (numero) => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!url || !anonKey) return null
-  return createClient(url, anonKey, { auth: { persistSession: false } })
-}
-
-async function lookupCertificado(numero: string): Promise<CertificadoPublico | null> {
-  const supabase = anonClient()
-  if (!supabase) return null
-
+  if (!url || !anonKey) return { fila: null, error: true }
+  const supabase = createClient(url, anonKey, { auth: { persistSession: false } })
   const { data, error } = await supabase
     .from('certificados_origen_publicos')
     .select('*')
     .eq('numero_certificado', numero)
     .maybeSingle()
-
-  if (error || !data) return null
-  return data as CertificadoPublico
+  return { fila: (data as Record<string, unknown> | null) ?? null, error: !!error }
 }
 
-// Estado inicial honesto (T2.4): si el registro está vacío, el "no encontrado"
-// lo dice — el portal está en fase de carga inicial, no es que el número
-// exista y falle la consulta.
-async function countCertificados(): Promise<number | null> {
-  const supabase = anonClient()
-  if (!supabase) return null
-  try {
-    const { count, error } = await supabase
-      .from('certificados_origen_publicos')
-      .select('numero_certificado', { count: 'exact', head: true })
-    if (error) return null
-    return count
-  } catch {
-    return null
-  }
-}
-
-// Última verificación documental (T2.2/T2.4): la fila más reciente de
-// verificaciones_fuente para este certificado. La tabla es
-// SELECT-para-authenticated (RLS, migración 035); esta superficie pública
-// solo publica el trío fuente · referencia · fecha, leído server-side con
-// service role (mismo patrón que /api/precios/live sobre precios_diarios).
-// No-fatal: si la migración no está aplicada, degrada a null con log.
-async function lookupUltimaVerificacion(
-  certificadoId: string
-): Promise<VerificacionFuente | null> {
-  try {
-    const admin = getAdminClient()
-    const { data, error } = await admin
-      .from('verificaciones_fuente')
-      .select('fuente, referencia, fecha_documento')
-      .eq('entidad_tipo', 'certificado')
-      .eq('entidad_id', certificadoId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    if (error) {
-      console.error('[verificar] verificaciones_fuente non-fatal:', error.message)
-      return null
-    }
-    return (data as VerificacionFuente | null) ?? null
-  } catch (err) {
-    console.error('[verificar] verificaciones_fuente non-fatal:', err)
-    return null
-  }
-}
-
-const STATE_STYLE: Record<Estado, { color: string; label: string; description: string }> = {
-  vigente: {
-    color: 'var(--green)',
-    label: 'Vigente',
-    description:
-      'Este registro del sello complementario está vigente y dentro de su período de validez. No sustituye el documento oficial de procedencia.',
-  },
-  revocado: {
-    color: 'var(--red)',
-    label: 'Revocado',
-    description: VERIFICAR_REVOCADO,
-  },
-  expirado: {
-    color: 'var(--amber)',
-    label: 'Expirado',
-    description: 'Este registro del sello complementario ya superó su fecha de validez. No vigente.',
-  },
-  suspendido: {
-    color: 'var(--amber)',
-    label: 'Suspendido',
-    description: 'Este registro del sello complementario se encuentra suspendido temporalmente.',
-  },
+const ESTADO_ESTILO: Record<Exclude<EstadoVerificacion, 'no_encontrado'>, { color: string; descripcion: string }> = {
+  vigente: { color: 'var(--green)', descripcion: 'El sello consta en el registro y está vigente.' },
+  revocado: { color: 'var(--red)', descripcion: 'El sello fue revocado y no debe considerarse vigente.' },
+  vencido: { color: 'var(--amber)', descripcion: 'El sello superó su fecha de validez. No está vigente.' },
+  suspendido: { color: 'var(--amber)', descripcion: 'El sello se encuentra suspendido.' },
 }
 
 function ShellNav() {
@@ -158,73 +66,32 @@ function ShellFooter() {
   )
 }
 
-function FieldLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        fontFamily: 'var(--font-mono)',
-        fontSize: 10,
-        fontWeight: 600,
-        letterSpacing: '0.14em',
-        textTransform: 'uppercase',
-        color: 'var(--t3)',
-        marginBottom: 4,
-      }}
-    >
-      {children}
-    </div>
-  )
+type Resultado =
+  | { tipo: 'sello'; datos: VerificacionPublica }
+  | { tipo: 'no_consta' }
+  | { tipo: 'limite' }
+  | { tipo: 'no_disponible' }
+
+async function consultar(numeroCrudo: string): Promise<Resultado> {
+  // Mismo límite que la API: la página no es una vía para enumerar números.
+  const h = await headers()
+  const rl = checkRateLimit(`verificar:${clientIpFrom(new Request('https://mape.legal/verificar', { headers: h }))}`, VERIFICAR_LIMITE, VERIFICAR_VENTANA_MS)
+  if (!rl.ok) return { tipo: 'limite' }
+  const r = await responderVerificacion(numeroCrudo, buscarEnVistaPublica)
+  if (r.status === 200) return { tipo: 'sello', datos: r.body as VerificacionPublica }
+  if (r.status === 500) return { tipo: 'no_disponible' }
+  return { tipo: 'no_consta' } // 400 y 404: misma respuesta
 }
 
-function FieldValue({ children, mono = false }: { children: React.ReactNode; mono?: boolean }) {
-  return (
-    <div
-      style={{
-        fontSize: 14,
-        fontWeight: 500,
-        color: 'var(--ink)',
-        fontFamily: mono ? 'var(--font-mono)' : 'var(--font-body)',
-        wordBreak: 'break-word',
-      }}
-    >
-      {children}
-    </div>
-  )
-}
+export default async function VerificarResultPage({ params }: { params: Promise<{ numero: string }> }) {
+  const { numero } = await params
+  const res = await consultar(numero ?? '')
 
-function StatePill({ estado }: { estado: Estado }) {
-  const style = STATE_STYLE[estado]
-  return (
-    <span
-      style={{
-        display: 'inline-block',
-        background: `color-mix(in oklch, ${style.color} 14%, white)`,
-        color: style.color,
-        border: `1px solid color-mix(in oklch, ${style.color} 30%, white)`,
-        padding: '4px 14px',
-        borderRadius: 999,
-        fontSize: 13,
-        fontWeight: 600,
-      }}
-    >
-      {style.label}
-    </span>
-  )
-}
-
-export default async function VerificarResultPage({
-  params,
-}: {
-  params: Promise<{ numero: string }>
-}) {
-  const { numero: rawNumero } = await params
-  const numero = decodeURIComponent(rawNumero ?? '').trim()
-  const cert = numero.length > 0 && numero.length <= 64 ? await lookupCertificado(numero) : null
-  const found = !!cert
-  const ultimaVerificacion = cert?.certificado_id
-    ? await lookupUltimaVerificacion(cert.certificado_id)
-    : null
-  const totalCertificados = found ? null : await countCertificados()
+  const titulo =
+    res.tipo === 'sello' ? 'Registro de sello'
+    : res.tipo === 'limite' ? 'Demasiadas consultas'
+    : res.tipo === 'no_disponible' ? 'Consulta no disponible'
+    : 'Registro no encontrado'
 
   return (
     <>
@@ -242,231 +109,65 @@ export default async function VerificarResultPage({
           <div className="section-label">Resultado de verificación</div>
           <h1
             style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: 'clamp(26px, 3.5vw, 36px)',
-              fontWeight: 600,
-              color: 'var(--ink)',
-              letterSpacing: '-0.02em',
-              lineHeight: 1.2,
-              marginTop: 8,
+              fontFamily: 'var(--font-display)', fontSize: 'clamp(26px, 3.5vw, 36px)', fontWeight: 600,
+              color: 'var(--ink)', letterSpacing: '-0.02em', lineHeight: 1.2, marginTop: 8,
             }}
           >
-            {found ? 'Registro del sello complementario' : 'Registro no encontrado'}
+            {titulo}
           </h1>
 
-          {found && cert ? (
-            <div
-              style={{
-                marginTop: 32,
-                background: 'var(--bg)',
-                border: '1px solid var(--border)',
-                borderRadius: 12,
-                boxShadow: '0 2px 6px rgba(31,42,56,0.05)',
-                overflow: 'hidden',
-              }}
-            >
-              <div
-                style={{
-                  background: 'var(--ink)',
-                  color: '#fff',
-                  padding: '16px 24px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 16,
-                  flexWrap: 'wrap',
-                }}
-              >
-                <div>
-                  <div
+          <div
+            style={{
+              marginTop: 32, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12,
+              boxShadow: '0 2px 6px rgba(31,42,56,0.05)', padding: 'clamp(20px, 4vw, 28px)',
+            }}
+          >
+            {res.tipo === 'sello' && res.datos.estado !== 'no_encontrado' && (
+              <>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 600, color: 'var(--slate)' }}>
+                  Número de sello
+                </div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 20, color: 'var(--ink)', marginTop: 6, wordBreak: 'break-all' }}>
+                  {res.datos.numero}
+                </div>
+                <div style={{ marginTop: 20 }}>
+                  <span
                     style={{
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: 11,
-                      fontWeight: 600,
-                      letterSpacing: '0.14em',
-                      textTransform: 'uppercase',
-                      color: 'rgba(255,255,255,0.65)',
+                      display: 'inline-block', borderRadius: 9999, padding: '8px 14px', fontSize: 13, fontWeight: 600,
+                      color: ESTADO_ESTILO[res.datos.estado].color,
+                      background: `color-mix(in oklch, ${ESTADO_ESTILO[res.datos.estado].color} 14%, white)`,
+                      border: `1px solid color-mix(in oklch, ${ESTADO_ESTILO[res.datos.estado].color} 30%, white)`,
                     }}
                   >
-                    Número de registro
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: 18,
-                      fontWeight: 600,
-                      color: '#fff',
-                      marginTop: 2,
-                    }}
-                  >
-                    {cert.numero_certificado}
-                  </div>
+                    {ESTADO_VERIFICACION_ETIQUETA[res.datos.estado]}
+                  </span>
                 </div>
-                <StatePill estado={cert.estado} />
-              </div>
-              <div
-                style={{
-                  padding: 24,
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                  rowGap: 18,
-                  columnGap: 24,
-                }}
-              >
-                <div>
-                  <FieldLabel>Fecha de emisión</FieldLabel>
-                  <FieldValue mono>{cert.fecha_emision}</FieldValue>
-                </div>
-                <div>
-                  <FieldLabel>Válido hasta</FieldLabel>
-                  <FieldValue mono>{cert.valido_hasta}</FieldValue>
-                </div>
-                <div>
-                  <FieldLabel>Peso de oro registrado</FieldLabel>
-                  <FieldValue mono>{Number(cert.peso_oro_g).toFixed(3)} g</FieldValue>
-                </div>
-                <div>
-                  <FieldLabel>Hash de verificación</FieldLabel>
-                  <FieldValue mono>
-                    {cert.hash_verificacion.slice(0, 12)}…
-                  </FieldValue>
-                </div>
-                {cert.hash_sha256 ? (
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <FieldLabel>Huella SHA-256 del documento</FieldLabel>
-                    <FieldValue mono>{cert.hash_sha256}</FieldValue>
-                  </div>
-                ) : null}
-                {ultimaVerificacion ? (
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <FieldLabel>Última verificación documental</FieldLabel>
-                    <FieldValue>
-                      {[
-                        ultimaVerificacion.fuente,
-                        ultimaVerificacion.referencia,
-                        ultimaVerificacion.fecha_documento,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </FieldValue>
-                  </div>
-                ) : null}
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <FieldLabel>Unidad minera de origen</FieldLabel>
-                  <FieldValue>
-                    {cert.mina_nombre ?? '—'}
-                    {cert.mina_codigo ? (
-                      <span
-                        style={{
-                          fontFamily: 'var(--font-mono)',
-                          fontSize: 12,
-                          color: 'var(--t3)',
-                          marginLeft: 8,
-                        }}
-                      >
-                        ({cert.mina_codigo})
-                      </span>
-                    ) : null}
-                  </FieldValue>
-                  <div
-                    style={{
-                      fontSize: 13,
-                      color: 'var(--t2)',
-                      marginTop: 4,
-                    }}
-                  >
-                    {[cert.mina_municipio, cert.mina_departamento].filter(Boolean).join(' · ') || '—'}
-                  </div>
-                </div>
-              </div>
-              <div
-                style={{
-                  padding: '14px 24px',
-                  background: 'var(--bg-soft)',
-                  borderTop: '1px solid var(--border)',
-                  fontSize: 13,
-                  color: 'var(--t2)',
-                  lineHeight: 1.6,
-                }}
-              >
-                {STATE_STYLE[cert.estado].description}
-              </div>
-            </div>
-          ) : (
-            <div
-              style={{
-                marginTop: 32,
-                background: 'var(--bg)',
-                border: '1px solid var(--border)',
-                borderRadius: 12,
-                boxShadow: '0 2px 6px rgba(31,42,56,0.05)',
-                padding: 24,
-              }}
-            >
-              <div style={{ marginBottom: 12 }}>
-                <StatePill estado={'expirado' as Estado} />
-              </div>
-              <p style={{ fontSize: 15, color: 'var(--t1)', lineHeight: 1.6 }}>
-                {VERIFICAR_NO_ENCONTRADO(numero || '(vacío)')}
-              </p>
-              {totalCertificados === 0 && (
-                <p
-                  style={{
-                    fontSize: 14,
-                    color: 'var(--t2)',
-                    lineHeight: 1.7,
-                    marginTop: 12,
-                    paddingTop: 12,
-                    borderTop: '1px solid var(--border)',
-                  }}
-                >
-                  {VERIFICAR_CARGA_INICIAL}
+                <p style={{ fontSize: 15, color: 'var(--t2)', lineHeight: 1.7, marginTop: 16 }}>
+                  {ESTADO_ESTILO[res.datos.estado].descripcion}
                 </p>
-              )}
-            </div>
-          )}
-
-          <p
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: 12,
-              color: 'var(--t3)',
-              marginTop: 24,
-              lineHeight: 1.6,
-            }}
-          >
-            Esta consulta se limita al registro público del sello complementario
-            MAPE.LEGAL. No consulta ni valida el Certificado de Origen oficial. Los
-            datos personales del productor y los montos de la transacción no son
-            públicos.
-          </p>
-          <p
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: 12,
-              color: 'var(--t3)',
-              marginTop: 12,
-              lineHeight: 1.6,
-            }}
-          >
-            {VERIFICAR_FRESCURA_NOTA}
-          </p>
-
-          <div style={{ marginTop: 24 }}>
-            <Link
-              href="/verificar"
-              style={{
-                color: 'var(--moss)',
-                fontSize: 14,
-                fontWeight: 600,
-                textDecoration: 'none',
-                borderBottom: '1px solid color-mix(in oklch, var(--moss) 35%, white)',
-                paddingBottom: 2,
-              }}
-            >
-              ← Verificar otro registro
-            </Link>
+              </>
+            )}
+            {res.tipo === 'no_consta' && (
+              <p style={{ fontSize: 15, color: 'var(--t2)', lineHeight: 1.7 }}>{VERIFICAR_NO_CONSTA}</p>
+            )}
+            {res.tipo === 'limite' && (
+              <p role="alert" style={{ fontSize: 15, color: 'var(--t2)', lineHeight: 1.7 }}>
+                Se alcanzó el límite de consultas. Intente de nuevo en unos minutos.
+              </p>
+            )}
+            {res.tipo === 'no_disponible' && (
+              <p role="alert" style={{ fontSize: 15, color: 'var(--t2)', lineHeight: 1.7 }}>
+                La consulta no está disponible en este momento. Intente de nuevo más tarde.
+              </p>
+            )}
           </div>
+
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--t3)', marginTop: 24, lineHeight: 1.6 }}>
+            {VERIFICAR_SELLO_AVISO}
+          </p>
+          <p style={{ marginTop: 24 }}>
+            <Link href="/verificar" style={{ color: 'var(--moss)', fontWeight: 600 }}>Verificar otro número</Link>
+          </p>
         </div>
       </section>
       <ShellFooter />

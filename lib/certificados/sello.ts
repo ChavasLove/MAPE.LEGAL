@@ -107,9 +107,12 @@ export interface CertificadoPublico {
 }
 
 /**
- * Campos de la vista pública que /api/verificar/[numero] devuelve. Lista
- * cerrada: si una migración futura ensancha la vista, el JSON público no
- * cambia hasta que alguien agregue el campo aquí a propósito.
+ * Columnas de la vista `certificados_origen_publicos` (uso INTERNO del panel).
+ *
+ * Desde la reestructura 2026-11-28 (Fase 7) la verificación PÚBLICA ya no usa
+ * esta lista: /api/verificar/[numero] y /verificar/[numero] devuelven solo
+ * { numero, estado } — ver lib/certificados/publico.ts. No volver a conectar
+ * esta proyección a una superficie pública sin decisión de Willis.
  */
 export const CERTIFICADO_PUBLICO_FIELDS: ReadonlyArray<keyof CertificadoPublico> = [
   'numero_certificado',
