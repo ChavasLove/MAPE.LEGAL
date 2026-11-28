@@ -41,6 +41,32 @@ describe('cadena de hash', () => {
   });
 });
 
+describe('cadena de hash — tipos de evento de recepción (047)', () => {
+  // El canónico NO cambió: el vector de la 043 sigue dando el mismo hash, y los
+  // tipos nuevos se encadenan con la misma función. El cruce contra el trigger
+  // SQL real está en tests/rls-reestructura.test.ts ("hash cruzado TS ↔ SQL").
+  const lote = '11111111-1111-4111-8111-111111111111';
+  test('vector fijo de la 043 intacto', () => {
+    assert.equal(
+      hashEvento({ lote_id: lote, secuencia: 1, tipo: 'origen_mina', fecha: '2026-11-12T14:05:06.007Z', lugar: 'Iriona', peso_g: 1250.5, ley_fino: 0.9165, detalle: { b: 'x', a: 1 }, hash_previo: 'GENESIS' }),
+      'a2e60d8d5871069087b5bda166e719a73303777c81a04436633e1938944f09b8',
+    );
+  });
+  test('los 8 tipos nuevos usan el mismo canónico y encadenan', () => {
+    const tipos = ['recepcion', 'pesaje', 'analisis', 'etiquetado', 'empaque_sobre', 'empaque_caja', 'envio_laboratorio', 'recepcion_laboratorio'];
+    let previo = 'GENESIS';
+    const cadena = tipos.map((tipo, i) => {
+      const e = { lote_id: lote, secuencia: i + 1, tipo, fecha: `2026-11-28T10:0${i}:00.000Z`, lugar: null, peso_g: null, ley_fino: null, detalle: { caja: 'CAJA-1' }, hash_previo: previo };
+      const hash = hashEvento(e);
+      previo = hash;
+      return { ...e, hash };
+    });
+    assert.equal(canonicoEvento(cadena[0]), `${lote}|1|recepcion||2026-11-28T10:00:00.000Z||||{"caja":"CAJA-1"}|GENESIS`);
+    assert.deepEqual(verificarCadena(cadena), { ok: true, total: 8, primeraRotura: null, motivo: null });
+    assert.equal(verificarCadena([...cadena.slice(0, 5), { ...cadena[5], tipo: 'nota' }, ...cadena.slice(6)]).motivo, 'hash_alterado');
+  });
+});
+
 describe('pagos bancarios e identificables', () => {
   test('efectivo o sin referencia → bloquea el lote', () => {
     assert.deepEqual(validarPago({ medio: 'efectivo', referencia_bancaria: 'ABC123' }), { ok: false, bloquea_lote: true, motivo: 'efectivo_prohibido' });

@@ -1,7 +1,15 @@
-import EnImplementacion from '@/components/recepcion/EnImplementacion';
+import { redirect } from 'next/navigation';
+import { getServerAuth } from '@/lib/serverAuth';
+import { puede } from '@/lib/acceso/personal';
+import RecepcionesClient from './RecepcionesClient';
 
 export const dynamic = 'force-dynamic';
 
-export default function Page() {
-  return <EnImplementacion titulo="Recepción" detalle="El registro de recepciones, sobres y cajas se habilita en una etapa posterior de esta reestructura." />;
+// Solo personal con `recepcion:ver`. La API vuelve a exigir el rol y el
+// alcance por punto en cada llamada.
+export default async function Page() {
+  const auth = await getServerAuth();
+  if (!auth) redirect('/login?from=/dashboard/recepcion');
+  if (!puede(auth.role, 'recepcion:ver')) redirect('/dashboard');
+  return <RecepcionesClient />;
 }

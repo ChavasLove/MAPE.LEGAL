@@ -24,7 +24,11 @@ export const ROLES_RECEPCION = ['verificador', 'recepcion'] as const;
 export type RolRecepcion = (typeof ROLES_RECEPCION)[number];
 
 /** Tipo de organización (tabla organizaciones.tipo). */
-export const TIPOS_ORGANIZACION = ['comercializador', 'planta', 'auditor'] as const;
+export const TIPOS_ORGANIZACION = [
+  'comercializador', 'planta', 'auditor',
+  // Reestructura 2026-11-28 (migraciones 047/048).
+  'laboratorio', 'centro_acopio', 'cooperativa', 'municipio', 'otro',
+] as const;
 export type TipoOrganizacion = (typeof TIPOS_ORGANIZACION)[number];
 
 /** Estados de un lote. */
@@ -48,6 +52,30 @@ export const TIPOS_EVENTO = [
   'nota',
 ] as const;
 export type TipoEvento = (typeof TIPOS_EVENTO)[number];
+
+/**
+ * Tipos de evento de la RECEPCIÓN física hasta el laboratorio (reestructura
+ * 2026-11-28, migración 047). Se suman al CHECK de `lote_eventos.tipo` sin
+ * cambiar el canónico del hash. Solo los emite el flujo de recepción (base de
+ * datos y rutas /api/recepcion/*): el registro manual de eventos
+ * (/api/cadena/lotes/[id]/eventos) NO los acepta, y `fundicion`, `refinado` y
+ * `pago` quedan fuera de este flujo.
+ */
+export const TIPOS_EVENTO_RECEPCION = [
+  'recepcion',
+  'pesaje',
+  'analisis',
+  'etiquetado',
+  'empaque_sobre',
+  'empaque_caja',
+  'envio_laboratorio',
+  'recepcion_laboratorio',
+] as const;
+export type TipoEventoRecepcion = (typeof TIPOS_EVENTO_RECEPCION)[number];
+
+/** Todos los valores que admite `lote_eventos.tipo` tras la 047. */
+export const TIPOS_EVENTO_TODOS = [...TIPOS_EVENTO, ...TIPOS_EVENTO_RECEPCION] as const;
+export type TipoEventoCualquiera = (typeof TIPOS_EVENTO_TODOS)[number];
 
 /** Puntos de la conciliación de pesos, en orden de la cadena. */
 export const PUNTOS_CONCILIACION = ['origen_mina', 'acopio', 'laboratorio', 'refinado'] as const;
@@ -135,7 +163,7 @@ export interface LoteEvento {
   id: string;
   lote_id: string;
   secuencia: number;
-  tipo: TipoEvento;
+  tipo: TipoEventoCualquiera;
   actor_user_id: string | null;
   actor_rol: string | null;
   actor_nombre: string | null;
