@@ -25,8 +25,15 @@ export function pareceXlsx(bytes: Uint8Array): boolean {
   return bytes.length > 4 && bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 0x03 && bytes[3] === 0x04;
 }
 
-/** Lee todas las entradas del ZIP (nombre → bytes descomprimidos). */
-export function leerEntradasZip(bytes: Uint8Array): Map<string, Uint8Array> {
+/** Tope de salida de DEFLATE. Un Excel del BCH cabe holgadamente; por encima, se rechaza. */
+const XLSX_MAX_SALIDA_BYTES = 10 * 1024 * 1024;
+
+/**
+ * Lee todas las entradas del ZIP (nombre → bytes descomprimidos).
+ * Devuelve null si DEFLATE falla o supera el tope: el llamador no inventa
+ * celdas y deja actuar el respaldo del tipo de cambio.
+ */
+export function leerEntradasZip(bytes: Uint8Array): Map<string, Uint8Array> | null {
   const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   // Fin del directorio central: buscar hacia atrás (el comentario del ZIP es variable).
   let eocd = -1;
@@ -62,8 +69,13 @@ export function leerEntradasZip(bytes: Uint8Array): Map<string, Uint8Array> {
     const datos = bytes.subarray(inicio, inicio + tamComprimido);
     let contenido: Uint8Array;
     if (metodo === 0) contenido = datos;
-    else if (metodo === 8) contenido = new Uint8Array(inflateRawSync(datos));
-    else throw new Error(`xlsx: método de compresión no soportado (${metodo}) en ${nombre}`);
+    else if (metodo === 8) {
+      try {
+        contenido = new Uint8Array(inflateRawSync(datos, { maxOutputLength: XLSX_MAX_SALIDA_BYTES }));
+      } catch {
+        return null;
+      }
+    } else throw new Error(`xlsx: método de compresión no soportado (${metodo}) en ${nombre}`);
     if (tamOriginal && contenido.length !== tamOriginal) {
       throw new Error(`xlsx: tamaño inesperado al descomprimir ${nombre}`);
     }
@@ -108,9 +120,10 @@ export function columnaAIndice(letras: string): number {
  * columna). Celdas vacías → null. Números → number; texto (compartido o
  * inline) → string. Fórmulas: se usa el valor cacheado.
  */
-export function leerPrimeraHoja(bytes: Uint8Array): CeldaXlsx[][] {
+export function leerPrimeraHoja(bytes: Uint8Array): CeldaXlsx[][] | null {
   if (!pareceXlsx(bytes)) throw new Error('xlsx: el contenido no es un archivo ZIP/XLSX');
   const entradas = leerEntradasZip(bytes);
+  if (!entradas) return null;
   const nombreHoja = [...entradas.keys()]
     .filter((n) => /^xl\/worksheets\/sheet\d+\.xml$/.test(n))
     .sort((a, b) => Number(a.match(/\d+/)![0]) - Number(b.match(/\d+/)![0]))[0];

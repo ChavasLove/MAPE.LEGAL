@@ -248,12 +248,14 @@ export function seleccionarVigente(serie: FilaTipoCambio[], hoy: string): FilaTi
 
 /** Clasifica un Excel del BCH: parsea, arma la serie y elige el vigente ≤ hoy. */
 export function parsearXlsxBch(bytes: Uint8Array, hoy: string): ClasificacionBch {
-  let filas: CeldaXlsx[][];
+  let filas: CeldaXlsx[][] | null;
   try {
     filas = leerPrimeraHoja(bytes);
   } catch (e) {
     return { ok: false, motivo: `xlsx ilegible: ${(e as Error)?.message}` };
   }
+  // null: DEFLATE falló o superó el tope. No hay cifra; el llamador cae al respaldo.
+  if (!filas) return { ok: false, motivo: 'xlsx ilegible: no se pudo descomprimir' };
   const serie = filasATipoCambio(filas);
   if (serie.length === 0) return { ok: false, motivo: 'el Excel no tiene la disposición esperada (Fecha / Compra / Venta)' };
   const vigente = seleccionarVigente(serie, hoy);

@@ -26,7 +26,7 @@ import {
   BCH_URL_SERIE_DIARIA_XLSX,
   type TipoCambioBch,
 } from '@/lib/precio/bch';
-import { leerPrimeraHoja, serialExcelAFecha, columnaAIndice, pareceXlsx } from '@/lib/precio/xlsxMinimo';
+import { leerEntradasZip, leerPrimeraHoja, serialExcelAFecha, columnaAIndice, pareceXlsx } from '@/lib/precio/xlsxMinimo';
 import { DATO_NO_DISPONIBLE, ETIQUETA_TIPO_CAMBIO } from '@/lib/content/copy-legal';
 
 /* ── Constructor de un ZIP/XLSX mínimo (stored + deflate) ─────────────── */
@@ -89,6 +89,18 @@ function zip(entradas: Array<[string, string]>, deflate = true): Uint8Array {
     out.set(b, p);
     p += b.length;
   }
+  return out;
+}
+
+/** ZIP con método 8 cuyo flujo DEFLATE está corrupto (inflate debe fallar). */
+function zipCorrupto(): Uint8Array {
+  const bueno = zip([['a.xml', '<x>hola</x>']]);
+  const out = Uint8Array.from(bueno);
+  const dv = new DataView(out.buffer);
+  const nameLen = dv.getUint16(26, true);
+  const compLen = dv.getUint32(18, true);
+  const start = 30 + nameLen;
+  for (let i = 0; i < compLen; i++) out[start + i] = 0xff;
   return out;
 }
 
@@ -192,6 +204,7 @@ describe('clasificación de respuestas del BCH', () => {
   test('XLSX sintético: disposición larga (Fecha/Tipo de Precio/Precio)', () => {
     assert.ok(pareceXlsx(XLSX_LARGO));
     const filas = leerPrimeraHoja(XLSX_LARGO);
+    assert.ok(filas);
     const serie = filasATipoCambio(filas);
     assert.deepEqual(serie, [
       { fecha: '2026-11-25', compra: 26.9191, venta: 27.0537 },
@@ -211,6 +224,16 @@ describe('clasificación de respuestas del BCH', () => {
   test('bytes que no son XLSX → error claro', () => {
     const r = parsearXlsxBch(new TextEncoder().encode('<html>no</html>'), '2026-11-27');
     assert.equal(r.ok, false);
+  });
+  test('DEFLATE inválido o mayor de 10 MB → null, sin cifra', () => {
+    const corrupto = zipCorrupto();
+    assert.equal(leerEntradasZip(corrupto), null);
+    assert.equal(leerPrimeraHoja(corrupto), null);
+    const malo = parsearXlsxBch(corrupto, '2026-11-27');
+    assert.equal(malo.ok, false);
+    const enorme = zip([['a.xml', 'x'.repeat(10 * 1024 * 1024 + 1)]]);
+    assert.equal(leerEntradasZip(enorme), null);
+    assert.equal(parsearXlsxBch(enorme, '2026-11-27').ok, false);
   });
 });
 
@@ -272,6 +295,21 @@ describe('getTipoCambioBch — cadena de respaldos sin inventar', () => {
     limpiarCacheBch();
     const tc = await getTipoCambioBch({ urlVivo: 'https://x', fetchImpl: fakeFetch(200, XLSX_LARGO), now, sinCache: true, snapshotHoy: async () => null, ultimoGuardado: async () => null });
     assert.equal(tc?.origen, 'vivo');
+  });
+  test('Excel que no se puede inflar → null del vivo y actúa el snapshot', async () => {
+    limpiarCacheBch();
+    const snap = respaldo('2026-11-27', 26.9235, 'precios_diarios');
+    const tc = await getTipoCambioBch({
+      urlVivo: 'https://x',
+      fetchImpl: fakeFetch(200, zipCorrupto(), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
+      now,
+      sinCache: true,
+      snapshotHoy: async () => snap,
+      ultimoGuardado: async () => { throw new Error('no debe llegar'); },
+    });
+    assert.equal(tc?.compra, 26.9235);
+    assert.equal(tc?.detalle, 'precios_diarios');
+    assert.notEqual(tc?.origen, 'vivo');
   });
   test('vivo falla → snapshot de hoy marcado BCH', async () => {
     const snap: TipoCambioBch = { ...respaldo('2026-11-27', 26.9235, 'precios_diarios'), origen: 'vivo' };
