@@ -45,7 +45,7 @@
  *    "80 % del LBMA", "de la referencia") → bloqueados en público, María y
  *    código. Exentos, de forma estrecha: la ley nominal de kilates ("18k =
  *    75 % de oro fino", "kilates ÷ 24"), la recuperación de equipo claramente
- *    etiquetada (app/equipos/page.tsx) y los anchos CSS (no llevan contexto).
+ *    etiquetada y los anchos CSS (no llevan contexto).
  *  - "precio de compra" / "compra(mos) (de) oro": la plataforma no compra; pasan
  *    las negaciones y las publicaciones de los PARTICIPANTES del marketplace
  *    ("cada participante publica… precio de compra").

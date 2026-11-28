@@ -22,10 +22,10 @@ import { validateAccessToken } from '@/lib/sessionValidator';
 //    nunca redirect en APIs.
 //  - Superficies públicas intactas: /, /pequena-mineria, /comercializacion,
 //    /mercados, /precio, /precios, /politica-de-precios, /verificar*,
-//    /api/verificar/*, /aviso-legal, /equipos, /registro, /login, /auth/*,
+//    /api/verificar/*, /aviso-legal, /registro, /login, /auth/*,
 //    /api/auth/*, /api/maria/chat, /api/webhook/*, /api/whatsapp (webhook
 //    Twilio), /api/broadcast/run (CRON_SECRET), /api/precio*, /api/precios/*,
-//    /api/concesiones/*, /api/contacto, /api/equipos*, assets. El matcher
+//    /api/concesiones/*, /api/contacto, assets. El matcher
 //    solo cubre prefijos protegidos, así que todo lo no listado abajo queda
 //    público por defecto; isPublic() cubre además las rutas públicas que un
 //    prefijo protegido del matcher sí alcanza.

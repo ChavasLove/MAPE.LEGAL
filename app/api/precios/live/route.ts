@@ -47,7 +47,7 @@ export const dynamic = 'force-dynamic';
 const PRICE_FETCH_TIMEOUT_MS = 8000;
 
 // Public endpoint that can trigger a live upstream fetch on cold cache — throttle
-// per IP the same way the other public surfaces do (equipos is 60/5min).
+// per IP the same way the other public surfaces do.
 const RATE_LIMIT = 60;
 const RATE_WINDOW_MS = 5 * 60_000;
 

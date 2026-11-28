@@ -259,9 +259,9 @@ Su propósito es registrar, almacenar y digitalizar evidencia legalmente defendi
 | 024 | `maria_knowledge` (RAG semántico): extensión `vector`, columna embedding `vector(1536)`, índices ivfflat + gin FTS, RPCs `match_maria_knowledge` + `search_maria_knowledge_fts` |
 | 025 | Desbloqueo del cache de `precios_diarios`: policy `service_all_precios_diarios` idempotente + RPC `upsert_precios_diarios` SECURITY DEFINER |
 | 026 | Mercado de Proyectos: `projects`, `project_documents`, `document_chunks` (vector 1536), `document_tables`, `investor_project_access`, `document_access_log` + RPCs de búsqueda híbrida + bucket `project-documents` |
-| **027** | **`equipos_mercado` (catálogo de maquinaria de lavado de oro): CHECK de 10 categorías, FTS español, soft-delete `activo`, RLS pública/admin/service_role + RPCs SECURITY DEFINER `search_equipos_mercado`, `get_equipo_by_slug`, `equipos_categoria_stats`. 12 productos seed.** |
+| **027** | **(HISTÓRICA — función de equipos eliminada del código 2026-11-28; la tabla queda en la base sin uso) `equipos_mercado` (catálogo de maquinaria de lavado de oro): CHECK de 10 categorías, FTS español, soft-delete `activo`, RLS pública/admin/service_role + RPCs SECURITY DEFINER `search_equipos_mercado`, `get_equipo_by_slug`, `equipos_categoria_stats`. 12 productos seed.** |
 | 028 | `precios_combustibles` (diésel y combustibles regulados SEN) — valor almacenado + `vigente_desde`, RLS pública/staff/service_role |
-| 029 | Bucket público `equipos-imagenes` (carga de láminas del admin de equipos) |
+| 029 | (HISTÓRICA — función eliminada 2026-11-28) Bucket público `equipos-imagenes` |
 | 030 | `precios_referencia` + RPC `reemplazar_precio_referencia` — Precio de Referencia diario indeleble |
 | 031 | `ensayes` — registro indeleble de determinaciones de ley (liquidación / contraste / verificación externa) |
 | 032 | RLS en tablas de María: `conversaciones_whatsapp` + `transacciones_pendientes` (service role only) |
@@ -319,10 +319,7 @@ Su propósito es registrar, almacenar y digitalizar evidencia legalmente defendi
 | `/admin/config` | admin | ✅ Configuración del sistema |
 | `/admin/profesionales` | admin | ✅ Perfiles profesionales |
 | `/admin/concesiones` | admin | ✅ Registro de concesiones de INHGEOMIN — 587 concesiones (KPIs, filtros, tabla paginada) |
-| `/admin/equipos` | admin | ✅ CRUD del catálogo de equipos (Mercado de Equipos) |
 | `/registro` | Público | ✅ Búsqueda pública del registro de concesiones de INHGEOMIN (actualizado por carga manual) |
-| `/equipos` | Público | ✅ Catálogo de maquinaria de lavado de oro (filtros + búsqueda) |
-| `/equipos/[slug]` | Público | ✅ Detalle de producto + CTA WhatsApp |
 | `/verificar/[numero]` | Público | ✅ Verificación de certificados de origen |
 | `/dashboard` | abogado / tecnico / admin | ✅ Dashboard operativo |
 | `/dashboard/expedientes` | abogado / tecnico / admin | ✅ Lista de expedientes |
@@ -350,10 +347,6 @@ Su propósito es registrar, almacenar y digitalizar evidencia legalmente defendi
 | `/api/admin/concesiones/stats` | GET | KPIs del registro INHGEOMIN |
 | `/api/admin/concesiones/[id]` | GET / PATCH | Detalle + edición (sin DELETE) |
 | `/api/concesiones/buscar` | GET | **Pública** — RPC `search_concesion_minera` con cache 60s + SWR 5min |
-| `/api/equipos` | GET | **Pública** — búsqueda de equipos (rate-limit 60/5min, cache 60s + SWR 5min) |
-| `/api/equipos/categorias` | GET | **Pública** — conteos por categoría (cache 300s) |
-| `/api/admin/equipos` | GET / POST | Lista + creación de equipos (GET admin/abogado/tecnico, POST admin/abogado) |
-| `/api/admin/equipos/[id]` | PATCH / DELETE | Edición + soft-delete (`activo=false`); reactivación vía `PATCH { activo: true }` |
 | `/api/admin/roles` | GET / POST | Gestión de roles |
 | `/api/admin/usuarios` | GET / POST | Gestión de usuarios |
 | `/api/prices` | GET | Precios internacionales del oro en tiempo real |
