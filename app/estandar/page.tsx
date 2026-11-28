@@ -29,7 +29,7 @@ import {
 export const metadata: Metadata = {
   title: 'Estándar privado de debida diligencia',
   description:
-    'Estructura, versión y estado del estándar privado de debida diligencia MAPE.LEGAL para la cadena de suministro de la planta de beneficio participante. Borrador; sin aval de INHGEOMIN.',
+    'Estructura, versión y estado del estándar abierto de debida diligencia MAPE.LEGAL para la cadena del oro de la minería artesanal y de pequeña escala, alineado con las guías OCDE y LBMA como referencias de diseño. Borrador; sin aval ni convenio de INHGEOMIN.',
   alternates: { canonical: '/estandar' },
   openGraph: {
     type: 'website',
@@ -252,6 +252,18 @@ export default function EstandarPage() {
                   Quiénes somos
                 </Link>{' '}
                 — titular, propósito y conflicto de interés.
+              </li>
+              <li style={BODY}>
+                <Link href="/municipalidades" style={{ color: 'var(--moss)' }}>
+                  Para municipalidades
+                </Link>{' '}
+                — el estándar es abierto y los municipios pueden adoptarlo (en implementación).
+              </li>
+              <li style={BODY}>
+                <Link href="/publicaciones" style={{ color: 'var(--moss)' }}>
+                  Publicaciones de los participantes
+                </Link>{' '}
+                — marketplace abierto de producción y precios (en implementación).
               </li>
             </ul>
             <p style={{ fontSize: 13, color: 'var(--t3)', lineHeight: 1.7 }}>

@@ -30,34 +30,50 @@
  * docs/legal/sentencia-sco-0090-2014.md y lib/legal/vigenciaLGM.ts, que
  * necesitan nombrar los artículos sin anotación inline.
  *
- * ─── Hotfix neutralidad (11-nov-2026) — modelo público correcto ───────────
+ * ─── DEC-2026-11-26-1 / DEC-2026-11-27-2 — modelo público vigente ──────────
  * Corporación Hondureña Tenka, S.A. (CHT) es titular, desarrolladora y
  * operadora de MAPE.LEGAL; presta servicios legales y mineros; NO compra ni
- * vende mineral. MAPE.LEGAL no compra, no vende ni intermedia oro. NUNCA se
- * nombra a un comprador. El precio público es el "Precio referencial (75%)"
- * (L por gramo de oro fino) SIEMPRE con el aviso literal AVISO_PRECIO_REFERENCIAL.
- * Cambios de reglas respecto del "Modelo B" del PR #240:
- *  - QUITADA: la regla que prohibía a CHT como operadora / dueña / titular de la
- *    plataforma — hoy es la formulación correcta. Se MANTIENEN "CHT compra" y
- *    "vender (mineral) a CHT" (CHT no compra mineral).
- *  - QUITADA: la regla pública `chiopa` (queda cubierta por la de compradores).
- *  - NUEVA (scope 'code' = público + lib/ + services/ + app/api; no docs/ ni
- *    *.md raíz, que Willis decidirá aparte): comprador nombrado
- *    (zekaii|chiopa|liopa|alfilo) — prohibido en código y superficies públicas.
- *  - NUEVA (público): "precio de compra" y "compra(mos) (de) oro" — la
- *    plataforma no compra: usar "precio referencial (75%)". Pasan las
- *    negaciones ("no es una oferta de compra", "MAPE.LEGAL no compra, no vende
- *    ni intermedia oro", "Nadie compra oro", "nunca un precio de compra").
- *  - NUEVA (público): "80 %/85 % del precio | de la referencia | LBMA" como
- *    precio al productor — el único porcentaje publicable es el 75% referencial
- *    (ningún patrón dispara con "75 %").
- *  - NUEVA (scope 'maria' = público + lib/maria): "pago/depósito (el) mismo
- *    día" — promesa de pago prohibida; pasa cuando la línea la niega ("NUNCA
- *    prometas …", "no prometer …").
- *  - Etiquetas actualizadas: ya no se cita a ningún comprador en las razones.
- *  - Se mantienen: ™/®, FINACOOP, PNUD/Naciones Unidas, aval de INHGEOMIN,
- *    consulta 169 "completada", "certificados emitidos por MAPE", "Registro
- *    INHGEOMIN" a secas, "MAPE.LEGAL emite" y el pase de vigencia SCO-0090-2014.
+ * vende mineral, NO administra fondos y cobra tarifas fijas o por servicio,
+ * nunca ligadas al valor ni al volumen del oro. NUNCA se nombra a un comprador.
+ * El precio público es el precio internacional del oro en lempiras por gramo
+ * de oro fino, SOLO INFORMATIVO y SIN factor (oro USD/oz × tipo de COMPRA del
+ * BCH ÷ 31.1034768), SIEMPRE con el aviso literal AVISO_PRECIO_INFORMATIVO.
+ * El "Precio referencial (75%)" del hotfix 11-nov-2026 quedó SUPERADO: NINGÚN
+ * porcentaje de la referencia internacional (75/80/85/90 %) es publicable.
+ * Reglas vigentes (resumen; el detalle está en RULES y en checkIdentidad):
+ *  - Porcentajes como factor de precio ("precio referencial (75 %)", "× 0,75",
+ *    "80 % del LBMA", "de la referencia") → bloqueados en público, María y
+ *    código. Exentos, de forma estrecha: la ley nominal de kilates ("18k =
+ *    75 % de oro fino", "kilates ÷ 24"), la recuperación de equipo claramente
+ *    etiquetada (app/equipos/page.tsx) y los anchos CSS (no llevan contexto).
+ *  - "precio de compra" / "compra(mos) (de) oro": la plataforma no compra; pasan
+ *    las negaciones y las publicaciones de los PARTICIPANTES del marketplace
+ *    ("cada participante publica… precio de compra").
+ *  - "certificado/reconocido/acreditado" predicados del estándar, del sello o
+ *    de OCDE/LBMA/CRAFT/INHGEOMIN → bloqueados. Exentos: Certificado de Origen /
+ *    Certificación de Procedencia (acto oficial), "Verificar certificado" (nav)
+ *    y las negaciones ("no implica certificación…", "no está certificado").
+ *  - Exclusividad de compra (comprador exclusivo, venta/mercado exclusivo,
+ *    destino único) → bloqueada; pasa la negación ("sin exclusividad de compra",
+ *    "ni un destino único").
+ *  - Alianzas: Finacop / planetGOLD / PNUD solo con la redacción calificada
+ *    (carta de intención, MOU en proceso, en evaluación, en preparación);
+ *    "convenio/alianza firmado|vigente|suscrito" con ellas → bloqueado (todo el
+ *    repo). FINACOOP (grafía antigua) sigue bloqueado.
+ *  - Etiquetas falsas de fuente: "LBMA oficial" / "fixing" / "BCH" / "Banco
+ *    Central" junto a exchangerate-api, goldapi o Yahoo en la misma línea →
+ *    bloqueado en código y público; pasan las negaciones ("nunca", "no es").
+ *    "exchangerate-api" como fuente del tipo de cambio → bloqueado en código.
+ *  - Identidad (checkIdentidad): lib/content/copy-legal.ts DEBE contener "no
+ *    administra fondos" y "tarifas fijas o por servicio" + "nunca ligadas al
+ *    valor ni al volumen del oro"; /quienes-somos, la portada y /aviso-legal
+ *    DEBEN importar IDENTIDAD_FONDOS_TARIFAS o ROL_CHT.
+ *  - Compradores nombrados (zekaii|chiopa|liopa|alfilo, Inversiones CKI /
+ *    CKI) → bloqueados en código y público. "90 kg" → bloqueado en público.
+ *  - Se mantienen: ™/®, aval de INHGEOMIN, consulta 169 "completada",
+ *    "certificados emitidos por MAPE", "Registro INHGEOMIN" a secas, "MAPE.LEGAL
+ *    emite", "en vivo"/"tiempo real" (la cadencia del oro es diaria) y el pase
+ *    de vigencia SCO-0090-2014.
  *
  * Alcances (`scope` de cada regla):
  *  - (sin scope) → copy público: SCAN_DIRS (app/ sin api|admin|dashboard|portal,
@@ -113,6 +129,31 @@ const ALLOW_MARKER = 'check-copy:allow'
 // compra", "nadie compra oro", "NUNCA prometas …", "no es una oferta de compra".
 const NEGACION_RE = /\b(?:no|nunca|nadie|jam[aá]s|ni|tampoco|prohibid[oa]s?)\b/i
 
+// "precio de compra" / "compra oro" exentos: negación, o atribuidos a los
+// PARTICIPANTES que publican sus propios precios en el marketplace abierto.
+const COMPRA_EXENTA_RE =
+  /\b(?:no|nunca|nadie|jam[aá]s|ni|tampoco|prohibid[oa]s?)\b|\bparticipantes?\b|\bpublica(?:n|r|da|das|ciones?)?\b|\bcada\s+(?:participante|comprador|productor)\b|\bprecios?\s+(?:a\s+los?\s+que|al\s+que)\s+compra/i
+
+// Porcentajes exentos: ley nominal de kilates ("18k = 75 % de oro fino",
+// "kilates ÷ 24"), recuperación de equipo, CSS (opacity/width) y las líneas que
+// declaran el modelo SUPERADO o prohíben el porcentaje.
+const FACTOR_EXENTO_RE =
+  /\b(?:1[0-9]|2[0-4])\s?k\b|kilat|ley\s+nominal|de\s+oro\s+fino\)|recuperaci[oó]n|opacity|width|superad[oa]|retirad[oa]|hist[oó]ric|\bnunca\b|\bni\b|\bno\b|\bsin\b|ning[úu]n|prohibid|bloquea|falla/i
+
+// Alianzas: la redacción calificada pasa; también las líneas que la describen
+// o la prohíben (reglas, comentarios de la fuente única).
+const ALIANZA_CALIFICADA_RE =
+  /carta\s+de\s+intenci[oó]n|\bMOU\b|memorando\s+de\s+entendimiento|en\s+evaluaci[oó]n|en\s+preparaci[oó]n|letter\s+of\s+intent|ALIANZAS_|redacci[oó]n\s+calificada|\bno\b|\bnunca\b|\bsin\b/i
+
+// Certificación exenta: Certificado de Origen / Certificación de Procedencia
+// (acto oficial), "Verificar certificado", y las negaciones ("no implica
+// certificación", "no está certificado", "NUNCA afirmés…").
+const CERT_EXENTA_RE =
+  /certificad[oa]\s+de\s+origen|certificaci[oó]n\s+de\s+procedencia|verificar\s+(?:un\s+)?certificado|\bno\b|\bnunca\b|\bni\b|\bsin\b|no\s+implica|tampoco/i
+
+// Fuente negada: "nunca 'LBMA oficial'", "no es el fixing", "ya no alimenta".
+const FUENTE_NEGADA_RE = /\b(?:nunca|never|no|not|ni|jam[aá]s|tampoco|dej[oó]\s+de|ya\s+no|antes|hist[oó]ric|anterior|legacy|retir)\b/i
+
 /**
  * Cada regla: expresión regular (insensible a mayúsculas donde aplica) y
  * la razón de la prohibición. Las reglas cubren las expresiones de la
@@ -122,7 +163,9 @@ const RULES = [
   // Exclusividad / venta atada (Art. 37 LGM: comercialización libre)
   { re: /mercados?\s+exclusivos?/i, label: '"mercados exclusivos" — la comercialización es libre (Art. 37 LGM)' },
   { re: /acceso\s+exclusivo/i, label: '"acceso exclusivo" — la comercialización es libre (Art. 37 LGM)' },
-  { re: /exclusividad/i, label: '"exclusividad" — la comercialización es libre (Art. 37 LGM)' },
+  // DEC-2026-11-27-2: la negación ("sin exclusividad de compra", "no otorga
+  // exclusividad") es copy requerido del marketplace abierto y pasa.
+  { re: /exclusividad/i, exclude: /\b(?:sin|no\s+(?:otorga|hay|existe)|ninguna)\s+exclusividad/i, label: '"exclusividad" — la comercialización es libre (Art. 37 LGM); solo pasa la negación ("sin exclusividad de compra")' },
   { re: /compramos\s+todo\s+su\s+oro/i, label: '"compramos todo su oro" — venta atada' },
   { re: /venta\s+exclusiva/i, label: '"venta exclusiva" — venta atada' },
 
@@ -157,38 +200,76 @@ const RULES = [
   { re: /per[íi]odo\s+preoperativo/i, label: '"período preoperativo" — no existe autorización tácita (Art. 34 Regl. MAPE)' },
   { re: /(?:puede|podr[áa])\s+(?:trabajar|operar|extraer)\s+mientras\s+se\s+tramita/i, label: '"puede trabajar mientras se tramita" — no existe autorización tácita' },
 
-  // Organismos sin instrumento formalizado
-  { re: /\bPNUD\b/, label: 'mención de PNUD — prohibida hasta instrucción expresa' },
-  { re: /\bUNDP\b/, label: 'mención de UNDP — prohibida hasta instrucción expresa' },
-  { re: /naciones\s+unidas/i, label: 'mención de Naciones Unidas — prohibida hasta instrucción expresa' },
-  { re: /united\s+nations/i, label: 'mención de United Nations — prohibida hasta instrucción expresa' },
+  // Alianzas (DEC-2026-11-26-1 / DEC-2026-11-27-2). Redacción calificada
+  // PERMITIDA: "carta de intención enviada", "MOU en proceso", "en evaluación",
+  // "carta de intención en preparación". Cualquier otra mención de Finacop,
+  // planetGOLD o PNUD, y toda formulación "firmada/vigente/suscrita", falla.
+  { re: /\b(?:convenio|alianza|acuerdo|contrato)s?\s+(?:firmad|vigente|suscrit|formalizad)[oa]?s?\b[^.\n]{0,80}\b(?:finacop|planet\s?gold|pnud|undp)\b/i, label: 'alianza descrita como firmada/vigente con Finacop, planetGOLD o PNUD — solo se publica la redacción calificada (carta de intención, MOU en proceso, en evaluación)', scope: 'all' },
+  { re: /\b(?:finacop|planet\s?gold|pnud|undp)\b[^.\n]{0,80}\b(?:convenio|alianza|acuerdo|contrato)s?\s+(?:firmad|vigente|suscrit|formalizad)/i, label: 'alianza descrita como firmada/vigente con Finacop, planetGOLD o PNUD — solo se publica la redacción calificada', scope: 'all' },
+  { re: /\b(?:finacop|planet\s?gold|pnud|undp)\b/i, exclude: ALIANZA_CALIFICADA_RE, label: 'mención de Finacop / planetGOLD / PNUD fuera de la redacción calificada (carta de intención, MOU en proceso, en evaluación, en preparación)' },
+  { re: /naciones\s+unidas/i, label: 'mención de Naciones Unidas — usar "planetGOLD (PNUD)" solo en la redacción calificada' },
+  { re: /united\s+nations/i, label: 'mención de United Nations — prohibida' },
 
-  // Institución financiera: no se nombra en superficies públicas ni en
-  // archivos del repositorio hasta que el convenio esté firmado — usar
-  // "cooperativa financiera aliada".
-  { re: /finacoop/i, label: 'FINACOOP — usar "cooperativa financiera aliada" hasta convenio firmado', scope: 'all' },
+  // Grafía antigua de la institución financiera: sigue sin nombrarse en todo
+  // el repositorio — usar "cooperativa financiera aliada" o la redacción
+  // calificada de alianzas (Finacop).
+  { re: /finacoop/i, label: 'FINACOOP — usar "cooperativa financiera aliada" o la redacción calificada de alianzas', scope: 'all' },
 
-  // Compradores nombrados (hotfix 2026-11-11): prohibidos en código y en
-  // superficies públicas — María y el sitio no nombran a ningún comprador.
-  // docs/ y los *.md de la raíz quedan fuera (decisión pendiente de Willis).
+  // Compradores nombrados: prohibidos en código y en superficies públicas —
+  // María y el sitio no nombran a ningún comprador. docs/ y los *.md de la
+  // raíz quedan fuera (decisión pendiente de Willis).
   { re: /\b(zekaii|chiopa|liopa|alfilo)\b/i, label: 'comprador nombrado — prohibido en código y superficies públicas', scope: 'code' },
+  // Inversiones CKI (DEC-2026-11-26-1): no se menciona. "CKI" en mayúsculas y
+  // con límites de palabra para evitar falsos positivos dentro de otras palabras.
+  { re: /\bInversiones\s+CKI\b|\bCKI\b/, label: 'Inversiones CKI / CKI — no se menciona en código ni superficies públicas', scope: 'code' },
   // Modelo descartado (venta directa del productor a la refinería) — sigue
   // prohibido en todo el repo, docs incluidos.
   { re: /chiopa\s+compra\s+(directo|directamente)/i, label: '"… compra directo" — modelo descartado; la plataforma no intermedia ventas', scope: 'all' },
 
   // Cifras de margen comercial (confidencialidad, todo el repo).
-  { re: /8[05]\s*%\s*del\s+precio/i, label: 'cifra de margen comercial — remite a la Política de Precios versionada', scope: 'all' },
-  { re: /8[05]\s*%\s*of\s+the\s+(international|reference)/i, label: 'cifra de margen comercial (variante EN) — remite a la Política de Precios versionada', scope: 'all' },
-  // Precio al productor con 80 %/85 % (público): el único porcentaje publicable
-  // es el 75 % referencial.
-  { re: /8[05]\s*%\s*(?:del\s+precio|de\s+la\s+referencia|LBMA)/i, label: '80 %/85 % como precio al productor — el único porcentaje público es el 75 % referencial' },
+  { re: /8[05]\s*%\s*del\s+precio/i, label: 'cifra de margen comercial — remite a la Política de publicación versionada', scope: 'all' },
+  { re: /8[05]\s*%\s*of\s+the\s+(international|reference)/i, label: 'cifra de margen comercial (variante EN) — remite a la Política de publicación versionada', scope: 'all' },
 
-  // La plataforma no compra (hotfix 2026-11-11): rótulo "precio referencial (75%)".
-  // Las negaciones ("no es una oferta de compra", "MAPE.LEGAL no compra, no
-  // vende ni intermedia oro", "Nadie compra oro", "nunca un precio de compra")
-  // son copy requerido y pasan vía `exclude`.
-  { re: /precio\s+de\s+compra/i, exclude: NEGACION_RE, label: '"precio de compra" — la plataforma no compra: usar "precio referencial (75%)"' },
-  { re: /\bcompra(?:mos)?\s+(?:de\s+)?oro\b/i, exclude: NEGACION_RE, label: '"compra(mos) (de) oro" — la plataforma no compra: usar "precio referencial (75%)"' },
+  // Porcentajes como FACTOR DE PRECIO (DEC-2026-11-26-1): ningún 75/80/85/90 %
+  // del LBMA / de la referencia internacional / del precio es publicable, ni
+  // "precio referencial (NN %)", ni "× 0,75". Exenciones estrechas (exclude):
+  // ley nominal de kilates, recuperación de equipo, CSS. Público + María + código.
+  { re: /\b(?:7[05]|8[05]|90)\s*%\s*(?:del?\s+(?:precio|valor|LBMA|oro)|de\s+la\s+(?:referencia|LBMA|cotizaci[oó]n)|LBMA|de\s+la\s+referencia\s+internacional)/i, exclude: FACTOR_EXENTO_RE, label: 'porcentaje de la referencia internacional como factor de precio — el precio público es solo informativo y sin factor', scope: 'code' },
+  { re: /precio\s+referencial\s*\(\s*\d{2}\s*%?\s*\)/i, exclude: FACTOR_EXENTO_RE, label: '"precio referencial (NN %)" — modelo superado (DEC-2026-11-26-1); usar el precio informativo sin factor', scope: 'code' },
+  { re: /[×x]\s*0[.,](?:75|8|80|85|9|90)\b/i, exclude: FACTOR_EXENTO_RE, label: '"× 0,75 / 0,80 / 0,90" — factor de compra en una fórmula pública; la fórmula vigente no lleva factor', scope: 'code' },
+  { re: /\bfactor\s+(?:de\s+)?(?:compra|referenci(?:a|al)|comercializaci[oó]n)\b/i, exclude: FACTOR_EXENTO_RE, label: '"factor de compra/referencial" en copy público — el precio informativo no lleva factor' },
+
+  // Volumen comprometido (DEC-2026-11-26-1): la cifra de 90 kg/mes no se publica.
+  { re: /\b90\s*kg\b/i, label: '"90 kg" — cifra de volumen no publicable' },
+
+  // La plataforma no compra: "precio de compra" / "compra(mos) oro" solo en
+  // negación o referidos a las PUBLICACIONES DE LOS PARTICIPANTES del marketplace
+  // (DEC-2026-11-27-2: cada participante publica sus precios de compra y venta).
+  { re: /precio\s+de\s+compra/i, exclude: COMPRA_EXENTA_RE, label: '"precio de compra" — la plataforma no compra: usar el precio informativo (o atribuirlo al participante que publica)' },
+  { re: /\bcompra(?:mos)?\s+(?:de\s+)?oro\b/i, exclude: COMPRA_EXENTA_RE, label: '"compra(mos) (de) oro" — la plataforma no compra: usar el precio informativo' },
+
+  // Certificación / reconocimiento / acreditación del estándar o por OCDE,
+  // LBMA, CRAFT o INHGEOMIN (DEC-2026-11-26-1): solo "alineado con". Exentos:
+  // el Certificado de Origen / Certificación de Procedencia (acto oficial),
+  // "Verificar certificado" y las negaciones.
+  { re: /\b(?:certificad|reconocid|acreditad|avalad)[oa]s?\s+(?:por|ante)\s+(?:la\s+|el\s+)?(?:OCDE|LBMA|CRAFT|INHGEOMIN|ARM|OECD)\b/i, exclude: CERT_EXENTA_RE, label: '"certificado/reconocido/acreditado por OCDE/LBMA/CRAFT/INHGEOMIN" — el estándar está ALINEADO con esas guías; no está certificado ni acreditado', scope: 'maria' },
+  { re: /\b(?:est[áa]ndar|sello|plataforma|MAPE\.?\s?LEGAL)\s+(?:est[áa]\s+|es\s+|queda\s+)?(?:certificad|reconocid|acreditad)[oa]s?\b/i, exclude: CERT_EXENTA_RE, label: '"estándar/sello/plataforma certificado|reconocido|acreditado" — usar "alineado con OCDE/LBMA"', scope: 'maria' },
+  { re: /\bcertificaci[oó]n\s+(?:OCDE|LBMA|CRAFT|INHGEOMIN|internacional)\b/i, exclude: CERT_EXENTA_RE, label: '"certificación OCDE/LBMA/CRAFT/INHGEOMIN" — el estándar está alineado, no certificado', scope: 'maria' },
+
+  // Exclusividad de compra / destino único (DEC-2026-11-27-2): el marketplace
+  // es abierto. Pasa la negación ("sin destino único", "ni un destino único").
+  // Sin \b delante de "único": en JS \b es ASCII y no reconoce la vocal acentuada.
+  { re: /\bcomprador\s+exclusivo\b|(?<![\wáéíóúñ])(?:[úu]nico\s+destino|destino\s+[úu]nico)\b|\bmercado\s+exclusivo\b/i, exclude: /\b(?:sin|ni\s+(?:un\s+)?|no\s+(?:hay|existe|otorga|es)\s+(?:un\s+)?|ning[úu]n)\s*(?:comprador\s+exclusivo|[úu]nico\s+destino|destino\s+[úu]nico|mercado\s+exclusivo)/i, label: 'comprador exclusivo / destino único — el marketplace es abierto, sin exclusividad de compra' },
+
+  // Etiquetas falsas de fuente (DEC-2026-11-26-1): no llamar "LBMA oficial" o
+  // "fixing" al feed (goldapi / Yahoo) ni "BCH" a un tipo de cambio que no
+  // venga del BCH (exchangerate-api). Pasan las negaciones ("nunca", "no es").
+  // Atribución directa: "BCH (exchangerate-api.com)", "LBMA oficial (goldapi.io)",
+  // "goldapi… como LBMA oficial". Una lista de upstreams ("GoldAPI / Yahoo / BCH")
+  // no es una atribución y no dispara.
+  { re: /(?:\bBCH\b|banco\s+central|LBMA\s+oficial|fixing\s+(?:de\s+la\s+)?LBMA|LBMA\s+fix)[^.\n(]{0,30}\([^)]*(?:exchangerate|goldapi|yahoo)/i, exclude: FUENTE_NEGADA_RE, label: 'etiqueta "BCH" / "LBMA oficial" junto a exchangerate-api / goldapi / Yahoo — la fuente real no es esa; etiquetar con honestidad', scope: 'code' },
+  { re: /(?:exchangerate|goldapi|yahoo)[^.\n]{0,40}\b(?:como|=|es\s+(?:el|la)|equivale\s+a)\s+(?:el\s+|la\s+)?(?:\bBCH\b|banco\s+central|LBMA\s+oficial|fixing)/i, exclude: FUENTE_NEGADA_RE, label: 'exchangerate-api / goldapi / Yahoo presentado como "BCH" o "LBMA oficial" — etiquetar con la fuente real', scope: 'code' },
+  { re: /tipo\s+de\s+cambio[^.\n]{0,60}exchangerate|exchangerate[^.\n]{0,60}tipo\s+de\s+cambio/i, exclude: FUENTE_NEGADA_RE, label: 'exchangerate-api como fuente del tipo de cambio — lo público usa únicamente el tipo de compra del BCH (o "dato no disponible")', scope: 'code' },
 
   // Promesas de pago (hotfix 2026-11-11): la plataforma no paga ni cobra el oro.
   // Pasa cuando la línea lo prohíbe ("NUNCA prometas 'pago el mismo día'").
@@ -354,6 +435,56 @@ for (const { file, rules } of targets) {
     }
   })
 }
+
+// ── Identidad obligatoria (DEC-2026-11-26-1) ───────────────────────────────
+// La fuente única de copy debe declarar que CHT / MAPE.LEGAL no administra
+// fondos y cobra tarifas fijas o por servicio, nunca ligadas al valor ni al
+// volumen del oro; y las superficies de identidad deben importar esas
+// constantes (no reescribirlas a mano).
+const IDENTIDAD_FUENTE = join('lib', 'content', 'copy-legal.ts')
+const IDENTIDAD_FRASES = [
+  /no\s+administran?\s+fondos/i,
+  /tarifas\s+fijas\s+o\s+por\s+servicio/i,
+  /nunca\s+ligadas\s+al\s+valor\s+ni\s+al\s+volumen\s+del\s+oro/i,
+]
+const IDENTIDAD_SUPERFICIES = [
+  join('app', 'quienes-somos', 'page.tsx'),
+  join('app', 'page.tsx'),
+  join('app', 'aviso-legal', 'page.tsx'),
+]
+const IDENTIDAD_IMPORT_RE = /\b(?:IDENTIDAD_FONDOS_TARIFAS|ROL_CHT)\b/
+
+function checkIdentidad() {
+  let found = 0
+  let fuente = ''
+  try {
+    fuente = readFileSync(join(ROOT, IDENTIDAD_FUENTE), 'utf8')
+  } catch {
+    console.log(`${IDENTIDAD_FUENTE} — falta la fuente única de copy legal`)
+    return 1
+  }
+  for (const re of IDENTIDAD_FRASES) {
+    if (!re.test(fuente)) {
+      found++
+      console.log(`${IDENTIDAD_FUENTE} — falta la frase de identidad obligatoria ${re} (no administra fondos / tarifas fijas o por servicio, nunca ligadas al valor ni al volumen del oro)`)
+    }
+  }
+  for (const rel of IDENTIDAD_SUPERFICIES) {
+    let src = ''
+    try {
+      src = readFileSync(join(ROOT, rel), 'utf8')
+    } catch {
+      continue // superficie inexistente en este árbol: no es violación
+    }
+    if (!IDENTIDAD_IMPORT_RE.test(src)) {
+      found++
+      console.log(`${rel} — superficie de identidad sin IDENTIDAD_FONDOS_TARIFAS ni ROL_CHT (importar desde lib/content/copy-legal.ts)`)
+    }
+  }
+  return found
+}
+
+violations += checkIdentidad()
 
 // Pase de vigencia (SCO-0090-2014): lib/, docs/, services/ y *.md de la raíz.
 const vigenciaRootMd = readdirSync(ROOT)

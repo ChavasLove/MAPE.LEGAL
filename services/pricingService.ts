@@ -1,41 +1,48 @@
 import { getAdminClient } from '@/services/adminSupabase';
-import { FACTOR_REFERENCIA, factorReferenciaDefinido } from '@/lib/precio/factores';
+import {
+  BCH_NOMBRE,
+  FUENTE_TIPO_CAMBIO_ID,
+  esTipoCambioValido,
+  getTipoCambioBch,
+  type TipoCambioBch,
+} from '@/lib/precio/bch';
+
+// ---------------------------------------------------------------------------
+// Precio en vivo, solo informativo (DEC-2026-11-26-1 / DEC-2026-11-27-2).
+//
+//   L por gramo de oro fino = (USD/oz) × (tipo de COMPRA del BCH, L por USD) ÷ 31.1034768
+//
+// Sin factor de compra: ningún 75/80/90 % de la referencia internacional sale
+// de este módulo hacia una superficie pública, una API pública ni María. El
+// oro viene de un feed en vivo etiquetado con su fuente REAL (goldapi.io o
+// Yahoo Finance; nunca "LBMA oficial"). El tipo de cambio viene únicamente del
+// adaptador del BCH (lib/precio/bch.ts); si no hay dato del BCH, el valor es
+// null y lo público muestra "dato no disponible".
+// ---------------------------------------------------------------------------
 
 export interface PreciosDiarios {
   oro: number | null;
   plata: number | null;
+  /** Tipo de cambio de COMPRA del BCH (L por USD) leído EN VIVO; null si no se obtuvo del BCH. */
   usd_hnl: number | null;
   cobre: number | null;
+  /** Procedencia: fuente(s) del oro + marcador `fx:bch` cuando usd_hnl es del BCH. Ver componerFuente(). */
   fuente: string;
   fetched_at: string;
 }
 
-// External price feeds (GoldAPI / Yahoo / exchangerate-api) intermittently hang;
-// Yahoo's COMEX query in particular can stall past 30s. Without a hard timeout
-// the bare fetch can pin runDailyBroadcast past Vercel's 60s function ceiling
-// — the 8 AM cron then silently misses its window with no broadcast_log entry.
-// 8 s matches PRICE_FETCH_TIMEOUT_MS in app/api/maria/chat/route.ts.
-const FETCH_TIMEOUT_MS = 8000;
+// External price feeds (GoldAPI / Yahoo / BCH) intermittently hang; Yahoo's
+// COMEX query in particular can stall past 30s. Without a hard timeout the
+// bare fetch can pin runDailyBroadcast past Vercel's 60s function ceiling —
+// the 8 AM cron then silently misses its window with no broadcast_log entry.
+// 8 s matches PRICE_FETCH_TIMEOUT_MS in app/api/maria/chat/route.ts and
+// BCH_FETCH_TIMEOUT_MS in lib/precio/bch.ts.
+export const FETCH_TIMEOUT_MS = 8000;
 
-// 1 troy ounce = 31.1034768 grams (LBMA standard). Single source of truth so
-// the boletín diario, María's WhatsApp reply, and the web widget all quote
-// the same price-per-gram — a 31.1035 round-off elsewhere produces a 0.0008%
-// drift that a client comparing two replies would notice.
+// 1 troy ounce = 31.1034768 grams. Constante canónica ÚNICA de la plataforma
+// (lib/precio/calculo.ts la re-exporta como GRAMOS_POR_ONZA_TROY). El antiguo
+// 31.1035 ya no se usa en ningún cálculo público.
 export const TROY_OUNCE_GRAMS = 31.1034768;
-
-// Factor del PRECIO REFERENCIAL público (fracción de la referencia
-// internacional del oro; hoy 0.75 → rótulo "Precio referencial (75%)"). NO es
-// una constante propia: es un alias de FACTOR_REFERENCIA en
-// lib/precio/factores.ts — la FUENTE ÚNICA del factor (hotfix de neutralidad,
-// 11-nov-2026). La plataforma no interviene en la transacción del mineral: este
-// factor produce un precio referencial estimado e informativo, nunca un precio
-// de transacción.
-// No sustituir aquí por una cifra — se edita únicamente en factores.ts
-// (script scripts/actualizar-factor-referencia.mjs).
-export const FACTOR_REFERENCIA_PUBLICO: number = FACTOR_REFERENCIA;
-
-/** @deprecated Nombre histórico; usar FACTOR_REFERENCIA_PUBLICO. Mismo valor. */
-export const MAPE_GOLD_BUY_FACTOR: number = FACTOR_REFERENCIA_PUBLICO;
 
 // The public price is a single daily snapshot anchored to 08:00 Honduras time.
 // The cron, the cold-cache fetch, and María all key precios_diarios by
@@ -68,34 +75,43 @@ export function effectivePriceDate(now: Date = new Date()): string {
   return anchor.toISOString().slice(0, 10);
 }
 
-/**
- * Precio referencial en Lempiras por gramo de oro fino.
- * = referencia internacional USD/oz × FACTOR_REFERENCIA_PUBLICO × USD/HNL
- *   ÷ troy-ounce-grams.
- * Devuelve null solo cuando un insumo falta o no es positivo (o si el factor
- * no fuera un número válido en (0, 1], lo que no ocurre con la constante
- * actual). Nombre canónico desde el hotfix de neutralidad (11-nov-2026).
- */
-export function referenciaLpsPorGramoFino(
-  oroUsdOz: number | null | undefined,
-  usdHnl: number | null | undefined,
-): number | null {
-  if (!factorReferenciaDefinido(FACTOR_REFERENCIA_PUBLICO)) return null;
-  if (!oroUsdOz || oroUsdOz <= 0 || !usdHnl || usdHnl <= 0) return null;
-  return (oroUsdOz * FACTOR_REFERENCIA_PUBLICO * usdHnl) / TROY_OUNCE_GRAMS;
+/* ── Fórmula canónica ──────────────────────────────────────────────────── */
+
+function insumoPositivo(n: number | null | undefined): n is number {
+  return typeof n === 'number' && Number.isFinite(n) && n > 0;
 }
 
-/** @deprecated Nombre histórico; usar referenciaLpsPorGramoFino(). Mismo cálculo. */
-export const mapeGoldBuyLpsPerGram = referenciaLpsPorGramoFino;
+/**
+ * Precio internacional del oro en lempiras por gramo de ORO FINO.
+ * = USD/oz × tipo de compra del BCH (L por USD) ÷ 31.1034768.
+ * Sin factor de compra. Devuelve null si un insumo falta, es 0, negativo o no
+ * finito — nunca una cifra inventada.
+ */
+export function oroLpsPorGramoFino(
+  oroUsdOz: number | null | undefined,
+  tipoCompraBch: number | null | undefined,
+): number | null {
+  if (!insumoPositivo(oroUsdOz) || !insumoPositivo(tipoCompraBch)) return null;
+  return (oroUsdOz * tipoCompraBch) / TROY_OUNCE_GRAMS;
+}
+
+/** Oro en lempiras por onza troy (USD/oz × tipo de compra del BCH); null sin insumos válidos. */
+export function oroLpsPorOnza(
+  oroUsdOz: number | null | undefined,
+  tipoCompraBch: number | null | undefined,
+): number | null {
+  if (!insumoPositivo(oroUsdOz) || !insumoPositivo(tipoCompraBch)) return null;
+  return oroUsdOz * tipoCompraBch;
+}
 
 // ─── Conversión por kilates ───────────────────────────────────────────────────
 //
 // Ley nominal = kilates ÷ 24 (fracción de oro fino contenida en el material).
-// Los valores por kilate son aritmética sobre el snapshot diario de las 8 AM —
-// en una transacción real el contenido de oro fino se determina por ensaye,
-// no por el kilataje declarado. Single source of truth: /api/precios/live (widget de
-// /precios), el boletín diario y María (WhatsApp + web) consumen este helper
-// para que los cuatro canales muestren exactamente los mismos números.
+// Valor por kilate = (L por gramo de oro fino) × ley — SIN ningún factor de
+// compra. En una transacción real el contenido de oro fino se determina por
+// ensaye, no por el kilataje declarado. Single source of truth: /api/precios/live
+// (tabla de /precios), el boletín diario y María (WhatsApp + web) consumen este
+// helper para que los cuatro canales muestren exactamente los mismos números.
 export const GOLD_KARATS = [16, 18, 20, 22] as const;
 
 // 1 penique (pennyweight, dwt) = 1/20 de onza troy = 1.55517384 g. Unidad de
@@ -110,46 +126,65 @@ export interface KaratPrice {
   ley: number;
   /** Valor internacional del oro contenido en 1 g de material, en USD. */
   oro_usd_g: number;
-  /** Valor internacional del oro contenido en 1 g de material, en Lempiras. */
+  /** Valor del oro contenido en 1 g de material, en lempiras (L/g fino × ley). */
   oro_lps_g: number;
-  /** Precio referencial (75%) aplicado al contenido nominal de oro fino, L por 1 g de material. */
-  referencia_lps_g: number;
   /** Valor internacional del oro contenido en 1 penique (dwt) de material, en USD. */
   oro_usd_dwt: number;
-  /** Valor internacional del oro contenido en 1 penique (dwt) de material, en Lempiras. */
+  /** Valor del oro contenido en 1 penique (dwt) de material, en lempiras. */
   oro_lps_dwt: number;
-  /** Precio referencial (75%) aplicado al contenido nominal de oro fino, L por 1 penique (dwt) de material. */
-  referencia_lps_dwt: number;
 }
 
-// Devuelve null solo sin insumos válidos (ver referenciaLpsPorGramoFino).
+// Devuelve null solo sin insumos válidos (ver oroLpsPorGramoFino).
 export function buildKaratPrices(
   oroUsdOz: number | null | undefined,
-  usdHnl: number | null | undefined,
+  tipoCompraBch: number | null | undefined,
 ): KaratPrice[] | null {
-  if (!oroUsdOz || oroUsdOz <= 0 || !usdHnl || usdHnl <= 0) return null;
-  const refLpsPerFineGram = referenciaLpsPorGramoFino(oroUsdOz, usdHnl);
-  if (refLpsPerFineGram == null) return null;
+  const lpsPorGramoFino = oroLpsPorGramoFino(oroUsdOz, tipoCompraBch);
+  if (lpsPorGramoFino == null || !insumoPositivo(oroUsdOz)) return null;
   const usdPerFineGram = oroUsdOz / TROY_OUNCE_GRAMS;
   return GOLD_KARATS.map((kilates) => {
     const ley = kilates / 24;
     const oro_usd_g = usdPerFineGram * ley;
-    const oro_lps_g = usdPerFineGram * usdHnl * ley;
-    const referencia_lps_g = refLpsPerFineGram * ley;
+    const oro_lps_g = lpsPorGramoFino * ley;
     return {
       kilates,
       ley,
       oro_usd_g,
       oro_lps_g,
-      referencia_lps_g,
       oro_usd_dwt: oro_usd_g * PENNYWEIGHT_GRAMS,
       oro_lps_dwt: oro_lps_g * PENNYWEIGHT_GRAMS,
-      referencia_lps_dwt: referencia_lps_g * PENNYWEIGHT_GRAMS,
     };
   });
 }
 
-// ─── Fuentes con prioridad ────────────────────────────────────────────────────
+/* ── Fuente del oro internacional — puerto + implementaciones ─────────── */
+
+/** Identificadores de fuente del oro. 'lbma-oficial' es un puerto PENDIENTE sin implementación. */
+export type FuenteOroId = 'goldapi.io' | 'yahoo-finance' | 'lbma-oficial';
+
+export interface FuenteOroInternacional {
+  id: FuenteOroId;
+  /** Etiqueta pública honesta. Nunca "LBMA oficial" ni "fixing" para un feed que no lo es. */
+  etiqueta: string;
+  /** Devuelve USD por onza troy o null si no hay dato. Nunca inventa. */
+  obtener(): Promise<number | null>;
+}
+
+const ETIQUETAS_ORO: Record<FuenteOroId, string> = {
+  'goldapi.io': 'Precio internacional del oro (goldapi.io)',
+  'yahoo-finance': 'Precio internacional del oro (Yahoo Finance, futuros COMEX)',
+  'lbma-oficial': 'Precio LBMA oficial — pendiente de conexión',
+};
+
+/** Etiqueta pública de una fuente del oro a partir de su identificador o de `precios_diarios.fuente`. */
+export function etiquetaFuenteOro(fuente: string | null | undefined): string {
+  const { oro } = parseFuente(fuente);
+  const ids = oro.split(',').map((s) => s.trim()).filter(Boolean) as FuenteOroId[];
+  const conocidas = ids.filter((id) => id in ETIQUETAS_ORO);
+  if (conocidas.length === 0) return 'Precio internacional del oro (fuente no registrada)';
+  if (conocidas.length === 1) return ETIQUETAS_ORO[conocidas[0]];
+  return `Precio internacional del oro (${conocidas.join(', ')})`;
+}
 
 async function fetchGoldFromGoldAPI(): Promise<number | null> {
   const apiKey = process.env.GOLDAPI_KEY;
@@ -163,7 +198,7 @@ async function fetchGoldFromGoldAPI(): Promise<number | null> {
     if (!res.ok) throw new Error(`goldapi ${res.status}`);
     const data = (await res.json()) as { price?: number };
     console.log('[pricingService] goldapi.io XAU/USD:', data.price);
-    return data.price ?? null;
+    return insumoPositivo(data.price) ? data.price : null;
   } catch (e) {
     console.error('[pricingService] goldapi gold failed:', e);
     return null;
@@ -181,7 +216,7 @@ async function fetchSilverFromGoldAPI(): Promise<number | null> {
     });
     if (!res.ok) throw new Error(`goldapi silver ${res.status}`);
     const data = (await res.json()) as { price?: number };
-    return data.price ?? null;
+    return insumoPositivo(data.price) ? data.price : null;
   } catch (e) {
     console.error('[pricingService] goldapi silver failed:', e);
     return null;
@@ -220,45 +255,69 @@ async function fetchMetalsFromYahoo(): Promise<{ gold: number | null; silver: nu
     }
 
     console.log('[pricingService] Yahoo Finance:', { gold, silver });
-    return { gold, silver };
+    return { gold: insumoPositivo(gold) ? gold : null, silver: insumoPositivo(silver) ? silver : null };
   } catch (e) {
     console.error('[pricingService] Yahoo Finance failed:', e);
     return { gold: null, silver: null };
   }
 }
 
-async function fetchExchangeRate(): Promise<number | null> {
-  const apiKey = process.env.EXCHANGE_RATE_API_KEY;
-  const url = apiKey
-    ? `https://v6.exchangerate-api.com/v6/${apiKey}/latest/USD`
-    : 'https://api.exchangerate-api.com/v4/latest/USD';
+/** Fuente primaria del oro: goldapi.io (spot). */
+export const FUENTE_ORO_GOLDAPI: FuenteOroInternacional = {
+  id: 'goldapi.io',
+  etiqueta: ETIQUETAS_ORO['goldapi.io'],
+  obtener: fetchGoldFromGoldAPI,
+};
 
-  try {
-    const res = await fetch(url, {
-      cache:  'no-store',
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    });
-    if (!res.ok) throw new Error(`exchangerate-api ${res.status}`);
-    const data = (await res.json()) as {
-      rates?: Record<string, number>;
-      conversion_rates?: Record<string, number>;
-    };
-    const rate = data.conversion_rates?.HNL ?? data.rates?.HNL ?? null;
-    console.log('[pricingService] USD/HNL:', rate);
-    return rate ?? null;
-  } catch (e) {
-    console.error('[pricingService] FX failed:', e);
-    return null;
-  }
+/** Respaldo del oro: Yahoo Finance (futuros COMEX GC=F). */
+export const FUENTE_ORO_YAHOO: FuenteOroInternacional = {
+  id: 'yahoo-finance',
+  etiqueta: ETIQUETAS_ORO['yahoo-finance'],
+  obtener: async () => (await fetchMetalsFromYahoo()).gold,
+};
+
+/**
+ * Puerto para el precio LBMA oficial. PENDIENTE: no está conectado y NO forma
+ * parte de la rotación de fuentes. Conectarlo exige un contrato/licencia con el
+ * proveedor oficial de datos de la LBMA (decisión de negocio [POR CONFIRMAR]).
+ * Mientras tanto devuelve null — nunca un número inventado.
+ */
+export const FUENTE_ORO_LBMA_OFICIAL: FuenteOroInternacional = {
+  id: 'lbma-oficial',
+  etiqueta: ETIQUETAS_ORO['lbma-oficial'],
+  obtener: async () => null,
+};
+
+/** Rotación vigente de fuentes del oro, en orden de prioridad. LBMA oficial NO está aquí. */
+export const FUENTES_ORO: readonly FuenteOroInternacional[] = [FUENTE_ORO_GOLDAPI, FUENTE_ORO_YAHOO];
+
+/* ── Procedencia compuesta en precios_diarios.fuente ─────────────────── */
+
+/** Marcador que, presente en `precios_diarios.fuente`, declara que `usd_hnl` es el tipo de compra del BCH leído en vivo. */
+export const FX_MARCADOR_BCH = 'fx:bch';
+
+/** Compone el campo `fuente`: fuentes del oro + marcador del BCH si el FX es del BCH. */
+export function componerFuente(oroFuente: string, fxBch: boolean): string {
+  return fxBch ? `${oroFuente} | ${FX_MARCADOR_BCH}` : oroFuente;
 }
 
-// ─── Public API ───────────────────────────────────────────────────────────────
+/** Descompone `precios_diarios.fuente` en fuente(s) del oro y si el FX proviene del BCH. */
+export function parseFuente(fuente: string | null | undefined): { oro: string; fxBch: boolean } {
+  if (!fuente) return { oro: '', fxBch: false };
+  const partes = fuente.split('|').map((s) => s.trim());
+  const fxBch = partes.includes(FX_MARCADOR_BCH);
+  const oro = partes.filter((p) => p !== FX_MARCADOR_BCH).join(' | ');
+  return { oro, fxBch };
+}
+
+/* ── Public API ───────────────────────────────────────────────────────── */
 
 export async function fetchGoldPrice(): Promise<number | null> {
-  const fromGoldApi = await fetchGoldFromGoldAPI();
-  if (fromGoldApi !== null) return fromGoldApi;
-  const yahoo = await fetchMetalsFromYahoo();
-  return yahoo.gold;
+  for (const fuente of FUENTES_ORO) {
+    const v = await fuente.obtener();
+    if (v !== null) return v;
+  }
+  return null;
 }
 
 export async function fetchSilverPrice(): Promise<number | null> {
@@ -268,8 +327,13 @@ export async function fetchSilverPrice(): Promise<number | null> {
   return yahoo.silver;
 }
 
-export async function fetchUSDHNL(): Promise<number | null> {
-  return fetchExchangeRate();
+/**
+ * Tipo de cambio de compra del BCH (adaptador lib/precio/bch.ts, con caché y
+ * respaldos). Null = "dato no disponible". Sustituye al antiguo
+ * fetchExchangeRate() de exchangerate-api.com, que ya no alimenta lo público.
+ */
+export async function fetchTipoCambioBch(): Promise<TipoCambioBch | null> {
+  return getTipoCambioBch();
 }
 
 export async function fetchCopperPrice(): Promise<number | null> {
@@ -282,20 +346,18 @@ export async function fetchAllPrices(): Promise<PreciosDiarios> {
 
   // Phase 1 — independent upstreams in parallel. Saves ~1-2 s vs the
   // serial chain on every cold-cache turn and every broadcast cron.
-  const [goldApiGold, goldApiSilver, usd_hnl] = await Promise.all([
+  const [goldApiGold, goldApiSilver, tipoCambio] = await Promise.all([
     fetchGoldFromGoldAPI(),
     fetchSilverFromGoldAPI(),
-    fetchExchangeRate(),
+    getTipoCambioBch(),
   ]);
 
   let oro = goldApiGold;
   let plata = goldApiSilver;
-  // Track exactly which upstreams contributed a non-null metal. The
-  // previous code stamped 'yahoo-finance' whenever Yahoo ran (even if
-  // Yahoo only filled silver and gold actually came from GoldAPI) —
-  // an honest label needs per-metal accounting.
+  // Track exactly which upstreams contributed a non-null metal — an honest
+  // label needs per-metal accounting.
   const sources = new Set<string>();
-  if (goldApiGold !== null || goldApiSilver !== null) sources.add('goldapi.io');
+  if (goldApiGold !== null || goldApiSilver !== null) sources.add(FUENTE_ORO_GOLDAPI.id);
 
   // Phase 2 — Yahoo backfill, only for metals GoldAPI didn't supply.
   if (oro === null || plata === null) {
@@ -303,29 +365,103 @@ export async function fetchAllPrices(): Promise<PreciosDiarios> {
     const yahoo = await fetchMetalsFromYahoo();
     if (oro === null && yahoo.gold !== null) {
       oro = yahoo.gold;
-      sources.add('yahoo-finance');
+      sources.add(FUENTE_ORO_YAHOO.id);
     }
     if (plata === null && yahoo.silver !== null) {
       plata = yahoo.silver;
-      sources.add('yahoo-finance');
+      sources.add(FUENTE_ORO_YAHOO.id);
     }
   }
 
   const cobre = null;
-  const fuente = sources.size === 0 ? 'failed-all-sources' : [...sources].join(', ');
+  const oroFuente = sources.size === 0 ? 'failed-all-sources' : [...sources].join(', ');
+
+  // Solo un dato del BCH leído EN VIVO se persiste como tipo de cambio del día.
+  // Un respaldo (último valor guardado) no se congela en el snapshot: se
+  // vuelve a resolver en lectura con su propia fecha visible.
+  const fxVivo = tipoCambio?.origen === 'vivo' && esTipoCambioValido(tipoCambio.compra);
+  const usd_hnl = fxVivo ? tipoCambio!.compra : null;
+  const fuente = componerFuente(oroFuente, fxVivo);
 
   if (oro === null) {
     console.error('[pricingService] CRITICAL: No gold price from any source.');
+  }
+  if (!fxVivo) {
+    console.warn('[pricingService] tipo de cambio del BCH no disponible en vivo; usd_hnl=null en el snapshot');
   }
 
   return { oro, plata, usd_hnl, cobre, fuente, fetched_at };
 }
 
+/**
+ * Lee el tipo de cambio del BCH registrado en el snapshot de la ventana diaria
+ * actual (precios_diarios con marcador fx:bch). Respaldo de nivel 1 del
+ * adaptador: es un dato del BCH capturado hoy por otra instancia/cron.
+ */
+export async function leerTipoCambioBchSnapshotHoy(): Promise<TipoCambioBch | null> {
+  try {
+    const admin = getAdminClient();
+    const { data, error } = await admin
+      .from('precios_diarios')
+      .select('usd_hnl, fuente, fetched_at, fecha')
+      .eq('fecha', effectivePriceDate())
+      .maybeSingle();
+    if (error || !data) return null;
+    const { fxBch } = parseFuente(data.fuente as string | null);
+    const compra = Number(data.usd_hnl);
+    if (!fxBch || !esTipoCambioValido(compra)) return null;
+    return {
+      compra,
+      venta: null,
+      fuente: FUENTE_TIPO_CAMBIO_ID,
+      fuenteNombre: BCH_NOMBRE,
+      fecha: String(data.fecha),
+      obtenidoEn: String(data.fetched_at ?? new Date().toISOString()),
+      origen: 'vivo',
+      detalle: 'precios_diarios (snapshot de la ventana 08:00, leído del BCH)',
+    };
+  } catch (e) {
+    console.error('[pricingService] leerTipoCambioBchSnapshotHoy failed:', (e as Error)?.message);
+    return null;
+  }
+}
+
+/**
+ * Resuelve el tipo de cambio del BCH para un snapshot ya leído de
+ * precios_diarios: si la fila trae el marcador fx:bch, su usd_hnl es del BCH
+ * (origen vivo, con la fecha de captura); si no (filas anteriores a esta
+ * decisión, o día sin dato), consulta el adaptador con sus respaldos. Nunca
+ * devuelve un usd_hnl que no sea del BCH.
+ */
+export async function resolverTipoCambioBch(row: {
+  usd_hnl: number | string | null;
+  fuente?: string | null;
+  fetched_at?: string | null;
+  fecha?: string | null;
+} | null): Promise<TipoCambioBch | null> {
+  if (row) {
+    const { fxBch } = parseFuente(row.fuente);
+    const compra = Number(row.usd_hnl);
+    if (fxBch && esTipoCambioValido(compra)) {
+      return {
+        compra,
+        venta: null,
+        fuente: FUENTE_TIPO_CAMBIO_ID,
+        fuenteNombre: BCH_NOMBRE,
+        fecha: row.fecha ?? effectivePriceDate(),
+        obtenidoEn: row.fetched_at ?? new Date().toISOString(),
+        origen: 'vivo',
+        detalle: 'precios_diarios (snapshot de la ventana 08:00, leído del BCH)',
+      };
+    }
+  }
+  return getTipoCambioBch();
+}
+
 // Persist an already-fetched PreciosDiarios snapshot. Extracted so callers
 // that have just done their own fetchAllPrices() (María webhook + web widget)
-// can write-back the cache without paying for a second round-trip to
-// GoldAPI/Yahoo/exchangerate-api — the prior pattern fan-out was 2× the
-// upstream calls per cold-cache turn.
+// can write-back the cache without paying for a second round-trip to the
+// upstreams.
 export async function storePrices(
   precios: PreciosDiarios,
   fecha: string = effectivePriceDate(),

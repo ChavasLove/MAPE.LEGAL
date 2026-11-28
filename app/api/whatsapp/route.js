@@ -3,9 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 import { getUserByPhone, getOrCreateUserByPhone } from "@/services/userService";
 import { interpretAndExecute } from "@/services/adminCommandService";
 import { getOnboardingState, handleOnboarding, INSTITUTIONAL_ONBOARDING_REPLY } from "@/services/onboardingService";
-import { fetchAllPrices, storePrices, effectivePriceDate, referenciaLpsPorGramoFino, buildKaratPrices } from "@/services/pricingService";
-import { ROTULO_PRECIO_REFERENCIAL } from "@/lib/precio/factores";
-import { AVISO_PRECIO_REFERENCIAL, ETIQUETA_TIPO_CAMBIO, FUENTE_TIPO_CAMBIO } from "@/lib/content/copy-legal";
+import { fetchAllPrices, storePrices, effectivePriceDate, oroLpsPorGramoFino, buildKaratPrices, etiquetaFuenteOro, resolverTipoCambioBch } from "@/services/pricingService";
+import { AVISO_PRECIO_INFORMATIVO, DATO_NO_DISPONIBLE, ETIQUETA_TIPO_CAMBIO, FUENTE_TIPO_CAMBIO, ROTULO_PRECIO_INFORMATIVO } from "@/lib/content/copy-legal";
 import { sanitizeIlikeTerm } from "@/services/concesionesService";
 import { embedQuery, toVectorText } from "@/lib/maria/embeddings";
 import { normalizePhone } from "@/lib/maria/normalizePhone";
@@ -814,21 +813,25 @@ Comandos disponibles:
       maximumFractionDigits: d,
     });
     const oroIntl   = preciosHoy?.oro    != null ? `$${fmt(preciosHoy.oro)} USD/oz troy`   : null;
-    // Precio referencial (75 %) — helper canónico (FACTOR_REFERENCIA en
-    // lib/precio/factores.ts, fuente única). Mismo número que /api/precios/live,
-    // el widget y el boletín.
-    const referencialLps = referenciaLpsPorGramoFino(preciosHoy?.oro, preciosHoy?.usd_hnl);
-    const referencial = referencialLps != null ? `L ${fmt(referencialLps)} por gramo de oro fino` : null;
-    // Conversión por kilates — mismo helper canónico que /api/precios/live y el
-    // boletín diario, así María cita números idénticos a los del widget. Cada
-    // kilataje trae valor por gramo y por penique (dwt = 1.5552 g) DE MATERIAL.
-    const kilatesRef = buildKaratPrices(preciosHoy?.oro, preciosHoy?.usd_hnl);
+    const oroFuente = etiquetaFuenteOro(preciosHoy?.fuente);
+    // Tipo de cambio: ÚNICAMENTE del BCH (snapshot marcado fx:bch, o adaptador
+    // con respaldos). Sin dato del BCH → "dato no disponible", sin lempiras.
+    // Institucional: no se consulta nada (bloque suprimido más abajo).
+    const tcBch = !esInstitucional && preciosHoy ? await resolverTipoCambioBch(preciosHoy) : null;
+    const tc = tcBch?.compra ?? null;
+    // Precio informativo SIN factor — helper canónico (oroLpsPorGramoFino).
+    // Mismo número que /api/precios/live, el widget y el boletín.
+    const lpsGramoFino = oroLpsPorGramoFino(preciosHoy?.oro, tc);
+    const precioLinea = lpsGramoFino != null ? `L ${fmt(lpsGramoFino)} por gramo de oro fino` : DATO_NO_DISPONIBLE;
+    // Conversión por kilates — mismo helper canónico. Cada kilataje trae valor
+    // por gramo y por penique (dwt = 1.5552 g) DE MATERIAL, sin factor.
+    const kilatesRef = buildKaratPrices(preciosHoy?.oro, tc);
     const kilatesLine = kilatesRef
       ? kilatesRef
-          .map((k) => `${k.kilates}k L ${fmt(k.referencia_lps_g)}/g · L ${fmt(k.referencia_lps_dwt)}/dwt`)
+          .map((k) => `${k.kilates}k L ${fmt(k.oro_lps_g)}/g · L ${fmt(k.oro_lps_dwt)}/dwt`)
           .join(' | ')
-      : null;
-    const plataLBMA = preciosHoy?.plata  != null ? `$${fmt(preciosHoy.plata)} USD/oz troy` : null;
+      : DATO_NO_DISPONIBLE;
+    const plataIntl = preciosHoy?.plata  != null ? `$${fmt(preciosHoy.plata)} USD/oz troy` : DATO_NO_DISPONIBLE;
 
     // Timestamp reflects the moment María assembles the reply, not the cache row's
     // fetched_at — otherwise a stale cache write yesterday surfaces as "actualizado hoy 06:57 p.m."
@@ -841,20 +844,22 @@ Comandos disponibles:
     });
     const frescuraLabel = `consultado hoy ${horaConsultaHN}`;
 
-    const tipoCambio = preciosHoy?.usd_hnl != null ? `L ${fmt(preciosHoy.usd_hnl)} por USD` : null;
+    const tipoCambioLinea = tcBch
+      ? `L ${fmt(tcBch.compra, 4)} por USD (${FUENTE_TIPO_CAMBIO}, vigente ${tcBch.fecha}${tcBch.origen === 'respaldo' ? ', último valor registrado' : ''})`
+      : DATO_NO_DISPONIBLE;
     // Institucional: '' (ni siquiera el fallback "no hay datos", que instruye
     // una respuesta de precio).
     const priceContext = esInstitucional ? '' : preciosHoy
-      ? `\n\nPRECIOS DE REFERENCIA (${preciosHoy.fecha ?? 'hoy'}${frescuraLabel ? ` — ${frescuraLabel}` : ''}):
-- Oro internacional: ${oroIntl ?? 'no disponible'}
-- ${ETIQUETA_TIPO_CAMBIO} (${FUENTE_TIPO_CAMBIO}): ${tipoCambio ?? 'no disponible'}
-- ${ROTULO_PRECIO_REFERENCIAL}: ${referencial ?? 'no disponible'}
-- Referencia por kilates (por gramo y por penique/dwt DE MATERIAL; ley nominal = kilates ÷ 24; 1 dwt = 1.5552 g): ${kilatesLine ?? 'no disponible'}
-- Plata internacional: ${plataLBMA ?? 'no disponible'}
-- Frescura: ${frescuraLabel || 'no disponible'}
-${preciosHoy.fuente ? `- Fuente del oro: ${preciosHoy.fuente}` : ''}
-Cuando cites el precio, incluí SIEMPRE el aviso literal: «${AVISO_PRECIO_REFERENCIAL}». Nunca digas 'compra', nunca nombres compradores, nunca prometas pago ni plazo de pago. El precio referencial es un estimado informativo (75 % de la referencia internacional del oro, en lempiras por gramo de oro fino); las cifras por kilates son por gramo o penique DE MATERIAL. El tipo de cambio se atribuye siempre a su fuente (${FUENTE_TIPO_CAMBIO}) con fecha/hora. El formato canónico de respuesta para precio del día está en CUANDO PREGUNTAN POR EL PRECIO DEL ORO — síguelo al pie de la letra (viñetas: Oro internacional + ${ROTULO_PRECIO_REFERENCIAL} + ${ETIQUETA_TIPO_CAMBIO} (${FUENTE_TIPO_CAMBIO}) + Actualizado, luego el aviso literal y www.mape.legal). El timestamp ("Actualizado") y el tipo de cambio USD/LPS son OBLIGATORIOS en cada respuesta de precio.`
-      : `\n\nPRECIOS DE REFERENCIA: No hay datos de precios cargados hoy. Si el cliente pregunta por el precio del oro o el precio referencial, di: "Hoy no tengo el precio cargado en el sistema. Para precio actualizado escribí a gerencia@mape.legal."`;
+      ? `\n\nPRECIOS DEL DÍA (${preciosHoy.fecha ?? 'hoy'}${frescuraLabel ? ` — ${frescuraLabel}` : ''}):
+- Oro internacional (${oroFuente}): ${oroIntl ?? DATO_NO_DISPONIBLE}
+- ${ETIQUETA_TIPO_CAMBIO}: ${tipoCambioLinea}
+- ${ROTULO_PRECIO_INFORMATIVO} (solo informativo, sin factor): ${precioLinea}
+- Por kilates (por gramo y por penique/dwt DE MATERIAL; ley nominal = kilates ÷ 24; 1 dwt = 1.5552 g): ${kilatesLine}
+- Plata internacional: ${plataIntl}
+- Frescura: ${frescuraLabel || DATO_NO_DISPONIBLE}
+- Fuente del oro: ${oroFuente}
+Cuando cites el precio, incluí SIEMPRE el aviso literal: «${AVISO_PRECIO_INFORMATIVO}». Nunca digas 'compra' ni 'precio referencial', nunca cites porcentajes de la referencia internacional, nunca nombres compradores, nunca prometas pago ni plazo de pago. El precio es solo informativo (oro internacional × tipo de cambio de compra del BCH ÷ 31.1034768, en lempiras por gramo de oro fino); las cifras por kilates son por gramo o penique DE MATERIAL. Si una línea dice "${DATO_NO_DISPONIBLE}", repetilo tal cual: nunca estimes ni uses otra fuente. El oro NO es "LBMA oficial". El formato canónico de respuesta para precio del día está en CUANDO PREGUNTAN POR EL PRECIO DEL ORO — síguelo al pie de la letra (viñetas: Oro internacional + ${ETIQUETA_TIPO_CAMBIO} + Oro en lempiras por gramo de oro fino (solo informativo) + Actualizado, luego el aviso literal y www.mape.legal). El timestamp ("Actualizado") y la línea del tipo de cambio son OBLIGATORIOS en cada respuesta de precio.`
+      : `\n\nPRECIOS DEL DÍA: No hay datos de precios cargados hoy. Si el cliente pregunta por el precio del oro, di: "Hoy no tengo el precio cargado en el sistema. Para el dato actualizado revisá www.mape.legal/precios o escribí a gerencia@mape.legal." — sin inventar ni estimar.`;
 
     // --- Query expedientes linked to this client ---
     let expedienteContext = '';

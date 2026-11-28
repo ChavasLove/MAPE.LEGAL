@@ -9,7 +9,13 @@
  *
  * Falla (exit 1) si una línea contiene:
  *  1. Un comprador nombrado: zekaii | chiopa | liopa | alfilo (sin distinguir
- *     mayúsculas). Sin excepciones — María nunca nombra compradores.
+ *     mayúsculas) o Inversiones CKI / CKI (DEC-2026-11-26-1). Sin excepciones —
+ *     María nunca nombra compradores.
+ *  4. (DEC-2026-11-26-1) Un porcentaje de la referencia internacional citado
+ *     como precio ("75 % del LBMA", "precio referencial (75 %)", "× 0,75",
+ *     "80 % de la referencia"): el precio que María cita es solo informativo y
+ *     sin factor. Exentos: la ley nominal de kilates ("18k = 75 % de oro fino",
+ *     "kilates ÷ 24") y las líneas que lo declaran superado o lo prohíben.
  *  2. Un término político partidario hondureño: partidos (Partido Nacional,
  *     Partido Liberal, Libre / Libertad y Refundación, PSH, PINU, Democracia
  *     Cristiana), "candidato/a … presidencial|del partido|a diputado|a alcalde",
@@ -61,7 +67,18 @@ const EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.md', '.mdx', '.sql',
 
 // ── Listas extensibles ──────────────────────────────────────────────────────
 // Compradores (2026-11-11): ningún comprador se nombra en el cerebro de María.
-const COMPRADORES = /\b(zekaii|chiopa|liopa|alfilo)\b/i
+// DEC-2026-11-26-1: tampoco Inversiones CKI (CKI en mayúsculas con límites de palabra).
+const COMPRADORES = /\b(zekaii|chiopa|liopa|alfilo)\b|\bInversiones\s+CKI\b|\bCKI\b/
+
+// Porcentaje como precio (DEC-2026-11-26-1). Exentos: ley nominal de kilates,
+// líneas que declaran el modelo superado o que prohíben citar el porcentaje.
+const PORCENTAJE_PRECIO = [
+  /\b(?:7[05]|8[05]|90)\s*%\s*(?:del?\s+(?:precio|valor|LBMA|oro)|de\s+la\s+(?:referencia|LBMA|cotizaci[oó]n)|LBMA)/i,
+  /precio\s+referencial\s*\(\s*\d{2}\s*%?\s*\)/i,
+  /[×x]\s*0[.,](?:75|8|80|85|9|90)\b/i,
+]
+const PORCENTAJE_EXENTO_RE =
+  /\b(?:1[0-9]|2[0-4])\s?k\b|kilat|ley\s+nominal|de\s+oro\s+fino\)|superad[oa]|retirad[oa]|hist[oó]ric|\bnunca\b|\bni\b|\bno\b|prohibid|bloquea|falla/i
 
 // Partidos / términos partidarios hondureños (2026-11-11).
 const PARTIDOS = [
@@ -139,6 +156,16 @@ for (const file of files) {
     if (m1) {
       violations++
       console.log(`${rel}:${i + 1} — «${m1[0]}» → comprador nombrado — prohibido en el prompt, el RAG y las respuestas de María`)
+    }
+    if (!PORCENTAJE_EXENTO_RE.test(line)) {
+      for (const re of PORCENTAJE_PRECIO) {
+        const m4 = line.match(re)
+        if (m4) {
+          violations++
+          console.log(`${rel}:${i + 1} — «${m4[0]}» → porcentaje de la referencia internacional como precio — María solo cita el precio informativo sin factor (DEC-2026-11-26-1)`)
+          break
+        }
+      }
     }
     const rule = near(NEUTRALIDAD_RULE_RE, i)
     for (const re of PARTIDOS) {

@@ -2,12 +2,14 @@
 
 // Client island del panel de fijación diaria del Precio referencial.
 //
-// Hotfix de neutralidad (11-nov-2026): el precio fijado es un PRECIO
-// REFERENCIAL ESTIMADO (factor precargado FACTOR_REFERENCIA = 0.75) — no un
-// precio de transacción. Insumos: referencia internacional del oro (USD/oz) y
-// tipo de cambio de referencia de mercado (exchangerate-api.com). Las claves
-// del body (`referencia_lbma_usd_oz`, `tipo_cambio_bch`) son nombres de
-// columna históricos de la tabla y se conservan.
+// DEC-2026-11-26-1 / DEC-2026-11-27-2: el precio fijado es SOLO INFORMATIVO y
+// SIN factor de compra: referencia internacional (USD/oz) × tipo de cambio de
+// COMPRA del BCH ÷ 31.1034768. El panel ya no captura ningún factor; la columna
+// histórica factor_comercializacion (030, NOT NULL) la rellena el servidor con 1
+// (sin recorte) y aquí no se muestra. Las claves del body
+// (`referencia_lbma_usd_oz`, `tipo_cambio_bch`) son nombres de columna
+// históricos de la tabla y se conservan. [POR CONFIRMAR] retirar la columna
+// exigiría una migración nueva; no se aplica aquí.
 //
 // Flujo en dos pasos (la fijación es un acto publicado, nunca un solo clic): (1) capturar insumos y "Calcular y revisar" — muestra
 // la previsualización del precio resultante en L por gramo de oro fino con
@@ -24,11 +26,17 @@ import { useRouter } from 'next/navigation';
 import {
   calcularPrecioLempirasGramoFino,
   redondearAlmacenamiento,
-  FACTOR_COMERCIALIZACION_VIGENTE,
+  GRAMOS_POR_ONZA_TROY,
   VERSION_POLITICA_PRECIOS,
 } from '@/lib/precio/calculo';
-import { ROTULO_PRECIO_REFERENCIAL } from '@/lib/precio/factores';
-import { AVISO_PRECIO_REFERENCIAL, ETIQUETA_TIPO_CAMBIO, FUENTE_TIPO_CAMBIO } from '@/lib/content/copy-legal';
+import { recalcularLpsGramoFino } from '@/lib/precio/consulta';
+import {
+  AVISO_PRECIO_INFORMATIVO,
+  DATO_NO_DISPONIBLE,
+  ETIQUETA_TIPO_CAMBIO,
+  FUENTE_TIPO_CAMBIO,
+  ROTULO_PRECIO_INFORMATIVO,
+} from '@/lib/content/copy-legal';
 import type { PrecioReferenciaRow } from '@/lib/precio/consulta';
 
 interface Props {
@@ -124,8 +132,6 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
 
   const [lbma, setLbma] = useState('');
   const [tc, setTc] = useState('');
-  // Factor precargado con el referencial público vigente (0.75).
-  const [factor, setFactor] = useState(String(FACTOR_COMERCIALIZACION_VIGENTE));
   const [motivo, setMotivo] = useState('');
   const [revisando, setRevisando] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -133,20 +139,19 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
 
   const lbmaNum = Number(lbma);
   const tcNum = Number(tc);
-  const factorNum = Number(factor);
 
   const insumosValidos =
     Number.isFinite(lbmaNum) && lbmaNum > 0 &&
-    Number.isFinite(tcNum) && tcNum > 0 &&
-    Number.isFinite(factorNum) && factorNum > 0 && factorNum <= 1;
+    Number.isFinite(tcNum) && tcNum > 0;
 
   // Gate del botón "Calcular y revisar": insumos válidos.
   const puedeCalcular = insumosValidos;
 
   const previsualizacion = useMemo(() => {
     if (!insumosValidos) return null;
-    return redondearAlmacenamiento(calcularPrecioLempirasGramoFino(lbmaNum, tcNum, factorNum));
-  }, [insumosValidos, lbmaNum, tcNum, factorNum]);
+    const bruto = calcularPrecioLempirasGramoFino(lbmaNum, tcNum);
+    return bruto == null ? null : redondearAlmacenamiento(bruto);
+  }, [insumosValidos, lbmaNum, tcNum]);
 
   const requiereMotivo = vigenteHoy !== null;
   const motivoOk = !requiereMotivo || motivo.trim().length > 0;
@@ -170,7 +175,6 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
         body: JSON.stringify({
           referencia_lbma_usd_oz: lbmaNum,
           tipo_cambio_bch: tcNum,
-          factor_comercializacion: factorNum,
           ...(motivo.trim() ? { motivo_reemplazo: motivo.trim() } : {}),
         }),
       });
@@ -205,7 +209,7 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
             letterSpacing: '-0.01em',
           }}
         >
-          {ROTULO_PRECIO_REFERENCIAL} — fijación diaria
+          {ROTULO_PRECIO_INFORMATIVO} — fijación diaria (solo informativo)
         </h1>
         <p style={{ marginTop: 6, fontSize: 14, color: 'var(--t2)', lineHeight: 1.6 }}>
           Fecha de fijación: <span style={{ fontFamily: 'var(--font-mono)' }}>{hoy}</span> (hora de
@@ -213,7 +217,7 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
           registran por reemplazo con motivo — los registros no se eliminan.
         </p>
         <p style={{ marginTop: 8, fontSize: 13, color: 'var(--t3)', lineHeight: 1.6 }}>
-          {AVISO_PRECIO_REFERENCIAL}
+          {AVISO_PRECIO_INFORMATIVO}
         </p>
       </div>
 
@@ -273,10 +277,10 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
             </span>
           </div>
           <p style={{ marginTop: 8, fontSize: 13, color: 'var(--t2)', lineHeight: 1.6 }}>
-            Referencia internacional USD {fmtL(vigenteHoy.referencia_lbma_usd_oz)} / oz · TC L{' '}
-            {fmtL(vigenteHoy.tipo_cambio_bch, 4)} ({FUENTE_TIPO_CAMBIO}) · Factor {fmtL(vigenteHoy.factor_comercializacion, 4)} ·
-            Política v{vigenteHoy.version_politica}. Una nueva fijación de hoy lo reemplazará y
-            exige motivo.
+            Precio internacional USD {fmtL(vigenteHoy.referencia_lbma_usd_oz)} / oz · {ETIQUETA_TIPO_CAMBIO} L{' '}
+            {fmtL(vigenteHoy.tipo_cambio_bch, 4)} ({FUENTE_TIPO_CAMBIO}) · Sin factor · Política v{vigenteHoy.version_politica}.
+            Recalculado con la fórmula pública: {(() => { const v = recalcularLpsGramoFino(vigenteHoy); return v != null ? `L ${fmtL(v)}` : DATO_NO_DISPONIBLE })()} por gramo de oro fino.
+            Una nueva fijación de hoy lo reemplazará y exige motivo.
           </p>
         </div>
       )}
@@ -316,24 +320,8 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
             />
           </div>
           <div>
-            <label htmlFor="pr-factor" style={LABEL}>Factor referencial (0–1) *</label>
-            <input
-              id="pr-factor"
-              type="number"
-              min="0"
-              max="1"
-              step="0.0001"
-              inputMode="decimal"
-              required
-              aria-required="true"
-              aria-invalid={!(Number.isFinite(factorNum) && factorNum > 0 && factorNum <= 1)}
-              aria-describedby="pr-factor-nota"
-              value={factor}
-              onChange={(e) => editar(setFactor)(e.target.value)}
-              style={INPUT}
-            />
             <p
-              id="pr-factor-nota"
+              id="pr-sin-factor-nota"
               style={{
                 marginTop: 4,
                 fontSize: 12,
@@ -341,7 +329,7 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
                 lineHeight: 1.5,
               }}
             >
-              {`Política de Precios v${VERSION_POLITICA_PRECIOS}: ${FACTOR_COMERCIALIZACION_VIGENTE} (${ROTULO_PRECIO_REFERENCIAL})`}
+              {`Política de publicación v${VERSION_POLITICA_PRECIOS}: sin factor de compra. L/g fino = USD/oz × tipo de compra del BCH ÷ ${GRAMOS_POR_ONZA_TROY}. El tipo de cambio debe ser el de COMPRA publicado por el BCH para la fecha.`}
             </p>
           </div>
         </div>
@@ -395,7 +383,7 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
             </span>
           </div>
           <p style={{ marginTop: 10, fontSize: 13, color: 'var(--t2)', lineHeight: 1.7 }}>
-            ( {fmtL(lbmaNum)} USD/oz ÷ 31.1035 ) × {fmtL(factorNum, 4)} × L {fmtL(tcNum, 4)}.
+            {fmtL(lbmaNum)} USD/oz × L {fmtL(tcNum, 4)} ÷ {GRAMOS_POR_ONZA_TROY}. Sin factor.
             El servidor recalcula este valor al confirmar — la previsualización es informativa.
           </p>
 
@@ -499,7 +487,7 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
               <thead>
                 <tr>
-                  {['Fecha', 'Estado', 'L/g oro fino', 'Ref. intl. USD/oz', `TC (${FUENTE_TIPO_CAMBIO})`, 'Factor', 'Política', 'Registro', 'Reemplaza a', 'Motivo'].map((th) => (
+                  {['Fecha', 'Estado', 'L/g oro fino (fórmula vigente)', 'Oro intl. USD/oz', `TC compra (${FUENTE_TIPO_CAMBIO})`, 'Política', 'Registro', 'Reemplaza a', 'Motivo'].map((th) => (
                     <th key={th} scope="col" style={TH}>{th}</th>
                   ))}
                 </tr>
@@ -511,10 +499,9 @@ export default function PrecioPanelClient({ hoy, vigenteHoy, historial, migracio
                     <td style={{ ...TD, fontFamily: 'var(--font-body)' }}>
                       <EstadoPill estado={r.estado} />
                     </td>
-                    <td style={TD}>L {fmtL(r.precio_lempiras_gramo_fino)}</td>
+                    <td style={TD}>{(() => { const v = recalcularLpsGramoFino(r); return v != null ? `L ${fmtL(v)}` : DATO_NO_DISPONIBLE })()}</td>
                     <td style={TD}>{fmtL(r.referencia_lbma_usd_oz)}</td>
                     <td style={TD}>{fmtL(r.tipo_cambio_bch, 4)}</td>
-                    <td style={TD}>{fmtL(r.factor_comercializacion, 4)}</td>
                     <td style={TD}>v{r.version_politica}</td>
                     <td style={{ ...TD, color: 'var(--t3)' }} title={r.id}>{shortId(r.id)}</td>
                     <td style={{ ...TD, color: 'var(--t3)' }} title={r.reemplaza_a ?? undefined}>

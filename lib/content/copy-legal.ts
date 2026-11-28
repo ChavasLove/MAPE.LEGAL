@@ -21,9 +21,13 @@
  *
  * MAPE.LEGAL es el nombre de la plataforma y del sello voluntario y
  * complementario de trazabilidad; no es una persona jurídica. MAPE.LEGAL no
- * compra, no vende ni intermedia oro. Ninguna superficie pública nombra a un
- * comprador. El precio publicado es REFERENCIAL e informativo (75 % de la
- * referencia internacional del oro), nunca un "precio de compra".
+ * compra, no vende ni intermedia oro, no administra fondos y cobra tarifas
+ * fijas o por servicio, nunca ligadas al valor ni al volumen del oro. Ninguna
+ * superficie pública nombra a un comprador. El precio publicado es SOLO
+ * INFORMATIVO (DEC-2026-11-26-1 / DEC-2026-11-27-2): precio internacional del
+ * oro convertido a lempiras por gramo de oro fino con el tipo de cambio de
+ * COMPRA del BCH, sin ningún factor de compra; nunca un "precio de compra" ni
+ * un porcentaje de la referencia internacional.
  *
  * Nota no bloqueante sobre la marca: el registro de la marca MAPE.LEGAL ante
  * el Instituto de la Propiedad NO está verificado. No se afirma que exista y
@@ -40,36 +44,78 @@ export const ROL_TITULAR = 'Titular y operadora de la plataforma MAPE.LEGAL'
 export const ROL_CHT =
   'es titular, desarrolladora y operadora de la plataforma MAPE.LEGAL y ' +
   'presta servicios legales y mineros a los productores artesanales; no ' +
-  'compra ni vende mineral.'
+  'compra ni vende mineral, no administra fondos y cobra tarifas fijas o ' +
+  'por servicio, nunca ligadas al valor ni al volumen del oro.'
 
-/* ── Precio referencial y tipo de cambio (hotfix neutralidad, 11-nov-2026) ── */
+/**
+ * OBLIGATORIA (DEC-2026-11-26-1) — identidad económica de CHT / MAPE.LEGAL.
+ * Debe aparecer en las cuatro superficies de identidad (/quienes-somos,
+ * portada, /aviso-legal y este módulo). Sin cifras de tarifas: no hay montos
+ * aprobados y no se inventan.
+ */
+export const IDENTIDAD_FONDOS_TARIFAS =
+  'CHT y MAPE.LEGAL no compran, no venden ni intermedian oro, no administran ' +
+  'fondos y cobran tarifas fijas o por servicio, nunca ligadas al valor ni al ' +
+  'volumen del oro.'
+
+/**
+ * Posicionamiento público de la plataforma (DEC-2026-11-27-2): marketplace
+ * abierto, sin exclusividad de compra. Lo que aún no opera se presenta como
+ * "en implementación", sin datos falsos.
+ */
+export const POSICIONAMIENTO_PLATAFORMA =
+  'MAPE.LEGAL es el estándar y la plataforma de trazabilidad transparente del ' +
+  'origen y del mercado de destino del oro de la minería artesanal y de pequeña ' +
+  'escala: un marketplace abierto al uso público, ' +
+  'sin exclusividad de compra ni un destino único. ' +
+  'Cada participante publica su producción estimada y sus precios de compra y ' +
+  'venta; CHT no carga esos precios. Lo que la plataforma aún no hace se ' +
+  'presenta como en implementación.'
+
+/* ── Precio informativo y tipo de cambio (DEC-2026-11-26-1 / DEC-2026-11-27-2) ── */
 
 /**
  * AVISO LITERAL — mostrarlo junto a toda vista de precio, calculadora y
  * boletín, y cada vez que María cotice. No parafrasear.
  */
-export const AVISO_PRECIO_REFERENCIAL =
-  'Precio referencial estimado al 75% del precio internacional de referencia ' +
-  'del oro, convertido a lempiras con un tipo de cambio de referencia de ' +
-  'mercado (fuente y fecha indicadas). Es solo informativo: no es una oferta ' +
+export const AVISO_PRECIO_INFORMATIVO =
+  'Precio internacional del oro convertido a lempiras por gramo de oro fino ' +
+  'con el tipo de cambio de compra del Banco Central de Honduras (BCH), con ' +
+  'fuente, fecha y hora de cada dato. Es solo informativo: no es una oferta ' +
   'de compra, ni un precio oficial, ni una garantía de pago. MAPE.LEGAL no ' +
-  'compra, no vende ni intermedia oro. Toda transacción se negocia libremente ' +
-  'entre el productor y el comprador.'
+  'compra, no vende ni intermedia oro y no administra fondos. Toda ' +
+  'transacción se negocia libremente entre el productor y el comprador.'
 
-/** Fórmula pública del precio referencial (mostrar junto al precio, con fuente y fecha). */
-export const FORMULA_PRECIO_REFERENCIAL =
-  'Precio referencial (L por gramo de oro fino) = precio internacional del oro ' +
-  '× tipo de cambio de referencia de mercado × 0.75'
+/** Fórmula pública del precio informativo (mostrar junto al precio, con fuente y fecha). */
+export const FORMULA_PRECIO_INFORMATIVO =
+  'Lempiras por gramo de oro fino = precio internacional del oro (USD por ' +
+  'onza troy) × tipo de cambio de compra del BCH (L por USD) ÷ 31.1034768'
+
+/** Rótulo público canónico del precio. Nunca "compra", "precio de compra" ni un porcentaje. */
+export const ROTULO_PRECIO_INFORMATIVO =
+  'Precio internacional del oro en lempiras por gramo de oro fino'
+
+/** Rótulo breve para ticker, tarjetas y tablas. */
+export const ROTULO_PRECIO_INFORMATIVO_BREVE = 'Oro en lempiras por gramo fino'
+
+/** Calificativo obligatorio junto a toda cifra de precio. */
+export const SOLO_INFORMATIVO = 'Solo informativo'
 
 /**
- * Fuente REAL del tipo de cambio que usa la plataforma. No atribuir al BCH un
- * valor que proviene de este feed; la fuente y la fecha/hora se muestran junto
- * a cada precio y a cada tipo de cambio.
+ * ÚNICA fuente admitida del tipo de cambio que usa la plataforma: el tipo de
+ * cambio de COMPRA del BCH. Un dato que no provenga del BCH no se publica ni
+ * se etiqueta así; sin dato del BCH se muestra DATO_NO_DISPONIBLE.
  */
-export const FUENTE_TIPO_CAMBIO = 'exchangerate-api.com'
+export const FUENTE_TIPO_CAMBIO = 'Banco Central de Honduras (BCH)'
 
-/** Etiqueta pública del tipo de cambio (sin "BCH"). */
-export const ETIQUETA_TIPO_CAMBIO = 'Tipo de cambio de referencia de mercado'
+/** Etiqueta pública del tipo de cambio. Solo se usa para un dato que proviene del BCH. */
+export const ETIQUETA_TIPO_CAMBIO = 'Tipo de cambio de compra del BCH'
+
+/** Texto cuando falta un insumo (oro, tipo de cambio o ambos). Nunca se estima. */
+export const DATO_NO_DISPONIBLE = 'dato no disponible'
+
+/** Marcador de módulos o funciones anunciados pero aún no operativos. */
+export const EN_IMPLEMENTACION = 'En implementación'
 
 /**
  * TEXTO LITERAL — declaración de conflicto de interés (Quiénes somos y
@@ -77,13 +123,15 @@ export const ETIQUETA_TIPO_CAMBIO = 'Tipo de cambio de referencia de mercado'
  */
 export const CONFLICTO_INTERES_CHT =
   'Los socios de CHT tienen intereses en empresas del sector aurífero, ' +
-  'incluida la comercialización de oro. Por eso el precio referencial se ' +
+  'incluida la comercialización de oro. Por eso el precio informativo se ' +
   'calcula con una fórmula pública y fija, y cada productor es libre de vender ' +
   'a quien quiera.'
 
 export const AVISO_PLATAFORMA =
   `MAPE.LEGAL es una plataforma desarrollada y operada por ${RAZON_SOCIAL}, ` +
-  'su titular. MAPE.LEGAL no compra, no vende ni intermedia oro.'
+  'su titular. MAPE.LEGAL no compra, no vende ni intermedia oro, no administra ' +
+  'fondos y cobra tarifas fijas o por servicio, nunca ligadas al valor ni al ' +
+  'volumen del oro.'
 
 /**
  * Estándar privado de debida diligencia (Etapa 2, brief v2.1, 12-nov-2026).
@@ -91,14 +139,19 @@ export const AVISO_PLATAFORMA =
  * versión y el mapeo OCDE viven en lib/content/estandar.ts.
  */
 export const ESTANDAR_NATURALEZA =
-  'MAPE.LEGAL es un estándar privado y voluntario de debida diligencia de la ' +
-  'cadena de suministro de la planta de beneficio participante. Lo desarrolla ' +
-  `y es su titular ${RAZON_SOCIAL} (CHT), que no compra ni vende mineral. ` +
-  'El estándar no sustituye ningún acto oficial: la Certificación de ' +
-  'Procedencia o Certificado de Origen la emite el titular del derecho minero ' +
-  'y la autentica la Autoridad Minera o Municipal. No es un registro de ' +
-  'INHGEOMIN ni cuenta con su aval. Se publica como borrador, con versión y ' +
-  'fecha, hasta su aprobación.'
+  'MAPE.LEGAL es un estándar privado, voluntario y abierto de debida diligencia ' +
+  'del origen y del mercado de destino del oro de la minería artesanal y de ' +
+  'pequeña escala, alineado con las guías de la OCDE y de la LBMA como ' +
+  `referencias de diseño. Lo desarrolla y es su titular ${RAZON_SOCIAL} (CHT), ` +
+  'que no compra ni vende mineral, no administra fondos y cobra tarifas fijas ' +
+  'o por servicio. Pueden adoptarlo los participantes de la cadena y las ' +
+  'municipalidades que lo decidan, sin exclusividad de compra. El estándar no ' +
+  'sustituye ningún acto oficial: la Certificación de Procedencia o Certificado ' +
+  'de Origen la emite el titular del derecho minero y la autentica la Autoridad ' +
+  'Minera o Municipal. No es un registro de INHGEOMIN, no cuenta con su aval ni ' +
+  'con convenio alguno, y no implica certificación, membresía ni aval de la ' +
+  'OCDE, la LBMA o CRAFT. Se publica como borrador, con versión y fecha, hasta ' +
+  'su aprobación.'
 
 /**
  * PIE DE PÁGINA — nota legal del sello (hotfix de neutralidad, 11-nov-2026).
@@ -118,7 +171,9 @@ export const PIE_NOTA_LEGAL =
   'municipalidad, y no existe, a la fecha, un Acuerdo o Instructivo de ' +
   `INHGEOMIN publicado en La Gaceta que lo adopte. ${RAZON_SOCIAL} presta ` +
   'servicios legales y mineros a los productores artesanales y no compra ni ' +
-  'vende mineral. MAPE.LEGAL no compra, no vende ni intermedia oro.'
+  'vende mineral. MAPE.LEGAL no compra, no vende ni intermedia oro, no ' +
+  'administra fondos y cobra tarifas fijas o por servicio, nunca ligadas al ' +
+  'valor ni al volumen del oro.'
 
 /*
  * Domicilio de la titular (CHT): local Nexcrea, Tegucigalpa.
@@ -182,22 +237,48 @@ export const CONDICION_COMPRA =
   'Especial MAPE). MAPE.LEGAL no compra ni vende mineral.'
 
 /**
- * OBLIGATORIA — política de PUBLICACIÓN del precio referencial (hotfix de
- * neutralidad, 11-nov-2026). Es informativa: la plataforma no compra.
+ * OBLIGATORIA — política de PUBLICACIÓN del precio informativo
+ * (DEC-2026-11-26-1 / DEC-2026-11-27-2). La plataforma no compra.
  */
 export const POLITICA_PRECIO =
-  'MAPE.LEGAL publica un precio referencial estimado al 75 % de la ' +
-  'referencia internacional del oro, convertido a lempiras con un tipo de ' +
-  'cambio de referencia de mercado, expresado por gramo de oro fino. Se ' +
-  'publica una vez al día, con su fórmula, fuente y fecha. Es solo ' +
-  'informativo: no es una oferta de compra ni un precio oficial.'
+  'MAPE.LEGAL publica el precio internacional del oro convertido a lempiras ' +
+  'por gramo de oro fino con el tipo de cambio de compra del Banco Central de ' +
+  'Honduras (BCH), sin ningún factor de compra, con su fórmula, la fuente real ' +
+  'de cada insumo y la fecha y hora del dato. Es solo informativo: no es una ' +
+  'oferta de compra ni un precio oficial. MAPE.LEGAL no compra, no vende ni ' +
+  'intermedia oro y no administra fondos.'
 
 /**
  * OBLIGATORIA — encuadre de acceso a mercados. La exigencia proviene del
  * mercado comprador; no es una restricción impuesta al minero.
  */
 export const MERCADOS_ACCESO =
-  'Acceso a mercados que exigen certificación de origen.'
+  'Acceso a mercados que exigen Certificado de Origen oficial y debida diligencia.'
+
+/* ── Alianzas (DEC-2026-11-26-1 / DEC-2026-11-27-2) ─────────────────── */
+/*
+ * ÚNICA redacción pública permitida. Sin logos, sin nombres de personas, sin
+ * "convenio firmado" ni "alianza firmada", sin montos. Si el estado cambia,
+ * se actualiza aquí y en ningún otro lugar. No se nombra a ningún comprador.
+ */
+export const ALIANZAS_TITULO = 'Alianzas en proceso'
+
+export const ALIANZAS_NOTA =
+  'Ninguna de estas gestiones constituye todavía un convenio firmado. Se ' +
+  'publica el estado real de cada una, sin montos ni nombres de personas.'
+
+export interface AlianzaEstado {
+  entidad: string
+  estado: string
+}
+
+export const ALIANZAS_ITEMS: readonly AlianzaEstado[] = [
+  {
+    entidad: 'Finacop', // carta de intención enviada; MOU pendiente
+    estado: 'Carta de intención enviada; MOU pendiente.',
+  },
+  { entidad: 'planetGOLD (PNUD)', estado: 'Carta de intención en preparación.' },
+]
 
 /** OBLIGATORIA — libertad de comercialización del operador. */
 export const LIBERTAD_VENTA =
@@ -205,6 +286,81 @@ export const LIBERTAD_VENTA =
   'General de Minería). MAPE.LEGAL no compra ni vende: el titular del ' +
   'derecho minero conserva plena libertad de vender su producción a ' +
   'cualquier comprador.'
+
+/* ── Marketplace de publicaciones y municipalidades (DEC-2026-11-27-2) ── */
+
+/** Título de /publicaciones. */
+export const MARKETPLACE_TITULO = 'Publicaciones de los participantes'
+
+/** Qué será el módulo. Sin filas ni cifras de ejemplo mientras esté en implementación. */
+export const MARKETPLACE_INTRO =
+  'Cada participante de la cadena publica aquí, bajo su propio nombre, su ' +
+  'producción estimada y los precios a los que compra o vende oro, con la ' +
+  'vigencia que él mismo declare. Es un marketplace abierto al uso público, ' +
+  'sin exclusividad: cualquier productor compara y vende a quien elija.'
+
+/** Reglas del módulo (una por viñeta). Cada línea niega lo que CHT no hace. */
+export const MARKETPLACE_REGLAS = [
+  'Los precios los publica cada participante; CHT no los carga, no los valida ni los garantiza.',
+  'CHT no compra, no vende ni intermedia oro, no administra fondos y no cobra según el valor ni el volumen del oro.',
+  'Estas publicaciones no sustituyen al precio informativo del oro, que sigue siendo el precio internacional convertido con el tipo de cambio de compra del BCH.',
+  'Solo se muestran publicaciones vigentes; una publicación retirada deja de verse pero no se borra.',
+  'Nadie tiene preferencia ni trato exclusivo: la comercialización de productos minerales es libre (Art. 37, Ley General de Minería).',
+] as const
+
+/** Estado del módulo. Se cambia cuando el modelo de datos (migración 044) esté aprobado y aplicado. */
+export const MARKETPLACE_ESTADO_NOTA =
+  'Módulo en implementación: el modelo de datos está propuesto y pendiente de ' +
+  'aprobación. No hay publicaciones cargadas y no se muestran datos de ejemplo.'
+
+/** Título de /municipalidades. */
+export const MUNICIPALIDADES_TITULO = 'Para municipalidades'
+
+/** Propósito de la sección. Sin cifras, sin convenio con INHGEOMIN, sin prometer competencias de autoridad. */
+export const MUNICIPALIDADES_INTRO =
+  'El estándar MAPE.LEGAL es abierto: cualquier municipalidad puede adoptarlo ' +
+  'como herramienta de trazabilidad del oro de la minería artesanal y de ' +
+  'pequeña escala que se extrae y se comercializa en su territorio. Adoptarlo ' +
+  'no transfiere ni sustituye ninguna competencia municipal ni de la Autoridad ' +
+  'Minera: el permiso municipal de minería artesanal y la autenticación del ' +
+  'Certificado de Origen siguen siendo actos de la autoridad.'
+
+/** Beneficios por actor: tono neutral, sin cifras ni promesas de resultado. */
+export const MUNICIPALIDADES_BENEFICIOS = [
+  {
+    actor: 'Para el minero',
+    texto:
+      'Un registro verificable del origen de su producción y una referencia pública ' +
+      'del precio del oro, que le permite negociar informado con el comprador que elija.',
+  },
+  {
+    actor: 'Para la municipalidad',
+    texto:
+      'Visibilidad ordenada de las fuentes con permiso vigente en su territorio y de ' +
+      'los lotes que salen de ellas, con fecha y responsable, sin que la municipalidad ' +
+      'tenga que operar un sistema propio.',
+  },
+  {
+    actor: 'Para el Estado',
+    texto:
+      'Información consistente sobre el origen del oro de la minería artesanal y de ' +
+      'pequeña escala, útil para la debida diligencia que exigen los mercados formales.',
+  },
+] as const
+
+/** Qué implica adoptar el estándar (lista corta y sobria). */
+export const MUNICIPALIDADES_ADOPCION = [
+  'La municipalidad decide adoptar el estándar; no requiere convenio con INHGEOMIN ni con CHT para consultar lo público.',
+  'Los productores con permiso municipal vigente registran sus fuentes y lotes; la municipalidad consulta la trazabilidad de su territorio.',
+  'Las tarifas por servicios de la plataforma son fijas o por servicio, nunca ligadas al valor ni al volumen del oro; no hay montos publicados todavía.',
+  'La adopción, los manuales y el acompañamiento están en implementación: no existe todavía un producto cerrado ni un municipio adherido.',
+] as const
+
+/** Estado honesto del producto de adopción municipal. */
+export const MUNICIPALIDADES_ESTADO_NOTA =
+  'En implementación: el estándar se publica como borrador y el procedimiento de ' +
+  'adopción municipal aún no está construido. Ninguna municipalidad figura como ' +
+  'adherida mientras no exista un acto formal de adopción.'
 
 /* ── Citas legales usadas en el sitio ───────────────────────────────── */
 /*
@@ -368,47 +524,39 @@ export const CITAS_LEGALES = {
 
 export type CitaLegalKey = keyof typeof CITAS_LEGALES
 
-/* ── Precio referencial (/precio y /politica-de-precios) ────────────── */
+/* ── Precio informativo (/precio y /politica-de-precios) ────────────── */
 /*
- * Hotfix de neutralidad (11-nov-2026): el precio publicado es REFERENCIAL e
- * informativo (75 % de la referencia internacional del oro). Ninguna de estas
- * constantes nombra a un comprador ni presenta una oferta de compra. Las
- * cláusulas 5 y 6 del encargo "Precio de Referencia" (2026-07-29) describen
- * la operación de un comprador y quedan @deprecated — no renderizar.
+ * DEC-2026-11-26-1 / DEC-2026-11-27-2: el precio publicado es SOLO
+ * INFORMATIVO (oro internacional × tipo de compra del BCH ÷ 31.1034768, sin
+ * factor). Ninguna de estas constantes nombra a un comprador ni presenta una
+ * oferta de compra. Las cláusulas 5 y 6 del encargo "Precio de Referencia"
+ * (2026-07-29) describían la operación de un comprador y no se renderizan.
+ * Las filas históricas de precios_referencia guardan un factor registrado
+ * (columna NOT NULL de la migración 030) que NO se renderiza: en lectura se
+ * recalcula L/g = referencia × tipo de cambio ÷ 31.1034768.
  */
 
-/** Fórmula pública del precio referencial (Bloque 2 de /precio). */
-export const PRECIO_REF_FORMULA = FORMULA_PRECIO_REFERENCIAL
+/** Fórmula pública del precio informativo (Bloque 2 de /precio). */
+export const PRECIO_REF_FORMULA = FORMULA_PRECIO_INFORMATIVO
 
-/** Carácter del precio publicado: referencial e informativo, de nadie en particular. */
+/** Carácter del precio publicado: informativo, de nadie en particular. */
 export const PRECIO_REF_CARACTER_COMERCIAL =
-  'Este es un precio referencial informativo publicado por la plataforma ' +
-  'MAPE.LEGAL. No es un precio oficial del Estado ni de INHGEOMIN, ni una ' +
-  'oferta de compra de persona alguna. Toda transacción se negocia ' +
-  'libremente entre el productor y el comprador.'
+  'Este es un precio informativo publicado por la plataforma MAPE.LEGAL. No ' +
+  'es un precio oficial del Estado ni de INHGEOMIN, ni una oferta de compra ' +
+  'de persona alguna. Toda transacción se negocia libremente entre el ' +
+  'productor y el comprador.'
 
-/** Título del bloque de precio referencial en /precios. */
+/** Título del bloque de precio informativo en /precios. */
 export const PRECIOS_REFERENCIA_COMERCIAL =
-  'Precio referencial (75%), fórmula pública y aviso'
+  'Precio informativo del oro, fórmula pública y aviso'
 
 /**
- * Nota del factor registrado en una fijación histórica (fila indeleble de
- * precios_referencia). Describe el factor REGISTRADO, no el vigente.
- */
-export function factorVigenteNota(version: string): string {
-  return (
-    `Factor registrado en esta fijación conforme a la Política de publicación ` +
-    `v${version}. Sujeto a revisión según el registro de versiones de dicha política.`
-  )
-}
-
-/**
- * Bloque 3 de /precio: el precio referencial se expresa sobre oro fino.
- * Hotfix de neutralidad: sin método de ensaye ni contramuestra (son de un
- * comprador, no de la plataforma).
+ * Bloque 3 de /precio: el precio informativo se expresa sobre oro fino.
+ * Sin método de ensaye ni contramuestra (son de un comprador, no de la
+ * plataforma).
  */
 export const PRECIO_REF_APLICACION_ORO_FINO =
-  'El precio referencial se expresa por gramo de oro fino, no por peso bruto ' +
+  'El precio informativo se expresa por gramo de oro fino, no por peso bruto ' +
   'del material. La ley del material la determina, en cada transacción, el ' +
   'comprador con el productor mediante el método que acuerden; MAPE.LEGAL no ' +
   'practica ensayes ni liquida transacciones.'
@@ -446,8 +594,8 @@ export const PRECIO_REF_REQUISITOS_CIERRE =
 /** Bloque 5 de /precio: título. */
 export const PRECIO_REF_NATURALEZA_TITULO = 'Naturaleza de esta publicación'
 
-/** Bloque 5 de /precio: naturaleza = el aviso literal del precio referencial. */
-export const PRECIO_REF_NATURALEZA = AVISO_PRECIO_REFERENCIAL
+/** Bloque 5 de /precio: naturaleza = el aviso literal del precio informativo. */
+export const PRECIO_REF_NATURALEZA = AVISO_PRECIO_INFORMATIVO
 
 /* Las cláusulas 5 y 6 de la Política de Precios v1.1 (liquidación XRF, ensayo
  * al fuego, contramuestra, verificaciones externas) describían la operación de
@@ -455,11 +603,11 @@ export const PRECIO_REF_NATURALEZA = AVISO_PRECIO_REFERENCIAL
  * ni liquida transacciones. Quedan en el historial de git (PR #240). */
 
 /**
- * Cláusula de revisión de la Política de publicación del precio referencial.
- * Hotfix de neutralidad: sin comprador, sin costos de ensaye ni refinería.
+ * Cláusula de revisión de la Política de publicación del precio informativo.
+ * Sin comprador, sin costos de ensaye ni refinería, sin factor.
  */
 export const PRECIO_REF_CLAUSULA_REVISION =
-  'El factor referencial y las fuentes de los insumos podrán ser revisados ' +
+  'La fórmula y las fuentes de los insumos podrán ser revisadas ' +
   'por la titular de la plataforma. Toda revisión se publicará como una ' +
   'nueva versión de esta política, con al menos quince (15) días calendario ' +
   'de anticipación a su entrada en vigencia. Las versiones anteriores ' +

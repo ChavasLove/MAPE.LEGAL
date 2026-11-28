@@ -4,10 +4,17 @@ import {
   checkWhatsAppTokenHealth,
   WhatsAppApiError,
 } from '@/services/whatsappService';
-import { type PreciosDiarios, referenciaLpsPorGramoFino, buildKaratPrices } from '@/services/pricingService';
-import { ROTULO_PRECIO_REFERENCIAL } from '@/lib/precio/factores';
 import {
-  AVISO_PRECIO_REFERENCIAL,
+  type PreciosDiarios,
+  oroLpsPorGramoFino,
+  buildKaratPrices,
+  parseFuente,
+  resolverTipoCambioBch,
+} from '@/services/pricingService';
+import type { TipoCambioBch } from '@/lib/precio/bch';
+import {
+  AVISO_PRECIO_INFORMATIVO,
+  DATO_NO_DISPONIBLE,
   ETIQUETA_TIPO_CAMBIO,
   FUENTE_TIPO_CAMBIO,
 } from '@/lib/content/copy-legal';
@@ -43,15 +50,22 @@ export function hondurasDate(): string {
 // No llama a Claude — el mensaje es determinístico para garantizar consistencia
 // y evitar alucinaciones de precio.
 //
-// Hotfix de neutralidad (11-nov-2026): el boletín publica un PRECIO
-// REFERENCIAL ESTIMADO (75 % de la referencia internacional del oro, en
-// lempiras por gramo de oro fino) acompañado SIEMPRE del aviso literal
-// AVISO_PRECIO_REFERENCIAL. No nombra contrapartes, no promete pago ni plazo,
-// y el tipo de cambio se atribuye a su fuente real (FUENTE_TIPO_CAMBIO).
+// DEC-2026-11-26-1 / DEC-2026-11-27-2: el boletín publica el precio
+// internacional del oro en lempiras por gramo de oro fino, SOLO INFORMATIVO y
+// SIN factor de compra (oro × tipo de COMPRA del BCH ÷ 31.1034768), acompañado
+// SIEMPRE del aviso literal AVISO_PRECIO_INFORMATIVO. El oro se atribuye a su
+// feed real (nunca "LBMA oficial") y el tipo de cambio ÚNICAMENTE al BCH; si el
+// BCH no está disponible, la viñeta y las cifras en lempiras dicen "dato no
+// disponible" — nunca se estima. No nombra contrapartes ni promete pago ni plazo.
 // Cualquier cambio de estructura debe reflejarse también en el template del
 // prompt de María (lib/maria/systemPrompt.ts §NOTIFICACIÓN DIARIA).
 
-export async function generateDailyMessage(precios: PreciosDiarios): Promise<string> {
+export async function generateDailyMessage(
+  precios: PreciosDiarios,
+  // Inyectable para tests; por defecto resuelve con el adaptador del BCH
+  // (snapshot marcado fx:bch → vivo → último registrado → null).
+  resolverTc: (p: PreciosDiarios) => Promise<TipoCambioBch | null> = resolverTipoCambioBch,
+): Promise<string> {
   const now = new Date();
 
   // Honduras: UTC-6, sin horario de verano
@@ -63,12 +77,14 @@ export async function generateDailyMessage(precios: PreciosDiarios): Promise<str
     hour: '2-digit', minute: '2-digit', hour12: true,
   });
 
-  const tc = precios.usd_hnl ?? 0;
   const oroUsd = precios.oro ?? 0;
+  const tcBch = oroUsd > 0 ? await resolverTc(precios) : null;
+  const tc = tcBch?.compra ?? 0;
   const oroLps = oroUsd && tc ? oroUsd * tc : 0;
-  // Helper canónico — mismo cálculo que /api/precios/live, el widget y María.
-  const referencialLpsPorGramo = referenciaLpsPorGramoFino(oroUsd, tc) ?? 0;
-  const fuente = precios.fuente && precios.fuente !== 'failed-all-sources' ? precios.fuente : 'yahoo-finance';
+  // Helper canónico — mismo cálculo (sin factor) que /api/precios/live, el widget y María.
+  const lpsPorGramoFino = oroLpsPorGramoFino(oroUsd, tc) ?? 0;
+  const oroFuenteId = parseFuente(precios.fuente).oro;
+  const fuente = oroFuenteId && oroFuenteId !== 'failed-all-sources' ? oroFuenteId : 'yahoo-finance';
 
   const fmtLps = (n: number) =>
     n > 0
@@ -88,7 +104,7 @@ export async function generateDailyMessage(precios: PreciosDiarios): Promise<str
       `Buenos Días,`,
       `Hoy no pude traer el precio exacto. Te lo enviamos en cuanto lo tengamos.`,
       ``,
-      `Precios de referencia al ${fechaLarga} — ${horaCorta} Honduras`,
+      `Precios informativos al ${fechaLarga} — ${horaCorta} Honduras`,
       `Fuentes: ${fuente} + ${FUENTE_TIPO_CAMBIO}`,
       ``,
       `Ver detalles: www.mape.legal`,
@@ -97,9 +113,12 @@ export async function generateDailyMessage(precios: PreciosDiarios): Promise<str
 
   // Every data line is a `* ` bullet — matches MARIA.md §8. The international
   // reference comes from goldapi.io spot / Yahoo COMEX GC=F — NOT the LBMA fix —
-  // so it is labeled "Oro internacional", not "LBMA". Footer lines are
-  // unprefixed so they read as a separator from the data section.
-  const tcLine = tc > 0 ? `L ${tc.toFixed(2)} por USD` : 'N/D';
+  // so it is labeled "Oro internacional (<fuente>)", not "LBMA". Footer lines
+  // are unprefixed so they read as a separator from the data section.
+  const tcLine = tcBch
+    ? `L ${tcBch.compra.toFixed(4)} por USD${tcBch.origen === 'respaldo' ? ' (último valor registrado)' : ''}`
+    : DATO_NO_DISPONIBLE;
+  const tcFecha = tcBch ? tcBch.fecha : 'sin dato del BCH';
   // Conversión por kilates — mismo helper canónico que el widget de /precios y
   // el bloque PRECIOS DE REFERENCIA de María, para que los cuatro canales
   // muestren exactamente los mismos números.
@@ -116,10 +135,10 @@ export async function generateDailyMessage(precios: PreciosDiarios): Promise<str
   const kilates = buildKaratPrices(oroUsd, tc);
   const kilatesLines = kilates
     ? [
-        `Referencia estimada por kilates (según su contenido de oro fino; 1 penique/dwt = 1.5552 g):`,
+        `Por kilates (según su contenido de oro fino; 1 penique/dwt = 1.5552 g):`,
         ...kilates.map(
           (k) =>
-            `* ${k.kilates} kilates: ${fmtLps(k.referencia_lps_g)} por gramo de material · ${fmtLps(k.referencia_lps_dwt)} por penique`,
+            `* ${k.kilates} kilates: ${fmtLps(k.oro_lps_g)} por gramo de material · ${fmtLps(k.oro_lps_dwt)} por penique`,
         ),
         ``,
       ]
@@ -129,17 +148,17 @@ export async function generateDailyMessage(precios: PreciosDiarios): Promise<str
     ``,
     `Buenos Días,`,
     `El precio de oro el día de hoy es:`,
-    `* Oro internacional: ${fmtUsd(oroUsd)} USD/oz`,
-    `* En Lempiras: ${fmtLps(oroLps)} por onza (aprox.)`,
-    `* ${ETIQUETA_TIPO_CAMBIO} (${FUENTE_TIPO_CAMBIO}): ${tcLine}`,
+    `* Oro internacional (${fuente}): ${fmtUsd(oroUsd)} USD/oz`,
+    `* En Lempiras: ${oroLps > 0 ? `${fmtLps(oroLps)} por onza (aprox.)` : DATO_NO_DISPONIBLE}`,
+    `* ${ETIQUETA_TIPO_CAMBIO} (${tcFecha}): ${tcLine}`,
     ``,
-    `${ROTULO_PRECIO_REFERENCIAL}:`,
-    `* ${fmtLps(referencialLpsPorGramo)} por gramo de oro fino`,
+    `Oro en lempiras por gramo de oro fino (solo informativo):`,
+    `* ${lpsPorGramoFino > 0 ? `${fmtLps(lpsPorGramoFino)} por gramo de oro fino` : DATO_NO_DISPONIBLE}`,
     ``,
     ...kilatesLines,
-    `* ${AVISO_PRECIO_REFERENCIAL}`,
+    `* ${AVISO_PRECIO_INFORMATIVO}`,
     ``,
-    `Precios de referencia al ${fechaLarga} — ${horaCorta} Honduras`,
+    `Precios informativos al ${fechaLarga} — ${horaCorta} Honduras`,
     `Fuentes: ${fuente} + ${FUENTE_TIPO_CAMBIO}`,
     ``,
     `Ver detalles: www.mape.legal`,

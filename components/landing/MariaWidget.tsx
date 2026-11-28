@@ -40,7 +40,7 @@ const WELCOME_MESSAGE: Message = {
 Te ayudo con consultas sobre pequeña minería y minería artesanal en Honduras. Puedo:
 
 • Cotizar titulación de tierra, formalización minera y contrato de sociedad minera.
-• Consultar el precio del oro del día: referencia internacional, tipo de cambio y precio referencial (75%) con su aviso (informativo; MAPE.LEGAL no compra ni vende oro).
+• Consultar el precio del oro del día: precio internacional, tipo de cambio de compra del BCH y su conversión a lempiras por gramo de oro fino, con su aviso (solo informativo; MAPE.LEGAL no compra ni vende oro).
 • Explicar pasos del Manual Operativo, requisitos ambientales (Ley 104-93, SLAS-2) y el Reglamento Minero (Acuerdo 042-2013).
 • Orientarte sobre derechos mineros: permisos, concesiones y a qué autoridad consultar.
 • Conectarte con el equipo de MAPE LEGAL por WhatsApp o correo.

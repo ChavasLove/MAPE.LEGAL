@@ -21,9 +21,12 @@ const FOOTER_LINKS: Array<{ href: string; label: string }> = [
   { href: '/comercializacion', label: 'Comercialización' },
   { href: '/mercados', label: 'Mercados' },
   { href: '/verificar', label: 'Verificar sello' },
-  { href: '/precio', label: 'Precio referencial' },
+  { href: '/precio', label: 'Precio informativo del oro' },
   { href: '/politica-de-precios', label: 'Política de publicación del precio' },
   { href: '/precios', label: 'Precios del día' },
+  // Marketplace abierto y municipios (DEC-2026-11-27-2) — ambos "en implementación".
+  { href: '/publicaciones', label: 'Publicaciones de participantes' },
+  { href: '/municipalidades', label: 'Para municipalidades' },
   { href: '/equipos', label: 'Equipos' },
   // Estándar privado de debida diligencia (Etapa 2, 2026-11-12).
   { href: '/quienes-somos', label: 'Quiénes somos' },

@@ -1,15 +1,18 @@
-// /precio — Precio referencial (75%) de la plataforma MAPE.LEGAL.
+// /precio — Precio informativo del oro de la plataforma MAPE.LEGAL.
 //
-// Registro institucional, no pieza comercial: publica el precio referencial
+// Registro institucional, no pieza comercial: publica el precio informativo
 // diario (fijado a las 08:00 hora de Honduras, fijo durante la jornada) y lo
-// acompaña siempre del aviso literal AVISO_PRECIO_REFERENCIAL y de la fórmula
-// pública con fuente y fecha. Hotfix de neutralidad (11-nov-2026): aquí no
-// hay comprador, ni "precio de compra", ni requisitos "para vender a X" — solo
-// lo que la ley exige a cualquier comprador formal. MAPE.LEGAL no compra, no
-// vende ni intermedia oro. Sin lenguaje de venta, sin CTAs comerciales.
+// acompaña siempre del aviso literal AVISO_PRECIO_INFORMATIVO y de la fórmula
+// pública con fuente y fecha. DEC-2026-11-26-1 / DEC-2026-11-27-2: sin factor
+// de compra, con el tipo de cambio de COMPRA del BCH. Aquí no hay comprador,
+// ni "precio de compra", ni requisitos "para vender a X" — solo lo que la ley
+// exige a cualquier comprador formal. MAPE.LEGAL no compra, no vende ni
+// intermedia oro ni administra fondos. Sin lenguaje de venta ni CTAs.
 //
-// Las filas de la BD muestran el factor registrado en cada fijación (son
-// indelebles), etiquetado como "registrado en la fijación".
+// Las filas de la BD son indelebles y guardan un factor registrado (columna
+// NOT NULL de la migración 030) que NO se renderiza: el precio mostrado se
+// recalcula en lectura con la fórmula pública (recalcularLpsGramoFino) o se
+// declara "dato no disponible".
 //
 // Server component ES-only. Todo el texto con consecuencia jurídica se
 // importa de lib/content/copy-legal.ts. R4: sin polling ni actualización
@@ -22,15 +25,17 @@ import SiteFooter from '@/components/landing/SiteFooter'
 import {
   getPrecioReferenciaHoy,
   getHistorialVigente,
+  recalcularLpsGramoFino,
   type PrecioReferenciaRow,
 } from '@/lib/precio/consulta'
-import { VERSION_POLITICA_PRECIOS } from '@/lib/precio/calculo'
-import { FACTOR_REFERENCIA_PCT, ROTULO_PRECIO_REFERENCIAL } from '@/lib/precio/factores'
+import { GRAMOS_POR_ONZA_TROY } from '@/lib/precio/calculo'
 import {
+  DATO_NO_DISPONIBLE,
   ETIQUETA_TIPO_CAMBIO,
   FUENTE_TIPO_CAMBIO,
   PRECIO_REF_FORMULA,
-  factorVigenteNota,
+  ROTULO_PRECIO_INFORMATIVO,
+  SOLO_INFORMATIVO,
   PRECIO_REF_APLICACION_ORO_FINO,
   PRECIO_REF_REQUISITOS_TITULO,
   PRECIO_REF_REQUISITOS_ITEMS,
@@ -45,16 +50,16 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'Precio referencial (75%) — lempiras por gramo de oro fino',
+  title: 'Precio del oro en lempiras por gramo de oro fino — solo informativo',
   description:
-    'Precio referencial estimado al 75% de la referencia internacional del oro, en lempiras por gramo de oro fino, publicado una vez al día con fórmula pública, fuente y fecha. Informativo: MAPE.LEGAL no compra, no vende ni intermedia oro.',
+    'Precio internacional del oro convertido a lempiras por gramo de oro fino con el tipo de cambio de compra del BCH, publicado una vez al día con fórmula pública, fuente y fecha. Solo informativo: MAPE.LEGAL no compra, no vende ni intermedia oro.',
   alternates: { canonical: '/precio' },
   openGraph: {
     type: 'website',
     locale: 'es_HN',
-    title: 'Precio referencial (75%) · MAPE.LEGAL',
+    title: 'Precio informativo del oro · MAPE.LEGAL',
     description:
-      'Precio referencial diario del oro en lempiras por gramo de oro fino, con fórmula pública y aviso. No es una oferta de compra.',
+      'Precio diario del oro en lempiras por gramo de oro fino (tipo de cambio de compra del BCH), con fórmula pública y aviso. No es una oferta de compra.',
     images: [{ url: '/images/RIVER AND MOUNTAINS.png', width: 1200, height: 630, alt: 'MAPE LEGAL — territorio' }],
   },
 }
@@ -135,20 +140,23 @@ export default async function PrecioReferenciaPage() {
   // Registro que alimenta la fórmula del Bloque 2: el vigente de hoy o, en
   // su defecto, el último vigente anterior — siempre etiquetado con su fecha.
   const mostrado: PrecioReferenciaRow | null = vigente ?? anterior
+  // Recalculado en lectura con la fórmula pública (sin factor); null = dato no disponible.
+  const precioMostrado = mostrado ? recalcularLpsGramoFino(mostrado) : null
 
   return (
     <>
       <PublicNav />
 
       <section className="mape-section" style={{ background: 'var(--bg-soft)' }}>
-        <div className="section-label">Precio referencial</div>
+        <div className="section-label">Precio informativo</div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 56, maxWidth: 760 }}>
           {/* ── BLOQUE 1 — Encabezado ─────────────────────────────────── */}
           <section aria-labelledby="precio-titulo" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <h1 id="precio-titulo" className="section-title" style={{ maxWidth: 720 }}>
-              {ROTULO_PRECIO_REFERENCIAL}
+              {ROTULO_PRECIO_INFORMATIVO}
             </h1>
+            <p style={{ ...MONO_EYEBROW, color: 'var(--moss)' }}>{SOLO_INFORMATIVO}</p>
             <p style={BODY}>{PRECIO_REF_CARACTER_COMERCIAL}</p>
 
             {mostrado ? (
@@ -170,11 +178,13 @@ export default async function PrecioReferenciaPage() {
                       letterSpacing: '-0.02em',
                     }}
                   >
-                    L {fmtL(mostrado.precio_lempiras_gramo_fino)}
+                    {precioMostrado != null ? `L ${fmtL(precioMostrado)}` : DATO_NO_DISPONIBLE}
                   </span>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 15, color: 'var(--slate)' }}>
-                    por gramo de oro fino
-                  </span>
+                  {precioMostrado != null && (
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 15, color: 'var(--slate)' }}>
+                      por gramo de oro fino · {SOLO_INFORMATIVO.toLowerCase()}
+                    </span>
+                  )}
                 </div>
                 <p style={{ marginTop: 12, fontSize: 15, color: 'var(--t2)', lineHeight: 1.7 }}>
                   Fijado el {fmtFechaLarga(mostrado.fecha)} a las 08:00 horas (Honduras). No varía
@@ -182,8 +192,8 @@ export default async function PrecioReferenciaPage() {
                 </p>
                 {!vigente && anterior && (
                   <p style={{ marginTop: 8, fontSize: 14, color: 'var(--slate)', lineHeight: 1.7 }}>
-                    Último precio referencial publicado, correspondiente al{' '}
-                    {fmtFechaLarga(anterior.fecha)}. El precio referencial de hoy (
+                    Último precio informativo publicado, correspondiente al{' '}
+                    {fmtFechaLarga(anterior.fecha)}. El precio informativo de hoy (
                     {fmtFechaLarga(hoy)}) aún no ha sido fijado.
                   </p>
                 )}
@@ -191,7 +201,7 @@ export default async function PrecioReferenciaPage() {
             ) : (
               <div style={CARD}>
                 <p style={BODY}>
-                  Aún no se ha publicado un precio referencial. La fórmula de cálculo y la
+                  Aún no se ha publicado un precio informativo. La fórmula de cálculo y la
                   política que lo rigen se publican a continuación.
                 </p>
               </div>
@@ -219,25 +229,26 @@ export default async function PrecioReferenciaPage() {
               </p>
               <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column' }}>
                 <InsumoRow
-                  etiqueta="Referencia internacional del oro del día"
-                  valor={mostrado ? `USD ${fmtL(mostrado.referencia_lbma_usd_oz)} por onza troy` : '—'}
+                  etiqueta="Precio internacional del oro del día"
+                  valor={mostrado && mostrado.referencia_lbma_usd_oz > 0 ? `USD ${fmtL(mostrado.referencia_lbma_usd_oz)} por onza troy` : DATO_NO_DISPONIBLE}
+                  nota={mostrado ? `Capturado en la fijación del ${fmtFechaLarga(mostrado.fecha)}, 08:00 horas (Honduras).` : undefined}
                 />
                 <InsumoRow
                   etiqueta={ETIQUETA_TIPO_CAMBIO}
-                  valor={mostrado ? `L ${fmtL(mostrado.tipo_cambio_bch, 4)} por USD` : '—'}
-                  nota={`Fuente: ${FUENTE_TIPO_CAMBIO}, capturado en la fecha de la fijación.`}
+                  valor={mostrado && mostrado.tipo_cambio_bch > 0 ? `L ${fmtL(mostrado.tipo_cambio_bch, 4)} por USD` : DATO_NO_DISPONIBLE}
+                  nota={`Fuente: ${FUENTE_TIPO_CAMBIO}, tipo de cambio de compra vigente en la fecha de la fijación.`}
                 />
                 <InsumoRow
-                  etiqueta="Factor referencial registrado en la fijación"
-                  valor={mostrado ? fmtL(mostrado.factor_comercializacion, 4) : '—'}
-                  nota={factorVigenteNota(mostrado?.version_politica ?? VERSION_POLITICA_PRECIOS)}
+                  etiqueta="Constante de conversión"
+                  valor={`1 onza troy = ${GRAMOS_POR_ONZA_TROY} g`}
+                  nota="Constante física, no configurable. Sin ningún factor de compra."
                   last
                 />
               </div>
               <p style={{ marginTop: 12, fontSize: 13, color: 'var(--t2)', lineHeight: 1.7 }}>
-                Factor referencial vigente: {FACTOR_REFERENCIA_PCT} % de la referencia
-                internacional del oro. Toda revisión se publica como nueva versión de la
-                política de publicación.
+                El precio publicado es solo informativo y no aplica ningún porcentaje ni
+                descuento sobre el precio internacional. Toda revisión de la fórmula o de las
+                fuentes se publica como nueva versión de la política de publicación.
               </p>
             </div>
           </section>
@@ -294,7 +305,7 @@ export default async function PrecioReferenciaPage() {
             </div>
           </section>
 
-          {/* ── BLOQUE 5 — Naturaleza: el aviso literal del precio referencial ── */}
+          {/* ── BLOQUE 5 — Naturaleza: el aviso literal del precio informativo ── */}
           <section aria-labelledby="naturaleza-titulo" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <h2 id="naturaleza-titulo" style={SECTION_TITLE}>
               {PRECIO_REF_NATURALEZA_TITULO}
@@ -314,13 +325,13 @@ export default async function PrecioReferenciaPage() {
             <div style={MONO_EYEBROW}>Documentos relacionados</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <Link href="/politica-de-precios" style={{ color: 'var(--moss)', fontWeight: 600, fontSize: 15, textDecoration: 'none' }}>
-                Política de publicación del precio referencial →
+                Política de publicación del precio informativo →
               </Link>
               <Link href="/verificar" style={{ color: 'var(--moss)', fontWeight: 600, fontSize: 15, textDecoration: 'none' }}>
                 Verificación del sello complementario →
               </Link>
               <a href="#historico" style={{ color: 'var(--moss)', fontWeight: 600, fontSize: 15, textDecoration: 'none' }}>
-                Histórico de precios referenciales →
+                Histórico de precios informativos →
               </a>
             </div>
           </section>
@@ -328,7 +339,7 @@ export default async function PrecioReferenciaPage() {
           {/* ── Histórico (evidencia de auditoría) ────────────────────── */}
           <section id="historico" aria-labelledby="historico-titulo" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <h2 id="historico-titulo" style={SECTION_TITLE}>
-              Histórico de precios referenciales.
+              Histórico de precios informativos.
             </h2>
             {historial.length === 0 ? (
               <p style={BODY}>Sin registros publicados todavía.</p>
@@ -337,7 +348,7 @@ export default async function PrecioReferenciaPage() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 560 }}>
                   <thead>
                     <tr>
-                      {['Fecha', 'L / gramo de oro fino', 'Referencia internacional (USD/oz)', 'Tipo de cambio', 'Factor registrado', 'Política'].map((th) => (
+                      {['Fecha', 'L / gramo de oro fino', 'Oro internacional (USD/oz)', ETIQUETA_TIPO_CAMBIO, 'Política'].map((th) => (
                         <th
                           key={th}
                           scope="col"
@@ -365,16 +376,13 @@ export default async function PrecioReferenciaPage() {
                           {r.fecha}
                         </td>
                         <td style={{ padding: '10px 14px', fontSize: 13, color: 'var(--t1)', background: 'var(--bg)', fontFamily: 'var(--font-mono)' }}>
-                          L {fmtL(r.precio_lempiras_gramo_fino)}
+                          {(() => { const v = recalcularLpsGramoFino(r); return v != null ? `L ${fmtL(v)}` : DATO_NO_DISPONIBLE })()}
                         </td>
                         <td style={{ padding: '10px 14px', fontSize: 13, color: 'var(--t2)', background: 'var(--bg)', fontFamily: 'var(--font-mono)' }}>
-                          {fmtL(r.referencia_lbma_usd_oz)}
+                          {r.referencia_lbma_usd_oz > 0 ? fmtL(r.referencia_lbma_usd_oz) : DATO_NO_DISPONIBLE}
                         </td>
                         <td style={{ padding: '10px 14px', fontSize: 13, color: 'var(--t2)', background: 'var(--bg)', fontFamily: 'var(--font-mono)' }}>
-                          {fmtL(r.tipo_cambio_bch, 4)}
-                        </td>
-                        <td style={{ padding: '10px 14px', fontSize: 13, color: 'var(--t2)', background: 'var(--bg)', fontFamily: 'var(--font-mono)' }}>
-                          {fmtL(r.factor_comercializacion, 4)}
+                          {r.tipo_cambio_bch > 0 ? fmtL(r.tipo_cambio_bch, 4) : DATO_NO_DISPONIBLE}
                         </td>
                         <td style={{ padding: '10px 14px', fontSize: 13, color: 'var(--t2)', background: 'var(--bg)', fontFamily: 'var(--font-mono)' }}>
                           v{r.version_politica}
@@ -388,7 +396,9 @@ export default async function PrecioReferenciaPage() {
             <p style={{ fontSize: 13, color: 'var(--t3)', lineHeight: 1.7 }}>
               Registro histórico disponible también en formato de datos en /api/precio/historico.
               Los registros publicados no se eliminan; las correcciones se documentan por
-              reemplazo.
+              reemplazo. El precio de cada fila se recalcula con la fórmula pública vigente
+              (precio internacional × tipo de cambio de compra del BCH ÷ {GRAMOS_POR_ONZA_TROY}),
+              sin ningún factor.
             </p>
           </section>
         </div>

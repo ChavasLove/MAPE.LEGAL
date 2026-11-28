@@ -3,14 +3,15 @@
 // Daily prices widget — public tool aimed at gold miners.
 //
 // Fetches /api/precios/live on mount, then polls every 60 s (skipping the tick
-// while the tab is hidden) and refetches when the tab regains focus. Shows the
-// "Precio referencial (75%)" in Lempiras per gram of fine gold — an informative
-// estimate, always accompanied by the literal AVISO_PRECIO_REFERENCIAL (hotfix
-// de neutralidad, 11-nov-2026) — plus the international gold reference, gold in
-// Lempiras per troy ounce and the market reference exchange rate with its real
-// source (exchangerate-api.com) and capture time. (Diesel was removed from the
-// public surface on 2026-10-15 — see CLAUDE.md §Widget de Precios.) The formula
-// + policy live at /precio — this card links there.
+// while the tab is hidden) and refetches when the tab regains focus.
+// DEC-2026-11-26-1 / DEC-2026-11-27-2: shows the international gold price in
+// Lempiras per gram of fine gold — SOLO informativo, SIN factor de compra —
+// always with the literal AVISO_PRECIO_INFORMATIVO, plus the international gold
+// price (USD/oz, labeled with its REAL feed, never "LBMA oficial"), gold in
+// Lempiras per troy ounce and the BCH buying exchange rate with its date. Any
+// missing input renders "dato no disponible"; nothing is estimated. (Diesel was
+// removed from the public surface on 2026-10-15.) The formula + policy live at
+// /precio — this card links there.
 //
 // Prices are numbers; chrome (labels, notes) respects the ES/EN toggle via the
 // `lang` prop. No continuous animations per DESIGN.md — the status dot is static.
@@ -19,12 +20,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { RefreshCw } from 'lucide-react';
 import { VERSION_POLITICA_PRECIOS } from '@/lib/precio/calculo';
-import { ROTULO_PRECIO_REFERENCIAL } from '@/lib/precio/factores';
 import {
-  AVISO_PRECIO_REFERENCIAL,
+  AVISO_PRECIO_INFORMATIVO,
+  DATO_NO_DISPONIBLE,
   ETIQUETA_TIPO_CAMBIO,
-  FORMULA_PRECIO_REFERENCIAL,
+  FORMULA_PRECIO_INFORMATIVO,
   FUENTE_TIPO_CAMBIO,
+  ROTULO_PRECIO_INFORMATIVO,
+  SOLO_INFORMATIVO,
 } from '@/lib/content/copy-legal';
 
 // Mirrors KaratPrice in services/pricingService.ts (declared locally so this
@@ -36,43 +39,51 @@ export interface KaratPriceLine {
   ley: number;
   oro_usd_g: number;
   oro_lps_g: number;
-  referencia_lps_g: number;
   oro_usd_dwt?: number;
   oro_lps_dwt?: number;
-  referencia_lps_dwt?: number;
 }
 
 export interface LivePrices {
   fecha: string;
   fetched_at: string | null;
-  fuente: string | null;
   consultado_hn: string;
   actualizado_hn: string | null;
-  // Factor del precio referencial público (0.75). `mape_factor` is a numeric
-  // alias with the same value kept for cached clients.
-  factor_referencia?: number | null;
-  mape_factor: number | null;
+  // ── Oro: fuente REAL del feed (goldapi.io / yahoo-finance), nunca "LBMA oficial".
   oro_usd_oz: number | null;
-  usd_hnl: number | null;
-  // Real source + capture of the exchange rate (shown next to the value).
+  oro_fuente?: string | null;
+  oro_fuente_etiqueta?: string | null;
+  oro_fecha?: string | null;
+  /** Compat: id de la fuente del oro. */
+  fuente: string | null;
+  // ── Tipo de cambio de COMPRA del BCH (única fuente admitida); null = dato no disponible.
+  tipo_cambio_compra_bch?: number | null;
+  tipo_cambio_venta_bch?: number | null;
   tipo_cambio_fuente?: string | null;
+  tipo_cambio_etiqueta?: string | null;
+  /** Fecha de vigencia del tipo de cambio (YYYY-MM-DD). */
   tipo_cambio_fecha?: string | null;
+  tipo_cambio_obtenido_hn?: string | null;
+  tipo_cambio_origen?: 'vivo' | 'respaldo' | null;
+  /** Compat: mismo valor que tipo_cambio_compra_bch. */
+  usd_hnl: number | null;
+  // ── Resultado: solo informativo, sin factor.
   oro_lps_oz: number | null;
-  // Canonical: precio referencial (75%) in L per gram of fine gold.
-  oro_referencial_lps_gramo?: number | null;
-  // Compatibility alias — same value as oro_referencial_lps_gramo. Never used
-  // as a label anywhere in the UI.
-  oro_compra_lps_gramo: number | null;
-  // Optional: absent on responses cached before the karat rollout.
+  oro_lps_gramo_fino?: number | null;
   kilates?: KaratPriceLine[] | null;
-  // Literal AVISO_PRECIO_REFERENCIAL echoed by the API.
+  // Literal AVISO_PRECIO_INFORMATIVO echoed by the API.
   aviso?: string;
 }
 
-/** Precio referencial del snapshot — canonical field with alias fallback. */
-export function referencialDe(data: LivePrices | null | undefined): number | null {
+/** Precio del snapshot en L por gramo de oro fino (sin factor). */
+export function lpsGramoFinoDe(data: LivePrices | null | undefined): number | null {
   if (!data) return null;
-  return data.oro_referencial_lps_gramo ?? data.oro_compra_lps_gramo ?? null;
+  return data.oro_lps_gramo_fino ?? null;
+}
+
+/** Tipo de cambio de compra del BCH del snapshot; null = dato no disponible. */
+export function tipoCambioBchDe(data: LivePrices | null | undefined): number | null {
+  if (!data) return null;
+  return data.tipo_cambio_compra_bch ?? null;
 }
 
 const POLL_MS = 60_000;
@@ -182,9 +193,13 @@ export default function LivePricesWidget({ lang, onData }: Props) {
     load();
   };
 
-  const referencial = referencialDe(data);
-  const tcFuente = data?.tipo_cambio_fuente ?? FUENTE_TIPO_CAMBIO;
-  const tcFecha = data?.tipo_cambio_fecha ?? data?.actualizado_hn ?? null;
+  const lpsGramoFino = lpsGramoFinoDe(data);
+  const tcBch = tipoCambioBchDe(data);
+  // Solo se etiqueta "BCH" un dato que viene del BCH (la API deja null si no lo hay).
+  const tcFuente = tcBch != null ? (data?.tipo_cambio_fuente ?? FUENTE_TIPO_CAMBIO) : null;
+  const tcFecha = tcBch != null ? (data?.tipo_cambio_fecha ?? null) : null;
+  const tcRespaldo = data?.tipo_cambio_origen === 'respaldo';
+  const oroFuente = data?.oro_fuente_etiqueta ?? (data?.fuente ? `Precio internacional del oro (${data.fuente})` : null);
 
   return (
     <div>
@@ -274,7 +289,7 @@ export default function LivePricesWidget({ lang, onData }: Props) {
         <PriceSkeleton />
       ) : (
         <>
-          {/* Primary — Precio referencial (75%) (L / gram of fine gold) */}
+          {/* Primary — precio internacional del oro en L / gramo de oro fino (sin factor) */}
           <div
             style={{
               background: 'color-mix(in oklch, var(--moss) 7%, white)',
@@ -296,22 +311,22 @@ export default function LivePricesWidget({ lang, onData }: Props) {
                 marginBottom: 10,
               }}
             >
-              {ROTULO_PRECIO_REFERENCIAL}
+              {t(ROTULO_PRECIO_INFORMATIVO, 'International gold in Lempiras per gram of fine gold')} · {t(SOLO_INFORMATIVO, 'Informative only')}
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
               <span
                 style={{
                   fontFamily: 'var(--font-display)',
                   fontWeight: 600,
-                  fontSize: 'clamp(34px, 7vw, 52px)',
+                  fontSize: lpsGramoFino != null ? 'clamp(34px, 7vw, 52px)' : 'clamp(20px, 4vw, 28px)',
                   lineHeight: 1,
                   color: 'var(--earth)',
                   letterSpacing: '-0.02em',
                 }}
               >
-                {referencial != null ? `L ${fmtNum(referencial)}` : '—'}
+                {lpsGramoFino != null ? `L ${fmtNum(lpsGramoFino)}` : t(DATO_NO_DISPONIBLE, 'data not available')}
               </span>
-              {referencial != null && (
+              {lpsGramoFino != null && (
                 <span
                   style={{
                     fontFamily: 'var(--font-mono)',
@@ -323,6 +338,19 @@ export default function LivePricesWidget({ lang, onData }: Props) {
                 </span>
               )}
             </div>
+            {lpsGramoFino == null && data && (
+              <p style={{ marginTop: 8, fontSize: 13, color: 'var(--t2)', lineHeight: 1.6 }}>
+                {tcBch == null
+                  ? t(
+                      'El tipo de cambio de compra del BCH no está disponible en este momento. El precio en lempiras no se estima con otra fuente.',
+                      'The BCH buying exchange rate is not available right now. The price in lempiras is not estimated from any other source.',
+                    )
+                  : t(
+                      'El precio internacional del oro no está disponible en este momento.',
+                      'The international gold price is not available right now.',
+                    )}
+              </p>
+            )}
             <p
               style={{
                 marginTop: 12,
@@ -351,10 +379,12 @@ export default function LivePricesWidget({ lang, onData }: Props) {
                 color: 'var(--slate)',
               }}
             >
-              {FORMULA_PRECIO_REFERENCIAL}
-              {data?.fuente ? ` · ${t('Oro', 'Gold')}: ${data.fuente}` : ''}
-              {` · ${t('Tipo de cambio', 'Exchange rate')}: ${tcFuente}`}
-              {tcFecha ? ` · ${t('Capturado', 'Captured')}: ${tcFecha} (Honduras)` : ''}
+              {FORMULA_PRECIO_INFORMATIVO}
+              {oroFuente ? ` · ${oroFuente}` : ''}
+              {data?.actualizado_hn ? ` · ${t('oro capturado', 'gold captured')}: ${data.actualizado_hn} (Honduras)` : ''}
+              {tcFuente
+                ? ` · ${ETIQUETA_TIPO_CAMBIO} (${tcFuente})${tcFecha ? ` ${t('vigente', 'effective')} ${tcFecha}` : ''}${tcRespaldo ? ` · ${t('último valor registrado', 'last recorded value')}` : ''}`
+                : ` · ${ETIQUETA_TIPO_CAMBIO}: ${t(DATO_NO_DISPONIBLE, 'data not available')}`}
             </p>
             {/* Aviso literal — obligatorio junto a toda vista de precio. */}
             <p
@@ -367,7 +397,7 @@ export default function LivePricesWidget({ lang, onData }: Props) {
                 fontFamily: 'var(--font-body)',
               }}
             >
-              {AVISO_PRECIO_REFERENCIAL}
+              {AVISO_PRECIO_INFORMATIVO}
             </p>
           </div>
 
@@ -383,19 +413,24 @@ export default function LivePricesWidget({ lang, onData }: Props) {
               eyebrow={t('Oro internacional', 'International gold')}
               value={data?.oro_usd_oz != null ? `$${fmtNum(data.oro_usd_oz)}` : '—'}
               unit={t('USD / onza troy', 'USD / troy oz')}
-              detail={t('Diario · 8:00 a.m.', 'Daily · 8:00 a.m.')}
+              detail={`${oroFuente ?? t('Fuente no registrada', 'Source not recorded')}${data?.actualizado_hn ? ` · ${data.actualizado_hn}` : ''}`}
             />
             <MetricCard
               eyebrow={t('Oro en Lempiras', 'Gold in Lempiras')}
               value={data?.oro_lps_oz != null ? `L ${fmtNum(data.oro_lps_oz, 0)}` : '—'}
               unit={t('LPS / onza troy', 'LPS / troy oz')}
-              detail={t('Oro × tipo de cambio', 'Gold × exchange rate')}
+              detail={t('Oro × tipo de cambio de compra del BCH', 'Gold × BCH buying exchange rate')}
             />
             <MetricCard
-              eyebrow={t(ETIQUETA_TIPO_CAMBIO, 'Market reference exchange rate')}
-              value={data?.usd_hnl != null ? `L ${fmtNum(data.usd_hnl, 4)}` : '—'}
-              unit={t('por USD', 'per USD')}
-              detail={`${tcFuente}${tcFecha ? ` · ${t('capturado', 'captured')} ${tcFecha}` : ` · ${t('Diario · 8:00 a.m.', 'Daily · 8:00 a.m.')}`}`}
+              eyebrow={t(ETIQUETA_TIPO_CAMBIO, 'BCH buying exchange rate')}
+              value={tcBch != null ? `L ${fmtNum(tcBch, 4)}` : '—'}
+              unit={t('lempiras por USD', 'lempiras per USD')}
+              detail={
+                tcBch != null
+                  ? `${tcFuente}${tcFecha ? ` · ${t('vigente', 'effective')} ${tcFecha}` : ''}${tcRespaldo ? ` · ${t('último valor registrado', 'last recorded value')}` : ''}`
+                  : t(DATO_NO_DISPONIBLE, 'data not available')
+              }
+              warning={tcRespaldo ? t('Último valor registrado del BCH; la publicación del día del BCH no estuvo disponible.', 'Last recorded BCH value; today’s BCH publication was not available.') : undefined}
             />
           </div>
         </>
@@ -418,8 +453,10 @@ export function PriceSourcesPanel({
   data: LivePrices | null;
 }) {
   const t = (es: string, en: string) => (lang === 'es' ? es : en);
-  const tcFuente = data?.tipo_cambio_fuente ?? FUENTE_TIPO_CAMBIO;
-  const tcFecha = data?.tipo_cambio_fecha ?? data?.actualizado_hn ?? null;
+  const tcBch = tipoCambioBchDe(data);
+  const tcFuente = tcBch != null ? (data?.tipo_cambio_fuente ?? FUENTE_TIPO_CAMBIO) : null;
+  const tcFecha = tcBch != null ? (data?.tipo_cambio_fecha ?? null) : null;
+  const oroFuente = data?.oro_fuente_etiqueta ?? null;
 
   return (
     <div
@@ -466,40 +503,53 @@ export function PriceSourcesPanel({
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <SourceRow
                 label={t(
-                  `${ROTULO_PRECIO_REFERENCIAL} (L/gramo de oro fino)`,
-                  `${ROTULO_PRECIO_REFERENCIAL} (L/gram of fine gold)`,
+                  `${ROTULO_PRECIO_INFORMATIVO} · ${SOLO_INFORMATIVO.toLowerCase()}`,
+                  'International gold in Lempiras per gram of fine gold · informative only',
                 )}
                 fuente={t(
-                  `${FORMULA_PRECIO_REFERENCIAL}. Cálculo verificable conforme a la Política de Precios v${VERSION_POLITICA_PRECIOS}. ${AVISO_PRECIO_REFERENCIAL}`,
-                  `${FORMULA_PRECIO_REFERENCIAL}. Verifiable calculation per Pricing Policy v${VERSION_POLITICA_PRECIOS}. ${AVISO_PRECIO_REFERENCIAL}`,
+                  `${FORMULA_PRECIO_INFORMATIVO}. Sin ningún factor de compra. Cálculo verificable conforme a la Política de publicación v${VERSION_POLITICA_PRECIOS}. ${AVISO_PRECIO_INFORMATIVO}`,
+                  `${FORMULA_PRECIO_INFORMATIVO}. No buying factor. Verifiable calculation per publication policy v${VERSION_POLITICA_PRECIOS}. ${AVISO_PRECIO_INFORMATIVO}`,
                 )}
                 frecuencia={t(
-                  'Se fija una vez al día, a las 8:00 a.m. (Honduras), y no cambia durante el día.',
-                  'Set once a day at 8:00 a.m. (Honduras); it does not change during the day.',
+                  'El oro se captura una vez al día, a las 8:00 a.m. (Honduras), y no cambia durante el día. El tipo de cambio de compra del BCH se publica con su fecha de vigencia.',
+                  'Gold is captured once a day at 8:00 a.m. (Honduras) and does not change during the day. The BCH buying rate is shown with its effective date.',
                 )}
               />
               <SourceRow
                 label={t('Oro internacional (USD/onza troy)', 'International gold (USD/troy oz)')}
                 fuente={
+                  (oroFuente ??
+                    t(
+                      'Precio internacional del oro (feed externo: goldapi.io, con respaldo de Yahoo Finance; captura diaria).',
+                      'International gold price (external feed: goldapi.io, with Yahoo Finance as backup; daily capture).',
+                    )) +
+                  ' ' +
                   t(
-                    'Referencia internacional del oro (precio spot / futuros COMEX).',
-                    'International gold reference (spot / COMEX futures).',
-                  ) + (data?.fuente ? ` ${t('Feed técnico', 'Technical feed')}: ${data.fuente}.` : '')
+                    'No es el precio oficial de la LBMA; la conexión a un precio LBMA oficial está pendiente.',
+                    'This is not the official LBMA price; a connection to an official LBMA price is pending.',
+                  )
                 }
                 frecuencia={t(
-                  'Captura diaria a las 8:00 a.m. (Honduras). Los mercados cierran los fines de semana: sábado y domingo se conserva el cierre del viernes.',
-                  'Captured daily at 8:00 a.m. (Honduras). Markets close on weekends: Saturday and Sunday keep Friday’s close.',
+                  `Captura diaria a las 8:00 a.m. (Honduras)${data?.actualizado_hn ? ` · última: ${data.actualizado_hn}` : ''}. Los mercados cierran los fines de semana: sábado y domingo se conserva el cierre del viernes.`,
+                  `Captured daily at 8:00 a.m. (Honduras)${data?.actualizado_hn ? ` · last: ${data.actualizado_hn}` : ''}. Markets close on weekends: Saturday and Sunday keep Friday’s close.`,
                 )}
               />
               <SourceRow
-                label={t(`${ETIQUETA_TIPO_CAMBIO} (USD/LPS)`, 'Market reference exchange rate (USD/LPS)')}
-                fuente={t(
-                  `${ETIQUETA_TIPO_CAMBIO} · ${tcFuente}${tcFecha ? ` · capturado ${tcFecha} (Honduras)` : ''}.`,
-                  `Market reference exchange rate · ${tcFuente}${tcFecha ? ` · captured ${tcFecha} (Honduras)` : ''}.`,
-                )}
+                label={t(`${ETIQUETA_TIPO_CAMBIO} (L por USD)`, 'BCH buying exchange rate (L per USD)')}
+                fuente={
+                  tcBch != null
+                    ? t(
+                        `Tipo de cambio de compra publicado por el ${tcFuente}${tcFecha ? `, vigente el ${tcFecha}` : ''}${data?.tipo_cambio_origen === 'respaldo' ? ' (último valor registrado)' : ''}.`,
+                        `Buying exchange rate published by the ${tcFuente}${tcFecha ? `, effective ${tcFecha}` : ''}${data?.tipo_cambio_origen === 'respaldo' ? ' (last recorded value)' : ''}.`,
+                      )
+                    : t(
+                        `${ETIQUETA_TIPO_CAMBIO}: ${DATO_NO_DISPONIBLE}. No se sustituye por otra fuente ni se estima.`,
+                        `${ETIQUETA_TIPO_CAMBIO}: data not available. It is not replaced by another source nor estimated.`,
+                      )
+                }
                 frecuencia={t(
-                  'Captura diaria a las 8:00 a.m. (Honduras).',
-                  'Captured daily at 8:00 a.m. (Honduras).',
+                  'El BCH publica un tipo de cambio de referencia por día hábil; en fin de semana y feriados rige el último publicado.',
+                  'The BCH publishes one reference rate per business day; on weekends and holidays the last published rate applies.',
                 )}
                 last
               />
