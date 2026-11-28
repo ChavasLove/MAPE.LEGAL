@@ -274,11 +274,8 @@ export interface AlianzaEstado {
 
 export const ALIANZAS_ITEMS: readonly AlianzaEstado[] = [
   {
-    entidad: 'Finacop', // carta de intención enviada; MOU en proceso
-    estado:
-      'Carta de intención enviada; memorando de entendimiento (MOU) en ' +
-      'proceso. Finacop evaluará crédito para el minero: en evaluación, sin ' +
-      'montos definidos.',
+    entidad: 'Finacop', // carta de intención enviada; MOU pendiente
+    estado: 'Carta de intención enviada; MOU pendiente.',
   },
   { entidad: 'planetGOLD (PNUD)', estado: 'Carta de intención en preparación.' },
 ]
