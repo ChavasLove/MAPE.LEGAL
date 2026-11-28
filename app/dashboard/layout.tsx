@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import Image from 'next/image';
 import {
   LayoutDashboard, FolderOpen, MessageSquare, Users, Mountain, FileCheck2, Banknote, Settings, LogOut,
-  Boxes, MapPinned, ShieldCheck, ScrollText, Download,
+  Boxes, MapPinned, ShieldCheck, ScrollText, Download, UserCheck, PackageCheck, Building2,
 } from 'lucide-react';
 import { getServerAuth, DASHBOARD_ROLES } from '@/lib/serverAuth';
 import SidebarNav from '@/components/dashboard/SidebarNav';
@@ -16,6 +16,8 @@ const ROL_LABEL: Record<string, string> = {
   comercializador:   'Comercializador',
   planta:            'Planta de beneficio participante',
   auditor:           'Auditor externo',
+  verificador:       'Verificador',
+  recepcion:         'Personal de recepción',
 };
 
 const STAFF_ROLES: ReadonlyArray<string> = ['admin', 'abogado', 'tecnico_ambiental'];
@@ -47,6 +49,29 @@ const cadenaConsentimientos= { href: '/dashboard/cadena/consentimientos', label:
 const cadenaBitacora       = { href: '/dashboard/cadena/bitacora',        label: 'Bitácora',        icon: <ScrollText  {...ICON} /> };
 const cadenaExportar       = { href: '/dashboard/cadena/exportar',        label: 'Exportar',        icon: <Download    {...ICON} /> };
 
+// Recepción y aprobación (reestructura 2026-11-28). Solo personal: los
+// usuarios externos no cargan datos. Etiquetas neutras, sin nombrar empresas.
+const itemAprobaciones   = { href: '/dashboard/aprobaciones',   label: 'Aprobaciones',   icon: <UserCheck    {...ICON} /> };
+const itemRecepcion      = { href: '/dashboard/recepcion',      label: 'Recepción',      icon: <PackageCheck {...ICON} /> };
+const itemOrganizaciones = { href: '/dashboard/organizaciones', label: 'Organizaciones', icon: <Building2    {...ICON} /> };
+
+function recepcionItemsFor(role: string) {
+  switch (role) {
+    case 'admin':
+      return [itemAprobaciones, itemRecepcion, itemOrganizaciones];
+    case 'abogado':
+      return [itemAprobaciones, itemRecepcion, itemOrganizaciones];
+    case 'tecnico_ambiental':
+      return [itemAprobaciones, itemRecepcion];
+    case 'verificador':
+      return [itemAprobaciones, itemRecepcion, itemOrganizaciones];
+    case 'recepcion':
+      return [itemRecepcion, itemAprobaciones];
+    default:
+      return [];
+  }
+}
+
 function cadenaItemsFor(role: string) {
   switch (role) {
     case 'admin':
@@ -77,6 +102,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const email = auth.user.email ?? '';
   const isStaff = STAFF_ROLES.includes(role);
   const cadenaItems = cadenaItemsFor(role);
+  const recepcionItems = recepcionItemsFor(role);
 
   // Sidebar dividers stay in slate-lt @ 30% transparent against ink.
   const sidebarHairline = 'color-mix(in oklch, var(--slate-lt) 30%, transparent)';
@@ -121,9 +147,29 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <nav className="flex-1 px-3 py-4 space-y-1">
           {isStaff && <SidebarNav items={navItems} />}
 
-          {cadenaItems.length > 0 && (
+          {recepcionItems.length > 0 && (
             <>
               {isStaff && <div className="my-3 border-t" style={{ borderColor: sidebarHairlineSoft }} />}
+              <div
+                className="px-3 pt-2 pb-1"
+                style={{
+                  color: 'var(--slate-lt)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 10,
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                  fontWeight: 600,
+                }}
+              >
+                Recepción y perfiles
+              </div>
+              <SidebarNav items={recepcionItems} />
+            </>
+          )}
+
+          {cadenaItems.length > 0 && (
+            <>
+              {(isStaff || recepcionItems.length > 0) && <div className="my-3 border-t" style={{ borderColor: sidebarHairlineSoft }} />}
               <div
                 className="px-3 pt-2 pb-1"
                 style={{

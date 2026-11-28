@@ -58,6 +58,13 @@ function isProtectedApi(pathname: string): boolean {
     pathname.startsWith('/api/certificados') || // registro del certificado oficial + sello (dashboard)
     pathname.startsWith('/api/cadena') ||       // estándar privado de debida diligencia (RBAC por rol/organización en cada handler)
     pathname.startsWith('/api/documentos') ||
+    // Reestructura 2026-11-28: perfiles/aprobaciones, portal de solo lectura,
+    // recepción física, organizaciones y respaldo de documentos.
+    pathname.startsWith('/api/perfiles') ||
+    pathname.startsWith('/api/portal') ||
+    pathname.startsWith('/api/recepcion') ||
+    pathname.startsWith('/api/organizaciones') ||
+    pathname.startsWith('/api/respaldo') ||
     pathname.startsWith('/api/mensajes') ||
     pathname.startsWith('/api/email/') ||
     pathname.startsWith('/api/whatsapp/') || // /api/whatsapp exacto es público (arriba)
@@ -114,6 +121,11 @@ export const config = {
     '/api/certificados/:path*',
     '/api/cadena/:path*',          // estándar privado (fuentes, lotes, eventos, pagos, consentimientos, bitácora, exportar)
     '/api/documentos/:path*',
+    '/api/perfiles/:path*',
+    '/api/portal/:path*',
+    '/api/recepcion/:path*',
+    '/api/organizaciones/:path*',
+    '/api/respaldo/:path*',
     '/api/mensajes/:path*',
     '/api/email/:path*',
     '/api/whatsapp/:path*',

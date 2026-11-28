@@ -3,8 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 import TopoBand from '@/components/decor/TopoBand'
 import {
   VERIFICAR_CARGA_INICIAL,
-  VERIFICAR_FRESCURA_NOTA,
-  VERIFICAR_INTRO,
+  VERIFICAR_ALCANCE_MINIMO,
+  VERIFICAR_SELLO_AVISO,
   VERIFICAR_TITULO,
 } from '@/lib/content/copy-legal'
 import VerificarForm from './VerificarForm'
@@ -88,7 +88,7 @@ export default async function VerificarEntryPage() {
               marginTop: 16,
             }}
           >
-            {VERIFICAR_INTRO}
+            {VERIFICAR_ALCANCE_MINIMO}
           </p>
           {total === 0 && (
             <div
@@ -131,7 +131,7 @@ export default async function VerificarEntryPage() {
               lineHeight: 1.6,
             }}
           >
-            {VERIFICAR_FRESCURA_NOTA}
+            {VERIFICAR_SELLO_AVISO}
           </p>
         </div>
       </section>

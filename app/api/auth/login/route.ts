@@ -3,17 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import { checkRateLimit, clientIpFrom } from '@/lib/rateLimit';
 import { checkAuthEnv, logAuthEnvFailure } from '@/lib/authEnv';
 import { lookupUserRole } from '@/lib/userRoleLookup';
+import { destinoPorRol } from '@/lib/auth/sesionCookies';
 
-const ROLE_REDIRECT: Record<string, string> = {
-  admin:             '/admin',
-  abogado:           '/dashboard',
-  tecnico_ambiental: '/dashboard',
-  cliente:           '/portal',
-  // Roles del estándar privado (brief v2.1 Etapa 2) — home propio dentro del dashboard.
-  comercializador:   '/dashboard/cadena',
-  planta:            '/dashboard/cadena',
-  auditor:           '/dashboard/cadena',
-};
 
 const LOGIN_LIMIT       = 5;
 const LOGIN_WINDOW_MS   = 15 * 60 * 1000;
@@ -97,7 +88,7 @@ export async function POST(req: NextRequest) {
     }
 
     const role       = lookup.role;
-    const redirectTo = ROLE_REDIRECT[role] ?? '/dashboard';
+    const redirectTo = destinoPorRol(role);
     const maxAge     = data.session.expires_in ?? 3600;
 
     const cookieOpts = {

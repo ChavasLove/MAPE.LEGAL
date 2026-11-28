@@ -106,8 +106,8 @@ export async function POST(req: NextRequest) {
       if (typeof organizacion_id !== 'string' || !UUID_RE.test(organizacion_id)) {
         return NextResponse.json({ error: 'organizacion_id inválido (uuid).' }, { status: 400 });
       }
-      if (!['comercializador', 'planta', 'auditor'].includes(rol)) {
-        return NextResponse.json({ error: 'organizacion_id solo aplica a comercializador, planta o auditor.' }, { status: 400 });
+      if (!['comercializador', 'planta', 'auditor', 'verificador', 'recepcion'].includes(rol)) {
+        return NextResponse.json({ error: 'organizacion_id solo aplica a comercializador, planta, auditor, verificador o recepcion.' }, { status: 400 });
       }
       organizacionId = organizacion_id;
     }
