@@ -62,9 +62,6 @@ export default function PreciosClient() {
           <Link href="/" className="nav-link">
             {t('Inicio', 'Home')}
           </Link>
-          <Link href="/equipos" className="nav-link">
-            {t('Equipos', 'Equipment')}
-          </Link>
           <Link href="/verificar" className="nav-link">
             {t('Verificar', 'Verify')}
           </Link>

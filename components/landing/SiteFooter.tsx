@@ -27,7 +27,6 @@ const FOOTER_LINKS: Array<{ href: string; label: string }> = [
   // Marketplace abierto y municipios (DEC-2026-11-27-2) — ambos "en implementación".
   { href: '/publicaciones', label: 'Publicaciones de participantes' },
   { href: '/municipalidades', label: 'Para municipalidades' },
-  { href: '/equipos', label: 'Equipos' },
   // Estándar privado de debida diligencia (Etapa 2, 2026-11-12).
   { href: '/quienes-somos', label: 'Quiénes somos' },
   { href: '/estandar', label: 'Estándar' },

@@ -5,7 +5,7 @@
  * migration 028 grants anon SELECT on active rows. Admin writes use
  * `getAdminClient()` (service-role), always instantiated inside the function —
  * never at module level (breaks the Next.js build when env vars are missing at
- * page-data-collection time). Same split as `equiposService`.
+ * page-data-collection time).
  */
 
 import { supabase } from '@/services/supabase';
