@@ -10,6 +10,9 @@
 // oficial" para goldapi/Yahoo; (5) la procedencia compuesta del FX.
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   TROY_OUNCE_GRAMS,
   GOLD_KARATS,
@@ -32,6 +35,7 @@ import {
   FACTOR_SIN_RECORTE,
 } from '@/lib/precio/calculo';
 import { recalcularLpsGramoFino } from '@/lib/precio/consulta';
+import { ESCALERA_PRECIOS, eslabonCotizableExterno } from '@/lib/precio/escalera';
 import {
   AVISO_PRECIO_INFORMATIVO,
   FORMULA_PRECIO_INFORMATIVO,
@@ -43,6 +47,19 @@ import {
 const ORO = 4000; // USD/oz
 const TC = 26.5; // L por USD (tipo de compra del BCH)
 const ESPERADO = (ORO * TC) / 31.1034768; // 3407.9791...
+
+describe('sin cifra de venta a la refinería en el repositorio', () => {
+  test('factores.ts no exporta el factor y la escalera no lo cotiza', () => {
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'lib', 'precio', 'factores.ts'), 'utf8');
+    assert.ok(!src.includes('FACTOR_VENTA_REFINERIA_LBMA'));
+    assert.equal(ESCALERA_PRECIOS.refineria_destino.factor, null);
+    assert.equal(ESCALERA_PRECIOS.refineria_destino.cotizableExterno, false);
+    const cot = eslabonCotizableExterno('refineria_destino');
+    assert.equal(cot.eslabon.id, 'informativo');
+    assert.equal(cot.eslabon.factor, 1);
+    assert.equal(cot.cotizable, true);
+  });
+});
 
 describe('fórmula canónica L/g fino = USD/oz × tipo de compra BCH ÷ 31.1034768', () => {
   test('la constante de la onza troy es 31.1034768 en todo el código público', () => {

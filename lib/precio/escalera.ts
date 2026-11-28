@@ -9,20 +9,19 @@
 //                          31.1034768, SIN factor (factor 1). Cotizable por
 //                          María a un contacto externo, SIEMPRE con el aviso
 //                          literal AVISO_PRECIO_INFORMATIVO.
-//   - refineria_destino  : factor de venta a la refinería de destino
-//                          (FACTOR_VENTA_REFINERIA_LBMA). INTERNO: nunca
-//                          cotizable por María a un externo, nunca publicado.
+//   - refineria_destino  : eslabón interno de venta a la refinería de destino.
+//                          Sin cifra en el repositorio. Nunca cotizable por
+//                          María a un externo, nunca publicado.
 //
-// Ningún factor se escribe aquí: todo deriva de factores.ts. La cotización en
-// L/g de oro fino se calcula con calcularPrecioLempirasGramoFino() de
-// lib/precio/calculo.ts. Este archivo define QUÉ factor aplica según el
-// eslabón; aquel, CÓMO.
+// El eslabón público usa FACTOR_SIN_RECORTE (1). El de refinería no tiene
+// cifra. La cotización en L/g de oro fino se calcula con
+// calcularPrecioLempirasGramoFino() de lib/precio/calculo.ts.
 //
 // Nadie importa este módulo hoy (verificado con grep); se conserva como
 // definición tipada de los eslabones para futuros consumidores.
 // ---------------------------------------------------------------------------
 
-import { FACTOR_VENTA_REFINERIA_LBMA, factorDefinido } from './factores';
+import { factorDefinido } from './factores';
 import { FACTOR_SIN_RECORTE } from './calculo';
 
 export type NaturalezaPrecio = 'informativo' | 'venta';
@@ -34,8 +33,11 @@ export interface EslabonPrecio {
   id: EslabonId;
   /** Etiqueta para prompt / UI interna. */
   etiqueta: string;
-  /** Fracción de la referencia internacional del oro (1 = sin recorte). */
-  factor: number;
+  /**
+   * Fracción de la referencia internacional del oro (1 = sin recorte).
+   * null cuando el repositorio no guarda cifra para ese eslabón.
+   */
+  factor: number | null;
   naturaleza: NaturalezaPrecio;
   /** Si María puede citarlo a un contacto externo por WhatsApp/web. */
   cotizableExterno: boolean;
@@ -58,8 +60,8 @@ export const ESCALERA_PRECIOS: Record<EslabonId, EslabonPrecio> = {
   },
   refineria_destino: {
     id: 'refineria_destino',
-    etiqueta: 'Factor de venta a la refinería de destino',
-    factor: FACTOR_VENTA_REFINERIA_LBMA,
+    etiqueta: 'Venta a la refinería de destino',
+    factor: null,
     naturaleza: 'venta',
     cotizableExterno: false, // INTERNO — María no lo cita jamás a externos.
   },
