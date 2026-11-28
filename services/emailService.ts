@@ -298,7 +298,90 @@ const ROL_LABELS: Record<string, string> = {
   comercializador:   'Comercializador',
   planta:            'Planta de beneficio participante',
   auditor:           'Auditor externo',
+  verificador:       'Verificador',
+  recepcion:         'Personal de recepción',
 };
+
+/**
+ * Código de acceso de un solo uso. El correo lleva el código en texto: sin
+ * enlaces que lo incluyan y sin el código en el asunto.
+ */
+export function emailCodigoAcceso(correo: string, codigo: string, minutosVigencia: number): Promise<void> {
+  return sendEmail({
+    to:      correo,
+    subject: 'Su código de acceso · MAPE.LEGAL',
+    html: emailShell(`
+      <p style="margin:0 0 20px;color:#1F2A38;font-size:16px">
+        Use este código para entrar a MAPE.LEGAL.
+      </p>
+      <p style="margin:0 0 24px;text-align:center;color:#1F2A38;font-size:32px;font-weight:700;letter-spacing:8px;font-family:monospace">
+        ${esc(codigo)}
+      </p>
+      <p style="margin:0 0 20px;color:#5E6B7B;font-size:15px;line-height:1.6">
+        El código vence en ${esc(minutosVigencia)} minutos y sirve una sola vez.
+        Escríbalo en la página de acceso; nadie de MAPE.LEGAL se lo pedirá por
+        teléfono ni por mensaje.
+      </p>
+      <p style="margin:0;color:#A3A8AB;font-size:13px">
+        Si usted no pidió este código, ignore este correo. Nadie puede entrar sin él.
+      </p>
+    `),
+  });
+}
+
+/**
+ * Invitación a pertenecer a una organización. El enlace lleva un token de un
+ * solo uso; el asunto no nombra a la persona ni a la organización.
+ */
+export function emailInvitacionOrganizacion(correo: string, enlace: string, diasVigencia: number): Promise<void> {
+  return sendEmail({
+    to:      correo,
+    subject: 'Invitación a una organización · MAPE.LEGAL',
+    html: emailShell(`
+      <p style="margin:0 0 20px;color:#1F2A38;font-size:16px">
+        Le invitaron a figurar como integrante de una organización en MAPE.LEGAL.
+      </p>
+      <p style="margin:0 0 24px;color:#5E6B7B;font-size:15px;line-height:1.6">
+        Al aceptar, su pertenencia queda pendiente hasta que el equipo la verifique.
+        La pertenencia le permite consultar información; no le pide llenar datos.
+        El enlace sirve una sola vez y vence en ${esc(diasVigencia)} días.
+      </p>
+      <div style="text-align:center;margin-bottom:24px">
+        <a href="${esc(enlace)}"
+           style="display:inline-block;background:#1F2A38;color:#ffffff;text-decoration:none;
+                  font-size:15px;font-weight:700;padding:14px 32px;border-radius:8px">
+          Ver la invitación
+        </a>
+      </div>
+      <p style="margin:0;color:#A3A8AB;font-size:13px">
+        Si no esperaba este correo, ignórelo: sin aceptar no ocurre nada.
+      </p>
+    `),
+  });
+}
+
+/** Aviso al personal verificador: hay perfiles por revisar. Sin datos personales en el asunto ni en el cuerpo. */
+export function emailPerfilesPendientes(destinatarios: string[], cantidad: number, enlace: string): Promise<void> {
+  return sendEmail({
+    to:      destinatarios,
+    subject: 'Perfiles pendientes de revisión · MAPE.LEGAL',
+    html: emailShell(`
+      <p style="margin:0 0 20px;color:#1F2A38;font-size:16px">
+        Hay ${esc(cantidad)} perfil(es) pendiente(s) de revisión.
+      </p>
+      <p style="margin:0 0 24px;color:#5E6B7B;font-size:15px;line-height:1.6">
+        Cada perfil se revisa y se decide por separado, con sus documentos de respaldo.
+      </p>
+      <div style="text-align:center">
+        <a href="${esc(enlace)}"
+           style="display:inline-block;background:#1F2A38;color:#ffffff;text-decoration:none;
+                  font-size:15px;font-weight:700;padding:14px 32px;border-radius:8px">
+          Abrir la cola de aprobaciones
+        </a>
+      </div>
+    `),
+  });
+}
 
 /** Confirmation link sent when a user signs up or requests a resend.
  *  `actionLink` is a Supabase-signed URL from auth.admin.generateLink('signup'). */

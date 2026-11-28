@@ -664,6 +664,34 @@ export const VERIFICAR_ABIERTO =
   'El sello MAPE.LEGAL es un esquema voluntario y complementario de ' +
   'trazabilidad de la plataforma.'
 
+/**
+ * Aviso del sello en la verificación pública mínima (reestructura 2026-11-28,
+ * Fase 7). Texto del encargo: no parafrasear sin revisión legal.
+ */
+export const VERIFICAR_SELLO_AVISO =
+  'Registro de sello MAPE.LEGAL, alineado con OCDE/LBMA; no es un certificado ' +
+  'oficial ni sustituye el documento de la autoridad.'
+
+/**
+ * Alcance de la consulta pública tras la Fase 7: solo número de sello y
+ * estado. [POR CONFIRMAR — WILLIS / LEGAL] sustituye, en /verificar, a
+ * VERIFICAR_INTRO y VERIFICAR_FRESCURA_NOTA, que describen datos (fuente
+ * documental y fecha de última verificación) que la consulta ya no muestra.
+ */
+export const VERIFICAR_ALCANCE_MINIMO =
+  'Introduzca el número de sello para comprobar si consta en el registro y ' +
+  'en qué estado se encuentra. La consulta es pública y muestra únicamente ' +
+  'el número de sello y su estado: no muestra datos personales, nombres, ' +
+  'minas, pesos, fechas ni documentos. Esta consulta no verifica, ni ' +
+  'sustituye, la Certificación de Procedencia o Certificado de Origen ' +
+  'oficial, que emite el titular del derecho minero y autentica la ' +
+  'Autoridad Minera o Municipal.'
+
+/** "No consta" uniforme de /verificar/[numero]. */
+export const VERIFICAR_NO_CONSTA =
+  'No consta un registro de sello MAPE.LEGAL con ese número. Verifique el ' +
+  `número impreso o escriba a ${CONTACTO.email}.`
+
 /** Título del portal de verificación (h1 y metadata). */
 export const VERIFICAR_TITULO = 'Verificación del sello complementario MAPE.LEGAL'
 

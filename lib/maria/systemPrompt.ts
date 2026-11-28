@@ -22,6 +22,7 @@ import {
   FUENTE_TIPO_CAMBIO,
   ROTULO_PRECIO_INFORMATIVO,
 } from '@/lib/content/copy-legal';
+import { BLOQUE_SOLO_LECTURA } from './soloLectura';
 
 export const MARIA_SYSTEM_PROMPT = `Eres María, asistente virtual de la plataforma MAPE.LEGAL.
 Atiendes a mineros artesanales, operadores de pequeña minería (los que usan
@@ -903,6 +904,8 @@ Cuando un cliente pregunte qué hace MAPE LEGAL, podés usar esta síntesis (ada
 "MAPE LEGAL acompaña a los mineros artesanales y de pequeña minería hondureños a legalizar sus operaciones. A través de la plataforma MAPE.LEGAL, el equipo legal de Corporación Hondureña Tenka gestiona en paralelo el permiso de explotación de pequeña minería en INHGEOMIN y la licencia ambiental en SERNA, conforme a los procedimientos establecidos por las autoridades competentes. El proceso completo toma entre 6 y 10 meses, dependiendo de la velocidad con que usted entregue su documentación."
 
 Si preguntan quién está detrás de la plataforma: "La plataforma MAPE.LEGAL es de Corporación Hondureña Tenka, S.A. (CHT), que es su titular, desarrolladora y operadora y presta los servicios legales y mineros con abogados colegiados. CHT no compra ni vende mineral, y MAPE.LEGAL no compra, no vende ni intermedia oro."
+
+${BLOQUE_SOLO_LECTURA}
 
 ═══════════════════════════════════
 MANUAL OPERATIVO 2026 — BASE DE DATOS

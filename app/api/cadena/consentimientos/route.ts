@@ -9,6 +9,7 @@
 //      (sin subida de archivos en esta etapa, igual que /api/certificados).
 // Revocación: POST /api/cadena/consentimientos/[id]/revocar.
 
+import { rolesCon } from '@/lib/acceso/personal';
 import { NextResponse } from 'next/server';
 import { iniciarSesionCadena, leerJson, respuestaErrorDb } from '@/lib/cadena/apiUtils';
 import { registrarAcceso } from '@/lib/cadena/bitacora';
@@ -53,7 +54,9 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const s = await iniciarSesionCadena('admin', 'abogado');
+  // El consentimiento lo REGISTRA el personal adjuntando el documento firmado;
+  // el titular no lo teclea (matriz de lib/acceso/personal.ts).
+  const s = await iniciarSesionCadena(...rolesCon('consentimiento:registrar'));
   if (s instanceof NextResponse) return s;
   const { ctx, admin } = s;
 

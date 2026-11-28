@@ -17,6 +17,7 @@ import {
   type AlcanceConsentimiento,
   type TipoOrganizacion,
   type Organizacion,
+  type TipoEventoRecepcion,
 } from '@/lib/cadena/types';
 
 /* ── Estilos (tokens) ─────────────────────────────────────────────────── */
@@ -71,12 +72,19 @@ export const ROL_LABEL_CADENA: Record<string, string> = {
   comercializador: 'Comercializador',
   planta: 'Planta de beneficio participante',
   auditor: 'Auditor externo',
+  verificador: 'Verificador',
+  recepcion: 'Personal de recepción',
 };
 
 export const TIPO_ORG_LABEL: Record<TipoOrganizacion, string> = {
   comercializador: 'Comercializador',
   planta: 'Planta de beneficio participante',
   auditor: 'Auditor externo',
+  laboratorio: 'Laboratorio',
+  centro_acopio: 'Centro de acopio',
+  cooperativa: 'Cooperativa',
+  municipio: 'Municipio',
+  otro: 'Otra organización',
 };
 
 export const ESTADO_LOTE_LABEL: Record<EstadoLote, string> = {
@@ -93,7 +101,7 @@ export const ESTADO_LOTE_TOKEN: Record<EstadoLote, string> = {
   cerrado: 'var(--slate)',
 };
 
-export const TIPO_EVENTO_LABEL: Record<TipoEvento, string> = {
+export const TIPO_EVENTO_LABEL: Record<TipoEvento | TipoEventoRecepcion, string> = {
   origen_mina: 'Origen en mina',
   acopio: 'Acopio',
   transporte: 'Transporte',
@@ -104,6 +112,15 @@ export const TIPO_EVENTO_LABEL: Record<TipoEvento, string> = {
   pago: 'Pago del lote',
   correccion: 'Corrección',
   nota: 'Nota',
+  // Recepción física hasta el laboratorio (047).
+  recepcion: 'Recepción registrada',
+  pesaje: 'Pesaje',
+  analisis: 'Análisis de ley',
+  etiquetado: 'Etiquetado por origen',
+  empaque_sobre: 'Sobre preparado',
+  empaque_caja: 'Caja cerrada con manifiesto',
+  envio_laboratorio: 'Envío al laboratorio',
+  recepcion_laboratorio: 'Recepción en laboratorio',
 };
 
 export const TIPO_ALERTA_LABEL: Record<TipoAlerta, string> = {

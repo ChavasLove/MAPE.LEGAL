@@ -25,7 +25,13 @@ export const CADENA_ROLES: ReadonlyArray<Role> = ['comercializador', 'planta', '
 // Roles que el layout de /dashboard acepta. Los roles de cadena entran al
 // dashboard (su home es /dashboard/cadena); el nav se filtra por rol en el
 // layout. `cliente` sigue en /portal.
-export const DASHBOARD_ROLES: ReadonlyArray<Role> = [...STAFF_ROLES, ...CADENA_ROLES];
+/** Personal de recepción y verificación (reestructura 2026-11-28, migración 045). */
+export const RECEPCION_ROLES: ReadonlyArray<Role> = ['verificador', 'recepcion'];
+
+/** Todo el personal: los únicos roles que cargan datos de trazabilidad. */
+export const PERSONAL_ROLES: ReadonlyArray<Role> = [...STAFF_ROLES, ...RECEPCION_ROLES];
+
+export const DASHBOARD_ROLES: ReadonlyArray<Role> = [...STAFF_ROLES, ...CADENA_ROLES, ...RECEPCION_ROLES];
 
 export interface AuthContext {
   user: User;
