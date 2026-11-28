@@ -1,7 +1,15 @@
-import EnImplementacion from '@/components/recepcion/EnImplementacion';
+import { redirect } from 'next/navigation';
+import { getServerAuth } from '@/lib/serverAuth';
+import { puede } from '@/lib/acceso/personal';
+import AprobacionesClient from './AprobacionesClient';
 
 export const dynamic = 'force-dynamic';
 
-export default function Page() {
-  return <EnImplementacion titulo="Aprobaciones de perfiles" detalle="La cola de aprobación de perfiles se habilita en la siguiente etapa de esta reestructura." />;
+// Cola de aprobaciones de perfiles. Solo personal con `perfil:ver`; la API
+// vuelve a exigir el rol en cada llamada.
+export default async function AprobacionesPage() {
+  const auth = await getServerAuth();
+  if (!auth) redirect('/login?from=/dashboard/aprobaciones');
+  if (!puede(auth.role, 'perfil:ver')) redirect('/dashboard');
+  return <AprobacionesClient />;
 }
