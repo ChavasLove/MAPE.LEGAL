@@ -15,6 +15,14 @@
 export const ROLES_CADENA = ['comercializador', 'planta', 'auditor'] as const;
 export type RolCadena = (typeof ROLES_CADENA)[number];
 
+/**
+ * Roles de PERSONAL de recepción y verificación (reestructura 2026-11-28,
+ * migración 045). No son roles de organización externa: cargan datos y
+ * aprueban perfiles. Sus permisos viven en lib/acceso/personal.ts.
+ */
+export const ROLES_RECEPCION = ['verificador', 'recepcion'] as const;
+export type RolRecepcion = (typeof ROLES_RECEPCION)[number];
+
 /** Tipo de organización (tabla organizaciones.tipo). */
 export const TIPOS_ORGANIZACION = ['comercializador', 'planta', 'auditor'] as const;
 export type TipoOrganizacion = (typeof TIPOS_ORGANIZACION)[number];

@@ -421,14 +421,24 @@ function LoginForm() {
 
             <div className="mt-5 pt-5 text-center" style={{ borderTop: `1px solid ${C.border}` }}>
               <p className="text-sm" style={{ color: C.textMuted }}>
-                ¿No tienes cuenta?{' '}
+                <button
+                  type="button"
+                  onClick={() => router.push('/auth/codigo')}
+                  className="font-semibold cursor-pointer hover:underline"
+                  style={{ color: C.primary }}
+                >
+                  Entrar con un código al correo
+                </button>
+              </p>
+              <p className="text-sm mt-2" style={{ color: C.textMuted }}>
+                ¿No tiene acceso?{' '}
                 <button
                   type="button"
                   onClick={() => router.push('/auth/registro')}
                   className="font-semibold cursor-pointer hover:underline"
                   style={{ color: C.primary }}
                 >
-                  Crear cuenta
+                  Solicitar acceso
                 </button>
               </p>
             </div>

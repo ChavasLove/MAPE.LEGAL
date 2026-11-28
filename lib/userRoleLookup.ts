@@ -27,7 +27,11 @@ export type Role =
   | 'cliente'
   | 'comercializador'
   | 'planta'
-  | 'auditor';
+  | 'auditor'
+  // Personal de la reestructura 2026-11-28 (migración 045): `verificador`
+  // aprueba perfiles; `recepcion` carga perfiles y registra recepciones.
+  | 'verificador'
+  | 'recepcion';
 
 /** Lista cerrada de roles válidos — fuente única para allowlists de validación. */
 export const KNOWN_ROLES: ReadonlyArray<Role> = [
@@ -38,6 +42,8 @@ export const KNOWN_ROLES: ReadonlyArray<Role> = [
   'comercializador',
   'planta',
   'auditor',
+  'verificador',
+  'recepcion',
 ];
 
 export type RoleLookupOk = {
