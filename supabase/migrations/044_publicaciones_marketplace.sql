@@ -36,6 +36,14 @@
 -- RLS (sin BYPASSRLS en el service_role del proyecto — patrón 019/025/030/043):
 --   - autor (authenticated, NO personal de CHT): inserta, lee y edita SOLO lo
 --     suyo (autor_user_id = auth.uid()); "retirar" = estado 'retirada'.
+--   - todo INSERT nace en estado 'borrador'. El BEFORE INSERT reescribe el
+--     estado aunque el cliente envíe 'publicada' (un CHECK no puede
+--     reescribir el valor; la policy de INSERT exige estado = 'borrador'
+--     por si el trigger no corriera). Pasar a 'publicada' solo mediante
+--     publicar_publicacion_marketplace(), SECURITY DEFINER con search_path
+--     fijo y EXECUTE únicamente del rol moderador_publicaciones (NOLOGIN,
+--     sin miembros: quién modera es decisión de Willis; esta migración no
+--     asigna el rol). Tope: 10 publicaciones por autor cada 24 horas.
 --   - anon: SIN privilegios sobre la tabla base (ni SELECT de tabla ni por
 --     columna, así la API REST no puede pedir autor_user_id ni notas). Solo
 --     lee la vista publicaciones_marketplace_publicas, con security_invoker
@@ -43,9 +51,9 @@
 --     lista de columnas no incluye autor_user_id ni notas).
 --   - authenticated: lee la tabla según RLS (lo suyo, lo público vigente y,
 --     si es personal de CHT, todo) y también la vista.
---   - personal de CHT (is_internal_staff): solo lectura (moderación); NO
---     inserta ni edita: no "carga el precio del día" ni sustituye el precio
---     informativo de la Fase 1.
+--   - personal de CHT (is_internal_staff): solo lectura. No inserta, no edita
+--     y no publica: publicar no es un permiso de staff. No "carga el precio
+--     del día" ni sustituye el precio informativo de la Fase 1.
 --   - service_role: FOR ALL, pero sin DELETE/TRUNCATE para nadie: el retiro es
 --     un estado, igual que en precios_referencia (030).
 --
@@ -183,6 +191,28 @@ set search_path = public
 as $$
 begin
   new.updated_at := now();
+
+  if tg_op = 'INSERT' then
+    -- Forzado: aunque el cliente (o service_role) envíe 'publicada'.
+    -- Un CHECK solo rechazaría la fila; aquí el estado que queda es borrador.
+    new.estado := 'borrador';
+    new.publicada_en := null;
+    new.retirada_en := null;
+    if new.autor_user_id is not null then
+      -- Serializa los altas del mismo autor para que el tope no se pase en paralelo.
+      perform pg_advisory_xact_lock(hashtextextended(new.autor_user_id::text, 0));
+      if (
+        select count(*)
+          from public.publicaciones_marketplace p
+         where p.autor_user_id = new.autor_user_id
+           and p.created_at > now() - interval '24 hours'
+      ) >= 10 then
+        raise exception 'publicaciones: límite de 10 publicaciones por usuario cada 24 horas'
+          using errcode = '23514';
+      end if;
+    end if;
+  end if;
+
   if tg_op = 'UPDATE' then
     -- El autor no cambia nunca.
     if new.autor_user_id is distinct from old.autor_user_id then
@@ -192,7 +222,23 @@ begin
     if old.estado = 'retirada' and new.estado is distinct from 'retirada' then
       raise exception 'publicaciones: una publicación retirada no se reactiva; cree una nueva' using errcode = '23514';
     end if;
+    -- Pasar a publicada solo si la función moderadora dejó el token de esta
+    -- transacción. Un GUC suelto no alcanza: el cliente puede hacer set_config.
+    -- El token vive en una tabla sin GRANT; solo estas funciones (dueño) lo leen.
+    if new.estado = 'publicada' and old.estado is distinct from 'publicada' then
+      if old.estado is distinct from 'borrador' then
+        raise exception 'publicaciones: solo un borrador puede pasar a publicada' using errcode = '23514';
+      end if;
+      if current_setting('publicaciones.publicar_token', true)
+         is distinct from (
+           select t.token::text from public.publicaciones_publicacion_token t where t.id
+         ) then
+        raise exception 'publicaciones: pasar a publicada solo mediante publicar_publicacion_marketplace()'
+          using errcode = '42501';
+      end if;
+    end if;
   end if;
+
   if new.estado = 'publicada' and (tg_op = 'INSERT' or old.estado is distinct from 'publicada') then
     new.publicada_en := coalesce(new.publicada_en, now());
   end if;
@@ -203,6 +249,74 @@ begin
 end;
 $$;
 alter function public.fn_publicaciones_touch() owner to postgres;
+
+-- Token de un solo uso lógico por transacción. Sin GRANT y con RLS sin
+-- policies: anon, authenticated y service_role no lo leen. El dueño
+-- (funciones SECURITY DEFINER) sí. Re-aplicar esta migración no asigna
+-- ni revoca miembros del rol moderador.
+create table if not exists public.publicaciones_publicacion_token (
+  id boolean primary key default true,
+  token uuid not null default gen_random_uuid(),
+  constraint publicaciones_publicacion_token_singleton check (id)
+);
+insert into public.publicaciones_publicacion_token (id)
+select true
+where not exists (select 1 from public.publicaciones_publicacion_token where id);
+alter table public.publicaciones_publicacion_token owner to postgres;
+alter table public.publicaciones_publicacion_token enable row level security;
+revoke all on table public.publicaciones_publicacion_token from public, anon, authenticated, service_role;
+comment on table public.publicaciones_publicacion_token is
+  'Token interno para publicar_publicacion_marketplace(). No es una publicación y no se expone por la API.';
+
+-- Rol moderador. NOLOGIN. Esta migración no hace GRANT del rol a nadie:
+-- quién puede publicar es decisión de Willis.
+do $$
+begin
+  if not exists (select 1 from pg_roles where rolname = 'moderador_publicaciones') then
+    create role moderador_publicaciones nologin;
+  end if;
+end $$;
+alter role moderador_publicaciones nologin;
+comment on role moderador_publicaciones is
+  'EXECUTE de publicar_publicacion_marketplace(). Sin miembros asignados por la migración 044.';
+
+create or replace function public.publicar_publicacion_marketplace(p_id uuid)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  tok uuid := gen_random_uuid();
+  fila_id uuid;
+begin
+  if p_id is null then
+    raise exception 'publicaciones: id requerido' using errcode = '23514';
+  end if;
+  update public.publicaciones_publicacion_token
+     set token = tok
+   where id;
+  if not found then
+    raise exception 'publicaciones: falta la fila de token de publicación' using errcode = '55000';
+  end if;
+  -- is_local = true: el token muere al cerrar la transacción.
+  perform set_config('publicaciones.publicar_token', tok::text, true);
+  update public.publicaciones_marketplace
+     set estado = 'publicada'
+   where id = p_id
+     and estado = 'borrador'
+  returning id into fila_id;
+  if fila_id is null then
+    raise exception 'publicaciones: solo se publica un borrador existente' using errcode = '23514';
+  end if;
+  return fila_id;
+end;
+$$;
+alter function public.publicar_publicacion_marketplace(uuid) owner to postgres;
+revoke all on function public.publicar_publicacion_marketplace(uuid) from public, anon, authenticated, service_role;
+grant execute on function public.publicar_publicacion_marketplace(uuid) to moderador_publicaciones;
+comment on function public.publicar_publicacion_marketplace(uuid) is
+  'Pasa un borrador a publicada. SECURITY DEFINER, search_path fijo. EXECUTE solo de moderador_publicaciones.';
 
 drop trigger if exists trg_publicaciones_touch on public.publicaciones_marketplace;
 create trigger trg_publicaciones_touch
@@ -279,7 +393,11 @@ create policy publicaciones_autor_read_own on public.publicaciones_marketplace
 drop policy if exists publicaciones_autor_insert_own on public.publicaciones_marketplace;
 create policy publicaciones_autor_insert_own on public.publicaciones_marketplace
   for insert to authenticated
-  with check (autor_user_id = auth.uid() and not public.is_internal_staff());
+  with check (
+    autor_user_id = auth.uid()
+    and estado = 'borrador'
+    and not public.is_internal_staff()
+  );
 
 drop policy if exists publicaciones_autor_update_own on public.publicaciones_marketplace;
 create policy publicaciones_autor_update_own on public.publicaciones_marketplace

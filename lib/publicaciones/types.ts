@@ -67,6 +67,12 @@ export const ETIQUETAS_PRECIO_UNIDAD: Record<PrecioUnidad, string> = {
 export const NOMBRE_MIN = 2;
 export const NOMBRE_MAX = 120;
 
+/**
+ * Tope de altas por autor en 24 horas (trigger de la 044). El INSERT siempre
+ * queda en borrador; este número cuenta borradores, publicadas y retiradas.
+ */
+export const LIMITE_PUBLICACIONES_POR_24H = 10;
+
 /** Datos que un participante escribe en su publicación. */
 export interface PublicacionInput {
   participante_nombre: string;
@@ -167,12 +173,18 @@ export function esVigente(
 }
 
 /**
- * Transiciones de estado permitidas (mismas que el trigger de la 044):
- * borrador → publicada | retirada; publicada → retirada; retirada → nada.
+ * Transiciones de estado (trigger de la 044).
+ * El autor puede retirar. Pasar de borrador a publicada no es una transición
+ * suya: solo `publicar_publicacion_marketplace()`, con `{ porModerador: true }`.
  */
-export function transicionPermitida(de: PublicacionEstado, a: PublicacionEstado): boolean {
+export function transicionPermitida(
+  de: PublicacionEstado,
+  a: PublicacionEstado,
+  opts?: { porModerador?: boolean },
+): boolean {
   if (de === a) return true;
-  if (de === 'borrador') return a === 'publicada' || a === 'retirada';
+  if (de === 'borrador' && a === 'publicada') return opts?.porModerador === true;
+  if (de === 'borrador') return a === 'retirada';
   if (de === 'publicada') return a === 'retirada';
   return false;
 }

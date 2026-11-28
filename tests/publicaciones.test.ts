@@ -11,6 +11,7 @@ import {
   esVigente,
   transicionPermitida,
   puedeEscribir,
+  LIMITE_PUBLICACIONES_POR_24H,
   PUBLICACION_ESTADOS,
   PUBLICACION_TIPOS,
   PARTICIPANTE_TIPOS,
@@ -74,12 +75,15 @@ describe('vigencia y transiciones', () => {
     assert.ok(!esVigente({ ...p, estado: 'borrador' }, '2026-11-28'));
     assert.ok(!esVigente({ ...p, estado: 'retirada' }, '2026-11-28'));
   });
-  test('retirada es terminal; borrador puede publicarse o retirarse', () => {
-    assert.ok(transicionPermitida('borrador', 'publicada'));
+  test('el autor retira; pasar a publicada solo con la función del moderador', () => {
+    assert.ok(!transicionPermitida('borrador', 'publicada'));
+    assert.ok(transicionPermitida('borrador', 'publicada', { porModerador: true }));
+    assert.ok(!transicionPermitida('borrador', 'publicada', { porModerador: false }));
     assert.ok(transicionPermitida('borrador', 'retirada'));
     assert.ok(transicionPermitida('publicada', 'retirada'));
     assert.ok(!transicionPermitida('publicada', 'borrador'));
     assert.ok(!transicionPermitida('retirada', 'publicada'));
+    assert.ok(!transicionPermitida('retirada', 'publicada', { porModerador: true }));
     assert.ok(!transicionPermitida('retirada', 'borrador'));
   });
   test('escribe solo el autor y nunca el personal de CHT', () => {
@@ -120,6 +124,16 @@ describe('contrato con la migración 044 (sin aplicarla)', () => {
     assert.match(sql, /revoke delete, truncate on table public\.publicaciones_marketplace from public, anon, authenticated, service_role;/);
     assert.ok(!/for delete/i.test(sql), 'sin policy de DELETE');
     assert.match(sql, /with check \(autor_user_id = auth\.uid\(\) and not public\.is_internal_staff\(\)\)/);
+    assert.match(sql, /and estado = 'borrador'/);
+    assert.match(sql, /new\.estado := 'borrador'/);
+    assert.match(sql, /create or replace function public\.publicar_publicacion_marketplace\(p_id uuid\)/);
+    assert.match(sql, /revoke all on function public\.publicar_publicacion_marketplace\(uuid\) from public, anon, authenticated, service_role;/);
+    assert.match(sql, /grant execute on function public\.publicar_publicacion_marketplace\(uuid\) to moderador_publicaciones;/);
+    assert.ok(!/grant moderador_publicaciones to/i.test(sql), 'la migración no asigna el rol moderador');
+    assert.match(sql, /create role moderador_publicaciones nologin/);
+    assert.equal(LIMITE_PUBLICACIONES_POR_24H, 10);
+    assert.match(sql, />= 10/);
+    assert.match(sql, /interval '24 hours'/);
     assert.match(sql, /create policy publicaciones_staff_read[\s\S]*for select to authenticated[\s\S]*using \(public\.is_internal_staff\(\)\);/);
   });
   test('toda función SECURITY DEFINER fija search_path', () => {
