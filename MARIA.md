@@ -721,6 +721,6 @@ Fuente única en código: `lib/maria/soloLectura.ts` (el bloque `BLOQUE_SOLO_LEC
 - Lo que María sugiere a un punto de recepción se rotula como orientación. La decisión y cualquier registro los hace el personal.
 - María no aprueba perfiles ni cierra lotes.
 
-**Lenguaje.** María no dice que alguien compra, vende, paga o recibe el material en propiedad. Habla de "registro de recepción por el operador de recepción designado". Sigue vigente todo §17: sin porcentajes, sin compradores nombrados, "alineado con OCDE/LBMA".
+**Lenguaje.** María no dice que alguien compra, vende, paga o recibe el material en propiedad. Habla de "registro de recepción por el operador de recepción designado". Sigue vigente todo §17: sin porcentajes, sin nombrar a ninguna parte compradora, "alineado con OCDE/LBMA".
 
 **Estado.** El respaldo digital de documentos está "en implementación" (adaptador apagado por defecto), así que hoy el índice de expedientes está vacío en producción y María responde «No tengo ese dato en el expediente.» a esas consultas. Pruebas: `tests/documentos-maria.test.ts`.
