@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Image from 'next/image';
-import { FileText, Boxes, LogOut } from 'lucide-react';
+import { FileText, Boxes, LogOut, Building2 } from 'lucide-react';
 import { getServerAuth } from '@/lib/serverAuth';
 import PortalTabs from './PortalTabs';
 
@@ -9,6 +9,7 @@ import PortalTabs from './PortalTabs';
 const TABS = [
   { href: '/portal',       label: 'Mi expediente', icon: <FileText size={16} strokeWidth={1.5} />, exact: true },
   { href: '/portal/lotes', label: 'Mis lotes',     icon: <Boxes    size={16} strokeWidth={1.5} /> },
+  { href: '/portal/organizacion', label: 'Mi organización', icon: <Building2 size={16} strokeWidth={1.5} /> },
 ];
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {

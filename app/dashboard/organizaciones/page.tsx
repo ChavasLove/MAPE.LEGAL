@@ -1,7 +1,13 @@
-import EnImplementacion from '@/components/recepcion/EnImplementacion';
+import { redirect } from 'next/navigation';
+import { getServerAuth } from '@/lib/serverAuth';
+import { puede } from '@/lib/acceso/personal';
+import OrganizacionesClient from './OrganizacionesClient';
 
 export const dynamic = 'force-dynamic';
 
-export default function Page() {
-  return <EnImplementacion titulo="Organizaciones" detalle="La gestión de organizaciones, membresías e invitaciones se habilita en una etapa posterior de esta reestructura." />;
+export default async function OrganizacionesPage() {
+  const auth = await getServerAuth();
+  if (!auth) redirect('/login?from=/dashboard/organizaciones');
+  if (!puede(auth.role, 'perfil:ver')) redirect('/dashboard');
+  return <OrganizacionesClient />;
 }

@@ -9,6 +9,7 @@ import { canonicalJson, hashEvento, verificarCadena } from '@/lib/cadena/hash';
 import { TIPOS_EVENTO_RECEPCION } from '@/lib/cadena/types';
 import { construirManifiesto } from '@/lib/recepcion/manifiesto';
 import { conciliarManifiesto } from '@/lib/recepcion/reglas';
+import { generarTokenInvitacion, hashTokenInvitacion } from '@/lib/organizaciones/invitaciones';
 
 const db = new BaseEfimera();
 
@@ -33,6 +34,7 @@ const MIGRACIONES = [
   '045_acceso_otp_y_roles.sql',
   '046_perfiles_aprobacion.sql',
   '047_recepcion_custodia.sql',
+  '048_organizaciones_membresias.sql',
 ];
 
 describe('migraciones de la reestructura (PostgreSQL efímero)', { skip: SIN_POSTGRES }, () => {
@@ -47,6 +49,7 @@ describe('migraciones de la reestructura (PostgreSQL efímero)', { skip: SIN_POS
       db.aplicar(migracion(m), `${m} (2ª pasada, idempotencia)`);
       if (m.startsWith('045')) db.aplicar(sqlDePrueba('reestructura_seed_045.sql'), 'seed 045');
       if (m.startsWith('047')) db.aplicar(sqlDePrueba('reestructura_seed_047.sql'), 'seed 047');
+      if (m.startsWith('048')) db.aplicar(sqlDePrueba('reestructura_seed_048.sql'), 'seed 048');
     }
   });
 
@@ -548,5 +551,144 @@ describe('migraciones de la reestructura (PostgreSQL efímero)', { skip: SIN_POS
     // Lo de la 043 sigue intacto.
     assert.equal(Number(db.su(`select count(*) from information_schema.tables where table_name='pagos_lote'`)), 1);
     assert.ok(db.su(`select pg_get_functiondef('public.registrar_pago_lote(uuid,text,text,numeric,text,date,uuid)'::regprocedure)`).length > 0);
+  });
+
+  /* ── 048 ─────────────────────────────────────────────────────────────── */
+
+  const COOP = { X: 'b0000000-0000-4000-8000-000000000021', Y: 'b0000000-0000-4000-8000-000000000022' };
+  const MUNI = 'b0000000-0000-4000-8000-000000000023';
+  const altaMembresia = (org: string, sujeto: { perfil?: string; user?: string }, rol: string, actor: string) =>
+    db.servicio(`insert into public.membresias_organizacion (organizacion_id, perfil_id, user_id, rol_en_organizacion, alta_por, ultimo_actor, estado)
+      values ('${org}', ${sujeto.perfil ? `'${sujeto.perfil}'` : 'null'}, ${sujeto.user ? `'${sujeto.user}'` : 'null'}, '${rol}', '${actor}', '${actor}', 'activa') returning id`);
+  const cambiar = (id: string, estado: string, actor: string, motivo: string | null = null) =>
+    `update public.membresias_organizacion set estado='${estado}', ultimo_actor='${actor}'${motivo ? `, motivo_baja='${motivo}'` : ''} where id='${id}'`;
+
+  let membA = '';
+  let membB = '';
+
+  test('048: tipos de organización nuevos sobre la MISMA tabla; un tipo inventado se rechaza', () => {
+    assert.equal(Number(db.su(`select count(*) from public.organizaciones where tipo in ('cooperativa','municipio','otro','laboratorio')`)), 5);
+    assert.match(db.suFalla(`insert into public.organizaciones (tipo, nombre) values ('empresa_x', 'No')`), /organizaciones_tipo_check/);
+    // Las de la 043 siguen ahí y sus usuarios conservan su organización.
+    assert.equal(Number(db.su(`select count(*) from public.user_roles where rol='comercializador' and organizacion_id='${ORG.A}'`)), 1);
+    assert.equal(Number(db.su(`select count(*) from information_schema.tables where table_schema='public' and table_name ~ '^organizacion' and table_name <> 'organizaciones'`)), 0);
+  });
+
+  test('048: la membresía nace pendiente aunque se pida activa; sujeto único', () => {
+    const perfilA = db.su(`select id from public.perfiles where cliente_id='${CLI.A}'`);
+    const perfilB = db.su(`select id from public.perfiles where cliente_id='${CLI.B}'`);
+    membA = altaMembresia(COOP.X, { perfil: perfilA }, 'representante', U.abogado);
+    membB = altaMembresia(COOP.Y, { perfil: perfilB }, 'representante', U.abogado);
+    assert.equal(db.su(`select estado || '|' || coalesce(activada_por::text,'null') from public.membresias_organizacion where id='${membA}'`), 'pendiente|null');
+    db.servicioFalla(`insert into public.membresias_organizacion (organizacion_id, perfil_id, user_id, alta_por, ultimo_actor) values ('${COOP.X}', '${perfilA}', '${U.clienteA}', '${U.abogado}', '${U.abogado}')`);
+    db.servicioFalla(`insert into public.membresias_organizacion (organizacion_id, alta_por, ultimo_actor) values ('${COOP.X}', '${U.abogado}', '${U.abogado}')`);
+    // No se duplica una membresía viva del mismo sujeto en la misma organización.
+    db.servicioFalla(`insert into public.membresias_organizacion (organizacion_id, perfil_id, alta_por, ultimo_actor) values ('${COOP.X}', '${perfilA}', '${U.abogado}', '${U.abogado}')`);
+  });
+
+  test('048: transiciones — activa solo un verificador distinto de quien dio el alta; baja con motivo; baja terminal', () => {
+    assert.match(db.servicioFalla(cambiar(membA, 'activa', U.recepcionA)), /activacion_no_autorizada/);
+    db.su(`update public.user_roles set rol='admin' where user_id='${U.abogado}'`);
+    assert.match(db.servicioFalla(cambiar(membA, 'activa', U.abogado)), /separacion_de_funciones/);
+    db.su(`update public.user_roles set rol='abogado' where user_id='${U.abogado}'`);
+    assert.match(db.servicioFalla(cambiar(membA, 'baja', U.abogado)), /motivo_obligatorio/);
+    db.servicio(cambiar(membA, 'activa', U.verificador));
+    db.servicio(cambiar(membB, 'activa', U.verificador));
+    assert.equal(db.su(`select estado || '|' || activada_por from public.membresias_organizacion where id='${membA}'`), `activa|${U.verificador}`);
+    assert.match(db.servicioFalla(cambiar(membA, 'pendiente', U.verificador)), /transicion_invalida/);
+    assert.match(db.servicioFalla(`update public.membresias_organizacion set organizacion_id='${COOP.Y}' where id='${membA}'`), /no cambian/);
+    assert.match(db.suFalla(`delete from public.membresias_organizacion where id='${membA}'`), /indeleble/);
+    // Baja de una tercera membresía y su carácter terminal.
+    const m3 = altaMembresia(COOP.X, { user: U.auditor }, 'contacto', U.abogado);
+    db.servicio(cambiar(m3, 'baja', U.abogado, 'solicitud de salida'));
+    assert.match(db.servicioFalla(cambiar(m3, 'activa', U.verificador)), /transicion_invalida/);
+    assert.match(db.servicioFalla(`update public.membresias_organizacion set rol_en_organizacion='miembro' where id='${m3}'`), /transicion_invalida/);
+  });
+
+  test('048: bitácora de membresías — quién, qué, de/hacia estado; sin UPDATE ni DELETE', () => {
+    const filas = db.su(`select string_agg(cambio || ':' || coalesce(de_estado,'-') || '>' || a_estado || ':' || actor_user_id || ':' || coalesce(actor_rol,'-'), ',' order by created_at, cambio)
+                           from public.membresias_bitacora where membresia_id='${membA}'`);
+    assert.equal(filas, `alta:->pendiente:${U.abogado}:abogado,activacion:pendiente>activa:${U.verificador}:verificador`);
+    assert.match(db.suFalla(`update public.membresias_bitacora set cambio='x'`), /append-only/);
+    assert.match(db.suFalla(`delete from public.membresias_bitacora`), /append-only/);
+    assert.match(db.servicioFalla(`delete from public.membresias_bitacora`), /permission denied/);
+    assert.equal(db.contar(U.clienteA, 'membresias_bitacora'), 0);
+    assert.ok(db.contar(U.verificador, 'membresias_bitacora') >= 4);
+  });
+
+  test('048: aislamiento — la organización X no ve los miembros de la organización Y', () => {
+    // clienteA representa (activa) a la cooperativa X; clienteB a la Y.
+    assert.equal(db.usuario(U.clienteA, `select public.representa_organizacion('${COOP.X}')`), 't');
+    assert.equal(db.usuario(U.clienteA, `select public.representa_organizacion('${COOP.Y}')`), 'f');
+    assert.equal(db.contar(U.clienteA, 'membresias_organizacion', `organizacion_id='${COOP.Y}'`), 0);
+    assert.equal(db.contar(U.clienteB, 'membresias_organizacion', `organizacion_id='${COOP.X}'`), 0);
+    assert.ok(db.contar(U.clienteA, 'membresias_organizacion', `organizacion_id='${COOP.X}'`) >= 1);
+    assert.equal(db.contar(U.clienteB, 'membresias_organizacion'), 1);
+    // Un tercero sin pertenencia no ve nada; el personal ve todo.
+    assert.equal(db.contar(U.comA, 'membresias_organizacion'), 0);
+    assert.ok(db.contar(U.verificador, 'membresias_organizacion') >= 3);
+    // Nadie autenticado escribe.
+    for (const u of [U.clienteA, U.comA, U.recepcionA, U.verificador, U.admin]) {
+      db.usuarioFalla(u, `insert into public.membresias_organizacion (organizacion_id, user_id, alta_por, ultimo_actor) values ('${COOP.X}', '${u}', '${u}', '${u}')`);
+      db.usuarioFalla(u, cambiar(membA, 'baja', u, 'intento directo'));
+    }
+  });
+
+  test('048: invitación — token solo como hash, un solo uso, expira, y aceptar NO da derechos', () => {
+    const emitir = (correo: string, expira: string, org = COOP.X) => {
+      const t = generarTokenInvitacion();
+      db.servicio(`insert into public.invitaciones_organizacion (organizacion_id, correo, token_hash, expira_en, emitida_por, estado)
+                   values ('${org}', '${correo}', '${t.hash}', ${expira}, '${U.abogado}', 'aceptada')`);
+      return t;
+    };
+    const aceptar = (hash: string, user: string) => db.json(`set role service_role; select public.aceptar_invitacion_organizacion('${hash}', '${user}')`);
+
+    const t = emitir('planta@test.local', `now() + interval '7 days'`);
+    assert.equal(hashTokenInvitacion(t.token), t.hash);
+    // Nace pendiente aunque se pida otra cosa; el token en claro no está en ninguna columna.
+    assert.equal(db.su(`select estado from public.invitaciones_organizacion where token_hash='${t.hash}'`), 'pendiente');
+    assert.equal(Number(db.su(`select count(*) from public.invitaciones_organizacion i where i::text like '%${t.token}%'`)), 0);
+    // El personal ve la invitación pero no puede leer el hash del token.
+    assert.ok(db.contar(U.abogado, 'invitaciones_organizacion') >= 1);
+    assert.match(db.usuarioFalla(U.abogado, `select token_hash from public.invitaciones_organizacion`), /permission denied/);
+    assert.match(db.usuarioFalla(U.planta, `select public.aceptar_invitacion_organizacion('${t.hash}', '${U.planta}')`), /permission denied/);
+
+    // Cuenta equivocada → rechazada y la invitación sigue disponible.
+    assert.equal(aceptar(t.hash, U.comA).motivo, 'correo_no_coincide');
+    assert.equal(aceptar('0'.repeat(64), U.planta).motivo, 'invitacion_invalida');
+    assert.equal(aceptar('no-es-hash', U.planta).motivo, 'invitacion_invalida');
+
+    const ok = aceptar(t.hash, U.planta);
+    assert.equal(ok.ok, true);
+    assert.equal(ok.estado_membresia, 'pendiente');
+    // Reuso → ya aceptada. Un solo uso.
+    assert.equal(aceptar(t.hash, U.planta).motivo, 'ya_aceptada');
+    assert.match(db.servicioFalla(`update public.invitaciones_organizacion set estado='pendiente' where token_hash='${t.hash}'`), /invitacion_ya_usada/);
+    // La membresía creada está PENDIENTE: sin activación no hay acceso a los miembros.
+    assert.equal(db.su(`select estado || '|' || alta_por from public.membresias_organizacion where id='${ok.membresia_id}'`), `pendiente|${U.abogado}`);
+    assert.equal(db.usuario(U.planta, `select public.representa_organizacion('${COOP.X}')`), 'f');
+    assert.equal(db.contar(U.planta, 'membresias_organizacion'), 1); // solo la suya
+    // Sigue sin poder escribir nada: ni perfiles, ni recepciones, ni membresías.
+    db.usuarioFalla(U.planta, `insert into public.perfiles (tipo, organizacion_id) values ('organizacion', '${COOP.X}')`);
+    db.usuarioFalla(U.planta, `update public.membresias_organizacion set estado='activa', ultimo_actor='${U.planta}' where id='${ok.membresia_id}'`);
+    // La activa un verificador (no quien emitió la invitación).
+    assert.match(db.servicioFalla(cambiar(String(ok.membresia_id), 'activa', U.abogado)), /activacion_no_autorizada|separacion_de_funciones/);
+    db.servicio(cambiar(String(ok.membresia_id), 'activa', U.verificador));
+
+    // Expirada.
+    const vencida = emitir('auditor@test.local', `now() - interval '1 minute'`);
+    assert.equal(aceptar(vencida.hash, U.auditor).motivo, 'expirada');
+    assert.equal(db.su(`select estado from public.invitaciones_organizacion where token_hash='${vencida.hash}'`), 'expirada');
+    assert.equal(aceptar(vencida.hash, U.auditor).motivo, 'expirada');
+    // Ya es miembro.
+    const repetida = emitir('planta@test.local', `now() + interval '1 day'`);
+    assert.equal(aceptar(repetida.hash, U.planta).motivo, 'ya_es_miembro');
+    assert.match(db.suFalla(`delete from public.invitaciones_organizacion`), /indeleble/);
+  });
+
+  test('048: un municipio no figura como parte compradora; el destino es un laboratorio', () => {
+    assert.match(db.servicioFalla(`insert into public.partes_flujo (papel, organizacion_id, punto_id) values ('parte_compradora', '${MUNI}', '${PUNTO.B}')`), /municipio_no_es_parte_compradora/);
+    assert.match(db.servicioFalla(`insert into public.partes_flujo (papel, organizacion_id, punto_id) values ('laboratorio_destino', '${MUNI}', '${PUNTO.B}')`), /destino_no_es_laboratorio/);
+    db.servicio(`insert into public.partes_flujo (papel, organizacion_id, punto_id) values ('operador_recepcion', '${COOP.Y}', '${PUNTO.B}')`);
   });
 });

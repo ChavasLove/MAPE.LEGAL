@@ -329,6 +329,37 @@ export function emailCodigoAcceso(correo: string, codigo: string, minutosVigenci
   });
 }
 
+/**
+ * Invitación a pertenecer a una organización. El enlace lleva un token de un
+ * solo uso; el asunto no nombra a la persona ni a la organización.
+ */
+export function emailInvitacionOrganizacion(correo: string, enlace: string, diasVigencia: number): Promise<void> {
+  return sendEmail({
+    to:      correo,
+    subject: 'Invitación a una organización · MAPE.LEGAL',
+    html: emailShell(`
+      <p style="margin:0 0 20px;color:#1F2A38;font-size:16px">
+        Le invitaron a figurar como integrante de una organización en MAPE.LEGAL.
+      </p>
+      <p style="margin:0 0 24px;color:#5E6B7B;font-size:15px;line-height:1.6">
+        Al aceptar, su pertenencia queda pendiente hasta que el equipo la verifique.
+        La pertenencia le permite consultar información; no le pide llenar datos.
+        El enlace sirve una sola vez y vence en ${esc(diasVigencia)} días.
+      </p>
+      <div style="text-align:center;margin-bottom:24px">
+        <a href="${esc(enlace)}"
+           style="display:inline-block;background:#1F2A38;color:#ffffff;text-decoration:none;
+                  font-size:15px;font-weight:700;padding:14px 32px;border-radius:8px">
+          Ver la invitación
+        </a>
+      </div>
+      <p style="margin:0;color:#A3A8AB;font-size:13px">
+        Si no esperaba este correo, ignórelo: sin aceptar no ocurre nada.
+      </p>
+    `),
+  });
+}
+
 /** Aviso al personal verificador: hay perfiles por revisar. Sin datos personales en el asunto ni en el cuerpo. */
 export function emailPerfilesPendientes(destinatarios: string[], cantidad: number, enlace: string): Promise<void> {
   return sendEmail({
