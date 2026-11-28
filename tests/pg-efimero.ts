@@ -30,7 +30,10 @@ function findPgBinDir(): string | null {
 }
 
 const PGTEST_URL = process.env.PGTEST_URL?.trim() || null;
-const PG_BIN = PGTEST_URL ? null : findPgBinDir();
+// Se PREFIERE un clúster local propio aunque exista PGTEST_URL: en CI esa URL
+// la comparte tests/rls-estandar-privado.test.ts, que recrea el esquema
+// `public`; dos suites en paralelo sobre la misma base se pisarían.
+const PG_BIN = findPgBinDir();
 const PSQL = which('psql') ?? (PG_BIN ? join(PG_BIN, 'psql') : null);
 
 /** Motivo para omitir la suite (undefined = se puede correr). */
@@ -57,11 +60,11 @@ export class BaseEfimera {
   private detener: () => void = () => {};
 
   iniciar(): void {
-    if (PGTEST_URL) {
-      this.psqlArgs = [PGTEST_URL];
+    if (!PG_BIN) {
+      if (!PGTEST_URL) throw new Error('sin PostgreSQL local');
+      this.iniciarEnBasePropia(PGTEST_URL);
       return;
     }
-    if (!PG_BIN) throw new Error('sin PostgreSQL local');
     const dir = mkdtempSync(join(tmpdir(), 'mape-reestructura-pg-'));
     const isRoot = typeof process.getuid === 'function' && process.getuid() === 0;
     if (isRoot) {
@@ -87,6 +90,26 @@ export class BaseEfimera {
       asPostgres(`${q(join(PG_BIN, 'pg_ctl'))} -D ${q(data)} -m immediate stop`);
       try { rmSync(dir, { recursive: true, force: true }); } catch { /* ignorar */ }
     };
+  }
+
+  /**
+   * Sin binarios locales: se usa el servidor de PGTEST_URL, pero en una base
+   * de datos PROPIA (nombre aleatorio), que se elimina al terminar. Los roles
+   * son del clúster: se crean tolerando que otra suite los cree a la vez.
+   */
+  private iniciarEnBasePropia(url: string): void {
+    if (!PSQL) throw new Error('psql no disponible');
+    const nombre = `mape_reestructura_${process.pid}_${Math.floor(Math.random() * 1e9)}`;
+    const admin = [url, '-X', '-q', '-v', 'ON_ERROR_STOP=1'];
+    const crear = sh(PSQL, [...admin, '-c', `create database ${nombre}`]);
+    if (crear.status !== 0) throw new Error(`no se pudo crear la base de pruebas: ${crear.stderr}`);
+    for (const rol of ['anon', 'authenticated', 'service_role']) {
+      sh(PSQL, [...admin, '-c', `do $$ begin create role ${rol} nologin; exception when others then null; end $$`]);
+    }
+    const propia = new URL(url);
+    propia.pathname = `/${nombre}`;
+    this.psqlArgs = [propia.toString()];
+    this.detener = () => { sh(PSQL, [...admin, '-c', `drop database if exists ${nombre} with (force)`]); };
   }
 
   parar(): void { this.detener(); }
