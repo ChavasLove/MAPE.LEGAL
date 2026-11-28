@@ -66,8 +66,10 @@ export function almacenOtpSupabase(admin: SupabaseClient): AlmacenOtp {
 }
 
 export class ErrorAlmacenOtp extends Error {
-  constructor(readonly codigo: string) {
+  readonly codigo: string;
+  constructor(codigo: string) {
     super(`almacén de OTP no disponible (${codigo})`);
+    this.codigo = codigo;
   }
 }
 

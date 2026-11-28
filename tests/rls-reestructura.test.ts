@@ -35,6 +35,7 @@ const MIGRACIONES = [
   '046_perfiles_aprobacion.sql',
   '047_recepcion_custodia.sql',
   '048_organizaciones_membresias.sql',
+  '049_documentos_respaldo_rag_acl.sql',
 ];
 
 describe('migraciones de la reestructura (PostgreSQL efímero)', { skip: SIN_POSTGRES }, () => {
@@ -50,6 +51,7 @@ describe('migraciones de la reestructura (PostgreSQL efímero)', { skip: SIN_POS
       if (m.startsWith('045')) db.aplicar(sqlDePrueba('reestructura_seed_045.sql'), 'seed 045');
       if (m.startsWith('047')) db.aplicar(sqlDePrueba('reestructura_seed_047.sql'), 'seed 047');
       if (m.startsWith('048')) db.aplicar(sqlDePrueba('reestructura_seed_048.sql'), 'seed 048');
+      if (m.startsWith('049')) db.aplicar(sqlDePrueba('reestructura_seed_049.sql'), 'seed 049');
     }
   });
 
@@ -690,5 +692,111 @@ describe('migraciones de la reestructura (PostgreSQL efímero)', { skip: SIN_POS
     assert.match(db.servicioFalla(`insert into public.partes_flujo (papel, organizacion_id, punto_id) values ('parte_compradora', '${MUNI}', '${PUNTO.B}')`), /municipio_no_es_parte_compradora/);
     assert.match(db.servicioFalla(`insert into public.partes_flujo (papel, organizacion_id, punto_id) values ('laboratorio_destino', '${MUNI}', '${PUNTO.B}')`), /destino_no_es_laboratorio/);
     db.servicio(`insert into public.partes_flujo (papel, organizacion_id, punto_id) values ('operador_recepcion', '${COOP.Y}', '${PUNTO.B}')`);
+  });
+
+  /* ── 049 ─────────────────────────────────────────────────────────────── */
+
+  const EXP = { A: 'f0000000-0000-4000-8000-000000000001', B: 'f0000000-0000-4000-8000-000000000002' };
+  const DOC = { licA: 'f0000000-0000-4000-8000-000000000012', notaA: 'f0000000-0000-4000-8000-000000000013', licB: 'f0000000-0000-4000-8000-000000000021', planta: 'f0000000-0000-4000-8000-000000000022' };
+  const respaldar = (doc: string, exp: string, nivel: string, org: string | null = null) =>
+    db.servicio(`insert into public.documentos_respaldo (documento_id, expediente_id, organizacion_id, almacen, referencia_externa, sha256, nivel_acceso, subido_por, version, vigente)
+                 values ('${doc}', '${exp}', ${org ? `'${org}'` : 'null'}, 'memoria', 'ref-${doc.slice(-4)}-' || gen_random_uuid(), '${'a'.repeat(64)}', '${nivel}', '${U.abogado}', 99, false) returning id`);
+  const indexar = (respaldo: string, orden: number, titulo: string, contenido: string) =>
+    db.servicio(`insert into public.documentos_fragmentos (documento_respaldo_id, documento_id, expediente_id, nivel_acceso, orden, titulo, version, contenido)
+                 values ('${respaldo}', gen_random_uuid(), gen_random_uuid(), 'titular', ${orden}, '${titulo}', 1, '${contenido}')`);
+  const buscar = (user: string, consulta = 'licencia ambiental vigente') =>
+    db.servicio(`select coalesce(string_agg(titulo, ',' order by titulo), '') from public.buscar_fragmentos_acl('${consulta}', '${user}', 10)`);
+
+  let rLicA = '';
+  let rNotaA = '';
+  let rLicB = '';
+  let rPlanta = '';
+
+  test('049: el respaldo deriva el titular del expediente, numera la versión y nace vigente', () => {
+    rLicA = respaldar(DOC.licA, EXP.A, 'titular');
+    rNotaA = respaldar(DOC.notaA, EXP.A, 'personal');
+    rLicB = respaldar(DOC.licB, EXP.B, 'titular');
+    rPlanta = respaldar(DOC.planta, EXP.B, 'organizacion', ORG.P);
+    assert.equal(db.su(`select titular_cliente_id || '|' || version || '|' || vigente from public.documentos_respaldo where id='${rLicA}'`), `${CLI.A}|1|true`);
+    assert.equal(db.su(`select titular_cliente_id from public.documentos_respaldo where id='${rLicB}'`), CLI.B);
+    // Un documento no se respalda bajo el expediente de otro titular.
+    assert.match(db.servicioFalla(`insert into public.documentos_respaldo (documento_id, expediente_id, almacen, referencia_externa, sha256, nivel_acceso, subido_por) values ('${DOC.licA}', '${EXP.B}', 'memoria', 'x', '${'a'.repeat(64)}', 'titular', '${U.abogado}')`), /documento_de_otro_expediente/);
+    db.servicioFalla(`insert into public.documentos_respaldo (documento_id, expediente_id, almacen, referencia_externa, sha256, nivel_acceso, subido_por) values ('${DOC.licA}', '${EXP.A}', 'memoria', 'x', 'no-es-hash', 'titular', '${U.abogado}')`);
+    db.servicioFalla(`insert into public.documentos_respaldo (documento_id, expediente_id, almacen, referencia_externa, sha256, nivel_acceso, subido_por) values ('${DOC.licA}', '${EXP.A}', 'memoria', 'x', '${'a'.repeat(64)}', 'organizacion', '${U.abogado}')`);
+    db.servicioFalla(`insert into public.documentos_respaldo (documento_id, expediente_id, almacen, referencia_externa, sha256, nivel_acceso, subido_por) values ('${DOC.licA}', '${EXP.A}', 'memoria', 'x', '${'a'.repeat(64)}', 'publico', '${U.abogado}')`);
+  });
+
+  test('049: el archivo no es público — nadie autenticado lee la referencia externa; el titular ve solo lo suyo y de su nivel', () => {
+    assert.match(db.usuarioFalla(U.abogado, `select referencia_externa from public.documentos_respaldo`), /permission denied/);
+    assert.match(db.usuarioFalla(U.clienteA, `select sha256 from public.documentos_respaldo`), /permission denied/);
+    db.anonFalla(`select id from public.documentos_respaldo`);
+    const ver = (u: string) => db.usuario(u, `select coalesce(string_agg(documento_id::text, ',' order by documento_id::text), '') from public.documentos_respaldo`);
+    assert.equal(ver(U.clienteA), DOC.licA);          // no ve la nota interna (nivel personal) ni lo de B
+    assert.equal(ver(U.clienteB), DOC.licB);
+    assert.equal(ver(U.planta), DOC.planta);          // nivel organización, su organización
+    assert.equal(ver(U.comA), '');
+    assert.equal(db.usuario(U.verificador, `select count(*) from public.documentos_respaldo`), '4');
+    for (const u of [U.clienteA, U.recepcionA, U.abogado]) {
+      db.usuarioFalla(u, `insert into public.documentos_respaldo (documento_id, expediente_id, almacen, referencia_externa, sha256, nivel_acceso, subido_por) values ('${DOC.licA}', '${EXP.A}', 'memoria', 'x', '${'a'.repeat(64)}', 'titular', '${u}')`);
+    }
+    assert.match(db.suFalla(`delete from public.documentos_respaldo where id='${rLicA}'`), /indeleble/);
+    assert.match(db.servicioFalla(`update public.documentos_respaldo set nivel_acceso='titular' where id='${rNotaA}'`), /el único cambio permitido es la revocación/);
+  });
+
+  test('049: el fragmento hereda la ACL del respaldo — no se puede indexar con un nivel más abierto', () => {
+    indexar(rLicA, 1, 'Licencia A', 'La licencia ambiental está vigente hasta 2027.');
+    indexar(rNotaA, 1, 'Nota interna A', 'Nota del personal: la licencia ambiental vigente requiere seguimiento.'); // pedido "titular" → queda "personal"
+    indexar(rLicB, 1, 'Licencia B', 'La licencia ambiental del titular B sigue vigente.');
+    indexar(rPlanta, 1, 'Documento para la planta', 'Resumen para la organización: licencia ambiental vigente.');
+    assert.equal(db.su(`select nivel_acceso || '|' || titular_cliente_id || '|' || (documento_id = '${DOC.notaA}') || '|' || (expediente_id = '${EXP.A}') from public.documentos_fragmentos where titulo='Nota interna A'`), `personal|${CLI.A}|true|true`);
+    assert.equal(db.su(`select nivel_acceso || '|' || organizacion_id from public.documentos_fragmentos where titulo='Documento para la planta'`), `organizacion|${ORG.P}`);
+    // Sin lectura directa para ningún rol autenticado ni anónimo.
+    for (const u of [U.clienteA, U.verificador, U.admin, U.planta]) {
+      assert.match(db.usuarioFalla(u, `select * from public.documentos_fragmentos`), /permission denied/);
+      assert.match(db.usuarioFalla(u, `select * from public.buscar_fragmentos_acl('licencia', '${u}', 5)`), /permission denied/);
+    }
+    db.anonFalla(`select * from public.documentos_fragmentos`);
+  });
+
+  test('049: la búsqueda filtra por acceso ANTES de recuperar — quien no tiene acceso nunca obtiene el fragmento', () => {
+    assert.equal(buscar(U.clienteA), 'Licencia A');                 // ni la nota interna ni lo de B
+    assert.equal(buscar(U.clienteB), 'Licencia B');
+    assert.equal(buscar(U.planta), 'Documento para la planta');     // solo nivel organización de SU organización
+    assert.equal(buscar(U.comA), '');
+    assert.equal(buscar(U.auditor), '');
+    assert.equal(buscar(U.verificador), 'Documento para la planta,Licencia A,Licencia B,Nota interna A');
+    assert.equal(buscar(U.abogado), 'Documento para la planta,Licencia A,Licencia B,Nota interna A');
+    // Un punto de recepción solo ve lo de su punto (A recibió en el punto A; B en el punto B).
+    assert.equal(buscar(U.recepcionA), 'Licencia A,Nota interna A');
+    assert.equal(buscar(U.recepcionB), 'Documento para la planta,Licencia B');
+    // Usuario inexistente, sin rol o consulta vacía: nada.
+    assert.equal(buscar('a0000000-0000-4000-8000-0000000000ff'), '');
+    assert.equal(buscar(U.verificador, '   '), '');
+    // El límite se aplica DESPUÉS del filtro: con límite 1, el titular B sigue recibiendo lo suyo.
+    assert.equal(db.servicio(`select string_agg(titulo, ',') from public.buscar_fragmentos_acl('licencia ambiental vigente', '${U.clienteB}', 1)`), 'Licencia B');
+  });
+
+  test('049: revocar un documento lo excluye del índice y de la lectura', () => {
+    assert.equal(db.json(`set role service_role; select public.retirar_documento_del_indice('${rLicA}', '${U.abogado}', 'no')`).motivo, 'motivo_obligatorio');
+    const r = db.json(`set role service_role; select public.retirar_documento_del_indice('${rLicA}', '${U.abogado}', 'documento sustituido por la autoridad')`);
+    assert.deepEqual({ ok: r.ok, n: r.fragmentos_retirados }, { ok: true, n: 1 });
+    assert.equal(buscar(U.clienteA), '');
+    assert.equal(buscar(U.verificador), 'Documento para la planta,Licencia B,Nota interna A');
+    assert.equal(db.su(`select vigente || '|' || revocado_por || '|' || revocacion_motivo from public.documentos_respaldo where id='${rLicA}'`), `false|${U.abogado}|documento sustituido por la autoridad`);
+    assert.equal(db.contar(U.clienteA, 'documentos_respaldo'), 0);
+    assert.equal(Number(db.su(`select count(*) from public.bitacora_acciones where accion='documento_revocado' and recurso_id='${rLicA}'`)), 1);
+    // Un documento revocado no se vuelve a indexar.
+    assert.match(db.servicioFalla(`insert into public.documentos_fragmentos (documento_respaldo_id, documento_id, expediente_id, nivel_acceso, orden, titulo, version, contenido) values ('${rLicA}', gen_random_uuid(), gen_random_uuid(), 'titular', 2, 'Licencia A', 1, 'licencia ambiental vigente')`), /documento_no_vigente/);
+    assert.match(db.servicioFalla(`update public.documentos_respaldo set vigente=true where id='${rLicA}'`), /el único cambio permitido es la revocación/);
+    db.usuarioFalla(U.abogado, `select public.retirar_documento_del_indice('${rLicB}', '${U.abogado}', 'intento directo')`);
+  });
+
+  test('049: una versión nueva deja obsoleta a la anterior y saca sus fragmentos', () => {
+    const v2 = respaldar(DOC.licB, EXP.B, 'titular');
+    assert.equal(db.su(`select version from public.documentos_respaldo where id='${v2}'`), '2');
+    assert.equal(db.su(`select vigente || '|' || revocacion_motivo from public.documentos_respaldo where id='${rLicB}'`), 'false|reemplazado por la versión 2');
+    assert.equal(buscar(U.clienteB), ''); // el fragmento de la versión 1 ya no está
+    indexar(v2, 1, 'Licencia B', 'Versión corregida: la licencia ambiental vigente vence en 2028.');
+    assert.equal(db.servicio(`select titulo || ' v' || version from public.buscar_fragmentos_acl('licencia ambiental vigente', '${U.clienteB}', 5)`), 'Licencia B v2');
   });
 });
