@@ -36,8 +36,13 @@
 -- RLS (sin BYPASSRLS en el service_role del proyecto — patrón 019/025/030/043):
 --   - autor (authenticated, NO personal de CHT): inserta, lee y edita SOLO lo
 --     suyo (autor_user_id = auth.uid()); "retirar" = estado 'retirada'.
---   - anon / authenticated: SOLO lectura de filas 'publicada' y vigentes
---     (vista publicaciones_marketplace_publicas + policy equivalente).
+--   - anon: SIN privilegios sobre la tabla base (ni SELECT de tabla ni por
+--     columna, así la API REST no puede pedir autor_user_id ni notas). Solo
+--     lee la vista publicaciones_marketplace_publicas, con security_invoker
+--     = false (corre con el dueño; el WHERE deja publicadas vigentes y la
+--     lista de columnas no incluye autor_user_id ni notas).
+--   - authenticated: lee la tabla según RLS (lo suyo, lo público vigente y,
+--     si es personal de CHT, todo) y también la vista.
 --   - personal de CHT (is_internal_staff): solo lectura (moderación); NO
 --     inserta ni edita: no "carga el precio del día" ni sustituye el precio
 --     informativo de la Fase 1.
@@ -206,8 +211,13 @@ create trigger trg_publicaciones_touch
 
 -- ═══ 3. Vista pública: solo publicadas y vigentes, sin autor ni notas ═══════
 
+-- security_invoker = false (explícito): anon no tiene GRANT sobre la tabla
+-- base, así que una vista security_invoker = true le fallaría con
+-- permission denied. Con false la vista corre con los privilegios del dueño
+-- (postgres, que crea la tabla en esta misma migración) y el WHERE es el
+-- filtro. No se otorgan columnas sueltas a anon: la tabla no es legible.
 create or replace view public.publicaciones_marketplace_publicas
-with (security_invoker = true) as
+with (security_invoker = false) as
   select p.id,
          p.participante_nombre,
          p.participante_tipo,
@@ -228,7 +238,7 @@ with (security_invoker = true) as
      and (now() at time zone 'America/Tegucigalpa')::date between p.vigente_desde and p.vigente_hasta;
 
 comment on view public.publicaciones_marketplace_publicas is
-  'Lectura pública del marketplace: solo publicaciones en estado publicada y vigentes hoy (hora Honduras). Sin autor_user_id ni notas. security_invoker: la RLS de la tabla aplica al lector.';
+  'Lectura pública del marketplace. security_invoker = false: anon no tiene GRANT sobre la tabla base y la vista corre con el dueño. Solo filas en estado publicada y vigentes hoy (hora Honduras). Columnas sin autor_user_id ni notas.';
 
 -- ═══ 4. RLS y grants ════════════════════════════════════════════════════════
 
@@ -243,14 +253,19 @@ drop policy if exists publicaciones_service_all on public.publicaciones_marketpl
 create policy publicaciones_service_all on public.publicaciones_marketplace
   for all to service_role using (true) with check (true);
 
--- anon / authenticated: SELECT (la policy filtra a publicadas vigentes). Nada más a anon.
-grant select on table public.publicaciones_marketplace to anon, authenticated;
+-- anon: cero privilegios sobre la tabla base (el revoke de arriba ya lo cubre;
+-- se repite para que un grant posterior en este archivo no lo reintroduzca).
+-- No hay GRANT por columna: anon solo lee la vista.
+revoke all on table public.publicaciones_marketplace from anon;
+grant select on table public.publicaciones_marketplace to authenticated;
 grant select on public.publicaciones_marketplace_publicas to anon, authenticated;
 grant insert, update on table public.publicaciones_marketplace to authenticated;
 
+-- La policy de lectura pública no incluye a anon. Sin GRANT y sin policy,
+-- anon no lee la tabla aunque alguien reabra el GRANT por error sin esta policy.
 drop policy if exists publicaciones_public_read on public.publicaciones_marketplace;
 create policy publicaciones_public_read on public.publicaciones_marketplace
-  for select to anon, authenticated
+  for select to authenticated
   using (estado = 'publicada'
          and (now() at time zone 'America/Tegucigalpa')::date between vigente_desde and vigente_hasta);
 
@@ -284,6 +299,34 @@ revoke delete, truncate on table public.publicaciones_marketplace from public, a
 -- ═══ 5. Verificación post-aplicación (ejecutar a mano en Studio) ════════════
 --   select rowsecurity from pg_tables where schemaname='public' and tablename='publicaciones_marketplace';  -- true
 --   select grantee, privilege_type from information_schema.role_table_grants
---    where table_name='publicaciones_marketplace' order by 1,2;
---   -- anon: SELECT; authenticated: SELECT, INSERT, UPDATE; service_role: SELECT, INSERT, UPDATE (sin DELETE)
+--    where table_schema='public' and table_name='publicaciones_marketplace' order by 1,2;
+--   -- anon: 0 filas. authenticated: SELECT, INSERT, UPDATE. service_role: SELECT, INSERT, UPDATE (sin DELETE).
+--   select column_name from information_schema.column_privileges
+--    where table_schema='public' and table_name='publicaciones_marketplace' and grantee='anon';
+--   -- 0 filas: anon no tiene ni autor_user_id ni ninguna otra columna.
+--   select column_name from information_schema.columns
+--    where table_schema='public' and table_name='publicaciones_marketplace_publicas'
+--      and column_name in ('autor_user_id', 'notas');
+--   -- 0 filas.
 --   select policyname, cmd, roles from pg_policies where tablename='publicaciones_marketplace' order by 1;
+--
+--   -- Como rol anon (no imprime secretos). Debe fallar la tabla y funcionar la vista:
+--   begin;
+--   set local role anon;
+--   select autor_user_id from public.publicaciones_marketplace;          -- ERROR: permission denied
+--   select * from public.publicaciones_marketplace_publicas limit 1;     -- OK, sin autor_user_id ni notas
+--   rollback;
+--
+--   Cómo verificar que anon no lee autor_user_id por la API REST (PostgREST).
+--   Sustituir <PROJECT> por la URL del proyecto. La anon key se manda en el
+--   header apikey / Authorization y NO se pega en este archivo ni en logs:
+--     GET https://<PROJECT>.supabase.co/rest/v1/publicaciones_marketplace?select=autor_user_id
+--       → 401 ó 42501 (permission denied). No hay GRANT SELECT a anon sobre la tabla.
+--     GET https://<PROJECT>.supabase.co/rest/v1/publicaciones_marketplace?select=*
+--       → el mismo rechazo.
+--     GET https://<PROJECT>.supabase.co/rest/v1/publicaciones_marketplace_publicas?select=autor_user_id
+--       → 400: la columna no existe en la vista.
+--     GET https://<PROJECT>.supabase.co/rest/v1/publicaciones_marketplace_publicas?select=notas
+--       → 400: la columna no existe en la vista.
+--     GET https://<PROJECT>.supabase.co/rest/v1/publicaciones_marketplace_publicas?select=id,participante_nombre
+--       → 200, solo filas en estado publicada y vigentes.

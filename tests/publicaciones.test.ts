@@ -106,7 +106,16 @@ describe('contrato con la migración 044 (sin aplicarla)', () => {
     assert.ok(sql.includes(`precio_unidad in (${lista(PRECIO_UNIDADES)})`));
   });
   test('RLS: anon solo lee lo público; nadie borra; staff de CHT no escribe', () => {
-    assert.match(sql, /grant select on table public\.publicaciones_marketplace to anon, authenticated;/);
+    assert.match(sql, /grant select on table public\.publicaciones_marketplace to authenticated;/);
+    assert.ok(!/grant select on table public\.publicaciones_marketplace to anon\b/.test(sql), 'anon sin SELECT de tabla');
+    assert.ok(!/grant select \([^)]*\) on (?:table )?public\.publicaciones_marketplace to anon/i.test(sql), 'anon sin SELECT por columna');
+    assert.match(sql, /grant select on public\.publicaciones_marketplace_publicas to anon, authenticated;/);
+    assert.match(sql, /security_invoker = false/);
+    const inicioVista = sql.lastIndexOf('create or replace view public.publicaciones_marketplace_publicas');
+    const finVista = sql.indexOf('comment on view public.publicaciones_marketplace_publicas');
+    const vista = sql.slice(inicioVista, finVista);
+    assert.ok(!/\bautor_user_id\b|\bnotas\b/.test(vista), 'la vista no proyecta autor_user_id ni notas');
+    assert.match(sql, /anon no lee autor_user_id/);
     assert.ok(!/grant (insert|update|all)[^;]*to anon/i.test(sql), 'nada de escritura a anon');
     assert.match(sql, /revoke delete, truncate on table public\.publicaciones_marketplace from public, anon, authenticated, service_role;/);
     assert.ok(!/for delete/i.test(sql), 'sin policy de DELETE');
